@@ -16,8 +16,8 @@ if sys.version_info < (3, 4):
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
-	import _nuthouse01_core as core
-	import _nuthouse01_pmx_parser as pmx_parser
+	import nuthouse01_core as core
+	import nuthouse01_pmx_parser as pmx_parser
 except ImportError as eee:
 	print(eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")

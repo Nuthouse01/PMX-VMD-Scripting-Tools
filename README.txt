@@ -280,14 +280,15 @@ https://gist.github.com/felixjones/f8a06bd48f9da9a4539f
 The following files should be included with this README:
     LICENSE
     README.md
-    _README.txt
-    _vmd_convert_tool.py
-    _vmd_model_compatability_check.py
-    _make_ik_from_vmd.py
-    _pmx_list_bone_morph_names.py
-    _nuthouse01_core.py
-    _pmx_parser.py
-    _vmd_parser.py
+    README.txt
+    vmd_convert_tool.py
+    vmd_model_compatability_check.py
+    vmd_armtwist_insert.py
+    make_ik_from_vmd.py
+    pmx_list_bone_morph_names.py
+    nuthouse01_core.py
+    nuthouse01_pmx_parser.py
+    nuthouse01_vmd_parser.py
 
 
 ###################################################################################################

@@ -83,8 +83,8 @@ if sys.version_info < (3, 4):
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
-	import _nuthouse01_core as core
-	import _nuthouse01_vmd_parser as vmd_parser
+	import nuthouse01_core as core
+	import nuthouse01_vmd_parser as vmd_parser
 except ImportError as eee:
 	print(eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
@@ -544,7 +544,7 @@ def main():
 	print("This supports all types of VMD frame data: bones, morphs, camera, lighting, shadow, IK/disp.")
 	print("That means this tool supports literally ALL types of VMD files: dance, cam, facial, etc.")
 	print("The text output file is arranged as valid CSV (comma-separated value) format, so you can technically change the file extension and load it into Microsoft Excel or whatever. But Excel doesn't properly display the Japanese characters so this is not recommended.")
-	print("See '_README.txt' for more details about output formats.")
+	print("See 'README.txt' for more details about output formats.")
 	
 	# prompt for "convert text -> VMD" or "VMD -> text"
 	print("Please select conversion direction: enter 1 or 2")
