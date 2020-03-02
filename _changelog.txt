@@ -1,0 +1,72 @@
+2.03:
+vmd_convert_tool:
+    better functionalization
+    better support for old motions (early end)
+    moved when the sorting happens
+
+2.04:
+vmd_convert_tool:
+    quaternion transform fix
+    bonedict/morphdict sorting
+    added "choose from options" function
+    added selftest
+
+2.05:
+moved some code to "nuthouse01_core"
+decided to distribute all scripts as a bundle
+added several simple scripts
+enforced standard templating for all scripts
+
+2.06:
+created new script "vmd_model_compatability_check"
+in "vmd_convert_tool", disabled the writing of bonedict/morphdict because vmd_model_compatability_check overshadows that feature
+
+2.07:
+fixed a bug in "weight_cleanup" due to not actually testing my code
+
+2.08:
+fixed a bug in "identify_unused_bones" due to not actually testing my code
+changed encoding from "shift_jisx0213" to "shift_jis" to properly handle backslashes, in core and in VMD
+New scripts:
++bone_geometry_isolate
++vmd_armtwist_convert
++bone_endpoint_create_remove
++texture_file_sort
+moved more functions into the 'core' file
+
+v2.09:
+fixed a logical bug in "bone_endpoint_create_remove"
+stopped using default, built custom csv writer to preserve leading spaces of things
+bugfix in "vmd_convert_tool" to handle strings exactly 15 bytes long that end with a multibyte char
+speculative bugfix to handle multibyte chars that get cut off by 15-byte limit (is that even possible?)
+
+
+v3.00:
+massive refactoring of "vmd_convert_tool":
+    move funcs for reading/writing binary files into core
+    move funcs for unpacking structs into core
+    move funcs for parsing/writing VMDs into new file "vmd_parser"
+        further refactored these funcs for stronger encapsulation & readability
+    massive refactoring of funcs for parsing/writing VMD-as-text for stronger encapsulation & readability
+    end-user experience is unchanged except for print statement differences
+slightly changed the "nicelist" format for internally representing a VMD
+completely redid my binary unpacker function, changed to a recursive approach
+    now supports symbol "t" to indicate actual strings (packer also changed to support this)
+    now creates escape character(‡) & writes the actual byte when unable to translate the final byte of a string (packer also changed to support this)
+    discovered some more quirks of encoding/decoding shift_jis, listed in core file
+added new file "pmx_parser", thanks to FelixJones on Github for already exporing & documenting the PMX file structure!!!
+    only for reading PMX files, no plans to make a writer. If you wanna modify a PMX use PMXE, not my scripts!
+    uses core funcs for reading binary files
+    uses core funcs for unpacking binary structs (same function as VMD parser)
+updated "vmd_armtwist_convert" to use this new PMX parser, and to work with VMD parsing changes
+    now able to infer axis of rotation on armtwist bones even if it doesn't have its axis locked
+updated "vmd_compatability_check" to use this new PMX parser, and to work with VMD parsing changes
+    also changed comparison method to handle new escape char strategy and bones/morphs >= 15 bytes
+updated "make_ik_from_vmd" to use this new PMX parser, and to work with VMD parsing changes
+improved handling of user input file names to account for odd corner cases
+improved error handling when reading vmd-as-text files
+change how "read_txt_to_rawlist" detects if a thing is an int, so it can support negative ints
+add ability for "read_txt_to_rawlist" to parse None objects (but there shouldn't ever be any None objects in the file so w/e)
+add new script "pmx_list_bone_morph_names.py" so EN users can discover the JP names of a model without using PMXE
+decided to release this script under the name Nuthouse01, changed all uses accordingly
+
