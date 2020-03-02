@@ -177,9 +177,9 @@ ik/dispframe_ct:, <#>
 ###################################################################################################
 ###################################################################################################
 ###################################################################################################
-VMD binary structure: note that b=byte
+VMD binary structure:
 
-The binary file is encoded with "shift_jisx0213" scheme
+The binary file is encoded with "shift_jis" scheme
 
 Some really old motions that don't contain camframe/lightframe/shadowframe/ikdispframe may just 
 decide to end the bitstream early rather than specifying that there are 0 of each of these frame 
