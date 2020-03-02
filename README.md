@@ -15,15 +15,16 @@ Don't try to claim this work as yours. That would be a profoundly dick move.
   
   
 ###### Usage: 
-1. Install Python3 (https://www.google.com/search?q=how+to+install+python)  
-2. Identify or create the input files needed for the script you are running (each script will list  
+1. Click the green button above, select "Download ZIP", save it, and unzip it somewhere
+2. Install Python3 (https://www.google.com/search?q=how+to+install+python)  
+3. Identify or create the input files needed for the script you are running (each script will list  
     its needed input files when it is executed)  
-3. Copy those input files to the same folder as the scripts  
-4. To run a script just double-click it, it should launch in a new window  
-5. Follow the directions in the window to choose modes and enter input file names  
-6. Read all information that is printed to the screen (such as the name of the output file it  
+4. Copy those input files to the same folder as the scripts  
+5. To run a script just double-click it, it should launch in a new window  
+6. Follow the directions in the window to choose modes and enter input file names  
+7. Read all information that is printed to the screen (such as the name of the output file it  
     created), then press ENTER to close the window  
-7. Done!  
+8. Done!  
   
   
 ### Purpose:
