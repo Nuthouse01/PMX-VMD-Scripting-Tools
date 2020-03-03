@@ -54,8 +54,8 @@ def main():
 	pmx = pmx_parser.read_pmx(input_filename_pmx)
 	realbones = pmx[5]		# get bones
 	realmorphs = pmx[6]		# get morphs
-	modelname_jp = pmx[0][0]
-	modelname_en = pmx[0][1]
+	modelname_jp = pmx[0][1]
+	modelname_en = pmx[0][2]
 
 	# prompt VMD file name
 	print("Please enter name of VMD dance input file:")
