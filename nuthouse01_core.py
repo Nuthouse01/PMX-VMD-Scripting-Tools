@@ -1,4 +1,4 @@
-# Nuthouse01 - 02/29/2020 - v3.00
+# Nuthouse01 - 03/14/2020 - v3.01
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -165,6 +165,7 @@ def prompt_user_filename(extension: str) -> str:
 		elif name.lower()[-4:] != extension.lower():
 			print("Err: given file must have '"+extension+"' extension")
 		elif not os.path.isfile(name):
+			print(os.path.abspath(name))
 			print("Err: given file does not exist, did you type it wrong?")
 		else:
 			break
@@ -792,5 +793,5 @@ def encode_string_with_escape(a: str) -> bytearray:
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 02/29/2020 - v3.00")
+	print("Nuthouse01 - 03/14/2020 - v3.01")
 	pause_and_quit("you are not supposed to directly run this file haha")
