@@ -1,7 +1,7 @@
 # VMD-to-text-Conversion-Tool
 
 VMD Conversion Tool README
-Created by Nuthouse01 - 02/29/2020 - v3.00
+Created by Nuthouse01 - 03/14/2020 - v3.01
 
 ###### Legal:
 This code is free to use and re-distribute, but I cannot be held responsible for damages that it  
@@ -16,7 +16,7 @@ Don't try to claim this work as yours. That would be a profoundly dick move.
   
 ###### Usage: 
 1. Click the green button above, select "Download ZIP", save it, and unzip it somewhere
-2. Install Python3 (https://www.google.com/search?q=how+to+install+python)  
+2. Install Python3 (https://www.google.com/search?q=how+to+install+python) or use the EXE version  
 3. Identify or create the input files needed for the script you are running (each script will list  
     its needed input files when it is executed)  
 4. Copy those input files to the same folder as the scripts  
@@ -260,6 +260,9 @@ project!
   
 Also thanks to FelixJones on Github for already exploring & documenting the PMX file structure!  
 https://gist.github.com/felixjones/f8a06bd48f9da9a4539f  
+
+Thanks to the people who made PyInstaller for making a super easy way to build an .exe from  
+a bunch of Python scripts, its a really neat tool you should check it out.
   
 ###### Files: 
 The following files should be included with this README:  
@@ -351,3 +354,6 @@ add ability for "read_txt_to_rawlist" to parse None objects (but there shouldn't
 add new script "pmx_list_bone_morph_names.py" so EN users can discover the JP names of a model without using PMXE  
 decided to release this script under the name Nuthouse01, changed all uses accordingly  
 
+v3.01:  
+"prompt_user_filename" now prints the full file path when given a non-existant file  
+added .exe versions of all 5 scripts, generated with PyInstaller

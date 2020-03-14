@@ -1,4 +1,4 @@
-# Nuthouse01 - 02/29/2020 - v3.00
+# Nuthouse01 - 03/14/2020 - v3.01
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -437,7 +437,7 @@ def main():
 	return None
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 02/29/2020 - v3.00")
+	print("Nuthouse01 - 03/14/2020 - v3.01")
 	if DEBUG:
 		main()
 	else:

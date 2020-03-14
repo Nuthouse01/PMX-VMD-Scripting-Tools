@@ -476,7 +476,7 @@ def read_pmx(pmx_filename: str) -> list:
 ########################################################################################################################
 # after all the funtions are defined, actually execute main()
 if __name__ == '__main__':
-	print("Nuthouse01 - 02/29/2020 - v3.00")
+	print("Nuthouse01 - 03/14/2020 - v3.01")
 	print("")
 	print("Specify a PMX file to attempt parsing (note that the output isn't actually used to do anything)")
 	if DEBUG:
