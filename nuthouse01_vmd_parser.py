@@ -632,11 +632,17 @@ def main():
 	write_vmd(Z, "____vmdparser_selftest_DELETEME.vmd")
 	ZZ = read_vmd("____vmdparser_selftest_DELETEME.vmd")
 	print("")
-	print("Is the readback EXACTLY identical to original?", Z == ZZ)
-	# boneframelist is different!!! but its just floating-point wibblyness caused by the quaternion transform math
-	result = core.recursively_compare(Z, ZZ)
-	print("Max difference between two floats:", core.MAXDIFFERENCE)
-	print("Number of floats that exceed reasonable threshold 0.0005:", result)
+	bb = core.read_binfile_to_bytes(input_filename)
+	bb2 = core.read_binfile_to_bytes("____vmdparser_selftest_DELETEME.vmd")
+	print("Is the binary EXACTLY identical to original?", bb == bb2)
+	exact_result = Z == ZZ
+	print("Is the readback EXACTLY identical to original?", exact_result)
+	if not exact_result:
+		# boneframelist is different!!! but its just floating-point wibblyness caused by the quaternion transform math
+		fuzzy_result = core.recursively_compare(Z, ZZ)
+		print("Is the readback ALMOST identical to the original?", not fuzzy_result)
+		print("Max difference between two floats:", core.MAXDIFFERENCE)
+		print("Number of floats that exceed reasonable threshold 0.0005:", fuzzy_result)
 	core.pause_and_quit("Parsed without error")
 
 ########################################################################################################################
