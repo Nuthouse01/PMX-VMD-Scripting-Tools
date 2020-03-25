@@ -602,6 +602,12 @@ def rotate2d(origin, angle, point):
 #	this is exactly the same as the backslash and yen, they are internally mapped to the same values so they are indistinguishable
 #	when i encode as shift_jis and write to file, they are both printed as ~
 
+# these functions add extra utility to the standard python packing/unpacking library
+# they define a new atom "t" that represents an actual string type, if preceeded by numbers that indicates how many
+#   bytes of space it uses, if NOT preceeded by numbers then it is represented in binary form as an int which indicates
+#   how big the string is, followed by the actual string
+# vmd format uses the "##t" syntax, pmx format uses the "t" syntax
+
 # variable to keep track of where to start reading from next within the raw-file
 UNPACKER_READFROM_BYTE = 0
 # this should be hardcoded and never changed, something weird that nobody would ever use in a name
@@ -629,37 +635,92 @@ def print_failed_decodes():
 		print("List of all strings that failed to decode, plus their occurance rate")
 		print(UNPACKER_FAILED_TRANSLATE_DICT)
 		
-def my_unpack(fmt:str, raw:bytearray, top=True):
-	# recursively! handle the format string until it's all consumed
-	# returns a list of values, or if there is only 1 value it automatically un-listifies it
-	if fmt == "" or fmt.isspace():
-		return []
+def decode_bytes_with_escape(r: bytearray) -> str:
+	global UNPACKER_FAILED_TRANSLATE_FLAG
+	# reverisible opposite of encode_string_with_escape()
+	# now i have r, a bytearray which represents a string
+	# want to convert it to actual string type (note decoding scheme varies depending on application)
+	# if decoding from VMD, it's possible that it might be cut off mid multibyte char, and therefore undecodeable
+	# undecodeable trailing bytes are escaped with a double-dagger and then represented with hex digits
+	# all cases I tested require at most 1 escape char, but just to be safe recursively call until it succeeds
+	try:
+		s = r.decode(UNPACKER_ENCODING)				# try to decode the whole string
+		return s
+	except UnicodeDecodeError:
+		UNPACKER_FAILED_TRANSLATE_FLAG = True
+		s = decode_bytes_with_escape(r[:-1])		# if it cant, decode everything but the last char
+		extra = r[-1]  								# this is the last byte that couldn't be decoded
+		s = "%s%s%x" % (s, UNPACKER_ESCAPE_CHAR, extra)
+		return s
+
+def encode_string_with_escape(a: str) -> bytearray:
+	# reverisible opposite of decode_bytes_with_escape()
+	# now i have "a", a string to be converted to a bytearray, possibly containing escape char(s)
+	# all cases I tested require at most 1 escape char, but just to be safe recursively call until it succeeds
+	try:
+		if len(a) > 3:									# is it long enough to maybe contain an escape char?
+			if a[-3] == UNPACKER_ESCAPE_CHAR:			# check if 3rd from end is an escape char
+				n = encode_string_with_escape(a[0:-3])	# convert str before escape from str to bytearray
+				n += bytearray.fromhex(a[-2:])			# convert hex after escape char to single byte and append
+				return n
+		return bytearray(a, UNPACKER_ENCODING)			# no escape char: convert from str to bytearray the standard way
+	except UnicodeEncodeError:
+		# if the decode fails, I hope it is because the input string contains a fullwidth tilde, that's the only error i know how to handle
+		# NOTE: there are probably other things that can fail that I just dont know about yet
+		new_a = a.replace(u"\uFF5E", u"\u301c")			# replace "fullwidth tilde" with "wave dash", same as MMD does
+		try:
+			return bytearray(new_a, UNPACKER_ENCODING)	# no escape char: convert from str to bytearray the standard way
+		except UnicodeEncodeError as e:
+			print(e)
+			print("warning: serious encoding problem")
+			return bytearray()
+
+def my_t_format_partitioning(fmt:str) -> (tuple, None):
+	# return the indexes within fmt string that produce a slice containing exactly the "t" atom and any preceding numbers
+	# if the "t" atom does not exist, return None
 	t_pos_start = fmt.find("t")
 	if t_pos_start == -1:
-		# if no need to parse text, don't do anything fancy
-		retlist = unpack_other(fmt, raw)
+		# if no "t" atom is found, return None
+		return None
 	else:
-		# t_pos_start = fmt.find("t")
 		t_pos_end = t_pos_start + 1
 		# find the t, then count left until i find non-numeric character or reach beginning of string
 		while t_pos_start > 0:
 			# if it becomes 0, then break
-			t_pos_start -= 1		# decrement
-			if not fmt[t_pos_start].isnumeric():
-				# if it finds a non-numeric char, back up 1 space so it IS pointing at a numeric term, then break
-				t_pos_start += 1
+			if fmt[t_pos_start-1].isnumeric():
+				# if the char before the current start is numeric, move the current start to include that number
+				t_pos_start -= 1
+			else:
+				# if it is not numeric we don't want it
 				break
-		before = fmt[:t_pos_start]
-		t = fmt[t_pos_start:t_pos_end]
-		after = fmt[t_pos_end:]
+		return t_pos_start, t_pos_end
+
+def my_unpack(fmt:str, raw:bytearray, top=True):
+	# recursively! handle the format string until it's all consumed
+	# returns a list of values, or if there is only 1 value it automatically un-listifies it
+	t_slice_idx = my_t_format_partitioning(fmt)
+	if t_slice_idx is None:
+		# if fmt string doesn't contain "t" atoms, no need to handle strings, give it to default unpacker
+		retlist = unpack_other(fmt, raw)
+	else:
+		# if fmt string does contain "t" atoms, then need to handle those & return as strings, not byte arrays
+		fmt_before = fmt[:t_slice_idx[0]]
+		fmt_t = fmt[t_slice_idx[0]:t_slice_idx[1]]
+		fmt_after = fmt[t_slice_idx[1]:]
 		# before definitely does not contain t: parse as normal & return value
-		# call the "unpack" thing to cleanly handle the empty-fmt-string case
-		before_ret = my_unpack(before, raw, top=False)
+		if fmt_before == "" or fmt_before.isspace():
+			before_ret = []		# if fmt is emtpy then don't attempt to unpack
+		else:
+			before_ret = unpack_other(fmt_before, raw)
 		# the section with the text gets specially handled
-		t_ret = unpack_text(t, raw)
+		t_ret = unpack_text(fmt_t, raw)
 		# after might still contain another t, needs further parsing
-		after_ret = my_unpack(after, raw, top=False)
-		# concatenate the 3 returned lists (some might be empty)
+		if fmt_after == "" or fmt_after.isspace():
+			after_ret = []		# if fmt is emtpy then don't attempt to unpack
+		else:
+			after_ret = my_unpack(fmt_after, raw, top=False)
+			
+		# concatenate the 3 returned lists (some might be empty, but they will all definitely be lists)
 		retlist = before_ret + t_ret + after_ret
 	# if it has length of 1, and about to return the final result, then de-listify it
 	if top and len(retlist) == 1:
@@ -668,8 +729,7 @@ def my_unpack(fmt:str, raw:bytearray, top=True):
 		return retlist
 
 def unpack_other(fmt:str, raw:bytearray) -> list:
-	# takes format and sequence of bytes
-	# format is guaranteed to not contain the letter "t"
+	# takes format and sequence of bytes, format is guaranteed to not contain the atom "t"
 	# returns a list of values, even if its just one value its still in a list
 	global UNPACKER_READFROM_BYTE
 	r = ()
@@ -693,104 +753,113 @@ def unpack_text(fmt:str, raw:bytearray) -> list:
 		if fmt == "t":		# this mode exclusively used for PMX parsing
 			# auto-text: a text type is an int followed by that many bytes
 			i = struct.unpack_from("<i", raw, UNPACKER_READFROM_BYTE)	# get how many bytes to read for str
-			UNPACKER_READFROM_BYTE += struct.calcsize("<i")		# increment the global read-from tracker
+			UNPACKER_READFROM_BYTE += 4							# increment the global read-from tracker
 			autofmt = "<" + str(i[0]) + "s"						# build fmt string that includes # of bytes to read
-			v = struct.unpack_from(autofmt, raw, UNPACKER_READFROM_BYTE)	# actual unpack
-			r = v[0]											# un-listify the result
-			UNPACKER_READFROM_BYTE += struct.calcsize(autofmt)	# increment the global read-from tracker
 		else:				# this mode exclusively used for VMD parsing
 			# manual-text: if a number is provided with it in the format string, then just read that number of bytes
 			autofmt = "<" + fmt[:-1] + "s"						# build fmt string that includes # of bytes to read
-			v = struct.unpack_from(autofmt, raw, UNPACKER_READFROM_BYTE)	# actual unpack
-			r = v[0]											# un-listify the result
-			UNPACKER_READFROM_BYTE += struct.calcsize(autofmt)	# increment the global read-from tracker
-			# strings are null-terminated: everything after a null byte is invalid garbage to be discarded
-			i = r.find(b'\x00')									# find a null terminator
-			if i != -1:
-				r = r[0:i]										# return only bytes before it
+			
+		v = struct.unpack_from(autofmt, raw, UNPACKER_READFROM_BYTE)	# unpack the actual string(bytearray)
+		UNPACKER_READFROM_BYTE += struct.calcsize(autofmt)		# increment the global read-from tracker
+		r = v[0]												# un-listify the result
+		
+		if fmt != "t":
+			# manual-text strings are null-terminated: everything after a null byte is invalid garbage to be discarded
+			i = r.find(b'\x00')									# look for a null terminator
+			if i != -1:											# if null is found...
+				r = r[0:i]										# ...return only bytes before it
 	except struct.error as e:
 		print(e)
 		pause_and_quit("Err: something went wrong while parsing, file is probably corrupt/malformed, bytepos = " + str(UNPACKER_READFROM_BYTE))
+	# r is now a bytearray that should be mappable onto a string, unless it is cut off mid-multibyte-char
 	s = decode_bytes_with_escape(r)
 	# translated string is now in s (maybe with the escape char tacked on)
 	# did it need escaping? add it to the dict for reporting later!
 	if UNPACKER_FAILED_TRANSLATE_FLAG:
 		UNPACKER_FAILED_TRANSLATE_FLAG = False
 		increment_occurance_dict(UNPACKER_FAILED_TRANSLATE_DICT, s)
-		# try:
-		# 	UNPACKER_FAILED_TRANSLATE_DICT[s] += 1
-		# except KeyError:
-		# 	UNPACKER_FAILED_TRANSLATE_DICT[s] = 1
 	# still need to return as a list for concatenation reasons
 	return [s]
 
-def decode_bytes_with_escape(r: bytearray) -> str:
-	global UNPACKER_FAILED_TRANSLATE_FLAG
-	# now i have r, a bytearray which represents a string
-	# want to convert it to actual string type (note decoding scheme varies depending on application)
-	# if decoding from VMD, it's possible that it might be cut off mid multibyte char, and therefore undecodeable
-	# all cases I tested require at most 1 escape char, but just to be safe recursively call until it succeeds
-	try:
-		s = r.decode(UNPACKER_ENCODING)				# try to decode the whole string
-		return s
-	except UnicodeDecodeError:
-		UNPACKER_FAILED_TRANSLATE_FLAG = True
-		s = decode_bytes_with_escape(r[:-1])		# if it cant, decode everything but the last char
-		extra = r[-1]  								# this is the last byte that couldn't be decoded
-		s = "%s%s%x" % (s, UNPACKER_ESCAPE_CHAR, extra)
-		return s
-
-def my_pack(fmt: str, arg) -> bytes:
+def my_pack(fmt: str, args_in) -> bytearray:
 	# opposite of my_unpack()
 	# takes format and list of args (if given a single non-list argument, automatically converts it to a list)
 	# return a bytes object which should be appended onto a growing bytearray object
 	
-	if isinstance(arg, list):
-		args = arg						# if given list, pass thru unchanged
+	if isinstance(args_in, list):
+		args = args_in						# if given list, pass thru unchanged
+	elif isinstance(args_in, tuple):
+		args = list(args_in)
 	else:
-		args = [arg]					# if given something other than a list, automatically convert it into a list
+		args = [args_in]					# if given something other than a list, automatically convert it into a list
 	
-	fmt_new = fmt.replace("t", "s")		# modify fmt to replace all "t" with "s" for the builtin packer to use
-	if fmt_new == fmt:					# if nothing changed, then simply copy args
-		args_copy = args
-	else:								# if something changed, then there are strings that need converting!
-		# modify args to convert all strings to bytearrays
-		args_copy = []
-		for a in args:
-			if isinstance(a, str):		# if it is a string, convert it to a bytearray, escaping if needed
-				n = encode_string_with_escape(a)
-				args_copy.append(n)		# append new bytearray
-			else:
-				args_copy.append(a)		# append arg that is not a string
-	
+	# first search for "t"
+	t_slice_idx = my_t_format_partitioning(fmt)
+	if t_slice_idx is None:
+		# if fmt string doesn't contain "t" atoms, no need to handle strings, give it to default packer
+		return pack_other(fmt, args)
+	else:
+		# if fmt string does contain "t" atoms, then need to handle those specially
+		fmt_before = fmt[:t_slice_idx[0]]
+		fmt_t = fmt[t_slice_idx[0]:t_slice_idx[1]]
+		fmt_after = fmt[t_slice_idx[1]:]
+		# where is the string that corresponds to the "t" atom?
+		i = 0
+		for i in range(len(args)):
+			if isinstance(args[i], str):
+				break
+		args_before = args[:i]
+		args_t = args[i:i+1]
+		args_after = args[i+1:]
+		
+		# before definitely does not contain t: parse as normal & return value
+		if fmt_before == "" or fmt_before.isspace():
+			ret_before = bytearray()	# if fmt is emtpy then don't attempt to pack
+		else:
+			ret_before = pack_other(fmt_before, args_before)
+		# the section with the text gets specially handled
+		ret_t = pack_text(fmt_t, args_t)
+		# after might still contain another t, needs further parsing
+		if fmt_after == "" or fmt_after.isspace():
+			ret_after = bytearray()		# if fmt is emtpy then don't attempt to pack
+		else:
+			ret_after = my_pack(fmt_after, args_after)
+
+		# concatenate the 3 returned bytearrays (some might be empty, but they will all definitely be bytearrays)
+		retlist = ret_before + ret_t + ret_after
+		return retlist
+
+def pack_other(fmt: str, args: list) -> bytearray:
 	try:
-		return struct.pack("<" + fmt_new, *args_copy)	# now do the actual packing
+		b = struct.pack("<" + fmt, *args)	# now do the actual packing
+		return bytearray(b)
+	except struct.error as e:
+		# repackage the error to add additional info and throw it again to be caught at a higher level
+		newerrstr = "err=" + str(e) + "\nfmt=" + fmt + "\nargs=" + str(args)
+		newerr = struct.error(newerrstr)
+		raise newerr
+
+def pack_text(fmt: str, args: list) -> bytearray:
+	# input fmt string is exactly either "t" or "#t" or "##t", etc
+	# input args list is list of exactly 1 string
+	n = encode_string_with_escape(args[0])		# convert str to bytearray
+	if fmt == "t":			# auto-text
+		# "t" means "i ##s" where ##=i. convert to bytearray, measure len, replace t with "i ##s"
+		autofmt = "<i" + str(len(n)) + "s"
+		autoargs = [len(n), n]
+	else:					# manual-text
+		autofmt = fmt[:-1] + "s"				# simply replace trailing t with s
+		autoargs = [n]
+		
+	try:
+		b = struct.pack(autofmt, *autoargs)		# now do the actual packing
+		return bytearray(b)
 	except struct.error as e:
 		# repackage the error to add additional info and throw it again to be caught at a higher level
 		# these are the args before replacing t with s, and before converting strings to bytearrays
 		newerrstr = "err=" + str(e) + "\nfmt=" + fmt + "\nargs=" + str(args)
 		newerr = struct.error(newerrstr)
 		raise newerr
-
-def encode_string_with_escape(a: str) -> bytearray:
-	# all cases I tested require at most 1 escape char, but just to be safe recursively call until it succeeds
-	try:
-		if len(a) > 3:									# is it long enough to maybe contain an escape char?
-			if a[-3] == UNPACKER_ESCAPE_CHAR:			# check if 3rd from end is an escape char
-				n = encode_string_with_escape(a[0:-3])	# convert str before escape from str to bytearray
-				n += bytearray.fromhex(a[-2:])			# convert hex after escape char to single byte and append
-				return n
-		return bytearray(a, UNPACKER_ENCODING)			# no escape char: convert from str to bytearray the standard way
-	except UnicodeEncodeError:
-		# if the decode fails, I hope it is because the input string contains a fullwidth tilde, that's the only error i know how to handle
-		# there are probably other things that can fail that I just dont know about yet
-		new_a = a.replace(u"\uFF5E", u"\u301c")			# replace "fullwidth tilde" with "wave dash", same as MMD does
-		try:
-			return bytearray(new_a, UNPACKER_ENCODING)	# no escape char: convert from str to bytearray the standard way
-		except UnicodeEncodeError as e:
-			print(e)
-			return bytearray()
-
 
 if __name__ == '__main__':
 	print("Nuthouse01 - 03/14/2020 - v3.01")
