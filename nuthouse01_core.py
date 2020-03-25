@@ -116,7 +116,7 @@ def recursively_compare(A,B):
 def flatten(x):
 	retme = []
 	for thing in x:
-		if isinstance(thing, list):
+		if isinstance(thing, list) or isinstance(thing, tuple):
 			if len(thing) == 0:
 				retme.append(None)
 			else:
@@ -206,26 +206,30 @@ def write_rawlist_to_txt(content, name, use_jis_encoding=False):
 	# opposite of read_txt_to_rawlist()
 	
 	# new: replaced csv.writer with my own convert-to-csv block to get the escaping behavior i needed
+	# assuming input is either list of strings, or list of lists of things
 	buildme = []
 	for line in content:
 		newline = []
-		for item in line:
-			# check if it needs special treatment, apply if needed
-			if isinstance(item, str):
-				# make a copy so I am not modifying the input list
-				newstr = item
-				# first, escape all doublequotes with more doublequotes
-				newstr.replace('"', '""')
-				# then check if the whole thing needs wrapped:
-				# contains any doublequotes, contains any commas, or starts or ends with whitespace
-				if ('"' in newstr) or (',' in newstr) or (len(newstr) > 0 and (newstr[0].isspace() or newstr[-1].isspace())):
-					newstr = '"%s"' % newstr
-				newline.append(newstr)
-			else:
-				# convert to string & append onto newline
-				newline.append(str(item))
-		# join the items on this line with commas & store elsewhere
-		newline_str = ",".join(newline)
+		if isinstance(line, str):  # if it is already a string, don't do anything fancy, just use it
+			newline_str = line
+		else:  # if it is not a string, it should be a list or tuple, so iterate over it
+			for item in line:
+				# check if it needs special treatment, apply if needed
+				if isinstance(item, str):
+					# make a copy so I am not modifying the input list
+					newstr = item
+					# first, escape all doublequotes with more doublequotes
+					newstr.replace('"', '""')
+					# then check if the whole thing needs wrapped:
+					# contains any doublequotes, contains any commas, or starts or ends with whitespace
+					if ('"' in newstr) or (',' in newstr) or (len(newstr) > 0 and (newstr[0].isspace() or newstr[-1].isspace())):
+						newstr = '"%s"' % newstr
+					newline.append(newstr)
+				else:
+					# convert to string & append onto newline
+					newline.append(str(item))
+			# join the items on this line with commas & store elsewhere
+			newline_str = ",".join(newline)
 		buildme.append(newline_str)
 	# add this so it has one empty line at the end just cuz
 	buildme.append("")
