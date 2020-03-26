@@ -519,12 +519,13 @@ def encode_vmd_ikdispframe(nice) -> bytearray:
 ########################################################################################################################
 
 def read_vmd(vmd_filename: str, getdict=False):
+	vmd_filename_clean = core.get_clean_basename(vmd_filename) + ".vmd"
 	# creates object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
 	# assumes the calling function already verified correct file extension
-	print("Begin reading VMD file '%s'" % vmd_filename)
+	print("Begin reading VMD file '%s'" % vmd_filename_clean)
 	vmd_bytes = core.read_binfile_to_bytes(vmd_filename)
 	print("...total size   = %sKB" % round(len(vmd_bytes) / 1024))
-	print("Begin parsing VMD file '%s'" % vmd_filename)
+	print("Begin parsing VMD file '%s'" % vmd_filename_clean)
 	core.reset_unpack()
 	core.set_encoding("shift_jis")
 	
@@ -567,16 +568,17 @@ def read_vmd(vmd_filename: str, getdict=False):
 		F.sort(key=core.get1st)
 		G.sort(key=core.get1st)
 	
-	print("Done parsing VMD file '%s'" % vmd_filename)
+	print("Done parsing VMD file '%s'" % vmd_filename_clean)
 	if getdict:
 		return [A, B, C, D, E, F, G], bonedict, morphdict
 	else:
 		return [A, B, C, D, E, F, G]
 
 def write_vmd(vmd: list, vmd_filename: str) -> None:
+	vmd_filename_clean = core.get_clean_basename(vmd_filename) + ".vmd"
 	# recives object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
 	# assumes the calling function already verified correct file extension
-	print("Begin encoding VMD file '%s'" % vmd_filename)
+	print("Begin encoding VMD file '%s'" % vmd_filename_clean)
 	core.set_encoding("shift_jis")
 	
 	# this is where sorting happens, if it happens
@@ -611,10 +613,10 @@ def write_vmd(vmd: list, vmd_filename: str) -> None:
 		# signature to prove that this file was created with this tool
 		output_bytes += bytes(SIGNATURE, encoding="shift_jis")
 	
-	print("Begin writing VMD file '%s'" % vmd_filename)
+	print("Begin writing VMD file '%s'" % vmd_filename_clean)
 	print("...total size   = %sKB" % round(len(output_bytes) / 1024))
 	core.write_bytes_to_binfile(output_bytes, vmd_filename)
-	print("Done writing VMD file '%s'" % vmd_filename)
+	print("Done writing VMD file '%s'" % vmd_filename_clean)
 	# done with everything!
 	return None
 

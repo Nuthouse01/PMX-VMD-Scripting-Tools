@@ -806,11 +806,12 @@ def encode_pmx_softbodies(nice: list) -> bytearray:
 ########################################################################################################################
 
 def read_pmx(pmx_filename: str) -> list:
+	pmx_filename_clean = core.get_clean_basename(pmx_filename) + ".pmx"
 	# assumes the calling function already verified correct file extension
-	print("Begin reading PMX file '%s'" % pmx_filename)
+	print("Begin reading PMX file '%s'" % pmx_filename_clean)
 	pmx_bytes = core.read_binfile_to_bytes(pmx_filename)
 	print("...total size   = %sKB" % round(len(pmx_bytes) / 1024))
-	print("Begin parsing PMX file '%s'" % pmx_filename)
+	print("Begin parsing PMX file '%s'" % pmx_filename_clean)
 	core.reset_unpack()
 	A = parse_pmx_header(pmx_bytes)
 	print("...PMX version  = v%s" % str(A[0]))
@@ -836,14 +837,15 @@ def read_pmx(pmx_filename: str) -> list:
 		print("Warning: finished parsing but %d bytes are left over at the tail!" % bytes_remain)
 		print("The file may be corrupt or maybe it contains unknown/unsupported data formats")
 		print(pmx_bytes[core.get_readfrom_byte():])
-	print("Done parsing PMX file '%s'" % pmx_filename)
+	print("Done parsing PMX file '%s'" % pmx_filename_clean)
 	return [A, B, C, D, E, F, G, H, I, J, K]
 
 
 def write_pmx(pmx: list, pmx_filename: str) -> None:
+	pmx_filename_clean = core.get_clean_basename(pmx_filename) + ".pmx"
 	# recives object 	(......)
 	# assumes the calling function already verified correct file extension
-	print("Begin encoding PMX file '%s'" % pmx_filename)
+	print("Begin encoding PMX file '%s'" % pmx_filename_clean)
 
 	print("...PMX version  = v%s" % str(pmx[0][0]))
 	print("...model name   = JP:'%s' / EN:'%s'" % (pmx[0][1], pmx[0][2]))
@@ -869,10 +871,10 @@ def write_pmx(pmx: list, pmx_filename: str) -> None:
 
 	# done encoding!!
 
-	print("Begin writing PMX file '%s'" % pmx_filename)
+	print("Begin writing PMX file '%s'" % pmx_filename_clean)
 	print("...total size   = %sKB" % round(len(output_bytes) / 1024))
 	core.write_bytes_to_binfile(output_bytes, pmx_filename)
-	print("Done writing PMX file '%s'" % pmx_filename)
+	print("Done writing PMX file '%s'" % pmx_filename_clean)
 	# done with everything!
 	return None
 

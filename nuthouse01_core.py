@@ -202,6 +202,7 @@ def get_unused_file_name(initial_name: str) -> str:
 ########################################################################################################################
 
 def write_rawlist_to_txt(content, name, use_jis_encoding=False):
+	print(os.path.abspath(name))
 	# note: when PMXE writes a CSV, it backslash-escapes backslashes and dots and spaces, but it doesn't need these to be escaped when reading
 	# opposite of read_txt_to_rawlist()
 	
@@ -250,6 +251,7 @@ def write_rawlist_to_txt(content, name, use_jis_encoding=False):
 
 
 def read_txt_to_rawlist(input_filename, use_jis_encoding=False):
+	print(os.path.abspath(input_filename))
 	# opposite of write_rawlist_to_txt()
 	# take a file name as its argument
 	# dump it from disk to a variable in memory, and also format it as a nice type-correct list
@@ -312,6 +314,7 @@ def read_txt_to_rawlist(input_filename, use_jis_encoding=False):
 
 
 def write_bytes_to_binfile(content, name):
+	print(os.path.abspath(name))
 	# opposite of read_binfile_to_bytes()
 	# write a binary file from a bytes object
 	try:
@@ -323,6 +326,7 @@ def write_bytes_to_binfile(content, name):
 
 
 def read_binfile_to_bytes(input_filename):
+	print(os.path.abspath(input_filename))
 	# opposite of write_bytes_to_binfile()
 	# take a file name as its argument
 	# return a "bytearray" object
