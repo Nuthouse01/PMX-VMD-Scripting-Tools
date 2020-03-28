@@ -40,7 +40,7 @@ DEBUG = False
 # opacity, edge size, edge alpha, tex, toon, sph
 template = [0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0]
 
-def main():
+def begin():
 	# print info to explain the purpose of this file
 	print("This file fixes improper 'material hide' morphs in a model.")
 	print("Many models simply set the opacity to 0, but forget to zero out the edging effects or other needed fields.")
@@ -54,7 +54,9 @@ def main():
 	print("Please enter name of PMX model file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx)
-	
+	return pmx, input_filename_pmx
+
+def alphamorph_correct(pmx):
 	num_fixed = 0
 	total_morphs_affected = 0
 	
@@ -82,21 +84,28 @@ def main():
 			num_fixed += this_num_fixed
 			print("JP: '%s'   EN: '%s'" % (morph[0], morph[1]))
 	
-	print("Fixed %d locations from among %d affected morphs" % (num_fixed, total_morphs_affected))
 	if num_fixed == 0:
 		print("No changes are required")
-		core.pause_and_quit("Done with everything! Goodbye!")
-		return None
+		return pmx, False
 	
+	print("Fixed %d locations from among %d affected morphs" % (num_fixed, total_morphs_affected))
+	return pmx, True
+
+def end(pmx, input_filename_pmx):
 	# write out
 	output_filename_pmx = "%s_alphamorph.pmx" % core.get_clean_basename(input_filename_pmx)
 	# output_filename_pmx = input_filename_pmx[0:-4] + "_translate.pmx"
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 	pmxlib.write_pmx(pmx, output_filename_pmx)
 	
-	core.pause_and_quit("Done with everything! Goodbye!")
 	return None
 
+def main():
+	pmx, name = begin()
+	pmx, is_changed = alphamorph_correct(pmx)
+	if is_changed:
+		end(pmx, name)
+	core.pause_and_quit("Done with everything! Goodbye!")
 
 if __name__ == '__main__':
 	print("Nuthouse01 - 03/14/2020 - v3.01")

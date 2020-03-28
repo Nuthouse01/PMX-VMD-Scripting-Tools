@@ -34,7 +34,7 @@ except ImportError as eee:
 DEBUG = False
 
 
-def main():
+def begin():
 	# print info to explain the purpose of this file
 	print("This script will fix the vertex weights that are weighted twice to the same bone, a minor issue that sometimes happens when merging bones.")
 	print("This also normalizes the weights of all vertices.")
@@ -48,7 +48,9 @@ def main():
 	print("Please enter name of PMX model file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx)
+	return pmx, input_filename_pmx
 
+def weight_cleanup(pmx):
 	#############################
 	# ready for logic
 
@@ -113,20 +115,28 @@ def main():
 		else:
 			print("invalid weight type for vertex")
 	
-	print("Fixed weights for {} / {} = {:.1%} of all vertices".format(fix_ct, len(pmx[1]), fix_ct/len(pmx[1])))
 	if fix_ct == 0:
 		print("No changes are required")
-		core.pause_and_quit("Done with everything! Goodbye!")
-		return None
+		return pmx, False
 	
+	print("Fixed weights for {} / {} = {:.1%} of all vertices".format(fix_ct, len(pmx[1]), fix_ct/len(pmx[1])))
+	return pmx, True
+	
+def end(pmx, input_filename_pmx):
 	# write out
 	output_filename_pmx = "%s_weightfix.pmx" % core.get_clean_basename(input_filename_pmx)
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 	pmxlib.write_pmx(pmx, output_filename_pmx)
 	
-	core.pause_and_quit("Done with everything! Goodbye!")
 	return None
 	
+def main():
+	pmx, name = begin()
+	pmx, is_changed = weight_cleanup(pmx)
+	if is_changed:
+		end(pmx, name)
+	core.pause_and_quit("Done with everything! Goodbye!")
+
 
 if __name__ == '__main__':
 	print("Nuthouse01 - 03/14/2020 - v3.01")

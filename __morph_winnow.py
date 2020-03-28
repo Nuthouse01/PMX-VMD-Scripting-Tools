@@ -38,7 +38,7 @@ DEBUG = False
 
 
 
-def main():
+def begin():
 	# print info to explain the purpose of this file
 	print("This will zero out vertex morphs that are smaller than a specified threshold, to reduce overall file size.")
 	# print info to explain what inputs it needs
@@ -51,8 +51,11 @@ def main():
 	print("Please enter name of PMX model file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx)
-	
+	return pmx, input_filename_pmx
+
+def morph_winnow(pmx):
 	print("Please enter the positive threshold for values that will be reduced to 0:")
+	print("Threshold of 0 means no change")
 	print("Recommended threshold is 0.0001 - 0.0005. Do you really think you can see deformation smaller than this?")
 	while True:
 		# continue prompting until the user gives valid input
@@ -96,21 +99,29 @@ def main():
 			total_morphs_affected += 1
 			total_vert_dropped += this_vert_dropped
 	
-	print("Dropped {} / {} = {:.1%} vertices from among {} affected morphs".format(
-		total_vert_dropped, total_num_verts, total_vert_dropped/total_num_verts, total_morphs_affected))
 	if total_vert_dropped == 0:
 		print("No changes are required")
-		core.pause_and_quit("Done with everything! Goodbye!")
-		return None
+		return pmx, False
 	
+	print("Dropped {} / {} = {:.1%} vertices from among {} affected morphs".format(
+		total_vert_dropped, total_num_verts, total_vert_dropped/total_num_verts, total_morphs_affected))
+	return pmx, True
+	
+def end(pmx, input_filename_pmx):
 	# write out
 	output_filename_pmx = "%s_winnow.pmx" % core.get_clean_basename(input_filename_pmx)
 	# output_filename_pmx = input_filename_pmx[0:-4] + "_translate.pmx"
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 	pmxlib.write_pmx(pmx, output_filename_pmx)
 	
-	core.pause_and_quit("Done with everything! Goodbye!")
 	return None
+
+def main():
+	pmx, name = begin()
+	pmx, is_changed = morph_winnow(pmx)
+	if is_changed:
+		end(pmx, name)
+	core.pause_and_quit("Done with everything! Goodbye!")
 
 
 if __name__ == '__main__':

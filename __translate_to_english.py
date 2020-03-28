@@ -201,7 +201,7 @@ def uniquify_name(used_names: set, new_name: str) -> str:
 	return new_name
 
 
-def main():
+def begin():
 	# print info to explain the purpose of this file
 	print("This tool fills out empty EN names in a PMX model with translated versions of the JP names.")
 	print("This also ensures the JP and EN names are all unique.")
@@ -219,7 +219,9 @@ def main():
 	print("Please enter name of PMX model file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx)
-	
+	return pmx, input_filename_pmx
+
+def translate_to_english(pmx):
 	translate_maps = []
 	# each entry is
 	
@@ -342,11 +344,11 @@ def main():
 	print("")
 	
 	# now display results!!
-	print("Found %d instances where renaming was needed:" % len(translate_maps))
 	if len(translate_maps) == 0:
 		print("No changes are required")
-		core.pause_and_quit("Done with everything! Goodbye!")
-		return None
+		return pmx, False
+	
+	print("Found %d instances where renaming was needed:" % len(translate_maps))
 	
 	# find max width of each column:
 	width = [0,0,0,0]
@@ -372,16 +374,24 @@ def main():
 	r = core.prompt_user_choice((1,2))
 	if r == 2:
 		core.pause_and_quit("Aborting: no names were changed")
-		return None
+		return 1, 2
+	return pmx, True
 	
+def end(pmx, input_filename_pmx):
 	# write out
 	output_filename_pmx = "%s_translate.pmx" % core.get_clean_basename(input_filename_pmx)
 	# output_filename_pmx = input_filename_pmx[0:-4] + "_translate.pmx"
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 	pmxlib.write_pmx(pmx, output_filename_pmx)
 	
-	core.pause_and_quit("Done with everything! Goodbye!")
 	return None
+
+def main():
+	pmx, name = begin()
+	pmx, is_changed = translate_to_english(pmx)
+	if is_changed:
+		end(pmx, name)
+	core.pause_and_quit("Done with everything! Goodbye!")
 
 
 if __name__ == '__main__':

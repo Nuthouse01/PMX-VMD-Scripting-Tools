@@ -67,7 +67,7 @@ def newval_from_range_map(v, range_map: list):
 		return retme
 	
 
-def main():
+def begin():
 	# TODO: TEST ALL THIS!
 	# print info to explain the purpose of this file
 	print("This script will delete any unused vertices from the model, sometimes causing massive file size improvements.")
@@ -81,7 +81,9 @@ def main():
 	print("Please enter name of PMX model file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx)
+	return pmx, input_filename_pmx
 
+def prune_unused_vertices(pmx):
 	#############################
 	# ready for logic
 
@@ -115,7 +117,7 @@ def main():
 	prevtotal = len(pmx[1])
 	if numdeleted == 0:
 		print("Nothing to be done")
-		return None
+		return pmx, False
 	
 	# convert from individual vertices to list of ranges, [start-length]
 	# start begins 0, end begins 1
@@ -197,15 +199,24 @@ def main():
 	
 	print("Identified and deleted {} / {} = {:.1%} vertices for being unused".format(
 		numdeleted, prevtotal, numdeleted/prevtotal))
-		
+	
+	return pmx, True
+
+def end(pmx, input_filename_pmx):
 	# write out
 	output_filename_pmx = "%s_vertprune.pmx" % core.get_clean_basename(input_filename_pmx)
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 	pmxlib.write_pmx(pmx, output_filename_pmx)
 	
-	core.pause_and_quit("Done with everything! Goodbye!")
 	return None
 	
+def main():
+	pmx, name = begin()
+	pmx, is_changed = prune_unused_vertices(pmx)
+	if is_changed:
+		end(pmx, name)
+	core.pause_and_quit("Done with everything! Goodbye!")
+
 
 if __name__ == '__main__':
 	print("Nuthouse01 - 03/14/2020 - v3.01")
