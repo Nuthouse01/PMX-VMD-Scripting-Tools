@@ -326,7 +326,7 @@ def parse_pmx_morphs(raw: bytearray) -> list:
 				# UV
 				# what these values do depends on the UV layer they are affecting, but the docs dont say what...
 				# oh well, i dont need to use them so i dont care :)
-				# (bone_idx, A, B, C, D)
+				# (vert_idx, A, B, C, D)
 				this_item = core.my_unpack(IDX_VERT + "4f", raw)
 			elif morphtype == 8:
 				# material
