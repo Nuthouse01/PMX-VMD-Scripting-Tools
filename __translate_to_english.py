@@ -32,30 +32,14 @@ except ImportError as eee:
 	core = pmxlib = frame_dict = morph_dict = bone_dict = None
 
 
-
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
-DEBUG = True
+DEBUG = False
 
 
-
-
+# if true, use the good Google Translate service
+# if false use the worse but less restrictive MyMemory translate service
 USE_GOOGLE_TRANSLATE = True
-# set up jp_to_en_mymemory thingy
-# TODO: special error message for if this package isn't installed
-
-from googletrans import Translator
-jp_to_en_google = Translator()
-
-from translate import Translator
-# jp_to_en_mymemory = Translator(provider="mymemory", to_lang="en", from_lang="autodetect")  # doesn't work?
-jp_to_en_mymemory = Translator(provider="mymemory", to_lang="en", from_lang="ja")
-
-
-
-# when this is true, uniquify each JP name and EN name by appending *1 *2 *3 etc on the end of the name
-# bad things happen when names aren't unique, so this is recommended
-ALSO_UNIQUIFY_NAMES = True
 
 
 # when this is true, it doesn't even attempt online translation. this way you can kinda run the script when
@@ -73,13 +57,36 @@ NEWLINE_ESCAPE_CHAR = "§"
 # or sometimes they lose newlines during translation
 # more lines per request = riskier, but uses less of your transaction budget
 TRANSLATE_MAX_LINES_PER_REQUEST = 30
-
 # how many requests are permitted per timeframe, to avoid the lockout
-# true limit is ~100 so enforce limit of 80 to be conservative
+# true limit is ~100 so enforce limit of 80 just to be safe
 TRANSLATE_BUDGET_MAX_REQUESTS = 80
 # how long (hours) is the timeframe to protect
-# true timeframe is ~1 hr so enforce limit of ~1.2hr, discard records older than that
+# true timeframe is ~1 hr so enforce limit of ~1.2hr just to be safe
 TRANSLATE_BUDGET_TIMEFRAME = 1.2
+
+
+# set up the acutal translator libraries & objects
+try:
+	import googletrans
+	jp_to_en_google = googletrans.Translator()
+except ImportError as eee:
+	print(eee)
+	print("ERROR: failed to import primary translation provider library 'googletrans'")
+	print("Please install this library with 'pip install googletrans'")
+	print("Switching to backup provider MyMemory in library 'translate'")
+	USE_GOOGLE_TRANSLATE = False
+	googletrans = None
+
+try:
+	import translate
+	# jp_to_en_mymemory = Translator(provider="mymemory", to_lang="en", from_lang="autodetect")  # doesn't work?
+	jp_to_en_mymemory = translate.Translator(provider="mymemory", to_lang="en", from_lang="ja")
+except ImportError as eee:
+	print(eee)
+	print("ERROR: failed to import backup translation provider library 'translate'")
+	print("Please install this library with 'pip install translate'")
+	translate = None
+
 
 ################################################################################################################
 def check_translate_budget(num_proposed: int) -> bool:
