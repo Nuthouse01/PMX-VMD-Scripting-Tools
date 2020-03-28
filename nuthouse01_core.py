@@ -6,10 +6,10 @@
 # it's better to keep them all in one place than copy them for each file
 
 import csv
-import io
 import math
 import struct
-import os
+from os import path, listdir, getenv, makedirs
+from sys import platform
 
 ########################################################################################################################
 # constants used in many files that I don't wanna keep copying over and over
@@ -70,6 +70,8 @@ def print_progress_oneline(curr, outof):
 	# cursor gets left at the beginning of line, so the next print will overwrite this one
 	p = "...working: {:06.2%}".format(curr / outof)
 	print(p, end='\r', flush=True)
+	# print('\r' + p, end='', flush=True)  # leave cursor at the end of the line
+	# print('\r', end='', flush=False)  # force NEXT print statement to begin by resetting to the start of the line
 
 
 # useful as keys for sorting
@@ -134,16 +136,11 @@ def increment_occurance_dict(d: dict, k):
 	return None
 
 def prompt_user_choice(options):
-	# create string for prompting user
-	promptstr = ""
+	# assumes that options is a list of ints
 	# create set for matching against
-	choicelist = []
-	for i in options:
-		promptstr += str(i)
-		choicelist.append(str(i))
-		promptstr += "/"
-	# strip the trailing /
-	promptstr = promptstr.rstrip("/")
+	choicelist = [str(i) for i in options]
+	# create printable string which is all options separated by slashes
+	promptstr = "/".join(choicelist)
 	
 	while True:
 		# continue prompting until the user gives valid input
@@ -164,32 +161,32 @@ def prompt_user_filename(extension: str) -> str:
 			print("Err: file name too short to be valid")
 		elif name.lower()[-4:] != extension.lower():
 			print("Err: given file must have '"+extension+"' extension")
-		elif not os.path.isfile(name):
-			print(os.path.abspath(name))
+		elif not path.isfile(name):
+			print(path.abspath(name))
 			print("Err: given file does not exist, did you type it wrong?")
 		else:
 			break
 	# windows is case insensitive, so this doesn't matter, but to make it match the same case as the existing file:
 	# inputname > absolute path > dir name > list files in dir > compare-case-insensitive with inputname > get actual existing name
-	manyfiles = os.listdir(os.path.dirname(os.path.abspath(name)))
+	manyfiles = listdir(path.dirname(path.abspath(name)))
 	for casename in manyfiles:
-		if casename.lower() == os.path.basename(name).lower():
-			return os.path.join(os.path.dirname(name), casename)
+		if casename.lower() == path.basename(name).lower():
+			return path.join(path.dirname(name), casename)
 	# just in case something goes sideways
 	return name
 
 def get_clean_basename(initial_name: str) -> str:
-	return os.path.splitext(os.path.basename(initial_name))[0]
+	return path.splitext(path.basename(initial_name))[0]
 
 def get_unused_file_name(initial_name: str) -> str:
-	# given an initial name, see if it is valid to use. if not, keep appending numbers until you find a name that is unused.
 	# return a name that is unused, might be the same one passed in.
+	# given an initial name, see if it is valid to use. if not, keep appending numbers until you find a name that is unused.
 	sep = initial_name.rfind(".")
 	basename = initial_name[:sep]
 	extension = initial_name[sep:]
 	test_name = basename + extension
 	for append_num in range(2, 1000):
-		if not os.path.isfile(test_name):
+		if not path.isfile(test_name):
 			return test_name
 		else:
 			test_name = basename + str(append_num) + extension
@@ -197,12 +194,34 @@ def get_unused_file_name(initial_name: str) -> str:
 	pause_and_quit("Err: unable to find unused variation of '" + initial_name + "' for file-write")
 	return ""
 
+def get_persistient_storage_path(filename="") -> str:
+	# for writing to the "appdata" directory to preserve info between multiple runs of the script, from any location
+	appname = "nuthouse01_mmd_tools"
+	# build the appropriate path
+	if platform == 'win32':
+		appdata = path.join(getenv('APPDATA'), appname)
+	else:
+		appdata = path.expanduser(path.join("~", "." + appname))
+	# if the folder(s) don't exist, then make them
+	if not path.exists(appdata):
+		makedirs(appdata)
+	# if a filename was given, return it added onto the path
+	if filename:
+		retme = path.join(appdata, filename)
+		# if it doesn't exist, create it empty
+		if not path.exists(retme):
+			write_rawlist_to_txt([], retme, quiet=True)
+		return retme
+	return appdata
+
+
 ########################################################################################################################
 # these functions do CSV read/write and binary-file read/write
 ########################################################################################################################
 
-def write_rawlist_to_txt(content, name, use_jis_encoding=False):
-	print(os.path.abspath(name))
+def write_rawlist_to_txt(content, name, use_jis_encoding=False, quiet=False):
+	if not quiet:
+		print(path.abspath(name))
 	# note: when PMXE writes a CSV, it backslash-escapes backslashes and dots and spaces, but it doesn't need these to be escaped when reading
 	# opposite of read_txt_to_rawlist()
 	
@@ -240,27 +259,28 @@ def write_rawlist_to_txt(content, name, use_jis_encoding=False):
 	try:
 		# finally, actually write the whole file all at once, using the proper encoding
 		if use_jis_encoding:
-			with io.open(name, "w", encoding="shift_jis") as my_file:
+			with open(name, "w", encoding="shift_jis") as my_file:
 				my_file.write(writeme)
 		else:
-			with io.open(name, "w", encoding="utf-8") as my_file:
+			with open(name, "w", encoding="utf-8") as my_file:
 				my_file.write(writeme)
 	except IOError as e:
 		print(e)
 		pause_and_quit("Err: unable to write TXT file '" + name + "', maybe its a permissions issue?")
 
 
-def read_txt_to_rawlist(input_filename, use_jis_encoding=False):
-	print(os.path.abspath(input_filename))
+def read_txt_to_rawlist(input_filename, use_jis_encoding=False, quiet=False):
+	if not quiet:
+		print(path.abspath(input_filename))
 	# opposite of write_rawlist_to_txt()
 	# take a file name as its argument
 	# dump it from disk to a variable in memory, and also format it as a nice type-correct list
 	try:
 		if use_jis_encoding:
-			with io.open(input_filename, "r", encoding="shift_jis") as my_file:
+			with open(input_filename, "r", encoding="shift_jis") as my_file:
 				rb_unicode = my_file.read()
 		else:
-			with io.open(input_filename, "r", encoding="utf-8") as my_file:
+			with open(input_filename, "r", encoding="utf-8") as my_file:
 				rb_unicode = my_file.read()
 	except IOError as e:
 		print(e)
@@ -313,20 +333,22 @@ def read_txt_to_rawlist(input_filename, use_jis_encoding=False):
 	return data
 
 
-def write_bytes_to_binfile(content, name):
-	print(os.path.abspath(name))
+def write_bytes_to_binfile(content, name, quiet=False):
+	if not quiet:
+		print(path.abspath(name))
 	# opposite of read_binfile_to_bytes()
 	# write a binary file from a bytes object
 	try:
-		with io.open(name, "wb") as my_file:
+		with open(name, "wb") as my_file:
 			my_file.write(content)
 	except IOError as e:
 		print(e)
 		pause_and_quit("Err: unable to write binary file '" + name + "', maybe its a permissions issue?")
 
 
-def read_binfile_to_bytes(input_filename):
-	print(os.path.abspath(input_filename))
+def read_binfile_to_bytes(input_filename, quiet=False):
+	if not quiet:
+		print(path.abspath(input_filename))
 	# opposite of write_bytes_to_binfile()
 	# take a file name as its argument
 	# return a "bytearray" object
