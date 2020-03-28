@@ -16,6 +16,7 @@ if sys.version_info < (3, 4):
 
 import re
 import unicodedata
+from time import sleep
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -36,7 +37,8 @@ except ImportError as eee:
 # TODO: create temp file which records time of online transactions to prevent crossing Google's threshold?
 # TODO: print translations to CSV text file, say "review the CSV and edit", then read the CSV and apply those changes
 
-USE_GOOGLE_TRANSLATE = True
+
+USE_GOOGLE_TRANSLATE = False
 # set up jp_to_en_mymemory thingy
 # TODO: special error message for if this package isn't installed
 
@@ -62,9 +64,16 @@ ALSO_UNIQUIFY_NAMES = True
 
 # when this is true, it doesn't even attempt online translation. this way you can kinda run the script when
 # you run into google's soft-ban.
-DISABLE_INTERNET_TRANSLATE = True
+DISABLE_INTERNET_TRANSLATE = False
 
 # NEWLINE_ESCAPE_CHAR = "| "
+
+# to reduce the number of translation requests, a list of strings is joined into one string broken by newlines
+# hopefully that counts as "fewer requests" for google's API
+# tho in testing, sometimes translations produce different results if on their own vs in a newline list... oh well
+# or sometimes they lose newlines during translation
+# more lines per request = riskier, but uses less of your transaction budget
+MAX_NUM_LINES = 30
 
 
 def contains_jap_chars(text) -> bool:
@@ -103,24 +112,18 @@ def my_string_pad(string: str, width: int) -> str:
 		return string + (" " * padnum)
 
 def bulk_translate(jp_list: list) -> list:
-	# take a list of strings, joins them into one string with newlines
-	# hopefully that counts as "fewer requests" for google's API
-	# tho in testing, sometimes translations produce different results if on their own vs in a newline list... oh well
-	MAX_NUM_LINES = 30
-	num_calls = (len(jp_list) // 30) + 2
-	print("Making %d requests to Internet translate service..." % num_calls)
 	start_idx = 0
 	retme = []
 	while start_idx < len(jp_list):
 		core.print_progress_oneline(start_idx, len(jp_list))
-		# if start_idx != 0:  # sleep 1sec each pass except the first
-		# 	time.sleep(1)
+		if start_idx != 0:  # sleep 1sec each query except the first, to prevent google from getting mad
+			sleep(1)
 		templist = jp_list[start_idx:start_idx+MAX_NUM_LINES]
 		bigstr = "\n".join(templist)
 		bigresult = actual_translate(bigstr)
 		result_list = bigresult.split("\n")
 		if len(result_list) != len(templist):
-			print("Warning: translation messed up and merged some lines, no good way to tell which ones")
+			print("Warning: translation messed up and merged some lines, please manually fix the bad outputs")
 			result_list = ["error"] * len(templist)
 		retme += result_list
 		start_idx += MAX_NUM_LINES
@@ -206,8 +209,7 @@ def begin():
 	print("This tool fills out empty EN names in a PMX model with translated versions of the JP names.")
 	print("This also ensures the JP and EN names are all unique.")
 	print("Machine translation is never 100% reliable, so this is only a stopgap measure to eliminate all the 'Null_##'s and wrongly-encoded garbage and make it easier to use in MMD.")
-	print("If you are able to use PMXE, I recommend you use this tool FIRST, and use PMXE's translation feature SECOND so that the semistandard bones/morphs it understands will have their correct names.")
-	print("If you can't use PMXE, a bad translation is better than none at all!")
+	print("A bad translation is better than none at all!")
 	print("Also, Google Translate only permits ~100 requests per hour, if you exceed this rate you will be locked out for 24 hours (TODO: CONFIRM LOCKOUT TIME)")
 	# print info to explain what inputs it needs
 	print("Inputs: PMX file 'model.pmx'")
@@ -222,14 +224,58 @@ def begin():
 	return pmx, input_filename_pmx
 
 def translate_to_english(pmx):
+	# run thru all groups, find what can be locally translated, queue up what needs to be googled
+	# do the same for model name
+	# decide what to do for model comment, but store separately (compress newlines here!)
+	# check logfile thing to see if i am near my budget for translations
+	# actual translation: bulk translate
+	# 	if needed, individual-translate comment with newlines intact, get result with newlines intact
+	# print results to screen, also write to file
+	# 	when printing comment, print "too_long_to_show"
+	# 	when writing comment, replace all newlines with SOMETHING
+	# then wait for user to approve the translations, or decline
+	# then read the translation file which might have been edited by user
+	# then apply the actual translations to the model
+	#	comment will need to have all SOMETHINGs returned back to newlines
+	# then find things that need to be uniquified
+	# DON'T display to user, just give count and ask yes/no
+	# finally return
+	
 	translate_maps = []
-	# each entry is
+	# each entry looks like this:
+	# source, sourceid, (local / google / unique), "OLD EN:", old_en, "NEW EN:", new_en, "JP:", jp
 	
-	translate_queue = []
-	translate_queue_idx = []
+	translate_queue = []  # just list of strings
+	translate_queue_idx = []  # list of corresponding category ID + index within that category
 	
-	print("Beginning translation, this may take several seconds")
-
+	label_dict = {0: "header", 4: "material", 5: "bone", 6: "morph", 7: "dispframe"}
+	inv_label_dict = {value: key for key, value in label_dict.items()}
+	
+	# repeat the following for each category of visible names:
+	# materials=4, bones=5, morphs=6, dispframe=7
+	for cat_id in range(4, 8):
+		category = pmx[cat_id]
+		# for each entry:
+		for i, item in enumerate(category):
+			# jp=0,en=1
+			jp_name = item[0]
+			en_name = item[1]
+			# second, translate en name
+			new_en_name = fix_eng_name(jp_name, en_name)
+			if new_en_name is None:
+				# googletrans is required, store and translate in bulk later
+				translate_queue.append(jp_name)
+				translate_queue_idx.append([cat_id, i])
+			elif new_en_name != en_name:
+				# translated without going to internet
+				# apply change & store in list for future printing
+				item[1] = new_en_name
+				newlist = [label_dict[cat_id] + str(i), "local", en_name, new_en_name]
+				translate_maps.append(newlist)
+			else:
+				# no change
+				pass
+	
 	# header=0 is special cuz its not iterable:
 	# translate name(jp=1,en=2)
 	new_en_name = fix_eng_name(pmx[0][1], pmx[0][2])
@@ -240,9 +286,11 @@ def translate_to_english(pmx):
 	elif new_en_name != pmx[0][2]:
 		# translated without going to internet
 		# apply change & store in list for future printing
-		newlist = ["modelname:", "trans_local:", pmx[0][2], new_en_name]
+		newlist = ["header", "local", pmx[0][2], new_en_name]
 		translate_maps.append(newlist)
 		pmx[0][2] = new_en_name
+		
+	
 	# comment(jp=3,en=4)
 	new_en_name = fix_eng_name(pmx[0][3], pmx[0][4])
 	if new_en_name is None:
@@ -265,35 +313,16 @@ def translate_to_english(pmx):
 		translate_maps.append(newlist)
 		pmx[0][4] = new_en_name
 	
-	label_dict = {4:"material:", 5:"bone:", 6:"morph:", 7:"dispframe:"}
 	
-	# repeat the following for each category of names:
-	# materials=4, bones=5, morphs=6, dispframe=7
-	for cat_id in range(4,8):
-		category = pmx[cat_id]
-		# for each entry:
-		for i,item in enumerate(category):
-			#jp=0,en=1
-			jp_name = item[0]
-			en_name = item[1]
-			# second, translate en name
-			new_en_name = fix_eng_name(jp_name, en_name)
-			if new_en_name is None:
-				# googletrans is required, store and translate in bulk later
-				translate_queue.append(jp_name)
-				translate_queue_idx.append([cat_id, i])
-			elif new_en_name != en_name:
-				# translated without going to internet
-				# apply change & store in list for future printing
-				item[1] = new_en_name
-				newlist = [label_dict[cat_id] + str(i), "trans_local:", en_name, new_en_name]
-				translate_maps.append(newlist)
-			else:
-				# no change
-				pass
-			
 	# now bulk-translate all the strings that are queued
 	if translate_queue:
+		print("Beginning translation, this may take several seconds")
+		if USE_GOOGLE_TRANSLATE:
+			print("Using Google Translate web API for translations")
+		else:
+			print("Using MyMemory free translate service for translation")
+		num_calls = (len(translate_queue) // MAX_NUM_LINES) + 2
+		print("Making %d requests to Internet translate service..." % num_calls)
 		results = bulk_translate(translate_queue)
 		# from the results, create list entries and also store the results
 		for new_en_name, queue_idx in zip(results, translate_queue_idx):
@@ -362,7 +391,6 @@ def translate_to_english(pmx):
 		# python's formatting tool doesn't play nice with odd-width chars so I'll do it manually
 		for i in range(4):
 			args.append(my_string_pad(tmap[i], width[i]))
-		# printme = "{} | EN: {} --> {} | JP: {} --> {}".format(*args)
 		printme = "{} | {} | {} --> {}".format(*args)
 		printme_list.append(printme)
 		print(printme)
@@ -374,7 +402,7 @@ def translate_to_english(pmx):
 	r = core.prompt_user_choice((1,2))
 	if r == 2:
 		core.pause_and_quit("Aborting: no names were changed")
-		return 1, 2
+		return 1, False
 	return pmx, True
 	
 def end(pmx, input_filename_pmx):
