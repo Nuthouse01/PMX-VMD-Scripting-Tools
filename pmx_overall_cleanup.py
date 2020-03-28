@@ -24,6 +24,7 @@ try:
 	from __prune_unused_vertices import prune_unused_vertices
 	from __translate_to_english import translate_to_english
 	from __weight_cleanup import weight_cleanup
+	from __uniquify_names import uniquify_names
 except ImportError as eee:
 	print(eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
@@ -31,13 +32,16 @@ except ImportError as eee:
 	input()
 	exit()
 	core = pmxlib = None
-	alphamorph_correct = morph_winnow = prune_unused_vertices = prune_invalid_faces = translate_to_english = weight_cleanup = None
+	alphamorph_correct = morph_winnow = prune_unused_vertices = prune_invalid_faces = translate_to_english = None
+	weight_cleanup = uniquify_names = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
 DEBUG = False
 
+
+# TODO: check for (but probably don't try to fix) broken joints that would cause MMD to crash
 
 
 def begin():
@@ -64,6 +68,9 @@ def pmx_overall_cleanup(pmx):
 	print(">>>> Fixing missing english names <<<<")
 	pmx, is_changed_t = translate_to_english(pmx)
 	is_changed |= is_changed_t	# or-equals: if any component returns true, then ultimately this func returns true
+	print(">>>> Ensuring all names in the model are unique <<<<")
+	pmx, is_changed_t = uniquify_names(pmx)
+	is_changed |= is_changed_t
 	print(">>>> Deleting invalid faces <<<<")
 	pmx, is_changed_t = prune_invalid_faces(pmx)
 	is_changed |= is_changed_t
@@ -84,7 +91,6 @@ def pmx_overall_cleanup(pmx):
 	if not is_changed:
 		print(">>>> OVERALL RESULT: No changes are required <<<<")
 	else:
-		print(">>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<")
 		print(">>>> Done with overall cleanup procedures <<<<")
 	
 	return pmx, is_changed

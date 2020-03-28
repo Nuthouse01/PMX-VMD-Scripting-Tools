@@ -33,9 +33,6 @@ except ImportError as eee:
 
 
 
-# TODO: execution-time ask which translation provider to use?
-# TODO: create temp file which records time of online transactions to prevent crossing Google's threshold?
-# TODO: print translations to CSV text file, say "review the CSV and edit", then read the CSV and apply those changes
 
 
 USE_GOOGLE_TRANSLATE = False
@@ -188,26 +185,9 @@ def fix_eng_name(name_jp: str, name_en: str) -> (str, None):
 		# name is good, no translate needed
 		return name_en
 	
-def uniquify_name(used_names: set, new_name: str) -> str:
-	# translation occurred! attempt to uniquify the new name by appending *2 *3 etc
-	while new_name in used_names:
-		starpos = new_name.rfind("*")
-		if starpos == -1:  # suffix does not exist
-			new_name = new_name + "*1"
-		else:  # suffix does exist
-			try:
-				suffixval = int(new_name[starpos + 1:])
-			except ValueError:
-				suffixval = 1
-			new_name = new_name[:starpos] + "*" + str(suffixval + 1)
-	# one leaving that loop, we finally have a unique name
-	return new_name
-
-
 def begin():
 	# print info to explain the purpose of this file
 	print("This tool fills out empty EN names in a PMX model with translated versions of the JP names.")
-	print("This also ensures the JP and EN names are all unique.")
 	print("Machine translation is never 100% reliable, so this is only a stopgap measure to eliminate all the 'Null_##'s and wrongly-encoded garbage and make it easier to use in MMD.")
 	print("A bad translation is better than none at all!")
 	print("Also, Google Translate only permits ~100 requests per hour, if you exceed this rate you will be locked out for 24 hours (TODO: CONFIRM LOCKOUT TIME)")
@@ -224,6 +204,7 @@ def begin():
 	return pmx, input_filename_pmx
 
 def translate_to_english(pmx):
+	# TODO: execute this roadmap
 	# run thru all groups, find what can be locally translated, queue up what needs to be googled
 	# do the same for model name
 	# decide what to do for model comment, but store separately (compress newlines here!)
@@ -237,9 +218,10 @@ def translate_to_english(pmx):
 	# then read the translation file which might have been edited by user
 	# then apply the actual translations to the model
 	#	comment will need to have all SOMETHINGs returned back to newlines
-	# then find things that need to be uniquified
-	# DON'T display to user, just give count and ask yes/no
 	# finally return
+	
+	# TODO: create temp file which records time of online transactions to prevent crossing Google's threshold?
+	# TODO: print translations to CSV text file, say "review the CSV and edit", then read the CSV and apply those changes
 	
 	translate_maps = []
 	# each entry looks like this:
@@ -342,32 +324,7 @@ def translate_to_english(pmx):
 				newlist = [label_dict[cat_id] + str(i), "trans_google:", pmx[cat_id][i][1], new_en_name]
 				translate_maps.append(newlist)
 				pmx[cat_id][i][1] = new_en_name
-	
-	if ALSO_UNIQUIFY_NAMES:
-		for cat_id in range(4, 8):
-			category = pmx[cat_id]
-			used_en_names = set()
-			used_jp_names = set()
-			for i, item in enumerate(category):
-				jp_name = item[0]
-				en_name = item[1]
-				# first, uniquify the jp name
-				new_jp_name = uniquify_name(used_jp_names, jp_name)
-				used_jp_names.add(new_jp_name)
-				if new_jp_name != jp_name:
-					# build list entry & store into the structure
-					newlist = [label_dict[cat_id] + str(i), "unique_JP:", jp_name, new_jp_name]
-					translate_maps.append(newlist)
-					item[0] = new_jp_name
-				# second, uniquify the newly-translated en name
-				new_en_name = uniquify_name(used_en_names, en_name)
-				used_en_names.add(new_en_name)
-				if new_en_name != en_name:
-					# build list entry & store into the structure
-					newlist = [label_dict[cat_id] + str(i), "unique_EN:", en_name, new_en_name]
-					translate_maps.append(newlist)
-					item[1] = new_en_name
-	
+		
 	# done translating!!
 	
 	print("")
