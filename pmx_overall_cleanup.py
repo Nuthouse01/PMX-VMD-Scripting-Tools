@@ -18,13 +18,13 @@ if sys.version_info < (3, 4):
 try:
 	import nuthouse01_core as core
 	import nuthouse01_pmx_parser as pmxlib
-	from __alphamorph_correct import alphamorph_correct
-	from __morph_winnow import morph_winnow
-	from __prune_invalid_faces import prune_invalid_faces
-	from __prune_unused_vertices import prune_unused_vertices
-	from __translate_to_english import translate_to_english
-	from __weight_cleanup import weight_cleanup
-	from __uniquify_names import uniquify_names
+	from _alphamorph_correct import alphamorph_correct
+	from _morph_winnow import morph_winnow
+	from _prune_invalid_faces import prune_invalid_faces
+	from _prune_unused_vertices import prune_unused_vertices
+	from _translate_to_english import translate_to_english
+	from _weight_cleanup import weight_cleanup
+	from _uniquify_names import uniquify_names
 except ImportError as eee:
 	print(eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")

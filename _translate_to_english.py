@@ -22,7 +22,7 @@ from time import sleep, time
 try:
 	import nuthouse01_core as core
 	import nuthouse01_pmx_parser as pmxlib
-	from __translate_data import frame_dict, morph_dict, bone_dict
+	from _local_translation_dicts import frame_dict, morph_dict, bone_dict
 except ImportError as eee:
 	print(eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
