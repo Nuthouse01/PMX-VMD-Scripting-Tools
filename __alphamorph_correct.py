@@ -27,18 +27,20 @@ except ImportError as eee:
 	core = pmxlib = None
 
 
-
-
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
 DEBUG = False
 
+
+# just take a wild guess what this field controls
+PRINT_AFFECTED_MORPHS = True
 
 
 # opacity, edge size, edge alpha
 #template = [0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 # opacity, edge size, edge alpha, tex, toon, sph
 template = [0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0]
+
 
 def begin():
 	# print info to explain the purpose of this file
@@ -82,7 +84,8 @@ def alphamorph_correct(pmx):
 		if this_num_fixed != 0:
 			total_morphs_affected += 1
 			num_fixed += this_num_fixed
-			print("JP: '%s'   EN: '%s'" % (morph[0], morph[1]))
+			if PRINT_AFFECTED_MORPHS:
+				print("JP: '%s' --- EN: '%s'" % (morph[0], morph[1]))
 	
 	if num_fixed == 0:
 		print("No changes are required")

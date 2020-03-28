@@ -27,15 +27,13 @@ except ImportError as eee:
 	core = pmxlib = None
 
 
-
-
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
 DEBUG = False
 
 
-# recommended: 0.0005
-
+# just take a wild guess what this field controls
+PRINT_AFFECTED_MORPHS = True
 
 
 def begin():
@@ -95,7 +93,8 @@ def morph_winnow(pmx):
 				i += 1
 		# increment tracking variables
 		if this_vert_dropped != 0:
-			print("JP: '%s'   EN: '%s'" % (morph[0], morph[1]))
+			if PRINT_AFFECTED_MORPHS:
+				print("JP: '%s' --- EN: '%s'" % (morph[0], morph[1]))
 			total_morphs_affected += 1
 			total_vert_dropped += this_vert_dropped
 	
