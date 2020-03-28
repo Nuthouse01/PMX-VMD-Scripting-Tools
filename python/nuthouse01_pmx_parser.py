@@ -1,3 +1,6 @@
+# Nuthouse01 - 03/28/2020 - v3.5
+# This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
+#####################
 
 
 # MASSIVE thanks to FelixJones on Github for already exporing & documenting the PMX file structure!
@@ -903,7 +906,7 @@ def main():
 ########################################################################################################################
 # after all the funtions are defined, actually execute main()
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/14/2020 - v3.01")
+	print("Nuthouse01 - 03/28/2020 - v3.5")
 	if DEBUG:
 		main()
 	else:
