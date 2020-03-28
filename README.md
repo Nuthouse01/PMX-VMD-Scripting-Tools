@@ -1,7 +1,7 @@
 # VMD-to-text-Conversion-Tool
 
 VMD Conversion Tool README
-Created by Nuthouse01 - 03/14/2020 - v3.01
+Created by Nuthouse01 - 03/28/2020 - v3.5
 
 ###### Legal:
 This code is free to use and re-distribute, but I cannot be held responsible for damages that it  
@@ -16,19 +16,14 @@ Don't try to claim this work as yours. That would be a profoundly dick move.
   
 ###### Usage: 
 1. Click the green button above, select "Download ZIP", save it, and unzip it somewhere
-2. Install Python3 (https://www.google.com/search?q=how+to+install+python) or use the EXE version  
-3. Identify or create the input files needed for the script you are running (each script will list  
-    its needed input files when it is executed)  
-4. Copy those input files to the same folder as the scripts  
-5. To run a script just double-click it, it should launch in a new window  
-6. Follow the directions in the window to choose modes and enter input file names  
-7. Read all information that is printed to the screen (such as the name of the output file it  
-    created), then press ENTER to close the window  
-8. Done!  
-  
+2. For simplicity I recommend you use the EXE versions of the scripts. No installation is required. But if you want to run the PY versions or modify the code, you will need to [Install Python3](https://www.google.com/search?q=how+to+install+python)
+3. To run a script just double-click the .PY or .EXE. It will launch in a new window, describe what it does, and describe any input files it requires and output files it creates
+4. Follow the directions in the window to choose modes and enter input file names  
+5. Read all information that is printed to the screen (such as the name of the output file it created), then press ENTER to close the window  
+6. Done!  
+
   
 ### Purpose:
-  
 Note that these files can be used without any knowledge of PMXE, only MikuMikuDance is required.  
   
 ##### vmd_convert_tool.py   
@@ -262,98 +257,122 @@ Also thanks to FelixJones on Github for already exploring & documenting the PMX 
 https://gist.github.com/felixjones/f8a06bd48f9da9a4539f  
 
 Thanks to the people who made PyInstaller for making a super easy way to build an .exe from  
-a bunch of Python scripts, its a really neat tool you should check it out.
+a bunch of Python scripts, its a really neat tool you should check it out. The EXE files are
+so large because it contains the entire Python kernel + all needed libraries for that script.  
+pyinstaller --onefile whatever.py  
   
 ###### Files: 
-The following files should be included with this README:  
-    LICENSE  
-    README.md  
-    README.txt  
-    vmd_convert_tool.py  
-    vmd_model_compatability_check.py  
-    vmd_armtwist_insert.py  
-    make_ik_from_vmd.py  
-    pmx_list_bone_morph_names.py  
-    nuthouse01_core.py  
-    nuthouse01_pmx_parser.py  
-    nuthouse01_vmd_parser.py  
-
-
+The following files should be included with this README:
+* LICENSE
+* README.md
+* README.txt
+* exe/vmd_convert_tool.exe
+* exe/vmd_model_compatability_check.exe
+* exe/vmd_armtwist_insert.exe
+* exe/make_ik_from_vmd.exe
+* exe/pmx_list_bone_morph_names.exe
+* exe/pmx_overall_cleanup.exe
+* python/vmd_convert_tool.py
+* python/vmd_model_compatability_check.py
+* python/vmd_armtwist_insert.py
+* python/make_ik_from_vmd.py
+* python/pmx_list_bone_morph_names.py
+* python/pmx_overall_cleanup.py
+* python/nuthouse01_core.py
+* python/nuthouse01_pmx_parser.py
+* python/nuthouse01_vmd_parser.py
+* python/_alphamorph_correct.py
+* python/_local_translation_dicts.py
+* python/_morph_winnow.py
+* python/_prune_invalid_faces.py
+* python/_prune_unused_vertices.py
+* python/_translate_to_english.py
+* python/_uniquify_names.py
+* python/_weight_cleanup.py
 
 #### Changelog: 
 
-2.03:  
-vmd_convert_tool:  
-    better functionalization  
-    better support for old motions (early end)  
-    moved when the sorting happens  
-  
-2.04:  
-vmd_convert_tool:  
-    quaternion transform fix  
-    bonedict/morphdict sorting  
-    added "choose from options" function  
-    added selftest  
-  
-2.05:  
-moved some code to "nuthouse01_core"  
-decided to distribute all scripts as a bundle  
-added several simple scripts  
-enforced standard templating for all scripts  
-  
-2.06:  
-created new script "vmd_model_compatability_check"  
-in "vmd_convert_tool", disabled the writing of bonedict/morphdict because vmd_model_compatability_check overshadows that feature  
-  
-2.07:  
-fixed a bug in "weight_cleanup" due to not actually testing my code  
-  
-2.08:  
-fixed a bug in "identify_unused_bones" due to not actually testing my code  
-changed encoding from "shift_jisx0213" to "shift_jis" to properly handle backslashes, in core and in VMD  
-New scripts:  
-+bone_geometry_isolate  
-+vmd_armtwist_convert  
-+bone_endpoint_create_remove  
-+texture_file_sort  
-moved more functions into the 'core' file  
-  
-v2.09:  
-fixed a logical bug in "bone_endpoint_create_remove"  
-stopped using default, built custom csv writer to preserve leading spaces of things  
-bugfix in "vmd_convert_tool" to handle strings exactly 15 bytes long that end with a multibyte char  
-speculative bugfix to handle multibyte chars that get cut off by 15-byte limit (is that even possible?)  
+    2.03:
+    vmd_convert_tool:
+        better functionalization
+        better support for old motions (early end)
+        moved when the sorting happens
+    
+    2.04:
+    vmd_convert_tool:
+        quaternion transform fix
+        bonedict/morphdict sorting
+        added "choose from options" function
+        added selftest
+    
+    2.05:
+    moved some code to "nuthouse01_core"
+    decided to distribute all scripts as a bundle
+    added several simple scripts
+    enforced standard templating for all scripts
+    
+    2.06:
+    created new script "vmd_model_compatability_check"
+    in "vmd_convert_tool", disabled the writing of bonedict/morphdict because vmd_model_compatability_check overshadows that feature
+    
+    2.07:
+    fixed a bug in "weight_cleanup" due to not actually testing my code
+    
+    2.08:
+    fixed a bug in "identify_unused_bones" due to not actually testing my code
+    changed encoding from "shift_jisx0213" to "shift_jis" to properly handle backslashes, in core and in VMD
+    New scripts:
+    +bone_geometry_isolate
+    +vmd_armtwist_convert
+    +bone_endpoint_create_remove
+    +texture_file_sort
+    moved more functions into the 'core' file
+    
+    v2.09:
+    fixed a logical bug in "bone_endpoint_create_remove"
+    stopped using default, built custom csv writer to preserve leading spaces of things
+    bugfix in "vmd_convert_tool" to handle strings exactly 15 bytes long that end with a multibyte char
+    speculative bugfix to handle multibyte chars that get cut off by 15-byte limit (is that even possible?)
+    
+    v3.00:
+    removed scripts for PMX editing, left only scripts for VMD manipulation and tools to help with that
+    massive refactoring of "vmd_convert_tool":
+        move funcs for reading/writing binary files into core
+        move funcs for unpacking structs into core
+        move funcs for parsing/writing VMDs into new file "vmd_parser"
+            further refactored these funcs for stronger encapsulation & readability
+        massive refactoring of funcs for parsing/writing VMD-as-text for stronger encapsulation & readability
+        end-user experience is unchanged except for print statement differences
+    slightly changed the "nicelist" format for internally representing a VMD
+    completely redid my binary unpacker function, changed to a recursive approach
+        now supports symbol "t" to indicate actual strings (packer also changed to support this)
+        now creates escape character(‡) & writes the actual byte when unable to translate the final byte of a string (packer also changed to support this)
+        discovered some more quirks of encoding/decoding shift_jis, listed in core file
+    added new file "pmx_parser", thanks to FelixJones on Github for already exporing & documenting the PMX file structure!!!
+        only for reading PMX files, no plans to make a writer. If you wanna modify a PMX use PMXE, not my scripts!
+        uses core funcs for reading binary files
+        uses core funcs for unpacking binary structs (same function as VMD parser)
+    updated "vmd_armtwist_convert" to use this new PMX parser, and to work with VMD parsing changes
+        now able to infer axis of rotation on armtwist bones even if it doesn't have its axis locked
+    updated "vmd_compatability_check" to use this new PMX parser, and to work with VMD parsing changes
+        also changed comparison method to handle new escape char strategy and bones/morphs >= 15 bytes
+    updated "make_ik_from_vmd" to use this new PMX parser, and to work with VMD parsing changes
+    improved handling of user input file names to account for odd corner cases
+    improved error handling when reading vmd-as-text files
+    change how "read_txt_to_rawlist" detects if a thing is an int, so it can support negative ints
+    add ability for "read_txt_to_rawlist" to parse None objects (but there shouldn't ever be any None objects in the file so w/e)
+    add new script "pmx_list_bone_morph_names.py" so EN users can discover the JP names of a model without using PMXE
+    decided to release this script under the name Nuthouse01, changed all uses accordingly
+    
+    v3.01:
+    "prompt_user_filename" now prints the full file path when given a non-existant file
+    added .exe versions of all 5 scripts, generated with PyInstaller
 
+    v3.02:
+    added PMX WRITE ability
+        various restructuring and improvment of my custom pack/unpack functions, now both use the same recursive approach
+    print statement changes: binary/text file read/write print full absolute file path, read/write pmx/vmd print only basename
 
-v3.00:  
-massive refactoring of "vmd_convert_tool":  
-move funcs for reading/writing binary files into core  
-move funcs for unpacking structs into core  
-move funcs for parsing/writing VMDs into new file "vmd_parser"  
-further refactored these funcs for stronger encapsulation & readability  
-massive refactoring of funcs for parsing/writing VMD-as-text for stronger encapsulation & readability  
-end-user experience is unchanged except for print statement differences  
-slightly changed the "nicelist" format for internally representing a VMD  
-completely redid my binary unpacker function, changed to a recursive approach  
-now supports symbol "t" to indicate actual strings (packer also changed to support this)  
-now creates escape character(‡) & writes the actual byte when unable to translate the final byte of a string (packer also changed to support this)  
-discovered some more quirks of encoding/decoding shift_jis, listed in core file  
-added new file "pmx_parser", thanks to FelixJones on Github for already exporing & documenting the PMX file structure!!!  
-only for reading PMX files, no plans to make a writer. If you wanna modify a PMX use PMXE, not my scripts!  
-uses core funcs for reading binary files  
-uses core funcs for unpacking binary structs (same function as VMD parser)  
-updated "vmd_armtwist_convert" to use this new PMX parser, and to work with VMD parsing changes  
-now able to infer axis of rotation on armtwist bones even if it doesn't have its axis locked  
-updated "vmd_compatability_check" to use this new PMX parser, and to work with VMD parsing changes  
-also changed comparison method to handle new escape char strategy and bones/morphs >= 15 bytes  
-updated "make_ik_from_vmd" to use this new PMX parser, and to work with VMD parsing changes  
-improved handling of user input file names to account for odd corner cases  
-improved error handling when reading vmd-as-text files  
-change how "read_txt_to_rawlist" detects if a thing is an int, so it can support negative ints  
-add ability for "read_txt_to_rawlist" to parse None objects (but there shouldn't ever be any None objects in the file so w/e)  
-add new script "pmx_list_bone_morph_names.py" so EN users can discover the JP names of a model without using PMXE  
-decided to release this script under the name Nuthouse01, changed all uses accordingly  
-
-v3.01:  
-"prompt_user_filename" now prints the full file path when given a non-existant file  
-added .exe versions of all 5 scripts, generated with PyInstaller
+    v3.5:
+    added "pmx_overall_cleanup.py" which runs through all scripts whose names start with underscores
+        good for first-pass cleanup of models
