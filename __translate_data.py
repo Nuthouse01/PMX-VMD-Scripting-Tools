@@ -40,7 +40,10 @@ morph_dict = {
 "ん": "hmm",
 "照れ": "little blush",
 "照れ２": "big blush",
-"はちゅ目": "O.O"
+"はちゅ目": "O.O",
+"はちゅ目縦潰れ": "O.O height",
+"はちゅ目横潰れ": "O.O width",
+"瞳小": "pupil small"
 }
 
 bone_dict =  {
@@ -60,7 +63,7 @@ bone_dict =  {
 "下半身": "lower body",
 "首": "neck",
 "頭": "head",
-"右肩P": "raise shoulder_R",
+"右肩P": "shoulder_raise_R",
 "右肩": "shoulder_R",
 "右肩C": "shoulder_hidden_R",
 "右腕": "arm_R",
@@ -90,7 +93,7 @@ bone_dict =  {
 "右人指１": "fore1_R",
 "右人指２": "fore2_R",
 "右人指３": "fore3_R",
-"左肩P": "raise shoulder_L",
+"左肩P": "shoulder_raise_L",
 "左肩": "shoulder_L",
 "左肩C": "shoulder_hidden_L",
 "左腕": "arm_L",
@@ -123,18 +126,33 @@ bone_dict =  {
 "右目": "eye_R",
 "左目": "eye_L",
 "両目": "eyes",
-"腰キャンセル右": "waist cancel R",
-"右足": "leg_R",
+"メガネ": "glasses",
+"腰キャンセル右": "waist_cancel_R",
+"腰キャンセル左": "waist_cancel_L",
+"右足": "leg_R",  # standard leg-bones
 "右ひざ": "knee_R",
-"右足首": "ankle_R",
-"腰キャンセル左": "waist cancel L",
+"右足首": "foot_R",
+"右つま先": "toe_R",
 "左足": "leg_L",
 "左ひざ": "knee_L",
-"左足首": "ankle_L",
-"右つま先": "toe_R",
+"左足首": "foot_L",
 "左つま先": "toe_L",
-"メガネ": "glasses",
-"胸": "breast"
+"右足D": "right leg_D",  # leg D-bones
+"右ひざD": "right knee_D",
+"右足首D": "right foot_D",
+"右足先EX": "right toes_EX",
+"左足D": "left leg_D",
+"左ひざD": "left knee_D",
+"左足首D": "left foot_D",
+"左足先EX": "left toes_EX",
+"胸": "breast",
+"胸親": "breast ctrl",
+"左胸上": "breast_upper_L",	 # 3-bone style boobs
+"左胸上2": "breast_upper2_L",
+"左胸下": "breast_lower_L",
+"右胸上": "breast_upper_R",
+"右胸上2": "breast_upper2_R",
+"右胸下": "breast_lower_R"
 }
 
 frame_dict = {
