@@ -66,6 +66,7 @@ def weight_cleanup(pmx):
 		# type2=BDEF4, 4 bones 4 weights
 		# type3=SDEF, 2 bones 1 weight and 12 values i don't understand.
 		# type4=QDEF, 4 bones 4 weights
+		# TODO: if a bone has 0 weight, set that bone to index 0
 		if weighttype == 0:
 			# nothing to be fixed here
 			continue
