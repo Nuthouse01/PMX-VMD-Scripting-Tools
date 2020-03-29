@@ -38,13 +38,11 @@ def newval_from_range_map(v, range_map: list):
 	# support both int and list inputs... do basically the same thing, just looped
 	# core idea: walk BACKWARDS along the range_map until i find the start that is CLOSEST BELOW the input v
 	if isinstance(v, int):
-		# idx = len(range_map) - 1
-		# while idx >= len(range_map):
+		# TODO: implement a binary search here? depends on how slow it takes to run the worst model i can find
 		for idx in range(len(range_map)-1, -1, -1):
 			if range_map[idx][0] <= v:
 				# return the input value minus the applicable offset
 				return v - range_map[idx][1]
-			# idx -= 1
 		# if it doesnt find a block starting below v, then the offset is 0
 		return v
 	else:
@@ -66,6 +64,23 @@ def newval_from_range_map(v, range_map: list):
 		retme.reverse()
 		return retme
 	
+def delme_list_to_rangemap(delme_verts: list) -> list:
+	# convert from individual vertices to list of ranges, [start-length]
+	# start begins 0, end begins 1
+	delme_range = []
+	start_idx = 0
+	for end_idx in range(1, len(delme_verts)+1):
+		if (end_idx == len(delme_verts)) or (delme_verts[end_idx] != (delme_verts[end_idx-1] + 1)):
+			# if the next vert ID is non-contiguous, or is the end of the list, that defines a breakpoint between ranges
+			# that means that everything from start to end IS contiguous
+			# so save the VALUE of the start, and the LENGTH of the range (which equals the length of the block)
+			delme_range.append([delme_verts[start_idx], end_idx - start_idx])
+			start_idx = end_idx
+	# convert from [start-length] to [start-cumulativelength]
+	for i in range(1, len(delme_range)):
+		delme_range[i][1] += delme_range[i-1][1]
+	return delme_range
+
 
 def begin():
 	# TODO: TEST ALL THIS!
@@ -119,20 +134,7 @@ def prune_unused_vertices(pmx):
 		print("Nothing to be done")
 		return pmx, False
 	
-	# convert from individual vertices to list of ranges, [start-length]
-	# start begins 0, end begins 1
-	delme_range = []
-	start_idx = 0
-	for end_idx in range(1, len(delme_verts)+1):
-		if (end_idx == len(delme_verts)) or (delme_verts[end_idx] != (delme_verts[end_idx-1] + 1)):
-			# if the next vert ID is non-contiguous, or is the end of the list, that defines a breakpoint between ranges
-			# that means that everything from start to end IS contiguous
-			# so save the VALUE of the start, and the LENGTH of the range (which equals the length of the block)
-			delme_range.append([delme_verts[start_idx], end_idx - start_idx])
-			start_idx = end_idx
-	# convert from [start-length] to [start-cumulativelength]
-	for i in range(1, len(delme_range)):
-		delme_range[i][1] += delme_range[i-1][1]
+	delme_range = delme_list_to_rangemap(delme_verts)
 	
 	print("Detected %d orphan vertices arranged in %d contiguous blocks" % (len(delme_verts), len(delme_range)))
 	
@@ -163,11 +165,14 @@ def prune_unused_vertices(pmx):
 		i = 0
 		while i < len(morph[4]):
 			# if the vertex being manipulated is in the list of verts being deleted,
+			# TODO: optimze this with some binary search thing
 			if morph[4][i][0] in delme_verts:
 				# delete it here too
 				morph[4].pop(i)
 				orphan_vertex_references += 1
 			else:
+				# otherwise, remap it
+				morph[4][i][0] = newval_from_range_map(morph[4][i][0], delme_range)
 				i += 1
 		
 		# assemble the vertices from the morph entries into a list of their own, for more efficient remapping
@@ -178,7 +183,7 @@ def prune_unused_vertices(pmx):
 		for x, newval in zip(morph[4], remappedlist):
 			x[0] = newval
 	print("Done updating vertex references in morphs")
-
+	
 	# if orphan_vertex_references != 0:
 	# 	print("debug: orphan vertex references removed = ", orphan_vertex_references)
 	
