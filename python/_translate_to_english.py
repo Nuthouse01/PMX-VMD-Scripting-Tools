@@ -331,6 +331,12 @@ def translate_to_english(pmx):
 				# no change
 				pass
 	
+	# if model name is empty, give it something. same for comment
+	if pmx[0][1] == "":
+		pmx[0][1] = "model"
+	if pmx[0][3] == "":
+		pmx[0][3] = "comment"
+		
 	# header=0 is special cuz its not iterable:
 	# translate name(jp=1,en=2)
 	new_en_name = fix_eng_name(pmx[0][1], pmx[0][2])
@@ -444,8 +450,6 @@ def translate_to_english(pmx):
 		width[i] = max(width[i], string_width_cjk(commentline_print[i]))
 	for tmap in translate_maps:
 		for i in range(9):
-			if i in (4,6,8):
-				tmap[i] = "'" + tmap[i] + "'"
 			width[i] = max(width[i], string_width_cjk(tmap[i]))
 	# now pretty-print the proposed list of translations:
 	for tmap in translate_maps:
@@ -454,7 +458,10 @@ def translate_to_english(pmx):
 		for i in range(9):
 			if i==5 or i==3:
 				continue
-			args.append(my_string_pad(tmap[i], width[i]))
+			if i in (4,6,8):
+				args.append(my_string_pad("'" + tmap[i] + "'", width[i]))
+			else:
+				args.append(my_string_pad(tmap[i], width[i]))
 		print("{}{} {} | EN: {} --> {} | {} {}".format(*args))
 	if comment_state != 0:
 		# pretend this was part of the list all along
