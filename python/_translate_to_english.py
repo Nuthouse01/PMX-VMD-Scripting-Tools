@@ -500,12 +500,12 @@ def translate_to_english(pmx):
 		# special case for the header things
 		if cat_id == 0:
 			if i == 2:  # modelname
-				pmx[0][2] = en_new
+				pmx[0][2] = str(en_new)
 			if i == 4:  # model comment
 				# also un-escape the newlines
-				pmx[0][4] = en_new.replace(NEWLINE_ESCAPE_CHAR, '\n')
+				pmx[0][4] = str(en_new).replace(NEWLINE_ESCAPE_CHAR, '\n')
 		else:
-			pmx[cat_id][i][1] = en_new
+			pmx[cat_id][i][1] = str(en_new)
 		
 	return pmx, True
 	
