@@ -34,11 +34,28 @@ except ImportError as eee:
 DEBUG = False
 
 
+
+from bisect import bisect_left, bisect_right
+
+def binary_search_isin(x, a):
+	# if x is in a, return its index. otherwise return -1
+	pos = bisect_left(a, x)  # find insertion position
+	return True if pos != len(a) and a[pos] == x else False  # don't walk off the end
+
+
 def newval_from_range_map(v, range_map: list):
 	# support both int and list inputs... do basically the same thing, just looped
 	# core idea: walk BACKWARDS along the range_map until i find the start that is CLOSEST BELOW the input v
 	if isinstance(v, int):
 		# TODO: implement a binary search here? depends on how slow it takes to run the worst model i can find
+		# # bisect_right: same as bisect_left but when matching something already in it it goes one to the right
+		# pos = bisect_right(v, range_map)
+		# if pos == 0:
+		# 	# if it doesnt find a block starting below v, then the offset is 0
+		# 	return v
+		# else:
+		# 	# return the input value minus the applicable offset
+		# 	return v - range_map[pos-1][1]
 		for idx in range(len(range_map)-1, -1, -1):
 			if range_map[idx][0] <= v:
 				# return the input value minus the applicable offset
@@ -83,7 +100,6 @@ def delme_list_to_rangemap(delme_verts: list) -> list:
 
 
 def begin():
-	# TODO: TEST ALL THIS!
 	# print info to explain the purpose of this file
 	print("This script will delete any unused vertices from the model, sometimes causing massive file size improvements.")
 	# print info to explain what inputs it needs
@@ -166,13 +182,14 @@ def prune_unused_vertices(pmx):
 		while i < len(morph[4]):
 			# if the vertex being manipulated is in the list of verts being deleted,
 			# TODO: optimze this with some binary search thing
-			if morph[4][i][0] in delme_verts:
+			# if morph[4][i][0] in delme_verts:
+			if binary_search_isin(morph[4][i][0], delme_verts):
 				# delete it here too
 				morph[4].pop(i)
 				orphan_vertex_references += 1
 			else:
 				# otherwise, remap it
-				morph[4][i][0] = newval_from_range_map(morph[4][i][0], delme_range)
+				# but don't remap it here, wait until I'm done deleting vertices and then tackle them all at once
 				i += 1
 		
 		# assemble the vertices from the morph entries into a list of their own, for more efficient remapping
