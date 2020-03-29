@@ -224,7 +224,7 @@ def identify_unused_bones(pmx):
 				used_bones_from_bones.add(bone[16][0])
 				
 		unused_bones = all_bones_set.difference(used_bones.union(used_bones_from_bones))
-		print("boneloop used from bones:", len(used_bones_from_bones))
+		# print("boneloop used from bones:", len(used_bones_from_bones))
 		
 		# repeat until "used from bones" used list no longer changes
 		if used_bones_from_bones == used_bones_from_bones_prev:
