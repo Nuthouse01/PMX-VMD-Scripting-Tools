@@ -18,6 +18,7 @@ if sys.version_info < (3, 4):
 try:
 	import nuthouse01_core as core
 	import nuthouse01_pmx_parser as pmxlib
+	from _prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap, binary_search_isin
 except ImportError as eee:
 	print(eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
@@ -25,6 +26,7 @@ except ImportError as eee:
 	input()
 	exit()
 	core = pmxlib = None
+	newval_from_range_map = delme_list_to_rangemap = binary_search_isin = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -36,12 +38,14 @@ DEBUG = False
 PRINT_AFFECTED_MORPHS = False
 
 
-# TODO: delete newly-emptied morphs
+# also try to guess what this does
+DELETE_NEWLY_EMPTIED_MORPHS = True
 
 
 def begin():
 	# print info to explain the purpose of this file
-	print("This will zero out vertex morphs that are smaller than a specified threshold, to reduce overall file size.")
+	print("To reduce overall file size, this will delete vertices from vertex morphs that move imperceptibly small amounts.")
+	print("This will also delete any vertex morphs that have all of their controlled vertices deleted this way.")
 	# print info to explain what inputs it needs
 	print("Inputs: PMX file 'model.pmx'")
 	# print info to explain what outputs it creates
@@ -72,8 +76,10 @@ def morph_winnow(pmx):
 	total_vert_dropped = 0
 	total_morphs_affected = 0
 
+	morphs_now_empty = []
+	
 	# for each morph:
-	for morph in pmx[6]:
+	for d,morph in enumerate(pmx[6]):
 		# if not a vertex morph, skip it
 		if morph[3] != 1:
 			continue
@@ -95,8 +101,8 @@ def morph_winnow(pmx):
 			else:
 				i += 1
 		if len(morph[4]) == 0:
-			# TODO: delete newly emptied vertex morphs
-			pass
+			# mark newly-emptied vertex morphs for later removal
+			morphs_now_empty.append(d)
 		# increment tracking variables
 		if this_vert_dropped != 0:
 			if PRINT_AFFECTED_MORPHS:
@@ -110,6 +116,45 @@ def morph_winnow(pmx):
 	
 	print("Dropped {} / {} = {:.1%} vertices from among {} affected morphs".format(
 		total_vert_dropped, total_num_verts, total_vert_dropped/total_num_verts, total_morphs_affected))
+	
+	if morphs_now_empty and DELETE_NEWLY_EMPTIED_MORPHS:
+		print("Deleted %d morphs that had all of their vertices below the threshold" % len(morphs_now_empty))
+		rangemap = delme_list_to_rangemap(morphs_now_empty)
+		
+		# actually delete the morphs from the list
+		for f in reversed(morphs_now_empty):
+			pmx[6].pop(f)
+
+		# frames:
+		for d, frame in enumerate(pmx[7]):
+			i = 0
+			while i < len(frame[3]):
+				item = frame[3][i]
+				# if this item is a bone, skip it
+				if not item[0]:
+					i += 1
+				else:
+					# if this is one of the morphs being deleted, delete it here too. otherwise remap.
+					if binary_search_isin(item[1], morphs_now_empty):
+						frame[3].pop(i)
+					else:
+						item[1] = newval_from_range_map(item[1], rangemap)
+						i += 1
+		
+		# group/flip morphs:
+		for d, morph in enumerate(pmx[6]):
+			# group/flip = 0/9
+			if morph[3] not in (0,9):
+				continue
+			i = 0
+			while i < len(morph[4]):
+				# if this is one of the morphs being deleted, delete it here too. otherwise remap.
+				if binary_search_isin(morph[4][i][0], morphs_now_empty):
+					morph[4].pop(i)
+				else:
+					morph[4][i][0] = newval_from_range_map(morph[4][i][0], rangemap)
+					i += 1
+		
 	return pmx, True
 	
 def end(pmx, input_filename_pmx):
