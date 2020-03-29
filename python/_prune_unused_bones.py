@@ -34,6 +34,7 @@ if sys.version_info < (3, 4):
 try:
 	import nuthouse01_core as core
 	import nuthouse01_pmx_parser as pmxlib
+	from _prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap, binary_search_isin
 except ImportError as eee:
 	print(eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
@@ -41,6 +42,7 @@ except ImportError as eee:
 	input()
 	exit()
 	core = pmxlib = None
+	newval_from_range_map = delme_list_to_rangemap = binary_search_isin = None
 
 
 
@@ -57,57 +59,8 @@ PRINT_VERTICES_CONTROLLED_BY_EACH_BONE = False
 
 # these are common bones that are unused but should not be deleted
 # glasses, dummy_L, dummy_R, view cnt, motherbone
-# TODO: think of more "attachment point" bone names!!
 BONES_TO_PROTECT = ["メガネ", "左ダミー", "右ダミー", "操作中心", "全ての親"]
 
-
-def newval_from_range_map(v, range_map: list):
-	# support both int and list inputs... do basically the same thing, just looped
-	# core idea: walk BACKWARDS along the range_map until i find the start that is CLOSEST BELOW the input v
-	if isinstance(v, int):
-		# TODO: implement a binary search here? depends on how slow it takes to run the worst model i can find
-		for idx in range(len(range_map) - 1, -1, -1):
-			if range_map[idx][0] <= v:
-				# return the input value minus the applicable offset
-				return v - range_map[idx][1]
-		# if it doesnt find a block starting below v, then the offset is 0
-		return v
-	else:
-		# if given a list, the list is ordered so take advantage of that to pick up where the previous item left off
-		# walk backwards along both lists side-by-side
-		retme = []
-		input_idx = len(v) - 1
-		idx = len(range_map) - 1
-		while idx >= 0 and input_idx >= 0:
-			if range_map[idx][0] <= v[input_idx]:
-				# return the input value minus the applicable offset
-				retme.append(v[input_idx] - range_map[idx][1])
-				input_idx -= 1
-			else:
-				idx -= 1
-		if input_idx != -1:
-			# if it finished walking down the range-list before it finished the input-list, all remaining inputs are unchanged
-			retme += reversed(v[0:input_idx + 1])
-		retme.reverse()
-		return retme
-
-
-def delme_list_to_rangemap(delme_verts: list) -> list:
-	# convert from individual vertices to list of ranges, [start-length]
-	# start begins 0, end begins 1
-	delme_range = []
-	start_idx = 0
-	for end_idx in range(1, len(delme_verts) + 1):
-		if (end_idx == len(delme_verts)) or (delme_verts[end_idx] != (delme_verts[end_idx - 1] + 1)):
-			# if the next vert ID is non-contiguous, or is the end of the list, that defines a breakpoint between ranges
-			# that means that everything from start to end IS contiguous
-			# so save the VALUE of the start, and the LENGTH of the range (which equals the length of the block)
-			delme_range.append([delme_verts[start_idx], end_idx - start_idx])
-			start_idx = end_idx
-	# convert from [start-length] to [start-cumulativelength]
-	for i in range(1, len(delme_range)):
-		delme_range[i][1] += delme_range[i - 1][1]
-	return delme_range
 
 
 def begin():
@@ -346,8 +299,7 @@ def prune_unused_bones(pmx):
 		i = 0
 		while i < len(morph[4]):
 			# if the bone being manipulated is in the list of bones being deleted, delete it here too. otherwise remap.
-			# TODO: binary search optimization
-			if morph[4][i][0] in unused_list:
+			if binary_search_isin(morph[4][i][0], unused_list):
 				morph[4].pop(i)
 			else:
 				morph[4][i][0] = newval_from_range_map(morph[4][i][0], delme_rangemap)
@@ -366,8 +318,7 @@ def prune_unused_bones(pmx):
 				i += 1
 			else:
 				# if this is one of the bones being deleted, delete it here too. otherwise remap.
-				# TODO: binary search optimization
-				if item[1] in unused_list:
+				if binary_search_isin(item[1], unused_list):
 					frame[3].pop(i)
 				else:
 					item[1] = newval_from_range_map(item[1], delme_rangemap)
@@ -388,8 +339,7 @@ def prune_unused_bones(pmx):
 		core.print_progress_oneline(d, len(pmx[5]))
 		# point-at link:
 		if bone[12]:
-			# TODO: binary search optimize
-			if bone[13][0] in unused_list:
+			if binary_search_isin(bone[13][0], unused_list):
 				# if pointing at a bone that will be deleted, instead change to offset with offset 0,0,0
 				bone[12] = 0
 				bone[13] = [0,0,0]

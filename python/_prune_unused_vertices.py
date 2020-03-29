@@ -49,7 +49,7 @@ def newval_from_range_map(v, range_map: list):
 	if isinstance(v, int):
 		# TODO: implement a binary search here? depends on how slow it takes to run the worst model i can find
 		# # bisect_right: same as bisect_left but when matching something already in it it goes one to the right
-		# pos = bisect_right(v, range_map)
+		# pos = bisect_right(range_map, v)
 		# if pos == 0:
 		# 	# if it doesnt find a block starting below v, then the offset is 0
 		# 	return v
@@ -181,8 +181,6 @@ def prune_unused_vertices(pmx):
 		i = 0
 		while i < len(morph[4]):
 			# if the vertex being manipulated is in the list of verts being deleted,
-			# TODO: optimze this with some binary search thing
-			# if morph[4][i][0] in delme_verts:
 			if binary_search_isin(morph[4][i][0], delme_verts):
 				# delete it here too
 				morph[4].pop(i)
