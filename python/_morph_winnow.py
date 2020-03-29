@@ -33,7 +33,10 @@ DEBUG = False
 
 
 # just take a wild guess what this field controls
-PRINT_AFFECTED_MORPHS = True
+PRINT_AFFECTED_MORPHS = False
+
+
+# TODO: delete newly-emptied morphs
 
 
 def begin():
@@ -91,10 +94,13 @@ def morph_winnow(pmx):
 				this_vert_dropped += 1
 			else:
 				i += 1
+		if len(morph[4]) == 0:
+			# TODO: delete newly emptied vertex morphs
+			pass
 		# increment tracking variables
 		if this_vert_dropped != 0:
 			if PRINT_AFFECTED_MORPHS:
-				print("JP: '%s' --- EN: '%s'" % (morph[0], morph[1]))
+				print("JP: '%s'     EN: '%s'" % (morph[0], morph[1]))
 			total_morphs_affected += 1
 			total_vert_dropped += this_vert_dropped
 	

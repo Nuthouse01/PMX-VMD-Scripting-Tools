@@ -33,7 +33,7 @@ DEBUG = False
 
 
 # just take a wild guess what this field controls
-PRINT_AFFECTED_MORPHS = True
+PRINT_AFFECTED_MORPHS = False
 
 
 # opacity, edge size, edge alpha
@@ -85,7 +85,7 @@ def alphamorph_correct(pmx):
 			total_morphs_affected += 1
 			num_fixed += this_num_fixed
 			if PRINT_AFFECTED_MORPHS:
-				print("JP: '%s' --- EN: '%s'" % (morph[0], morph[1]))
+				print("JP: '%s'     EN: '%s'" % (morph[0], morph[1]))
 	
 	if num_fixed == 0:
 		print("No changes are required")
