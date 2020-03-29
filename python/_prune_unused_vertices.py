@@ -2,8 +2,6 @@
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-
-
 import sys
 # first, version check: verify that this is using python3
 # i don't know if it will actually work in 3.4 but i know it will fail in any python2 version
@@ -33,9 +31,36 @@ except ImportError as eee:
 # but if launched in a new window it exits immediately so you can't read it.
 DEBUG = False
 
+# bisect_left and bisect_right literally just copied from the "bisect" library
+def bisect_left(a, x):
+	"""Return the index where to insert item x in list a, assuming a is sorted.
 
+	The return value i is such that all e in a[:i] have e < x, and all e in
+	a[i:] have e >= x.  So if x already appears in the list, a.insert(x) will
+	insert just before the leftmost x already there.
+	"""
+	lo = 0
+	hi = len(a)
+	while lo < hi:
+		mid = (lo+hi)//2
+		if a[mid] < x: lo = mid+1
+		else: hi = mid
+	return lo
 
-from bisect import bisect_left, bisect_right
+def bisect_right(a, x):
+	"""Return the index where to insert item x in list a, assuming a is sorted.
+
+	The return value i is such that all e in a[:i] have e <= x, and all e in
+	a[i:] have e > x.  So if x already appears in the list, a.insert(x) will
+	insert just after the rightmost x already there.
+	"""
+	lo = 0
+	hi = len(a)
+	while lo < hi:
+		mid = (lo+hi)//2
+		if x < a[mid]: hi = mid
+		else: lo = mid+1
+	return lo
 
 def binary_search_isin(x, a):
 	# if x is in a, return its index. otherwise return -1
@@ -43,35 +68,28 @@ def binary_search_isin(x, a):
 	return True if pos != len(a) and a[pos] == x else False  # don't walk off the end
 
 
-def newval_from_range_map(v, range_map: list):
+def newval_from_range_map(v, range_map):
 	# support both int and list inputs... do basically the same thing, just looped
 	# core idea: walk BACKWARDS along the range_map until i find the start that is CLOSEST BELOW the input v
 	if isinstance(v, int):
-		# TODO: implement a binary search here? depends on how slow it takes to run the worst model i can find
 		# # bisect_right: same as bisect_left but when matching something already in it it goes one to the right
-		# pos = bisect_right(range_map, v)
-		# if pos == 0:
-		# 	# if it doesnt find a block starting below v, then the offset is 0
-		# 	return v
-		# else:
-		# 	# return the input value minus the applicable offset
-		# 	return v - range_map[pos-1][1]
-		for idx in range(len(range_map)-1, -1, -1):
-			if range_map[idx][0] <= v:
-				# return the input value minus the applicable offset
-				return v - range_map[idx][1]
-		# if it doesnt find a block starting below v, then the offset is 0
-		return v
+		pos = bisect_right(range_map[0], v)
+		if pos == 0:
+			# if it doesnt find a block starting below v, then the offset is 0
+			return v
+		else:
+			# return the input value minus the applicable offset
+			return v - range_map[1][pos-1]
 	else:
 		# if given a list, the list is ordered so take advantage of that to pick up where the previous item left off
 		# walk backwards along both lists side-by-side
 		retme = []
 		input_idx = len(v) - 1
-		idx = len(range_map) - 1
+		idx = len(range_map[0]) - 1
 		while idx >= 0 and input_idx >= 0:
-			if range_map[idx][0] <= v[input_idx]:
+			if range_map[0][idx] <= v[input_idx]:
 				# return the input value minus the applicable offset
-				retme.append(v[input_idx] - range_map[idx][1])
+				retme.append(v[input_idx] - range_map[1][idx])
 				input_idx -= 1
 			else:
 				idx -= 1
@@ -81,7 +99,7 @@ def newval_from_range_map(v, range_map: list):
 		retme.reverse()
 		return retme
 	
-def delme_list_to_rangemap(delme_verts: list) -> list:
+def delme_list_to_rangemap(delme_verts: list):
 	# convert from individual vertices to list of ranges, [start-length]
 	# start begins 0, end begins 1
 	delme_range = []
@@ -96,7 +114,9 @@ def delme_list_to_rangemap(delme_verts: list) -> list:
 	# convert from [start-length] to [start-cumulativelength]
 	for i in range(1, len(delme_range)):
 		delme_range[i][1] += delme_range[i-1][1]
-	return delme_range
+	# convert from [[start,len],[start,len],[start,len]] to [[start,start,start],[len,len,len]]
+	a,b = zip(*delme_range)
+	return a,b
 
 
 def begin():
@@ -205,6 +225,7 @@ def prune_unused_vertices(pmx):
 	# softbody: probably not relevant but eh
 	for soft in pmx[10]:
 		# assemble the vertices from the morph entries into a list of their own, for more efficient remapping
+		# todo: delete anchors and pins in the "delme" list, as well as remapping
 		anchorlist = [x[1] for x in soft[37]]
 		newanchorlist = newval_from_range_map(anchorlist, delme_range)
 		# write the remapped values back into where they came from

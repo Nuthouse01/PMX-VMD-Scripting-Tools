@@ -54,6 +54,14 @@ def find_crashing_joints(pmx):
 			retme.append(d)
 	return retme
 
+def find_unattached_rigidbodies(pmx):
+	# check for rigidbodies that aren't attached to any bones, this usually doesn't cause crashes but is definitely a mistake
+	retme = []
+	for d,body in enumerate(pmx[8]):
+		if body[2] == -1:
+			retme.append(d)
+	return retme
+
 ########################################################################################################################
 
 def begin():
@@ -108,13 +116,20 @@ def pmx_overall_cleanup(pmx):
 	pmx, is_changed_t = alphamorph_correct(pmx)
 	is_changed |= is_changed_t
 	
+	bad_bodies = find_unattached_rigidbodies(pmx)
+	if bad_bodies:
+		print("")
+		print("Warning: this model contains rigidbodies that aren't anchored to any bones")
+		print("This won't crash MMD but it is definitely a mistake that needs corrected")
+		print("The following bodies are unanchored: ", bad_bodies)
+		print("")
 	
 	crashing_joints = find_crashing_joints(pmx)
 	if crashing_joints:
 		# make the biggest fucking alert i can cuz this is a critical issue
 		print("")
 		print("! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ")
-		print("WARNING: this model contains invalid joints which will cause MMD to crash!")
+		print("CRITICAL WARNING: this model contains invalid joints which WILL cause MMD to crash!")
 		print("These must be manually deleted or repaired using PMXE")
 		print("The following joints are invalid: ", crashing_joints)
 		print("! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ")

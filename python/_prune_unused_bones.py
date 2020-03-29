@@ -240,6 +240,7 @@ def prune_unused_bones(pmx):
 	delme_rangemap = delme_list_to_rangemap(unused_list)
 	# print("blocks", len(delme_rangemap))
 	
+	num_bones_before = len(pmx[5])
 	# acutally delete the bones
 	for f in reversed(unused_list):
 		pmx[5].pop(f)
@@ -364,7 +365,7 @@ def prune_unused_bones(pmx):
 	
 	# print("Done deleting unused bones")
 	print("Found and deleted {} / {} = {:.1%} unused bones".format(
-		len(unused_list), len(pmx[5]), len(unused_list) / len(pmx[5])))
+		len(unused_list), num_bones_before, len(unused_list) / num_bones_before))
 	
 	return pmx, True
 

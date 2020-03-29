@@ -2,8 +2,6 @@
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-
-
 import sys
 # first, version check: verify that this is using python3
 # i don't know if it will actually work in 3.4 but i know it will fail in any python2 version
@@ -35,7 +33,6 @@ DEBUG = False
 
 
 def begin():
-	# TODO: ACTUALLY TEST THIS!
 	# print info to explain the purpose of this file
 	print("This script will delete any invalid faces in the model, a simple operation.")
 	# print info to explain what inputs it needs
