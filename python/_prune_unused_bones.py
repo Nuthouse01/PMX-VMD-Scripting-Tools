@@ -45,16 +45,17 @@ except ImportError as eee:
 	newval_from_range_map = delme_list_to_rangemap = binary_search_isin = None
 
 
-
-
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
 DEBUG = True
 
 
-
-# when this is true, it also prints a list of the number of vertices controlled by each bone
+# when this is true, it also prints a list of the number of vertices controlled by each bone. not recommended.
 PRINT_VERTICES_CONTROLLED_BY_EACH_BONE = False
+
+
+# when this is true, list the number and names of each bone i am deleting
+PRINT_FOUND_UNUSED_BONES = False
 
 
 # these are common bones that are unused but should not be deleted
@@ -213,14 +214,20 @@ def identify_unused_bones(pmx):
 		if pmx[5][idx][0] in BONES_TO_PROTECT:
 			unused_bones.remove(idx)
 	
-	
+	unused_bones_list = sorted(list(unused_bones))
+
 	# debug aid
 	if PRINT_VERTICES_CONTROLLED_BY_EACH_BONE:
 		print("Number of vertices controlled by each bone:")
 		for b in all_bones_list:
-			print("  {} : {}".format(b, vertex_ct[b]))
-	
-	unused_bones_list = sorted(list(unused_bones))
+			if b in vertex_ct:
+				print("#: %d    ct: %d" % (b, vertex_ct[b]))
+			
+	# another debug aid:
+	if PRINT_FOUND_UNUSED_BONES:
+		print("The following bones are unused:")
+		for b in unused_bones_list:
+			print("#: %d    EN: %s    JP: %s" % (b, pmx[5][b][1], pmx[5][b][0]))
 	
 	return unused_bones_list
 	
@@ -234,8 +241,6 @@ def prune_unused_bones(pmx):
 		print("Nothing to be done")
 		return pmx, False
 	
-	# print("The following bones are unused:")
-	# print(unused_list)
 	# convert the list of individual bones to remove into a list of ranges
 	delme_rangemap = delme_list_to_rangemap(unused_list)
 	# print("blocks", len(delme_rangemap))
