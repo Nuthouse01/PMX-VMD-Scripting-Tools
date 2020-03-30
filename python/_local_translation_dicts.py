@@ -2,7 +2,9 @@
 # this file simply contains commonly-used translation data
 # most of these copied from PMXE's translation dict
 # these are searched for EXACT MATCHES so their usefulness is quite limited, but better than nothing
+# ▲=25b2, ω=03c9, ∧=2227, □=25a1
 
+# comments are what PMXE builtin translate actually translates them to, but i don't like those names
 morph_dict = {
 "あ": "a",
 "い": "i",
@@ -12,22 +14,27 @@ morph_dict = {
 "ワ": "wa",
 "▲": "^ open",
 "∧": "^",
-"ω": "w",
+"ω": "w", # omega
+"ω□": "w open", # omegabox
+"□": "box",
 "まばたき": "blink",
-"笑い": "smile eyes",
+"笑い": "smile eyes", # smile
 "ウィンク": "wink",
 "ウィンク右": "wink_R",
 "ウィンク２": "wink2",
 "ｳｨﾝｸ２右": "wink2_R",
-"じと目": "doubt", # jito/jitto
-"なごみ": "calm", # =.=
+"ウィンク２右": "wink2_R",
+"じと目": "doubt",
+"なごみ": "=.=", # calm
 "びっくり": "surprise",
+"悲しい": "sad low",
 "困る": "sadness",
 "真面目": "serious",
 "怒り": "anger",
 "にこり": "cheerful",
-"上": "brow up",
-"下": "brow down",
+"上": "brow up", # go up
+"下": "brow down", # go down
+"前": "brow fwd",
 "涙": "tears",
 "星目": "star eyes",
 "しいたけ": "star eyes",
@@ -43,7 +50,7 @@ morph_dict = {
 "はちゅ目": "O.O",
 "はちゅ目縦潰れ": "O.O height",
 "はちゅ目横潰れ": "O.O width",
-"瞳小": "pupil small"
+"瞳小": "pupil small" # pupil
 }
 
 bone_dict =  {
@@ -60,6 +67,7 @@ bone_dict =  {
 "左つま先ＩＫ": "toe IK_L",
 "上半身": "upper body",
 "上半身2": "upper body2",
+"上半身２": "upper body2",
 "下半身": "lower body",
 "首": "neck",
 "頭": "head",

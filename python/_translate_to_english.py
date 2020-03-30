@@ -56,7 +56,7 @@ NEWLINE_ESCAPE_CHAR = "§"
 # tho in testing, sometimes translations produce different results if on their own vs in a newline list... oh well
 # or sometimes they lose newlines during translation
 # more lines per request = riskier, but uses less of your transaction budget
-TRANSLATE_MAX_LINES_PER_REQUEST = 30
+TRANSLATE_MAX_LINES_PER_REQUEST = 15
 # how many requests are permitted per timeframe, to avoid the lockout
 # true limit is ~100 so enforce limit of 80 just to be safe
 TRANSLATE_BUDGET_MAX_REQUESTS = 80
@@ -146,10 +146,11 @@ def contains_jap_chars(text) -> bool:
 	f900 - faff
 	ff10 - ff5a
 	ff66 - ff9f
+	# ▲=25b2, ω=03c9, ∧=2227, □=25a1
 	"""
 	# is_jap = re.compile("[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f\uff10-\uff5a]")
 	# match = is_jap.search(str(text))
-	match = re.search("[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f\uff10-\uff5a]", str(text))
+	match = re.search("[▲∧ω□\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f\uff10-\uff5a]", str(text))
 	if match:
 		# print("True;", str(text))
 		return True
