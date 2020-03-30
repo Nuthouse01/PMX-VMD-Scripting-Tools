@@ -210,6 +210,9 @@ def prune_unused_vertices(pmx):
 				# but don't remap it here, wait until I'm done deleting vertices and then tackle them all at once
 				i += 1
 		
+		# morphs usually contain vertexes in sorted order, but not guaranteed!!! MAKE it sorted, nobody will mind
+		morph[4].sort(key=lambda x: x[0])
+		
 		# assemble the vertices from the morph entries into a list of their own, for more efficient remapping
 		vertlist = [x[0] for x in morph[4]]
 		# remap
