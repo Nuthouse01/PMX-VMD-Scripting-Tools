@@ -26,6 +26,7 @@ try:
 	from _translate_to_english import translate_to_english
 	from _weight_cleanup import weight_cleanup
 	from _uniquify_names import uniquify_names
+	from _dispframe_fix import dispframe_fix
 except ImportError as eee:
 	print(eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
@@ -34,7 +35,7 @@ except ImportError as eee:
 	exit()
 	core = pmxlib = None
 	alphamorph_correct = morph_winnow = prune_unused_vertices = prune_invalid_faces = translate_to_english = None
-	weight_cleanup = uniquify_names = None
+	weight_cleanup = uniquify_names = prune_unused_bones = dispframe_fix = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -88,7 +89,9 @@ def pmx_overall_cleanup(pmx):
 	# weights after verts, but before bones
 	# bones after verts
 	# translate after bones because it reduces the # of things to translate
-	# morph fixes last i guess, they dont change scope at all
+	# translate after display groups cuz it reduces the # of things to translate
+	# translate after morph winnow cuz it can delete morphs
+	# uniquify after translate
 	
 	is_changed = False
 	print(">>>> Deleting invalid faces <<<<")
@@ -100,12 +103,6 @@ def pmx_overall_cleanup(pmx):
 	print(">>>> Deleting unused bones <<<<")
 	pmx, is_changed_t = prune_unused_bones(pmx)
 	is_changed |= is_changed_t
-	print(">>>> Fixing missing english names <<<<")
-	pmx, is_changed_t = translate_to_english(pmx)
-	is_changed |= is_changed_t	# or-equals: if any component returns true, then ultimately this func returns true
-	print(">>>> Ensuring all names in the model are unique <<<<")
-	pmx, is_changed_t = uniquify_names(pmx)
-	is_changed |= is_changed_t
 	print(">>>> Normalizing weights <<<<")
 	pmx, is_changed_t = weight_cleanup(pmx)
 	is_changed |= is_changed_t
@@ -115,7 +112,16 @@ def pmx_overall_cleanup(pmx):
 	print(">>>> Fixing alphamorphs that don't account for edging <<<<")
 	pmx, is_changed_t = alphamorph_correct(pmx)
 	is_changed |= is_changed_t
-	
+	print(">>>> Display groups that contain duplicates, empty groups, or missing bones/morphs <<<<")
+	pmx, is_changed_t = dispframe_fix(pmx)
+	is_changed |= is_changed_t
+	print(">>>> Fixing missing english names <<<<")
+	pmx, is_changed_t = translate_to_english(pmx)
+	is_changed |= is_changed_t	# or-equals: if any component returns true, then ultimately this func returns true
+	print(">>>> Ensuring all names in the model are unique <<<<")
+	pmx, is_changed_t = uniquify_names(pmx)
+	is_changed |= is_changed_t
+
 	bad_bodies = find_unattached_rigidbodies(pmx)
 	if bad_bodies:
 		print("")
