@@ -1,4 +1,4 @@
-# Nuthouse01 - 03/28/2020 - v3.5
+# Nuthouse01 - 03/30/2020 - v3.51
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -166,7 +166,7 @@ def main():
 	core.pause_and_quit("Done with everything! Goodbye!")
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/28/2020 - v3.5")
+	print("Nuthouse01 - 03/30/2020 - v3.51")
 	if DEBUG:
 		main()
 	else:

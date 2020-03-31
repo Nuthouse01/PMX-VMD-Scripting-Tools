@@ -1,7 +1,7 @@
 # VMD-to-text-Conversion-Tool
 
 VMD Conversion Tool README
-Created by Nuthouse01 - 03/28/2020 - v3.5
+Created by Nuthouse01 - 03/30/2020 - v3.51
 
 ###### Legal:
 This code is free to use and re-distribute, but I cannot be held responsible for damages that it
@@ -57,6 +57,15 @@ pinching/tearing will not happen. This script does some very clever math to extr
 X-axis rotation from the arm bones and elbow bones and transfer it to the armtwist bones instead,
 totally fixing the pinching/tearing problem! This operation is unique to each model due to
 holding their arms at slightly different angles in their default poses.
+
+##### pmx_overall_cleanup.py
+This will perform a series of first-pass cleanup operations to generally improve any model. This
+includes: translating missing english names (via Google Translate!), correcting alphamorphs,
+normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no
+purpose, pruning imperceptible vertex morphs, cleaning up display frames, and detecting issues that
+might cause MMD to crash. These operations will reduce file size (sometimes massively!) and improve
+overall model health & usabilityThis is intended to get any model usable out-of-the-box, but there
+are many other possible issues/flaws that this will not fix. That's why this is a "first-pass" tool.
 
 ##### make_ik_from_vmd.py
 This script runs forward kinematics for a given VMD dance motion on the bone structure for a given
@@ -282,10 +291,12 @@ The following files should be included with this README:
 * python/nuthouse01_pmx_parser.py
 * python/nuthouse01_vmd_parser.py
 * python/_alphamorph_correct.py
+* python/_dispframe_fix.py
 * python/_local_translation_dicts.py
 * python/_morph_winnow.py
 * python/_prune_invalid_faces.py
 * python/_prune_unused_vertices.py
+* python/_prune_unused_bones.py
 * python/_translate_to_english.py
 * python/_uniquify_names.py
 * python/_weight_cleanup.py
@@ -376,3 +387,7 @@ The following files should be included with this README:
     v3.5:
     added "pmx_overall_cleanup.py" which runs through all scripts whose names start with underscores
         good for first-pass cleanup of models
+
+    v3.51:
+    added prune_unused_bones, dispframe_fix, find_crashing_joints into the "pmx_overall_cleanup" pipeline
+
