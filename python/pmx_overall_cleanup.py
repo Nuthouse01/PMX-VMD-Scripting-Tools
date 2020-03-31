@@ -68,7 +68,7 @@ def find_unattached_rigidbodies(pmx):
 def begin():
 	# print info to explain the purpose of this file
 	print("This file will run through a series of first-pass cleanup operations to fix obvious issues in a model.")
-	print("This includes: translating missing english names, correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, and detecting issues that might cause MMD to crash.")
+	print("This includes: translating missing english names, correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, cleaning up display frames, and detecting issues that might cause MMD to crash.")
 	print("These operations will reduce file size (sometimes massively!) and improve overall model health & usability.")
 	print("However, these are only first-pass fixes. The model will definitely require more time and effort to search for and fix all potential issues.")
 	# print info to explain what inputs it needs

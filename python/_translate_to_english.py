@@ -266,6 +266,7 @@ def begin():
 	print("This tool fills out empty EN names in a PMX model with translated versions of the JP names.")
 	print("Machine translation is never 100% reliable, so this is only a stopgap measure to eliminate all the 'Null_##'s and wrongly-encoded garbage and make it easier to use in MMD.")
 	print("A bad translation is better than none at all!")
+	print("You can review and manually edit the translated names before they are applied to the model.")
 	print("Also, Google Translate only permits ~100 requests per hour, if you exceed this rate you will be locked out for 24 hours (TODO: CONFIRM LOCKOUT TIME)")
 	# print info to explain what inputs it needs
 	print("Inputs: PMX file 'model.pmx'")

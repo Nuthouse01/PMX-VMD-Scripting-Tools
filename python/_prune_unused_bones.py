@@ -69,7 +69,7 @@ def begin():
 	print("This script identifies all bones in a PMX model that are not currently being used.")
 	print("A bone is USED if any of the following are true:\n    other used bones use it as parent, AKA it has children\n    other used bones use it as link point\n    other used bones use it for 'append' (partial parent)\n    it is an IK type bone\n    rigid bodies use it as an anchor\n    any vertex has nonzero weight with that bone")
 	print("A bone is UNUSED if none of these conditions are met.")
-	print("All unused bones can be safely removed without affecting the current function of the model.\nHowever, this does not mean they all SHOULD be removed.\nThe 'glasses' bone, for example, would be considered 'unused' by this script.\nIt is not used in PMXE, but it is a useful attachment point for glasses (accessories) in MMD.\nThink carefully before you delete things, and test thoroughly afterward!")
+	print("All unused bones can be safely removed without affecting the current function of the model.")
 	print("")
 	
 	# print info to explain what inputs it needs

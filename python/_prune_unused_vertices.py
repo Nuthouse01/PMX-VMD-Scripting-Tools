@@ -122,6 +122,7 @@ def delme_list_to_rangemap(delme_verts: list):
 def begin():
 	# print info to explain the purpose of this file
 	print("This script will delete any unused vertices from the model, sometimes causing massive file size improvements.")
+	print("An unused vertex is one which is not used to define any faces.")
 	# print info to explain what inputs it needs
 	print("Inputs: PMX file 'model.pmx'")
 	# print info to explain what outputs it creates
