@@ -29,14 +29,18 @@ except ImportError as eee:
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
-DEBUG = False
+DEBUG = True
 
+
+# if MMD has 256+ morphs among all display groups, it will crash
+MAX_MORPHS_IN_DISPLAY = 250
 
 # UTTERLY IMPOSSIBLE to get multiple frames containing morphs, they are always collapsed into one
 
 def begin():
 	# print info to explain the purpose of this file
 	print("This file fixes issues with display frames. Removes morphs that would crash MMD, adds any morphs/bones that aren't already added.")
+	print("This also deletes empty display frames and ensures there are <250 morphs among all display frames, because that will crash MMD as well.")
 	# print info to explain what inputs it needs
 	print("Inputs: PMX file 'model.pmx'")
 	# print info to explain what outputs it creates
@@ -53,12 +57,6 @@ def dispframe_fix(pmx):
 	# root group: "Root"/"Root"
 	# facial group: "表情"/"Exp"
 	
-	# PROBLEM: if there are too many items in a group then MMD will crash????!? is it per group or total?
-	# 419 crash
-	# 270 crash
-	# 238 pass
-	# 238*2 pass
-	
 	fix_root = 0
 	hidden_morphs_removed = 0
 	duplicate_entries_removed = 0
@@ -73,7 +71,7 @@ def dispframe_fix(pmx):
 	# ensure that "motherbone" and nothing else is in the root:
 	for d,frame in enumerate(pmx[7]):
 		# only operate on the root group
-		if frame[0] == "Root" and frame[1] == "Root":
+		if frame[0] == "Root" and frame[1] == "Root" and frame[2]:
 			newframelist = [[0,motherid]]
 			if frame[3] != newframelist:
 				frame[3] = newframelist
@@ -117,7 +115,8 @@ def dispframe_fix(pmx):
 					i += 1
 	
 	if hidden_morphs_removed:
-		print("!!! removed %d hidden morphs" % hidden_morphs_removed)
+		print("removed %d hidden morphs (cause of crashes)" % hidden_morphs_removed)
+		print("!!! Warning: do not add 'hidden' morphs to the display group! MMD will crash!")
 	if duplicate_entries_removed:
 		print("removed %d duplicate bones or morphs" % duplicate_entries_removed)
 		
@@ -130,6 +129,14 @@ def dispframe_fix(pmx):
 		# if this bone is visible and is enabled, add it to the set
 		if bone[10] and bone[11]:
 			undisplayed_bones.append(d)
+	if undisplayed_bones:
+		print("added %d undisplayed bones to new group 'morebones'" % len(undisplayed_bones))
+		# add a new frame to hold all bones
+		newframelist = [[0, x] for x in undisplayed_bones]
+		newframe = ["morebones","morebones",0,newframelist]
+		pmx[7].append(newframe)
+	
+	# build list of which morphs are NOT shown
 	undisplayed_morphs = []
 	for d,morph in enumerate(pmx[6]):
 		# if this morph is already displayed, skip
@@ -138,33 +145,39 @@ def dispframe_fix(pmx):
 		# if this morph is not a hidden group, add it to the set
 		if 1 <= morph[2] <= 4:
 			undisplayed_morphs.append(d)
-
-	if undisplayed_bones:
-		print("added %d undisplayed bones to new group 'morebones'" % len(undisplayed_bones))
-		# add a new frame to hold all bones
-		newframelist = [[0, x] for x in undisplayed_bones]
-		newframe = ["morebones","morebones",0,newframelist]
-		pmx[7].append(newframe)
 	if undisplayed_morphs:
 		newframelist = [[1, x] for x in undisplayed_morphs]
-		# if NEW_MORPH_GROUP:
-		# 	print("added %d undisplayed morphs to new group 'moremorphs'" % len(undisplayed_morphs))
-		# 	# TODO: add to new group, if i can make that work?
-		# 	newframe = ["moremorphs","moremorphs",0,newframelist]
-		# 	pmx[7].append(newframe)
-		# else:
 		print("added %d undisplayed morphs to Facials group" % len(undisplayed_morphs))
-		# or, just add to bottom of morphs group
-		# find morphs group and only operate on it
+		# find morphs group and only add to it
 		for frame in pmx[7]:
-			if frame[0] == "表情" and frame[1] == "Exp":
+			if frame[0] == "表情" and frame[1] == "Exp" and frame[2]:
 				# concatenate to end of list
 				frame[3] += newframelist
 				break
 	
-	# TODO: if a group has more than 240 entries, split it!
-	#
-	
+	# check if there are too many morphs... if so, trim and remake "displayed morphs"
+	total_num_morphs = 0
+	for frame in pmx[7]:
+		# find the facials group
+		i = 0
+		while i < len(frame[3]):
+			item = frame[3][i]
+			# if this is a bone, skip it
+			if not item[0]:
+				i += 1
+			else:
+				# if it is a morph, count it
+				total_num_morphs += 1
+				# if i have already counted too many morphs, pop it
+				if total_num_morphs > MAX_MORPHS_IN_DISPLAY:
+					frame[3].pop(i)
+				else:
+					i += 1
+	num_morphs_over_limit = max(total_num_morphs - MAX_MORPHS_IN_DISPLAY, 0)
+	if num_morphs_over_limit:
+		print("removed %d morphs to stay under the %d morph limit (cause of crashes)" % (num_morphs_over_limit, MAX_MORPHS_IN_DISPLAY))
+		print("!!! Warning: do not add the remaining morphs to the display group! MMD will crash!")
+		
 	# delete any groups that are empty
 	i = 0
 	while i < len(pmx[7]):
@@ -175,18 +188,14 @@ def dispframe_fix(pmx):
 			empty_groups_removed += 1
 		else:
 			i += 1
-
 	if empty_groups_removed:
 		print("removed %d empty groups" % empty_groups_removed)
-	
-	# figure out how to add a second group for morphs that MMD will actually display????
-	# add missing non-group-0 morphs to a second group (if i get it working) or to the facials group if i must
-	
-	overall = empty_groups_removed + len(undisplayed_bones) + len(undisplayed_morphs) + duplicate_entries_removed + hidden_morphs_removed + fix_root
+		
+	overall = num_morphs_over_limit + empty_groups_removed + len(undisplayed_bones) + len(undisplayed_morphs) + duplicate_entries_removed + hidden_morphs_removed + fix_root
 	if overall == 0:
 		print("No changes are required")
 		return pmx, False
-	
+		
 	# print("Fixed %d things related to display pane groups" % overall)
 	return pmx, True
 
