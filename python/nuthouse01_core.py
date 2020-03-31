@@ -154,9 +154,12 @@ def prompt_user_choice(options):
 
 def prompt_user_filename(extension: str) -> str:
 	# loop until user enters the name of an existing file with the specified extension
+	print('(type/paste the path to the file, ".." means "go up a folder")')
+	print('(path can be absolute, like C:/username/Documents/miku.pmx)')
+	print('(or path can be relative to here, example: ../../mmd/models/miku.pmx)')
 	while True:
 		# continue prompting until the user gives valid input
-		name = input(" Filename (ending with " + extension + "): ")
+		name = input(" Filename (ending with " + extension + ") = ")
 		if len(name) <= 4:
 			print("Err: file name too short to be valid")
 		elif name.lower()[-4:] != extension.lower():
