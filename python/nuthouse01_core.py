@@ -226,7 +226,7 @@ def get_persistient_storage_path(filename="") -> str:
 		retme = path.join(appdata, filename)
 		# if it doesn't exist, create it empty
 		if not path.exists(retme):
-			write_rawlist_to_txt([], retme, quiet=True)
+			write_rawlist_to_txt(retme, [], quiet=True)
 		return retme
 	return appdata
 
@@ -235,7 +235,7 @@ def get_persistient_storage_path(filename="") -> str:
 # these functions do CSV read/write and binary-file read/write
 ########################################################################################################################
 
-def write_rawlist_to_txt(content, name, use_jis_encoding=False, quiet=False):
+def write_rawlist_to_txt(name, content, use_jis_encoding=False, quiet=False):
 	if not quiet:
 		MY_PRINT_FUNC(path.abspath(name))
 	# note: when PMXE writes a CSV, it backslash-escapes backslashes and dots and spaces, but it doesn't need these to be escaped when reading
@@ -349,7 +349,7 @@ def read_txt_to_rawlist(input_filename, use_jis_encoding=False, quiet=False):
 	return data
 
 
-def write_bytes_to_binfile(content, name, quiet=False):
+def write_bytes_to_binfile(name, content, quiet=False):
 	if not quiet:
 		MY_PRINT_FUNC(path.abspath(name))
 	# opposite of read_binfile_to_bytes()

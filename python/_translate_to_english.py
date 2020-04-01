@@ -115,7 +115,7 @@ def check_translate_budget(num_proposed: int) -> bool:
 		# this many translations is OK! go ahead!
 		# write this transaction into the record
 		record.append([now, num_proposed])
-		core.write_rawlist_to_txt(record, recordpath, quiet=True)
+		core.write_rawlist_to_txt(recordpath, record, quiet=True)
 		return True
 	else:
 		# cannot do the translate, this would exceed the budget
@@ -482,7 +482,7 @@ def translate_to_english(pmx):
 	writelist = list(translate_maps)
 	if comment_state != 0:
 		writelist.append(commentline_write)
-	core.write_rawlist_to_txt(writelist, "proposed_translate.txt")
+	core.write_rawlist_to_txt("proposed_translate.txt", writelist)
 	
 	# ask for approval
 	core.MY_PRINT_FUNC("Wait here and open 'proposed_translate.txt' for better display of JP chars or to manually edit the translation mapping")
@@ -519,7 +519,7 @@ def end(pmx, input_filename_pmx):
 	output_filename_pmx = "%s_translate.pmx" % core.get_clean_basename(input_filename_pmx)
 	# output_filename_pmx = input_filename_pmx[0:-4] + "_translate.pmx"
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
-	pmxlib.write_pmx(pmx, output_filename_pmx)
+	pmxlib.write_pmx(output_filename_pmx, pmx)
 	
 	return None
 

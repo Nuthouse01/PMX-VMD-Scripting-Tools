@@ -574,7 +574,7 @@ def read_vmd(vmd_filename: str, getdict=False):
 	else:
 		return [A, B, C, D, E, F, G]
 
-def write_vmd(vmd: list, vmd_filename: str) -> None:
+def write_vmd(vmd_filename: str, vmd: list) -> None:
 	vmd_filename_clean = core.get_clean_basename(vmd_filename) + ".vmd"
 	# recives object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
 	# assumes the calling function already verified correct file extension
@@ -615,7 +615,7 @@ def write_vmd(vmd: list, vmd_filename: str) -> None:
 	
 	core.MY_PRINT_FUNC("Begin writing VMD file '%s'" % vmd_filename_clean)
 	core.MY_PRINT_FUNC("...total size   = %sKB" % round(len(output_bytes) / 1024))
-	core.write_bytes_to_binfile(output_bytes, vmd_filename)
+	core.write_bytes_to_binfile(vmd_filename, output_bytes)
 	core.MY_PRINT_FUNC("Done writing VMD file '%s'" % vmd_filename_clean)
 	# done with everything!
 	return None
@@ -631,7 +631,7 @@ def main():
 	input_filename = core.prompt_user_filename(".vmd")
 	# input_filename = "vmdtest.vmd"
 	Z= read_vmd(input_filename)
-	write_vmd(Z, "____vmdparser_selftest_DELETEME.vmd")
+	write_vmd("____vmdparser_selftest_DELETEME.vmd", Z)
 	ZZ = read_vmd("____vmdparser_selftest_DELETEME.vmd")
 	core.MY_PRINT_FUNC("")
 	bb = core.read_binfile_to_bytes(input_filename)

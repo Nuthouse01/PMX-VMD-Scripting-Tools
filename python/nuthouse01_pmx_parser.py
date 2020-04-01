@@ -844,7 +844,7 @@ def read_pmx(pmx_filename: str) -> list:
 	return [A, B, C, D, E, F, G, H, I, J, K]
 
 
-def write_pmx(pmx: list, pmx_filename: str) -> None:
+def write_pmx(pmx_filename: str, pmx: list) -> None:
 	pmx_filename_clean = core.get_clean_basename(pmx_filename) + ".pmx"
 	# recives object 	(......)
 	# assumes the calling function already verified correct file extension
@@ -876,7 +876,7 @@ def write_pmx(pmx: list, pmx_filename: str) -> None:
 
 	core.MY_PRINT_FUNC("Begin writing PMX file '%s'" % pmx_filename_clean)
 	core.MY_PRINT_FUNC("...total size   = %sKB" % round(len(output_bytes) / 1024))
-	core.write_bytes_to_binfile(output_bytes, pmx_filename)
+	core.write_bytes_to_binfile(pmx_filename, output_bytes)
 	core.MY_PRINT_FUNC("Done writing PMX file '%s'" % pmx_filename_clean)
 	# done with everything!
 	return None
@@ -888,7 +888,7 @@ def main():
 	input_filename = core.prompt_user_filename(".pmx")
 	# input_filename = "pmxtest.pmx"
 	Z = read_pmx(input_filename)
-	write_pmx(Z, "____pmxparser_selftest_DELETEME.pmx")
+	write_pmx("____pmxparser_selftest_DELETEME.pmx", Z)
 	ZZ = read_pmx("____pmxparser_selftest_DELETEME.pmx")
 	core.MY_PRINT_FUNC("")
 	bb = core.read_binfile_to_bytes(input_filename)

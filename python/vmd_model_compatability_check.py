@@ -162,7 +162,7 @@ def main():
 		output_filename_morph = output_filename_morph.replace(" ", "_")
 		output_filename_morph = core.get_unused_file_name(output_filename_morph)
 		core.MY_PRINT_FUNC("...writing result to file '" + output_filename_morph + "'...")
-		core.write_rawlist_to_txt(rawlist_out, output_filename_morph, use_jis_encoding=False)
+		core.write_rawlist_to_txt(output_filename_morph, rawlist_out, use_jis_encoding=False)
 		core.MY_PRINT_FUNC("done!")
 	
 	##############################################
@@ -260,7 +260,7 @@ def main():
 		output_filename_bone = output_filename_bone.replace(" ", "_")
 		output_filename_bone = core.get_unused_file_name(output_filename_bone)
 		core.MY_PRINT_FUNC("...writing result to file '" + output_filename_bone + "'...")
-		core.write_rawlist_to_txt(rawlist_out, output_filename_bone, use_jis_encoding=False)
+		core.write_rawlist_to_txt(output_filename_bone, rawlist_out, use_jis_encoding=False)
 		core.MY_PRINT_FUNC("done!")
 	core.pause_and_quit("Done with everything! Goodbye!")
 	return None

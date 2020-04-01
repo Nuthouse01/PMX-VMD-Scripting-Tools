@@ -294,7 +294,7 @@ def main():
 						   (core.get_clean_basename(input_filename_vmd), core.get_clean_basename(input_filename_pmx))
 	output_filename_vmd = output_filename_vmd.replace(" ", "_")
 	output_filename_vmd = core.get_unused_file_name(output_filename_vmd)
-	vmd_parser.write_vmd(nicelist_in, output_filename_vmd)
+	vmd_parser.write_vmd(output_filename_vmd, nicelist_in)
 	
 	core.pause_and_quit("Done with everything! Goodbye!")
 	return None

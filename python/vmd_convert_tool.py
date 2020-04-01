@@ -518,7 +518,7 @@ def write_vmdtext(nicelist: list, vmdtext_filename: str) -> None:
 	# done formatting!
 	core.MY_PRINT_FUNC("Begin writing VMD-as-text file '%s'" % vmdtext_filename)
 	core.MY_PRINT_FUNC("...total size   = %s lines" % len(rawlist))
-	core.write_rawlist_to_txt(rawlist, vmdtext_filename)
+	core.write_rawlist_to_txt(vmdtext_filename, rawlist)
 	core.MY_PRINT_FUNC("Done writing VMD-as-text file '%s'" % vmdtext_filename)
 	return None
 
@@ -531,7 +531,7 @@ def write_summary_dicts(bonedict: dict, morphdict: dict, summary_filename: str) 
 	# done formatting!
 	core.MY_PRINT_FUNC("Begin writing bone & morph summary file '%s'" % summary_filename)
 	core.MY_PRINT_FUNC("...total size   = %s lines" % len(rawlist))
-	core.write_rawlist_to_txt(rawlist, summary_filename)
+	core.write_rawlist_to_txt(summary_filename, rawlist)
 	core.MY_PRINT_FUNC("Done writing bone & morph summary file '%s'" % summary_filename)
 	return None
 
@@ -596,7 +596,7 @@ def convert_txt_to_vmd(input_filename):
 	# identify an unused filename for writing the output
 	dumpname = core.get_unused_file_name(base_filename + ".vmd")
 	# write the output VMD-as-text file
-	vmd_parser.write_vmd(vmd_nicelist, dumpname)
+	vmd_parser.write_vmd(dumpname, vmd_nicelist)
 	
 	# done!
 	return None
