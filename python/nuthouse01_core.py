@@ -435,10 +435,10 @@ def my_bezier_approximation(x, characterization):
 			return linear_map(characterization[i][0],   characterization[i][1],
 							  characterization[i+1][0], characterization[i+1][1],
 							  x)
-	MY_PRINT_FUNC("ERR: not supposed to hit here!")
+	MY_PRINT_FUNC("ERR: not supposed to hit here! bad bezier characterization given!")
 	MY_PRINT_FUNC(x)
 	MY_PRINT_FUNC(characterization)
-	pause_and_quit("")
+	return -1
 
 def my_dot(v0, v1):
 	dot = 0.0
