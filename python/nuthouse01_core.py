@@ -58,10 +58,25 @@ bone_interpolation_default_linear = [20, 20, 20, 20, 20, 20, 20, 20, 107, 107, 1
 # misc functions and user-input functions
 ########################################################################################################################
 
+def basic_print(*args, is_progress=False):
+	the_string = ' '.join([str(x) for x in args])
+	# replace the print() function with this so i can replace this with the text redirector
+	if is_progress:
+		# leave the cursor at the beginning of the line so the next print statement overwrites this
+		print(the_string, end='\r', flush=True)
+		# print('\r' + p, end='', flush=True)  # leave cursor at the end of the line
+		# print('\r', end='', flush=False)  # force NEXT print statement to begin by resetting to the start of the line
+	else:
+		# otherwise use the normal print
+		print(the_string)
+
+# global variable holding a function pointer that i can overwrite with a different function pointer
+MY_PRINT_FUNC = basic_print
+
 def pause_and_quit(message):
 	# wait for user input before exiting because i want the window to stay open long enough for them to read output
-	print(message)
-	print("...press ENTER to exit...")
+	MY_PRINT_FUNC(message)
+	MY_PRINT_FUNC("...press ENTER to exit...")
 	input()
 	exit()
 
@@ -69,9 +84,7 @@ def print_progress_oneline(curr, outof):
 	# print progress updates on one line, continually overwriting itself
 	# cursor gets left at the beginning of line, so the next print will overwrite this one
 	p = "...working: {:06.2%}".format(curr / outof)
-	print(p, end='\r', flush=True)
-	# print('\r' + p, end='', flush=True)  # leave cursor at the end of the line
-	# print('\r', end='', flush=False)  # force NEXT print statement to begin by resetting to the start of the line
+	MY_PRINT_FUNC(p, is_progress=True)
 
 
 # useful as keys for sorting
@@ -149,24 +162,24 @@ def prompt_user_choice(options):
 			# if given valid input, break
 			break
 		# if given invalid input, prompt and loop again
-		print("invalid choice")
+		MY_PRINT_FUNC("invalid choice")
 	return int(choice)
 
 def prompt_user_filename(extension: str) -> str:
 	# loop until user enters the name of an existing file with the specified extension
-	print('(type/paste the path to the file, ".." means "go up a folder")')
-	print('(path can be absolute, like C:/username/Documents/miku.pmx)')
-	print('(or path can be relative to here, example: ../../mmd/models/miku.pmx)')
+	MY_PRINT_FUNC('(type/paste the path to the file, ".." means "go up a folder")')
+	MY_PRINT_FUNC('(path can be absolute, like C:/username/Documents/miku.pmx)')
+	MY_PRINT_FUNC('(or path can be relative to here, example: ../../mmd/models/miku.pmx)')
 	while True:
 		# continue prompting until the user gives valid input
 		name = input(" Filename (ending with " + extension + ") = ")
 		if len(name) <= 4:
-			print("Err: file name too short to be valid")
+			MY_PRINT_FUNC("Err: file name too short to be valid")
 		elif name.lower()[-4:] != extension.lower():
-			print("Err: given file must have '"+extension+"' extension")
+			MY_PRINT_FUNC("Err: given file must have '"+extension+"' extension")
 		elif not path.isfile(name):
-			print(path.abspath(name))
-			print("Err: given file does not exist, did you type it wrong?")
+			MY_PRINT_FUNC(path.abspath(name))
+			MY_PRINT_FUNC("Err: given file does not exist, did you type it wrong?")
 		else:
 			break
 	# windows is case insensitive, so this doesn't matter, but to make it match the same case as the existing file:
@@ -224,7 +237,7 @@ def get_persistient_storage_path(filename="") -> str:
 
 def write_rawlist_to_txt(content, name, use_jis_encoding=False, quiet=False):
 	if not quiet:
-		print(path.abspath(name))
+		MY_PRINT_FUNC(path.abspath(name))
 	# note: when PMXE writes a CSV, it backslash-escapes backslashes and dots and spaces, but it doesn't need these to be escaped when reading
 	# opposite of read_txt_to_rawlist()
 	
@@ -268,13 +281,13 @@ def write_rawlist_to_txt(content, name, use_jis_encoding=False, quiet=False):
 			with open(name, "w", encoding="utf-8") as my_file:
 				my_file.write(writeme)
 	except IOError as e:
-		print(e)
+		MY_PRINT_FUNC(e)
 		pause_and_quit("Err: unable to write TXT file '" + name + "', maybe its a permissions issue?")
 
 
 def read_txt_to_rawlist(input_filename, use_jis_encoding=False, quiet=False):
 	if not quiet:
-		print(path.abspath(input_filename))
+		MY_PRINT_FUNC(path.abspath(input_filename))
 	# opposite of write_rawlist_to_txt()
 	# take a file name as its argument
 	# dump it from disk to a variable in memory, and also format it as a nice type-correct list
@@ -286,7 +299,7 @@ def read_txt_to_rawlist(input_filename, use_jis_encoding=False, quiet=False):
 			with open(input_filename, "r", encoding="utf-8") as my_file:
 				rb_unicode = my_file.read()
 	except IOError as e:
-		print(e)
+		MY_PRINT_FUNC(e)
 		pause_and_quit("Err: error wile reading '" + input_filename + "', maybe you typed it wrong?")
 	# break rb_unicode into a list object
 	rb_list = rb_unicode.splitlines()
@@ -298,7 +311,7 @@ def read_txt_to_rawlist(input_filename, use_jis_encoding=False, quiet=False):
 		for row in reader:
 			csv_content.append(row)
 	except csv.Error as e:
-		print("file {}, line {}: {}".format(input_filename, reader.line_num, e))
+		MY_PRINT_FUNC("file {}, line {}: {}".format(input_filename, reader.line_num, e))
 		pause_and_quit("Err: malformed CSV format in the text file prevented parsing from text to list form, check your commas")
 	# ideally the csv reader should detect what type each thing is but the encoding is making it all fucky
 	# so, just read everything in as a string i guess, then build a new list 'data' where all the types are correct
@@ -338,20 +351,20 @@ def read_txt_to_rawlist(input_filename, use_jis_encoding=False, quiet=False):
 
 def write_bytes_to_binfile(content, name, quiet=False):
 	if not quiet:
-		print(path.abspath(name))
+		MY_PRINT_FUNC(path.abspath(name))
 	# opposite of read_binfile_to_bytes()
 	# write a binary file from a bytes object
 	try:
 		with open(name, "wb") as my_file:
 			my_file.write(content)
 	except IOError as e:
-		print(e)
+		MY_PRINT_FUNC(e)
 		pause_and_quit("Err: unable to write binary file '" + name + "', maybe its a permissions issue?")
 
 
 def read_binfile_to_bytes(input_filename, quiet=False):
 	if not quiet:
-		print(path.abspath(input_filename))
+		MY_PRINT_FUNC(path.abspath(input_filename))
 	# opposite of write_bytes_to_binfile()
 	# take a file name as its argument
 	# return a "bytearray" object
@@ -361,7 +374,7 @@ def read_binfile_to_bytes(input_filename, quiet=False):
 			# dump from file into variable in memory
 			raw = file.read()
 	except IOError as e:
-		print(e)
+		MY_PRINT_FUNC(e)
 		pause_and_quit("Err: error wile reading '" + input_filename + "', maybe you typed it wrong?")
 	return bytearray(raw)
 
@@ -408,9 +421,9 @@ def my_bezier_approximation(x, characterization):
 			return linear_map(characterization[i][0],   characterization[i][1],
 							  characterization[i+1][0], characterization[i+1][1],
 							  x)
-	print("ERR: not supposed to hit here!")
-	print(x)
-	print(characterization)
+	MY_PRINT_FUNC("ERR: not supposed to hit here!")
+	MY_PRINT_FUNC(x)
+	MY_PRINT_FUNC(characterization)
 	pause_and_quit("")
 
 def my_dot(v0, v1):
@@ -665,8 +678,8 @@ def get_readfrom_byte():
 	return UNPACKER_READFROM_BYTE
 def print_failed_decodes():
 	if len(UNPACKER_FAILED_TRANSLATE_DICT) != 0:
-		print("List of all strings that failed to decode, plus their occurance rate")
-		print(UNPACKER_FAILED_TRANSLATE_DICT)
+		MY_PRINT_FUNC("List of all strings that failed to decode, plus their occurance rate")
+		MY_PRINT_FUNC(UNPACKER_FAILED_TRANSLATE_DICT)
 		
 def decode_bytes_with_escape(r: bytearray) -> str:
 	global UNPACKER_FAILED_TRANSLATE_FLAG
@@ -704,8 +717,8 @@ def encode_string_with_escape(a: str) -> bytearray:
 		try:
 			return bytearray(new_a, UNPACKER_ENCODING)	# no escape char: convert from str to bytearray the standard way
 		except UnicodeEncodeError as e:
-			print(e)
-			print("warning: serious encoding problem")
+			MY_PRINT_FUNC(e)
+			MY_PRINT_FUNC("warning: serious encoding problem")
 			return bytearray()
 
 def my_t_format_partitioning(fmt:str) -> (tuple, None):
@@ -771,7 +784,7 @@ def unpack_other(fmt:str, raw:bytearray) -> list:
 		r = struct.unpack_from(autofmt, raw, UNPACKER_READFROM_BYTE)
 		UNPACKER_READFROM_BYTE += struct.calcsize(autofmt)	# increment the global read-from tracker
 	except struct.error as e:
-		print(e)
+		MY_PRINT_FUNC(e)
 		pause_and_quit("Err: something went wrong while parsing, file is probably corrupt/malformed")
 	# convert from tuple to list
 	return list(r)
@@ -802,7 +815,7 @@ def unpack_text(fmt:str, raw:bytearray) -> list:
 			if i != -1:											# if null is found...
 				r = r[0:i]										# ...return only bytes before it
 	except struct.error as e:
-		print(e)
+		MY_PRINT_FUNC(e)
 		pause_and_quit("Err: something went wrong while parsing, file is probably corrupt/malformed, bytepos = " + str(UNPACKER_READFROM_BYTE))
 	# r is now a bytearray that should be mappable onto a string, unless it is cut off mid-multibyte-char
 	s = decode_bytes_with_escape(r)
@@ -895,5 +908,5 @@ def pack_text(fmt: str, args: list) -> bytearray:
 		raise newerr
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/30/2020 - v3.51")
+	MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
 	pause_and_quit("you are not supposed to directly run this file haha")

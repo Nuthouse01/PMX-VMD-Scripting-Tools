@@ -108,7 +108,7 @@ def check_translate_budget(num_proposed: int) -> bool:
 			i += 1
 	# then interpret the file: how many requests happened in the past <timeframe>
 	requests_in_timeframe = sum([entry[1] for entry in record])
-	print("You have used %d / %d translation requests within the last %d hrs" %
+	core.MY_PRINT_FUNC("You have used %d / %d translation requests within the last %d hrs" %
 		  (requests_in_timeframe, TRANSLATE_BUDGET_MAX_REQUESTS, TRANSLATE_BUDGET_TIMEFRAME))
 	# make the decision
 	if (requests_in_timeframe + num_proposed) <= TRANSLATE_BUDGET_MAX_REQUESTS:
@@ -130,7 +130,7 @@ def check_translate_budget(num_proposed: int) -> bool:
 		waittime = record[idx][0] + (TRANSLATE_BUDGET_TIMEFRAME * 60 * 60) - now
 		# convert seconds to minutes
 		waittime = round(waittime / 60)
-		print("BUDGET: you must wait %d minutes before you can do %d more translation requests with Google" % (waittime, num_proposed))
+		core.MY_PRINT_FUNC("BUDGET: you must wait %d minutes before you can do %d more translation requests with Google" % (waittime, num_proposed))
 		
 		return False
 
@@ -188,8 +188,8 @@ def bulk_translate(jp_list: list) -> list:
 			bigresult = actual_translate(bigstr)
 			result_list = bigresult.split("\n")
 			if len(result_list) != len(input_list):
-				print("Warning: translation messed up and merged some lines, please manually fix the bad outputs")
-				print(len(result_list), len(input_list), result_list)
+				core.MY_PRINT_FUNC("Warning: translation messed up and merged some lines, please manually fix the bad outputs")
+				core.MY_PRINT_FUNC(len(result_list), len(input_list), result_list)
 				result_list = ["error"] * len(input_list)
 			retme += result_list
 			start_idx += TRANSLATE_MAX_LINES_PER_REQUEST
@@ -213,23 +213,23 @@ def actual_translate(jp_str: str) -> str:
 			r = jp_to_en_google.translate(jp_str, dest="en")  # auto
 			return r.text
 		except Exception as e:
-			print("error")
+			core.MY_PRINT_FUNC("error")
 			if hasattr(e, "doc"):
-				print("Response from Google:")
-				print(e.doc.split("\n")[7])
-				print(e.doc.split("\n")[9])
-			print("Google API has rejected the translate request")
-			print("This is probably due to too many translate requests too quickly")
-			print("Strangely, this lockout does NOT prevent you from using Google Translate thru your web browser. So go use that instead.")
+				core.MY_PRINT_FUNC("Response from Google:")
+				core.MY_PRINT_FUNC(e.doc.split("\n")[7])
+				core.MY_PRINT_FUNC(e.doc.split("\n")[9])
+			core.MY_PRINT_FUNC("Google API has rejected the translate request")
+			core.MY_PRINT_FUNC("This is probably due to too many translate requests too quickly")
+			core.MY_PRINT_FUNC("Strangely, this lockout does NOT prevent you from using Google Translate thru your web browser. So go use that instead.")
 			core.pause_and_quit("Get a VPN or try again in about 1 day (TODO: CONFIRM LOCKOUT TIME)")
 	else:
 		# some other inferior free translate service called "mymemory"
 		r = jp_to_en_mymemory.translate(jp_str)
 		if "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY" in r:
-			print("")
-			print(r)
-			print("MyMemory has rejected the translate request")
-			print("This is due to a cap on how much you can translate in a day.")
+			core.MY_PRINT_FUNC("")
+			core.MY_PRINT_FUNC(r)
+			core.MY_PRINT_FUNC("MyMemory has rejected the translate request")
+			core.MY_PRINT_FUNC("This is due to a cap on how much you can translate in a day.")
 			core.pause_and_quit("Get a VPN or try again in about 1 day")
 		return r
 
@@ -263,19 +263,19 @@ def fix_eng_name(name_jp: str, name_en: str) -> (str, None):
 	
 def begin():
 	# print info to explain the purpose of this file
-	print("This tool fills out empty EN names in a PMX model with translated versions of the JP names.")
-	print("Machine translation is never 100% reliable, so this is only a stopgap measure to eliminate all the 'Null_##'s and wrongly-encoded garbage and make it easier to use in MMD.")
-	print("A bad translation is better than none at all!")
-	print("You can review and manually edit the translated names before they are applied to the model.")
-	print("Also, Google Translate only permits ~100 requests per hour, if you exceed this rate you will be locked out for 24 hours (TODO: CONFIRM LOCKOUT TIME)")
+	core.MY_PRINT_FUNC("This tool fills out empty EN names in a PMX model with translated versions of the JP names.")
+	core.MY_PRINT_FUNC("Machine translation is never 100% reliable, so this is only a stopgap measure to eliminate all the 'Null_##'s and wrongly-encoded garbage and make it easier to use in MMD.")
+	core.MY_PRINT_FUNC("A bad translation is better than none at all!")
+	core.MY_PRINT_FUNC("You can review and manually edit the translated names before they are applied to the model.")
+	core.MY_PRINT_FUNC("Also, Google Translate only permits ~100 requests per hour, if you exceed this rate you will be locked out for 24 hours (TODO: CONFIRM LOCKOUT TIME)")
 	# print info to explain what inputs it needs
-	print("Inputs: PMX file 'model.pmx'")
+	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
 	# print info to explain what outputs it creates
-	print("Outputs: PMX file '[model]_translate.pmx'")
-	print("")
+	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_translate.pmx'")
+	core.MY_PRINT_FUNC("")
 	
 	# prompt PMX name
-	print("Please enter name of PMX model file:")
+	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx)
 	return pmx, input_filename_pmx
@@ -355,6 +355,8 @@ def translate_to_english(pmx):
 		pmx[0][2] = new_en_name
 		
 	
+	# TODO: maybe MMD needs/wants \r\n line ends? reconsider!
+	
 	# comment(jp=3,en=4)
 	comment_state = 0
 	comment_jp_clean = ""
@@ -388,29 +390,29 @@ def translate_to_english(pmx):
 	# return having changed nothing IF translate_queue is empty, translate_budget fails, or user declines
 	
 	if (not translate_queue) and (comment_state == 0):
-		print("No changes are required")
+		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
 	
 	# num + 1 + 1(if translating comment)
 	num_items = len(translate_queue) + (comment_state == 1)
 	num_calls = (len(translate_queue) // TRANSLATE_MAX_LINES_PER_REQUEST) + 1 + (comment_state == 1)
-	print("Identified %d items that need Internet translation" % num_items)
-	print("Making %d requests to Google Translate web API..." % num_calls)
+	core.MY_PRINT_FUNC("Identified %d items that need Internet translation" % num_items)
+	core.MY_PRINT_FUNC("Making %d requests to Google Translate web API..." % num_calls)
 	
 	global USE_GOOGLE_TRANSLATE
 	
 	if not check_translate_budget(num_calls):
 		# shift over to mymemory provider and continue if google is full
-		print("Switching from GoogleTranslate (preferred) to MyMemory (backup), expect slower translation and worse results")
+		core.MY_PRINT_FUNC("Switching from GoogleTranslate (preferred) to MyMemory (backup), expect slower translation and worse results")
 		USE_GOOGLE_TRANSLATE = False
 		# no need to print failing statement, the function already does
 		return pmx, False
 	
-	print("Beginning translation, this may take several seconds")
+	core.MY_PRINT_FUNC("Beginning translation, this may take several seconds")
 	if USE_GOOGLE_TRANSLATE:
-		print("Using Google Translate web API for translations")
+		core.MY_PRINT_FUNC("Using Google Translate web API for translations")
 	else:
-		print("Using MyMemory free translate service for translation")
+		core.MY_PRINT_FUNC("Using MyMemory free translate service for translation")
 		
 	# now bulk-translate all the strings that are queued
 	results = bulk_translate(translate_queue)
@@ -445,7 +447,7 @@ def translate_to_english(pmx):
 	#######################################
 	# next stage is writing and printing, then wait for approval
 	# printing requires formatting so things display in nice columns
-	print("Found %d instances where renaming was needed:" % (len(translate_maps) + (comment_state != 0)))
+	core.MY_PRINT_FUNC("Found %d instances where renaming was needed:" % (len(translate_maps) + (comment_state != 0)))
 	
 	# find max width of each column:
 	width = [0] * 9
@@ -465,7 +467,7 @@ def translate_to_english(pmx):
 				args.append(my_string_pad("'" + tmap[i] + "'", width[i]))
 			else:
 				args.append(my_string_pad(tmap[i], width[i]))
-		print("{}{} {} | EN: {} --> {} | {} {}".format(*args))
+		core.MY_PRINT_FUNC("{}{} {} | EN: {} --> {} | {} {}".format(*args))
 	if comment_state != 0:
 		# pretend this was part of the list all along
 		args = []
@@ -474,7 +476,7 @@ def translate_to_english(pmx):
 			if i==5 or i==3:
 				continue
 			args.append(my_string_pad(commentline_print[i], width[i]))
-		print("{}{} {} | EN: {} --> {} | {} {}".format(*args))
+		core.MY_PRINT_FUNC("{}{} {} | EN: {} --> {} | {} {}".format(*args))
 	
 	# write
 	writelist = list(translate_maps)
@@ -483,11 +485,11 @@ def translate_to_english(pmx):
 	core.write_rawlist_to_txt(writelist, "proposed_translate.txt")
 	
 	# ask for approval
-	print("Wait here and open 'proposed_translate.txt' for better display of JP chars or to manually edit the translation mapping")
-	print("Do you accept these new names?  1 = Yes, 2 = No (abort)")
+	core.MY_PRINT_FUNC("Wait here and open 'proposed_translate.txt' for better display of JP chars or to manually edit the translation mapping")
+	core.MY_PRINT_FUNC("Do you accept these new names?  1 = Yes, 2 = No (abort)")
 	r = core.prompt_user_choice((1,2))
 	if r == 2:
-		print("Aborting: no names were changed")
+		core.MY_PRINT_FUNC("Aborting: no names were changed")
 		return pmx, False
 
 	###########################################
@@ -530,7 +532,7 @@ def main():
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/30/2020 - v3.51")
+	core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
 	if DEBUG:
 		main()
 	else:
@@ -541,5 +543,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			print(ee)
+			core.MY_PRINT_FUNC(ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")

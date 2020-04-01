@@ -59,15 +59,15 @@ def uniquify_one_category(used_names: set, new_name: str) -> str:
 
 def begin():
 	# print info to explain the purpose of this file
-	print("This will uniquify all names of materials/bones/morphs/displayframes in the model. Bad things happen when names are not unique.")
+	core.MY_PRINT_FUNC("This will uniquify all names of materials/bones/morphs/displayframes in the model. Bad things happen when names are not unique.")
 	# print info to explain what inputs it needs
-	print("Inputs: PMX file 'model.pmx'")
+	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
 	# print info to explain what outputs it creates
-	print("Outputs: PMX file '[model]_unique.pmx'")
-	print("")
+	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_unique.pmx'")
+	core.MY_PRINT_FUNC("")
 	
 	# prompt PMX name
-	print("Please enter name of PMX model file:")
+	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx)
 	return pmx, input_filename_pmx
@@ -108,12 +108,12 @@ def uniquify_names(pmx):
 	counts_dict = {x:y for x,y in zip(counts_labels, counts) if y != 0}
 
 	if not counts_dict:
-		print("No changes are required")
+		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
 	
 	# list how many of what were changed
-	print("The following numbers in each category/language were uniquified:")
-	print(counts_dict)
+	core.MY_PRINT_FUNC("The following numbers in each category/language were uniquified:")
+	core.MY_PRINT_FUNC(counts_dict)
 	
 	return pmx, True
 	
@@ -135,7 +135,7 @@ def main():
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/30/2020 - v3.51")
+	core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
 	if DEBUG:
 		main()
 	else:
@@ -146,5 +146,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			print(ee)
+			core.MY_PRINT_FUNC(ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")

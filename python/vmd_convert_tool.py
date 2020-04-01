@@ -186,7 +186,7 @@ def read_vmdtext_header(rawlist_text: list) -> list:
 	# read model name
 	modelname = rawlist_text[readfrom_line][1]
 	readfrom_line += 1
-	print("...model name   = JP:'%s'" % modelname)
+	core.MY_PRINT_FUNC("...model name   = JP:'%s'" % modelname)
 	# assemble and return
 	return [version, modelname]
 
@@ -201,7 +201,7 @@ def read_vmdtext_boneframe(rawlist_text: list) -> list:
 
 	boneframe_ct = rawlist_text[readfrom_line][1]
 	readfrom_line += 1
-	print("...# of boneframes          = %d" % boneframe_ct)
+	core.MY_PRINT_FUNC("...# of boneframes          = %d" % boneframe_ct)
 	
 	if boneframe_ct > 0:
 		# ensure the key-line is where i think it is
@@ -232,7 +232,7 @@ def read_vmdtext_morphframe(rawlist_text: list) -> list:
 	check2_match_first_item(rawlist_text, keystr_morphframect)
 
 	morphframe_ct = rawlist_text[readfrom_line][1]
-	print("...# of morphframes         = %d" % morphframe_ct)
+	core.MY_PRINT_FUNC("...# of morphframes         = %d" % morphframe_ct)
 	readfrom_line += 1
 	
 	if morphframe_ct > 0:
@@ -262,7 +262,7 @@ def read_vmdtext_camframe(rawlist_text: list) -> list:
 	check2_match_first_item(rawlist_text, keystr_camframect)
 
 	camframe_ct = rawlist_text[readfrom_line][1]
-	print("...# of camframes           = %d" % camframe_ct)
+	core.MY_PRINT_FUNC("...# of camframes           = %d" % camframe_ct)
 	readfrom_line += 1
 	
 	if camframe_ct > 0:
@@ -292,7 +292,7 @@ def read_vmdtext_lightframe(rawlist_text: list) -> list:
 	check2_match_first_item(rawlist_text, keystr_lightframect)
 
 	lightframe_ct = rawlist_text[readfrom_line][1]
-	print("...# of lightframes         = %d" % lightframe_ct)
+	core.MY_PRINT_FUNC("...# of lightframes         = %d" % lightframe_ct)
 	readfrom_line += 1
 	
 	if lightframe_ct > 0:
@@ -317,7 +317,7 @@ def read_vmdtext_shadowframe(rawlist_text: list) -> list:
 	check2_match_first_item(rawlist_text, keystr_shadowframect)
 
 	shadowframe_ct = rawlist_text[readfrom_line][1]
-	print("...# of shadowframes        = %d" % shadowframe_ct)
+	core.MY_PRINT_FUNC("...# of shadowframes        = %d" % shadowframe_ct)
 	readfrom_line += 1
 	
 	if shadowframe_ct > 0:
@@ -343,7 +343,7 @@ def read_vmdtext_ikdispframe(rawlist_text: list) -> list:
 	check2_match_first_item(rawlist_text, keystr_ikdispframect)
 
 	ikdispframe_ct = rawlist_text[readfrom_line][1]
-	print("...# of ik/disp frames      = %d" % ikdispframe_ct)
+	core.MY_PRINT_FUNC("...# of ik/disp frames      = %d" % ikdispframe_ct)
 	readfrom_line += 1
 	
 	if ikdispframe_ct > 0:
@@ -476,10 +476,10 @@ def read_vmdtext(vmdtext_filename: str) -> list:
 	# also check that headers are where they should be and each line has the proper number of items on it
 	# return nicelist = [header, modelname, bone_list, morph_list, cam_list, light_list, shadow_list, ikdisp_list]
 	
-	print("Begin reading VMD-as-text file '%s'" % vmdtext_filename)
+	core.MY_PRINT_FUNC("Begin reading VMD-as-text file '%s'" % vmdtext_filename)
 	vmdtext_rawlist = core.read_txt_to_rawlist(vmdtext_filename)
-	print("...total size   = %s lines" % len(vmdtext_rawlist))
-	print("Begin parsing VMD-as-text file '%s'" % vmdtext_filename)
+	core.MY_PRINT_FUNC("...total size   = %s lines" % len(vmdtext_rawlist))
+	core.MY_PRINT_FUNC("Begin parsing VMD-as-text file '%s'" % vmdtext_filename)
 	
 	global readfrom_line
 	# set this to zero just in case
@@ -495,44 +495,44 @@ def read_vmdtext(vmdtext_filename: str) -> list:
 		F = read_vmdtext_shadowframe(vmdtext_rawlist)
 		G = read_vmdtext_ikdispframe(vmdtext_rawlist)
 	except IndexError as e:
-		print(e)
+		core.MY_PRINT_FUNC(e)
 		core.pause_and_quit(
 			"Err: unexpected end-of-file or end-of-line, was reading from line " + str(readfrom_line + 1))
 		return []
 	
 	if readfrom_line != len(vmdtext_rawlist):
-		print("Warning: there are unsupported trailing lines on the end of the file", readfrom_line,
+		core.MY_PRINT_FUNC("Warning: there are unsupported trailing lines on the end of the file", readfrom_line,
 			  len(vmdtext_rawlist))
 	
-	print("Done parsing VMD-as-text file '%s'" % vmdtext_filename)
+	core.MY_PRINT_FUNC("Done parsing VMD-as-text file '%s'" % vmdtext_filename)
 	# stuff to return:
 	# version+modelname, bonelist, morphlist, camlist, lightlist, shadowlist, ikdisplist
 	return [A, B, C, D, E, F, G]
 
 def write_vmdtext(nicelist: list, vmdtext_filename: str) -> None:
 	# assume the output filename has already been validated as unused, etc
-	print("Begin formatting VMD-as-text file '%s'" % vmdtext_filename)
+	core.MY_PRINT_FUNC("Begin formatting VMD-as-text file '%s'" % vmdtext_filename)
 	
 	rawlist = format_nicelist_as_rawlist(nicelist)
 	
 	# done formatting!
-	print("Begin writing VMD-as-text file '%s'" % vmdtext_filename)
-	print("...total size   = %s lines" % len(rawlist))
+	core.MY_PRINT_FUNC("Begin writing VMD-as-text file '%s'" % vmdtext_filename)
+	core.MY_PRINT_FUNC("...total size   = %s lines" % len(rawlist))
 	core.write_rawlist_to_txt(rawlist, vmdtext_filename)
-	print("Done writing VMD-as-text file '%s'" % vmdtext_filename)
+	core.MY_PRINT_FUNC("Done writing VMD-as-text file '%s'" % vmdtext_filename)
 	return None
 
 def write_summary_dicts(bonedict: dict, morphdict: dict, summary_filename: str) -> None:
 	# assume the output filename has already been validated as unused, etc
-	print("Begin formatting bone & morph summary file '%s'" % summary_filename)
+	core.MY_PRINT_FUNC("Begin formatting bone & morph summary file '%s'" % summary_filename)
 	
 	rawlist = format_dicts_as_rawlist(bonedict, morphdict)
 	
 	# done formatting!
-	print("Begin writing bone & morph summary file '%s'" % summary_filename)
-	print("...total size   = %s lines" % len(rawlist))
+	core.MY_PRINT_FUNC("Begin writing bone & morph summary file '%s'" % summary_filename)
+	core.MY_PRINT_FUNC("...total size   = %s lines" % len(rawlist))
 	core.write_rawlist_to_txt(rawlist, summary_filename)
-	print("Done writing bone & morph summary file '%s'" % summary_filename)
+	core.MY_PRINT_FUNC("Done writing bone & morph summary file '%s'" % summary_filename)
 	return None
 
 ########################################################################################################################
@@ -540,26 +540,26 @@ def write_summary_dicts(bonedict: dict, morphdict: dict, summary_filename: str) 
 ########################################################################################################################
 
 def main():
-	print("This tool is for converting VMD files to and from human-readable text form.")
-	print("This supports all types of VMD frame data: bones, morphs, camera, lighting, shadow, IK/disp.")
-	print("That means this tool supports literally ALL types of VMD files: dance, cam, facial, etc.")
-	print("The text output file is arranged as valid CSV (comma-separated value) format, so you can technically change the file extension and load it into Microsoft Excel or whatever. But Excel doesn't properly display the Japanese characters so this is not recommended.")
-	print("See 'README.txt' for more details about output formats.")
+	core.MY_PRINT_FUNC("This tool is for converting VMD files to and from human-readable text form.")
+	core.MY_PRINT_FUNC("This supports all types of VMD frame data: bones, morphs, camera, lighting, shadow, IK/disp.")
+	core.MY_PRINT_FUNC("That means this tool supports literally ALL types of VMD files: dance, cam, facial, etc.")
+	core.MY_PRINT_FUNC("The text output file is arranged as valid CSV (comma-separated value) format, so you can technically change the file extension and load it into Microsoft Excel or whatever. But Excel doesn't properly display the Japanese characters so this is not recommended.")
+	core.MY_PRINT_FUNC("See 'README.txt' for more details about output formats.")
 	
 	# prompt for "convert text -> VMD" or "VMD -> text"
-	print("Please select conversion direction: enter 1 or 2")
-	print(" 1 = VMD -> text")
-	print(" 2 = text -> VMD")
+	core.MY_PRINT_FUNC("Please select conversion direction: enter 1 or 2")
+	core.MY_PRINT_FUNC(" 1 = VMD -> text")
+	core.MY_PRINT_FUNC(" 2 = text -> VMD")
 	mode = core.prompt_user_choice((1, 2))
 	
 	if mode == 1:
-		print("")
-		print("Inputs: VMD dance/cam/other file 'vmdname.vmd'")
-		print("Outputs: text file '[vmdname]%s', lists ALL of the frame data from the input VMD in human-readable form" % filestr_txt)
-		print("")
+		core.MY_PRINT_FUNC("")
+		core.MY_PRINT_FUNC("Inputs: VMD dance/cam/other file 'vmdname.vmd'")
+		core.MY_PRINT_FUNC("Outputs: text file '[vmdname]%s', lists ALL of the frame data from the input VMD in human-readable form" % filestr_txt)
+		core.MY_PRINT_FUNC("")
 		
 		# prompt for name of VMD
-		print("Please enter name of VMD dance input file:")
+		core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
 		input_filename = core.prompt_user_filename(".vmd")
 		
 		# activate correct function
@@ -567,20 +567,20 @@ def main():
 	
 	elif mode == 2:
 		# print info
-		print("")
-		print("Inputs: text file 'vmdtextname%s' with the same format as text files created by this tool" % filestr_txt)
-		print("Outputs: VMD file '[vmdtextname].vmd' containing all of the frame data from the text file, ready to load into MikuMikuDance")
-		print("")
+		core.MY_PRINT_FUNC("")
+		core.MY_PRINT_FUNC("Inputs: text file 'vmdtextname%s' with the same format as text files created by this tool" % filestr_txt)
+		core.MY_PRINT_FUNC("Outputs: VMD file '[vmdtextname].vmd' containing all of the frame data from the text file, ready to load into MikuMikuDance")
+		core.MY_PRINT_FUNC("")
 		
 		# prompt for name of text file
-		print("Please enter name of %s input file:" % filestr_txt)
+		core.MY_PRINT_FUNC("Please enter name of %s input file:" % filestr_txt)
 		input_filename = core.prompt_user_filename(filestr_txt)
 		
 		# activate correct function
 		convert_txt_to_vmd(input_filename)
 	
 	else:
-		print("Err: you're not supposed to be able to hit this???")
+		core.MY_PRINT_FUNC("Err: you're not supposed to be able to hit this???")
 	
 	core.pause_and_quit("Done with everything! Goodbye!")
 
@@ -636,7 +636,7 @@ def convert_vmd_to_txt(input_filename):
 ########################################################################################################################
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/30/2020 - v3.51")
+	core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
 	if DEBUG:
 		main()
 	else:
@@ -647,5 +647,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call core.pause_and_quit so the window stays open for a bit
-			print(ee)
+			core.MY_PRINT_FUNC(ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")

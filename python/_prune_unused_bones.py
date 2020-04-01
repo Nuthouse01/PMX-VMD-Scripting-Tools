@@ -66,20 +66,20 @@ BONES_TO_PROTECT = ["メガネ", "左ダミー", "右ダミー", "操作中心",
 
 def begin():
 	# print info to explain the purpose of this file
-	print("This script identifies all bones in a PMX model that are not currently being used.")
-	print("A bone is USED if any of the following are true:\n    other used bones use it as parent, AKA it has children\n    other used bones use it as link point\n    other used bones use it for 'append' (partial parent)\n    it is an IK type bone\n    rigid bodies use it as an anchor\n    any vertex has nonzero weight with that bone")
-	print("A bone is UNUSED if none of these conditions are met.")
-	print("All unused bones can be safely removed without affecting the current function of the model.")
-	print("")
+	core.MY_PRINT_FUNC("This script identifies all bones in a PMX model that are not currently being used.")
+	core.MY_PRINT_FUNC("A bone is USED if any of the following are true:\n    other used bones use it as parent, AKA it has children\n    other used bones use it as link point\n    other used bones use it for 'append' (partial parent)\n    it is an IK type bone\n    rigid bodies use it as an anchor\n    any vertex has nonzero weight with that bone")
+	core.MY_PRINT_FUNC("A bone is UNUSED if none of these conditions are met.")
+	core.MY_PRINT_FUNC("All unused bones can be safely removed without affecting the current function of the model.")
+	core.MY_PRINT_FUNC("")
 	
 	# print info to explain what inputs it needs
-	print("Inputs: PMX file 'model.pmx'")
+	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
 	# print info to explain what outputs it creates
-	print("Outputs: PMX file '[model]_boneprune.pmx'")
-	print("")
+	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_boneprune.pmx'")
+	core.MY_PRINT_FUNC("")
 	
 	# prompt PMX name
-	print("Please enter name of PMX model file:")
+	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx)
 	return pmx, input_filename_pmx
@@ -218,16 +218,16 @@ def identify_unused_bones(pmx):
 
 	# debug aid
 	if PRINT_VERTICES_CONTROLLED_BY_EACH_BONE:
-		print("Number of vertices controlled by each bone:")
+		core.MY_PRINT_FUNC("Number of vertices controlled by each bone:")
 		for b in all_bones_list:
 			if b in vertex_ct:
-				print("#: %d    ct: %d" % (b, vertex_ct[b]))
+				core.MY_PRINT_FUNC("#: %d    ct: %d" % (b, vertex_ct[b]))
 			
 	# another debug aid:
 	if PRINT_FOUND_UNUSED_BONES:
-		print("The following bones are unused:")
+		core.MY_PRINT_FUNC("The following bones are unused:")
 		for b in unused_bones_list:
-			print("#: %d    EN: %s    JP: %s" % (b, pmx[5][b][1], pmx[5][b][0]))
+			core.MY_PRINT_FUNC("#: %d    EN: %s    JP: %s" % (b, pmx[5][b][1], pmx[5][b][0]))
 	
 	return unused_bones_list
 	
@@ -238,7 +238,7 @@ def prune_unused_bones(pmx):
 	unused_list = identify_unused_bones(pmx)
 	
 	if not unused_list:
-		print("Nothing to be done")
+		core.MY_PRINT_FUNC("Nothing to be done")
 		return pmx, False
 	
 	# convert the list of individual bones to remove into a list of ranges
@@ -369,7 +369,7 @@ def prune_unused_bones(pmx):
 	# done with bones
 	
 	# print("Done deleting unused bones")
-	print("Found and deleted {} / {} = {:.1%} unused bones".format(
+	core.MY_PRINT_FUNC("Found and deleted {} / {} = {:.1%} unused bones".format(
 		len(unused_list), num_bones_before, len(unused_list) / num_bones_before))
 	
 	return pmx, True
@@ -394,7 +394,7 @@ def main():
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/30/2020 - v3.51")
+	core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
 	if DEBUG:
 		main()
 	else:
@@ -405,5 +405,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			print(ee)
+			core.MY_PRINT_FUNC(ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")

@@ -44,24 +44,24 @@ DELETE_NEWLY_EMPTIED_MORPHS = True
 
 def begin():
 	# print info to explain the purpose of this file
-	print("To reduce overall file size, this will delete vertices from vertex morphs that move imperceptibly small amounts.")
-	print("This will also delete any vertex morphs that have all of their controlled vertices deleted this way.")
+	core.MY_PRINT_FUNC("To reduce overall file size, this will delete vertices from vertex morphs that move imperceptibly small amounts.")
+	core.MY_PRINT_FUNC("This will also delete any vertex morphs that have all of their controlled vertices deleted this way.")
 	# print info to explain what inputs it needs
-	print("Inputs: PMX file 'model.pmx'")
+	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
 	# print info to explain what outputs it creates
-	print("Outputs: PMX file '[model]_winnow.pmx'")
-	print("")
+	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_winnow.pmx'")
+	core.MY_PRINT_FUNC("")
 	
 	# prompt PMX name
-	print("Please enter name of PMX model file:")
+	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx)
 	return pmx, input_filename_pmx
 
 def morph_winnow(pmx):
-	print("Please enter the positive threshold for values that will be reduced to 0:")
-	print("Threshold of 0 means no change")
-	print("Recommended threshold is 0.0001 - 0.0005. Do you really think you can see deformation smaller than this?")
+	core.MY_PRINT_FUNC("Please enter the positive threshold for values that will be reduced to 0:")
+	core.MY_PRINT_FUNC("Threshold of 0 means no change")
+	core.MY_PRINT_FUNC("Recommended threshold is 0.0001 - 0.0005. Do you really think you can see deformation smaller than this?")
 	while True:
 		# continue prompting until the user gives valid input
 		value_str = input(" Enter scale: ")
@@ -70,7 +70,7 @@ def morph_winnow(pmx):
 			break
 		except ValueError:
 			# if given invalid input, prompt and loop again
-			print("invalid number")
+			core.MY_PRINT_FUNC("invalid number")
 	
 	total_num_verts = 0
 	total_vert_dropped = 0
@@ -106,19 +106,19 @@ def morph_winnow(pmx):
 		# increment tracking variables
 		if this_vert_dropped != 0:
 			if PRINT_AFFECTED_MORPHS:
-				print("JP: '%s'     EN: '%s'" % (morph[0], morph[1]))
+				core.MY_PRINT_FUNC("JP: '%s'     EN: '%s'" % (morph[0], morph[1]))
 			total_morphs_affected += 1
 			total_vert_dropped += this_vert_dropped
 	
 	if total_vert_dropped == 0:
-		print("No changes are required")
+		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
 	
-	print("Dropped {} / {} = {:.1%} vertices from among {} affected morphs".format(
+	core.MY_PRINT_FUNC("Dropped {} / {} = {:.1%} vertices from among {} affected morphs".format(
 		total_vert_dropped, total_num_verts, total_vert_dropped/total_num_verts, total_morphs_affected))
 	
 	if morphs_now_empty and DELETE_NEWLY_EMPTIED_MORPHS:
-		print("Deleted %d morphs that had all of their vertices below the threshold" % len(morphs_now_empty))
+		core.MY_PRINT_FUNC("Deleted %d morphs that had all of their vertices below the threshold" % len(morphs_now_empty))
 		rangemap = delme_list_to_rangemap(morphs_now_empty)
 		
 		# actually delete the morphs from the list
@@ -175,7 +175,7 @@ def main():
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/30/2020 - v3.51")
+	core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
 	if DEBUG:
 		main()
 	else:
@@ -186,5 +186,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			print(ee)
+			core.MY_PRINT_FUNC(ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")

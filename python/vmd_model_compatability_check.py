@@ -37,19 +37,19 @@ DEBUG = False
 
 def main():
 	# print info to explain the purpose of this file
-	print("This tool will check the compabability of a given model (PMX) with a given dance motion (VMD).")
-	print("This means checking whether the model supports all the bones and/or morphs the VMD dance is trying to use.")
-	print("All bone/morph names are compared using the JP names")
+	core.MY_PRINT_FUNC("This tool will check the compabability of a given model (PMX) with a given dance motion (VMD).")
+	core.MY_PRINT_FUNC("This means checking whether the model supports all the bones and/or morphs the VMD dance is trying to use.")
+	core.MY_PRINT_FUNC("All bone/morph names are compared using the JP names")
 	# print info to explain what inputs it needs
-	print("Inputs: dance VMD 'dancename.vmd' and model PMX 'modelname.pmx'")
+	core.MY_PRINT_FUNC("Inputs: dance VMD 'dancename.vmd' and model PMX 'modelname.pmx'")
 	# print info to explain what outputs it creates
-	print("Outputs: morph compatability summary text file '[dancename]_morph_compatability_with_[modelname].txt'")
-	print("         bone compatability summary text file '[dancename]_bone_compatability_with_[modelname].txt'")
-	print("")
+	core.MY_PRINT_FUNC("Outputs: morph compatability summary text file '[dancename]_morph_compatability_with_[modelname].txt'")
+	core.MY_PRINT_FUNC("         bone compatability summary text file '[dancename]_bone_compatability_with_[modelname].txt'")
+	core.MY_PRINT_FUNC("")
 	
 
 	# prompt PMX name
-	print("Please enter name of PMX input file:")
+	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmx_parser.read_pmx(input_filename_pmx)
 	realbones = pmx[5]		# get bones
@@ -58,11 +58,11 @@ def main():
 	modelname_en = pmx[0][2]
 
 	# prompt VMD file name
-	print("Please enter name of VMD dance input file:")
+	core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
 	input_filename_vmd = core.prompt_user_filename(".vmd")
 	nicelist_in, bonedict, morphdict = vmd_parser.read_vmd(input_filename_vmd, getdict=True)
 	
-	print("")
+	core.MY_PRINT_FUNC("")
 	
 	# must use same encoding as I used when the VMD was unpacked, since the hex bytes only have meaning in that encoding
 	core.set_encoding("shift_jis")
@@ -79,9 +79,9 @@ def main():
 	
 	# ensure that the VMD contains at least some morphs, to prevent zero-divide error
 	if len(morphs_in_vmd) == 0:
-		print("Skipping morph compatability check: VMD '%s' does not contain any morphs that are used in a significant way." % input_filename_vmd)
+		core.MY_PRINT_FUNC("Skipping morph compatability check: VMD '%s' does not contain any morphs that are used in a significant way." % input_filename_vmd)
 	elif len(morphs_in_model) == 0:
-		print("Skipping morph compatability check: PMX '%s' does not contain any morphs." % input_filename_pmx)
+		core.MY_PRINT_FUNC("Skipping morph compatability check: PMX '%s' does not contain any morphs." % input_filename_pmx)
 	else:
 		
 		# convert all these names to bytes
@@ -113,13 +113,13 @@ def main():
 				matching_morphs[core.decode_bytes_with_escape(modelmorphmatch_b[0])] = morphdict[vmdmorph]
 			else:
 				# more than 1 morph was a match!?
-				print("Warning: VMDmorph '%s' matched multiple PMXmorphs, its behavior is uncertain. Assuming it matches against the first." % vmdmorph)
+				core.MY_PRINT_FUNC("Warning: VMDmorph '%s' matched multiple PMXmorphs, its behavior is uncertain. Assuming it matches against the first." % vmdmorph)
 				modelmorphmatch = [core.decode_bytes_with_escape(a) for a in modelmorphmatch_b]
-				print(modelmorphmatch)
+				core.MY_PRINT_FUNC(modelmorphmatch)
 				matching_morphs[modelmorphmatch[0]] = morphdict[vmdmorph]
 		
 		# display results!
-		print("This model supports {} / {} = {:.1%} of the MORPHS in '{}'".format(
+		core.MY_PRINT_FUNC("This model supports {} / {} = {:.1%} of the MORPHS in '{}'".format(
 			len(matching_morphs), len(morphs_in_vmd), len(matching_morphs) / len(morphs_in_vmd), input_filename_vmd))
 			
 		# convert the dicts to lists and sort for printing
@@ -161,13 +161,13 @@ def main():
 		
 		output_filename_morph = output_filename_morph.replace(" ", "_")
 		output_filename_morph = core.get_unused_file_name(output_filename_morph)
-		print("...writing result to file '" + output_filename_morph + "'...")
+		core.MY_PRINT_FUNC("...writing result to file '" + output_filename_morph + "'...")
 		core.write_rawlist_to_txt(rawlist_out, output_filename_morph, use_jis_encoding=False)
-		print("done!")
+		core.MY_PRINT_FUNC("done!")
 	
 	##############################################
 	# check bone compatability
-	print("")
+	core.MY_PRINT_FUNC("")
 	
 	# build list of bones used in the dance VMD
 	bones_in_vmd = list(bonedict.keys())
@@ -178,9 +178,9 @@ def main():
 	
 	# ensure that the VMD contains at least some bones, to prevent zero-divide error
 	if len(bones_in_vmd) == 0:
-		print("Skipping bone compatability check: VMD '%s' does not contain any bones that are used in a significant way." % input_filename_vmd)
+		core.MY_PRINT_FUNC("Skipping bone compatability check: VMD '%s' does not contain any bones that are used in a significant way." % input_filename_vmd)
 	elif len(bones_in_model) == 0:
-		print("Skipping bone compatability check: PMX '%s' does not contain any bones." % input_filename_pmx)
+		core.MY_PRINT_FUNC("Skipping bone compatability check: PMX '%s' does not contain any bones." % input_filename_pmx)
 	else:
 		
 		# convert all these names to bytes
@@ -211,14 +211,14 @@ def main():
 				matching_bones[core.decode_bytes_with_escape(modelbonematch_b[0])] = bonedict[vmdbone]
 			else:
 				# more than 1 bone was a match!?
-				print(
+				core.MY_PRINT_FUNC(
 					"Warning: VMDbone '%s' matched multiple PMXbones, its behavior is uncertain. Assuming it matches against the first." % vmdbone)
 				modelbonematch = [core.decode_bytes_with_escape(a) for a in modelbonematch_b]
-				print(modelbonematch)
+				core.MY_PRINT_FUNC(modelbonematch)
 				matching_bones[modelbonematch[0]] = bonedict[vmdbone]
 		
 		# display results!
-		print("This model supports {} / {} = {:.1%} of the BONES in '{}'".format(
+		core.MY_PRINT_FUNC("This model supports {} / {} = {:.1%} of the BONES in '{}'".format(
 			len(matching_bones), len(bones_in_vmd), len(matching_bones) / len(bones_in_vmd), input_filename_vmd))
 		
 		# convert the dicts to lists and sort for printing
@@ -259,15 +259,15 @@ def main():
 							   (core.get_clean_basename(input_filename_vmd), core.get_clean_basename(input_filename_pmx))
 		output_filename_bone = output_filename_bone.replace(" ", "_")
 		output_filename_bone = core.get_unused_file_name(output_filename_bone)
-		print("...writing result to file '" + output_filename_bone + "'...")
+		core.MY_PRINT_FUNC("...writing result to file '" + output_filename_bone + "'...")
 		core.write_rawlist_to_txt(rawlist_out, output_filename_bone, use_jis_encoding=False)
-		print("done!")
+		core.MY_PRINT_FUNC("done!")
 	core.pause_and_quit("Done with everything! Goodbye!")
 	return None
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/30/2020 - v3.51")
+	core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
 	if DEBUG:
 		main()
 	else:
@@ -278,5 +278,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			print(ee)
+			core.MY_PRINT_FUNC(ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")

@@ -36,16 +36,16 @@ DEBUG = False
 
 def begin():
 	# print info to explain the purpose of this file
-	print("This script will fix the vertex weights that are weighted twice to the same bone, a minor issue that sometimes happens when merging bones.")
-	print("This also normalizes the weights of all vertices.")
+	core.MY_PRINT_FUNC("This script will fix the vertex weights that are weighted twice to the same bone, a minor issue that sometimes happens when merging bones.")
+	core.MY_PRINT_FUNC("This also normalizes the weights of all vertices.")
 	# print info to explain what inputs it needs
-	print("Inputs: PMX file 'model.pmx'")
+	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
 	# print info to explain what outputs it creates
-	print("Outputs: PMX file '[model]_weightfix.pmx'")
-	print("")
+	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_weightfix.pmx'")
+	core.MY_PRINT_FUNC("")
 	
 	# prompt PMX name
-	print("Please enter name of PMX model file:")
+	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx)
 	return pmx, input_filename_pmx
@@ -114,13 +114,13 @@ def weight_cleanup(pmx):
 			# dont understand, don't touch
 			continue
 		else:
-			print("invalid weight type for vertex")
+			core.MY_PRINT_FUNC("invalid weight type for vertex")
 	
 	if fix_ct == 0:
-		print("No changes are required")
+		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
 	
-	print("Fixed weights for {} / {} = {:.1%} of all vertices".format(fix_ct, len(pmx[1]), fix_ct/len(pmx[1])))
+	core.MY_PRINT_FUNC("Fixed weights for {} / {} = {:.1%} of all vertices".format(fix_ct, len(pmx[1]), fix_ct/len(pmx[1])))
 	return pmx, True
 	
 def end(pmx, input_filename_pmx):
@@ -140,7 +140,7 @@ def main():
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/30/2020 - v3.51")
+	core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
 	if DEBUG:
 		main()
 	else:
@@ -151,6 +151,6 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			print(ee)
+			core.MY_PRINT_FUNC(ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
 

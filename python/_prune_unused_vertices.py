@@ -121,16 +121,16 @@ def delme_list_to_rangemap(delme_verts: list):
 
 def begin():
 	# print info to explain the purpose of this file
-	print("This script will delete any unused vertices from the model, sometimes causing massive file size improvements.")
-	print("An unused vertex is one which is not used to define any faces.")
+	core.MY_PRINT_FUNC("This script will delete any unused vertices from the model, sometimes causing massive file size improvements.")
+	core.MY_PRINT_FUNC("An unused vertex is one which is not used to define any faces.")
 	# print info to explain what inputs it needs
-	print("Inputs: PMX file 'model.pmx'")
+	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
 	# print info to explain what outputs it creates
-	print("Outputs: PMX file '[model]_vertprune.pmx'")
-	print("")
+	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_vertprune.pmx'")
+	core.MY_PRINT_FUNC("")
 	
 	# prompt PMX name
-	print("Please enter name of PMX model file:")
+	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx)
 	return pmx, input_filename_pmx
@@ -168,12 +168,12 @@ def prune_unused_vertices(pmx):
 	numdeleted = len(delme_verts)
 	prevtotal = len(pmx[1])
 	if numdeleted == 0:
-		print("Nothing to be done")
+		core.MY_PRINT_FUNC("Nothing to be done")
 		return pmx, False
 	
 	delme_range = delme_list_to_rangemap(delme_verts)
 	
-	print("Detected %d orphan vertices arranged in %d contiguous blocks" % (len(delme_verts), len(delme_range)))
+	core.MY_PRINT_FUNC("Detected %d orphan vertices arranged in %d contiguous blocks" % (len(delme_verts), len(delme_range)))
 	
 	# need to update places that reference vertices: faces, morphs, softbody
 	# faces:
@@ -189,7 +189,7 @@ def prune_unused_vertices(pmx):
 		face[0] = newval_from_range_map(face[0], delme_range)
 		face[1] = newval_from_range_map(face[1], delme_range)
 		face[2] = newval_from_range_map(face[2], delme_range)
-	print("Done updating vertex references in faces")
+	core.MY_PRINT_FUNC("Done updating vertex references in faces")
 	
 	# morphs:
 	orphan_vertex_references = 0
@@ -221,7 +221,7 @@ def prune_unused_vertices(pmx):
 		# write the remapped values back into where they came from
 		for x, newval in zip(morph[4], remappedlist):
 			x[0] = newval
-	print("Done updating vertex references in morphs")
+	core.MY_PRINT_FUNC("Done updating vertex references in morphs")
 	
 	# if orphan_vertex_references != 0:
 	# 	print("debug: orphan vertex references removed = ", orphan_vertex_references)
@@ -242,7 +242,7 @@ def prune_unused_vertices(pmx):
 	for f in delme_verts:
 		pmx[1].pop(f)
 	
-	print("Identified and deleted {} / {} = {:.1%} vertices for being unused".format(
+	core.MY_PRINT_FUNC("Identified and deleted {} / {} = {:.1%} vertices for being unused".format(
 		numdeleted, prevtotal, numdeleted/prevtotal))
 	
 	return pmx, True
@@ -264,7 +264,7 @@ def main():
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/30/2020 - v3.51")
+	core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
 	if DEBUG:
 		main()
 	else:
@@ -275,5 +275,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			print(ee)
+			core.MY_PRINT_FUNC(ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")

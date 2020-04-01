@@ -67,18 +67,18 @@ def find_unattached_rigidbodies(pmx):
 
 def begin():
 	# print info to explain the purpose of this file
-	print("This file will run through a series of first-pass cleanup operations to fix obvious issues in a model.")
-	print("This includes: translating missing english names, correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, cleaning up display frames, and detecting issues that might cause MMD to crash.")
-	print("These operations will reduce file size (sometimes massively!) and improve overall model health & usability.")
-	print("However, these are only first-pass fixes. The model will definitely require more time and effort to search for and fix all potential issues.")
+	core.MY_PRINT_FUNC("This file will run through a series of first-pass cleanup operations to fix obvious issues in a model.")
+	core.MY_PRINT_FUNC("This includes: translating missing english names, correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, cleaning up display frames, and detecting issues that might cause MMD to crash.")
+	core.MY_PRINT_FUNC("These operations will reduce file size (sometimes massively!) and improve overall model health & usability.")
+	core.MY_PRINT_FUNC("However, these are only first-pass fixes. The model will definitely require more time and effort to search for and fix all potential issues.")
 	# print info to explain what inputs it needs
-	print("Inputs: PMX file 'model.pmx'")
+	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
 	# print info to explain what outputs it creates
-	print("Outputs: PMX file '[model]_better.pmx'")
-	print("")
+	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_better.pmx'")
+	core.MY_PRINT_FUNC("")
 	
 	# prompt PMX name
-	print("Please enter name of PMX model file:")
+	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx)
 	return pmx, input_filename_pmx
@@ -94,58 +94,58 @@ def pmx_overall_cleanup(pmx):
 	# uniquify after translate
 	
 	is_changed = False
-	print(">>>> Deleting invalid faces <<<<")
+	core.MY_PRINT_FUNC(">>>> Deleting invalid faces <<<<")
 	pmx, is_changed_t = prune_invalid_faces(pmx)
 	is_changed |= is_changed_t
-	print(">>>> Deleting orphaned/unused vertices <<<<")
+	core.MY_PRINT_FUNC(">>>> Deleting orphaned/unused vertices <<<<")
 	pmx, is_changed_t = prune_unused_vertices(pmx)
 	is_changed |= is_changed_t
-	print(">>>> Deleting unused bones <<<<")
+	core.MY_PRINT_FUNC(">>>> Deleting unused bones <<<<")
 	pmx, is_changed_t = prune_unused_bones(pmx)
 	is_changed |= is_changed_t
-	print(">>>> Normalizing weights <<<<")
+	core.MY_PRINT_FUNC(">>>> Normalizing weights <<<<")
 	pmx, is_changed_t = weight_cleanup(pmx)
 	is_changed |= is_changed_t
-	print(">>>> Pruning imperceptible vertex morphs <<<<")
+	core.MY_PRINT_FUNC(">>>> Pruning imperceptible vertex morphs <<<<")
 	pmx, is_changed_t = morph_winnow(pmx)
 	is_changed |= is_changed_t
-	print(">>>> Fixing alphamorphs that don't account for edging <<<<")
+	core.MY_PRINT_FUNC(">>>> Fixing alphamorphs that don't account for edging <<<<")
 	pmx, is_changed_t = alphamorph_correct(pmx)
 	is_changed |= is_changed_t
-	print(">>>> Display groups that contain duplicates, empty groups, or missing bones/morphs <<<<")
+	core.MY_PRINT_FUNC(">>>> Display groups that contain duplicates, empty groups, or missing bones/morphs <<<<")
 	pmx, is_changed_t = dispframe_fix(pmx)
 	is_changed |= is_changed_t
-	print(">>>> Fixing missing english names <<<<")
+	core.MY_PRINT_FUNC(">>>> Fixing missing english names <<<<")
 	pmx, is_changed_t = translate_to_english(pmx)
 	is_changed |= is_changed_t	# or-equals: if any component returns true, then ultimately this func returns true
-	print(">>>> Ensuring all names in the model are unique <<<<")
+	core.MY_PRINT_FUNC(">>>> Ensuring all names in the model are unique <<<<")
 	pmx, is_changed_t = uniquify_names(pmx)
 	is_changed |= is_changed_t
 
 	bad_bodies = find_unattached_rigidbodies(pmx)
 	if bad_bodies:
-		print("")
-		print("Warning: this model contains rigidbodies that aren't anchored to any bones")
-		print("This won't crash MMD but it is definitely a mistake that needs corrected")
-		print("The following bodies are unanchored: ", bad_bodies)
-		print("")
+		core.MY_PRINT_FUNC("")
+		core.MY_PRINT_FUNC("Warning: this model contains rigidbodies that aren't anchored to any bones")
+		core.MY_PRINT_FUNC("This won't crash MMD but it is definitely a mistake that needs corrected")
+		core.MY_PRINT_FUNC("The following bodies are unanchored: ", bad_bodies)
+		core.MY_PRINT_FUNC("")
 	
 	crashing_joints = find_crashing_joints(pmx)
 	if crashing_joints:
 		# make the biggest fucking alert i can cuz this is a critical issue
-		print("")
-		print("! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ")
-		print("CRITICAL WARNING: this model contains invalid joints which WILL cause MMD to crash!")
-		print("These must be manually deleted or repaired using PMXE")
-		print("The following joints are invalid: ", crashing_joints)
-		print("! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ")
-		print("")
+		core.MY_PRINT_FUNC("")
+		core.MY_PRINT_FUNC("! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ")
+		core.MY_PRINT_FUNC("CRITICAL WARNING: this model contains invalid joints which WILL cause MMD to crash!")
+		core.MY_PRINT_FUNC("These must be manually deleted or repaired using PMXE")
+		core.MY_PRINT_FUNC("The following joints are invalid: ", crashing_joints)
+		core.MY_PRINT_FUNC("! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ")
+		core.MY_PRINT_FUNC("")
 
-	print(">>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<")
+	core.MY_PRINT_FUNC(">>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<")
 	if not is_changed:
-		print(">>>> OVERALL RESULT: No changes are required <<<<")
+		core.MY_PRINT_FUNC(">>>> OVERALL RESULT: No changes are required <<<<")
 	else:
-		print(">>>> Done with overall cleanup procedures <<<<")
+		core.MY_PRINT_FUNC(">>>> Done with overall cleanup procedures <<<<")
 	
 	return pmx, is_changed
 
@@ -166,7 +166,7 @@ def main():
 	core.pause_and_quit("Done with everything! Goodbye!")
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/30/2020 - v3.51")
+	core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
 	if DEBUG:
 		main()
 	else:
@@ -177,5 +177,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			print(ee)
+			core.MY_PRINT_FUNC(ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")

@@ -144,21 +144,21 @@ def build_bonechain(allbones, endbone):
 def main():
 	
 	# print info to explain the purpose of this file
-	print("This script runs forward kinematics for the legs of a model, to calculate where the feet/toes will be and generates IK bone frames for those feet/toes.")
-	print("This is only useful when the input dance does NOT already use IK frames, such as Conqueror by IA.")
-	print("** Specifically, if a non-IK dance works well for model X but not for model Y (feet clipping thru floor, etc), this would let you copy the foot positions from model X onto model Y.")
-	print("** In practice, this isn't very useful... this file is kept around for historical reasons.")
-	print("The output is a VMD that should be loaded into MMD *after* the original dance VMD is loaded.")
-	print("Note: does not handle custom interpolation in the input dance VMD, assumes all interpolation is linear.")
-	print("Note: does not handle models with 'hip cancellation' bones")
+	core.MY_PRINT_FUNC("This script runs forward kinematics for the legs of a model, to calculate where the feet/toes will be and generates IK bone frames for those feet/toes.")
+	core.MY_PRINT_FUNC("This is only useful when the input dance does NOT already use IK frames, such as Conqueror by IA.")
+	core.MY_PRINT_FUNC("** Specifically, if a non-IK dance works well for model X but not for model Y (feet clipping thru floor, etc), this would let you copy the foot positions from model X onto model Y.")
+	core.MY_PRINT_FUNC("** In practice, this isn't very useful... this file is kept around for historical reasons.")
+	core.MY_PRINT_FUNC("The output is a VMD that should be loaded into MMD *after* the original dance VMD is loaded.")
+	core.MY_PRINT_FUNC("Note: does not handle custom interpolation in the input dance VMD, assumes all interpolation is linear.")
+	core.MY_PRINT_FUNC("Note: does not handle models with 'hip cancellation' bones")
 	# print info to explain what inputs it needs
-	print("Inputs: dance VMD 'dancename.vmd' and model PMX 'modelname.pmx'")
+	core.MY_PRINT_FUNC("Inputs: dance VMD 'dancename.vmd' and model PMX 'modelname.pmx'")
 	# print info to explain what outputs it creates
-	print("Outputs: VMD file '[dancename]_ik_from_[modelname].vmd' that contains only the IK frames for the dance")
-	print("")
+	core.MY_PRINT_FUNC("Outputs: VMD file '[dancename]_ik_from_[modelname].vmd' that contains only the IK frames for the dance")
+	core.MY_PRINT_FUNC("")
 
 	# prompt PMX name
-	print("Please enter name of PMX input file:")
+	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmx_parser.read_pmx(input_filename_pmx)
 	# get bones
@@ -186,7 +186,7 @@ def main():
 	# check if waist-cancellation bones are in "relevant_bones", print a warning if they are
 	if jp_left_waistcancel in relevant_bones or jp_right_waistcancel in relevant_bones:
 		# TODO LOW: i probably could figure out how to support them but this whole script is useless so idgaf
-		print("Warning: waist-cancellation bones found in the model! These are not supported, tool may produce bad results! Attempting to continue...")
+		core.MY_PRINT_FUNC("Warning: waist-cancellation bones found in the model! These are not supported, tool may produce bad results! Attempting to continue...")
 		
 	# also need to find initial positions of ik bones (names are known)
 	# build a full parentage-chain for each leg
@@ -218,12 +218,12 @@ def main():
 	
 	# now i am completely done with the bones CSV, all the relevant info has been distilled down to:
 	# !!! bonechain_r, bonechain_l, bonechain_ikr, bonechain_ikl, relevant_bones
-	print("...identified " + str(len(bonechain_l)) + " bones per leg-chain, " + str(len(relevant_bones)) + " relevant bones total")
-	print("...identified " + str(len(bonechain_ikl)) + " bones per IK leg-chain")
+	core.MY_PRINT_FUNC("...identified " + str(len(bonechain_l)) + " bones per leg-chain, " + str(len(relevant_bones)) + " relevant bones total")
+	core.MY_PRINT_FUNC("...identified " + str(len(bonechain_ikl)) + " bones per IK leg-chain")
 
 	###################################################################################
 	# prompt VMD file name
-	print("Please enter name of VMD dance input file:")
+	core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
 	input_filename_vmd = core.prompt_user_filename(".vmd")
 	nicelist_in = vmd_parser.read_vmd(input_filename_vmd)
 	
@@ -234,7 +234,7 @@ def main():
 			if ik_bone[1] is True:
 				any_ik_on = True
 	if any_ik_on:
-		print("Warning: the input VMD already has IK enabled, there is no point in running this script. Attempting to continue...")
+		core.MY_PRINT_FUNC("Warning: the input VMD already has IK enabled, there is no point in running this script. Attempting to continue...")
 		
 	# reduce down to only the boneframes for the relevant bones
 	# also build a list of each framenumber with a frame for a bone we care about
@@ -259,7 +259,7 @@ def main():
 		saveme = b[1:8]
 		boneframe_dict[b[0]].append(saveme)
 	
-	print("...running interpolation to rectangularize the frames...")
+	core.MY_PRINT_FUNC("...running interpolation to rectangularize the frames...")
 	
 	
 	# now fill in the blanks by using interpolation, if needed
@@ -279,7 +279,7 @@ def main():
 				j += 1
 			else:
 				# TODO LOW: i could modify this to include my interpolation curve math now that I understand it, but i dont care
-				print("Warning: interpolation is needed but interpolation curves are not fully tested! Attempting to continue...")
+				core.MY_PRINT_FUNC("Warning: interpolation is needed but interpolation curves are not fully tested! Attempting to continue...")
 				# if there is a mismatch then the target framenum is less than the boneframe framenum
 				# build a frame that has frame# + position(123) + rotation values(456)
 				newframe = [relevant_framenums[j]]
@@ -311,7 +311,7 @@ def main():
 	
 	###################################################################################
 	# begin the actual calculations
-	print("...beginning forward kinematics computation for " + str(len(relevant_framenums)) + " frames...")
+	core.MY_PRINT_FUNC("...beginning forward kinematics computation for " + str(len(relevant_framenums)) + " frames...")
 	
 	# output array
 	ikframe_list = []
@@ -406,14 +406,14 @@ def main():
 			last_progress += 200
 			core.print_progress_oneline(I, len(relevant_framenums))
 	
-	print("...done with forward kinematics computation, now writing output...")
+	core.MY_PRINT_FUNC("...done with forward kinematics computation, now writing output...")
 
 	if INCLUDE_IK_ENABLE_FRAME:
 		# create a single ikdispframe that enables the ik bones at frame 0
 		ikdispframe_list = [[0, True, [[jp_rightfoot_ik, True], [jp_righttoe_ik, True], [jp_leftfoot_ik, True], [jp_lefttoe_ik, True]]]]
 	else:
 		ikdispframe_list = []
-		print("Warning: IK following will NOT be enabled when this VMD is loaded, you will need enable it manually!")
+		core.MY_PRINT_FUNC("Warning: IK following will NOT be enabled when this VMD is loaded, you will need enable it manually!")
 
 
 	nicelist_out = [[2,"SEMISTANDARD-IK-BONES--------"],
@@ -437,7 +437,7 @@ def main():
 	return None
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/30/2020 - v3.51")
+	core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
 	if DEBUG:
 		main()
 	else:
@@ -448,5 +448,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			print(ee)
+			core.MY_PRINT_FUNC(ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")

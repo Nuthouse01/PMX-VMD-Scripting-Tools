@@ -39,16 +39,16 @@ MAX_MORPHS_IN_DISPLAY = 250
 
 def begin():
 	# print info to explain the purpose of this file
-	print("This file fixes issues with display frames. Removes morphs that would crash MMD, adds any morphs/bones that aren't already added.")
-	print("This also deletes empty display frames and ensures there are <250 morphs among all display frames, because that will crash MMD as well.")
+	core.MY_PRINT_FUNC("This file fixes issues with display frames. Removes morphs that would crash MMD, adds any morphs/bones that aren't already added.")
+	core.MY_PRINT_FUNC("This also deletes empty display frames and ensures there are <250 morphs among all display frames, because that will crash MMD as well.")
 	# print info to explain what inputs it needs
-	print("Inputs: PMX file 'model.pmx'")
+	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
 	# print info to explain what outputs it creates
-	print("Outputs: PMX file '[model]_dispframe.pmx'")
-	print("")
+	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_dispframe.pmx'")
+	core.MY_PRINT_FUNC("")
 	
 	# prompt PMX name
-	print("Please enter name of PMX model file:")
+	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx)
 	return pmx, input_filename_pmx
@@ -78,7 +78,7 @@ def dispframe_fix(pmx):
 				fix_root += 1
 			break
 	if fix_root:
-		print("fixing root group")
+		core.MY_PRINT_FUNC("fixing root group")
 	
 	displayed_morphs = set()
 	displayed_bones = set()
@@ -115,10 +115,10 @@ def dispframe_fix(pmx):
 					i += 1
 	
 	if hidden_morphs_removed:
-		print("removed %d hidden morphs (cause of crashes)" % hidden_morphs_removed)
-		print("!!! Warning: do not add 'hidden' morphs to the display group! MMD will crash!")
+		core.MY_PRINT_FUNC("removed %d hidden morphs (cause of crashes)" % hidden_morphs_removed)
+		core.MY_PRINT_FUNC("!!! Warning: do not add 'hidden' morphs to the display group! MMD will crash!")
 	if duplicate_entries_removed:
-		print("removed %d duplicate bones or morphs" % duplicate_entries_removed)
+		core.MY_PRINT_FUNC("removed %d duplicate bones or morphs" % duplicate_entries_removed)
 		
 	# have identified which bones/morphs are displayed: now identify which ones are NOT
 	undisplayed_bones = []
@@ -130,7 +130,7 @@ def dispframe_fix(pmx):
 		if bone[10] and bone[11]:
 			undisplayed_bones.append(d)
 	if undisplayed_bones:
-		print("added %d undisplayed bones to new group 'morebones'" % len(undisplayed_bones))
+		core.MY_PRINT_FUNC("added %d undisplayed bones to new group 'morebones'" % len(undisplayed_bones))
 		# add a new frame to hold all bones
 		newframelist = [[0, x] for x in undisplayed_bones]
 		newframe = ["morebones","morebones",0,newframelist]
@@ -147,7 +147,7 @@ def dispframe_fix(pmx):
 			undisplayed_morphs.append(d)
 	if undisplayed_morphs:
 		newframelist = [[1, x] for x in undisplayed_morphs]
-		print("added %d undisplayed morphs to Facials group" % len(undisplayed_morphs))
+		core.MY_PRINT_FUNC("added %d undisplayed morphs to Facials group" % len(undisplayed_morphs))
 		# find morphs group and only add to it
 		for frame in pmx[7]:
 			if frame[0] == "表情" and frame[1] == "Exp" and frame[2]:
@@ -175,8 +175,8 @@ def dispframe_fix(pmx):
 					i += 1
 	num_morphs_over_limit = max(total_num_morphs - MAX_MORPHS_IN_DISPLAY, 0)
 	if num_morphs_over_limit:
-		print("removed %d morphs to stay under the %d morph limit (cause of crashes)" % (num_morphs_over_limit, MAX_MORPHS_IN_DISPLAY))
-		print("!!! Warning: do not add the remaining morphs to the display group! MMD will crash!")
+		core.MY_PRINT_FUNC("removed %d morphs to stay under the %d morph limit (cause of crashes)" % (num_morphs_over_limit, MAX_MORPHS_IN_DISPLAY))
+		core.MY_PRINT_FUNC("!!! Warning: do not add the remaining morphs to the display group! MMD will crash!")
 		
 	# delete any groups that are empty
 	i = 0
@@ -189,11 +189,11 @@ def dispframe_fix(pmx):
 		else:
 			i += 1
 	if empty_groups_removed:
-		print("removed %d empty groups" % empty_groups_removed)
+		core.MY_PRINT_FUNC("removed %d empty groups" % empty_groups_removed)
 		
 	overall = num_morphs_over_limit + empty_groups_removed + len(undisplayed_bones) + len(undisplayed_morphs) + duplicate_entries_removed + hidden_morphs_removed + fix_root
 	if overall == 0:
-		print("No changes are required")
+		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
 		
 	# print("Fixed %d things related to display pane groups" % overall)
@@ -216,7 +216,7 @@ def main():
 	core.pause_and_quit("Done with everything! Goodbye!")
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/30/2020 - v3.51")
+	core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
 	if DEBUG:
 		main()
 	else:
@@ -227,5 +227,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			print(ee)
+			core.MY_PRINT_FUNC(ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")

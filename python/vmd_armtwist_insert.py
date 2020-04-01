@@ -117,20 +117,20 @@ def main():
 	
 	# the goal: extract rotation around the "arm" bone local X? axis and transfer it to rotation around the "armtwist" bone local axis
 	# print info to explain the purpose of this file
-	print("This script will modify a VMD for a specific model so that the 'arm twist bones' are actually used for twisting the arms.")
-	print("This will fix pinching/tearing at the shoulder/elbow of the model.")
-	print("This is done via a 'swing twist decomposition' to isolate the 'local X axis rotation' from the arm bone frames.")
-	print("This local X-axis rotation is transferred to the arm twist bones where it is supposed to be.")
-	print("The local Y-axis and local Z-axis rotation of the bone stay on the original arm bone.")
-	print("The output file contains the entire improved dance, including modified arm/elbow frames and added armtwist/elbowtwist frames.")
+	core.MY_PRINT_FUNC("This script will modify a VMD for a specific model so that the 'arm twist bones' are actually used for twisting the arms.")
+	core.MY_PRINT_FUNC("This will fix pinching/tearing at the shoulder/elbow of the model.")
+	core.MY_PRINT_FUNC("This is done via a 'swing twist decomposition' to isolate the 'local X axis rotation' from the arm bone frames.")
+	core.MY_PRINT_FUNC("This local X-axis rotation is transferred to the arm twist bones where it is supposed to be.")
+	core.MY_PRINT_FUNC("The local Y-axis and local Z-axis rotation of the bone stay on the original arm bone.")
+	core.MY_PRINT_FUNC("The output file contains the entire improved dance, including modified arm/elbow frames and added armtwist/elbowtwist frames.")
 	# print info to explain what inputs it needs
-	print("Inputs: dance VMD 'dancename.vmd' and model PMX 'modelname.pmx'")
+	core.MY_PRINT_FUNC("Inputs: dance VMD 'dancename.vmd' and model PMX 'modelname.pmx'")
 	# print info to explain what outputs it creates
-	print("Outputs: VMD file '[dancename]_twistbones_for_[modelname].vmd'")
-	print("")
+	core.MY_PRINT_FUNC("Outputs: VMD file '[dancename]_twistbones_for_[modelname].vmd'")
+	core.MY_PRINT_FUNC("")
 	
 	# prompt PMX name
-	print("Please enter name of PMX input file:")
+	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmx_parser.read_pmx(input_filename_pmx)
 	# get bones
@@ -165,12 +165,12 @@ def main():
 			twistbone_axes.append(unit)
 	
 	# done extracting axes limits from bone CSV, in list "twistbone_axes"
-	print("...done extracting axis limits from PMX...")
+	core.MY_PRINT_FUNC("...done extracting axis limits from PMX...")
 
 	
 	###################################################################################
 	# prompt VMD file name
-	print("Please enter name of VMD dance input file:")
+	core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
 	input_filename_vmd = core.prompt_user_filename(".vmd")
 	
 	# next, read/use/prune the dance vmd
@@ -186,7 +186,7 @@ def main():
 	if sourcenumframes == 0:
 		core.pause_and_quit("Err: no arm/elbow bone frames are found in the VMD, nothing for me to do!")
 	else:
-		print("...source contains " + str(sourcenumframes) + " arm/elbow bone frames to decompose...")
+		core.MY_PRINT_FUNC("...source contains " + str(sourcenumframes) + " arm/elbow bone frames to decompose...")
 
 	if USE_OVERKEY_BANDAID:
 		# to fix the path that the arms take during interpolation we need to overkey the frames
@@ -232,8 +232,8 @@ def main():
 	totalnumframes = sum([len(x) for x in all_sourcebone_frames])
 	overkeyframes = totalnumframes - sourcenumframes
 	if overkeyframes != 0:
-		print("...overkeying added " + str(overkeyframes) + " arm/elbow bone frames...")
-	print("...beginning decomposition of " + str(totalnumframes) + " arm/elbow bone frames...")
+		core.MY_PRINT_FUNC("...overkeying added " + str(overkeyframes) + " arm/elbow bone frames...")
+	core.MY_PRINT_FUNC("...beginning decomposition of " + str(totalnumframes) + " arm/elbow bone frames...")
 
 	# now i am completely done reading the VMD file and parsing its data! everything has been distilled down to:
 	# all_sourcebone_frames = [Larm, Lelbow, Rarm, Relbow] plus nicelist_in[1]
@@ -282,7 +282,7 @@ def main():
 	
 	######################################################################
 	# done with calculations!
-	print("...done with decomposition, now reassembling output...")
+	core.MY_PRINT_FUNC("...done with decomposition, now reassembling output...")
 	# attach the list of newly created boneframes, modify the original input
 	for sublist in all_sourcebone_frames:
 		nicelist_in[1] += sublist
@@ -300,7 +300,7 @@ def main():
 	return None
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/30/2020 - v3.51")
+	core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
 	if DEBUG:
 		main()
 	else:
@@ -311,5 +311,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			print(ee)
+			core.MY_PRINT_FUNC(ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")

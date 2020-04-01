@@ -139,9 +139,9 @@ def parse_vmd_header(raw) -> list:
 		# model name string is 10-chars long
 		modelname = core.my_unpack(fmt_modelname_old, raw)
 	else:
-		print("ERR: found unsupported file version identifier string, '%s'" % header)
+		core.MY_PRINT_FUNC("ERR: found unsupported file version identifier string, '%s'" % header)
 		raise ValueError()
-	print("...model name   = JP:'%s'" % modelname)
+	core.MY_PRINT_FUNC("...model name   = JP:'%s'" % modelname)
 	
 	return [version, modelname]
 
@@ -152,13 +152,13 @@ def parse_vmd_boneframe(raw) -> (list, dict):
 	bonedict = {}
 	# verify that there is enough file left to read a single number
 	if (len(raw) - core.get_readfrom_byte()) < struct.calcsize(fmt_number):
-		print("Warning: expected boneframe_ct field but file ended unexpectedly! Assuming 0 boneframes and continuing...")
+		core.MY_PRINT_FUNC("Warning: expected boneframe_ct field but file ended unexpectedly! Assuming 0 boneframes and continuing...")
 		return boneframe_list, bonedict
 
 	############################
 	# get the number of bone-frames
 	boneframe_ct = core.my_unpack(fmt_number, raw)
-	print("...# of boneframes          = %d" % boneframe_ct)
+	core.MY_PRINT_FUNC("...# of boneframes          = %d" % boneframe_ct)
 	last_progress = -1
 	for z in range(boneframe_ct):
 		# unpack the bone-frame into variables
@@ -180,8 +180,8 @@ def parse_vmd_boneframe(raw) -> (list, dict):
 			# phys turns off
 			phys_off = True
 		else:
-			print("Warning: found unusual values where I expected to find physics enable/disable! Assuming this means physics off")
-			print(bname_str, "f=", str(f), "(phys1,phys2)=", str((phys1, phys2)))
+			core.MY_PRINT_FUNC("Warning: found unusual values where I expected to find physics enable/disable! Assuming this means physics off")
+			core.MY_PRINT_FUNC(bname_str, "f=", str(f), "(phys1,phys2)=", str((phys1, phys2)))
 			phys_off = True
 		# store them all on the list
 		# create a list to hold all the boneframe data, then append it onto the return-list
@@ -198,7 +198,7 @@ def parse_vmd_boneframe(raw) -> (list, dict):
 			core.print_progress_oneline(z, boneframe_ct)
 	
 	if len(bonedict) > 0:
-		print("...# of unique bones        = %d" % len(bonedict))
+		core.MY_PRINT_FUNC("...# of unique bones        = %d" % len(bonedict))
 	
 	return boneframe_list, bonedict
 
@@ -209,13 +209,13 @@ def parse_vmd_morphframe(raw) -> (list, dict):
 	morphdict = {}
 	# is there enough file left to read a single number?
 	if (len(raw) - core.get_readfrom_byte()) < struct.calcsize(fmt_number):
-		print("Warning: expected morphframe_ct field but file ended unexpectedly! Assuming 0 morphframes and continuing...")
+		core.MY_PRINT_FUNC("Warning: expected morphframe_ct field but file ended unexpectedly! Assuming 0 morphframes and continuing...")
 		return morphframe_list, morphdict
 	
 	############################
 	# get the number of morph frames
 	morphframe_ct = core.my_unpack(fmt_number, raw)
-	print("...# of morphframes         = %d" % morphframe_ct)
+	core.MY_PRINT_FUNC("...# of morphframes         = %d" % morphframe_ct)
 	last_progress = -1
 	for z in range(morphframe_ct):
 		# unpack the morphframe
@@ -232,7 +232,7 @@ def parse_vmd_morphframe(raw) -> (list, dict):
 			core.print_progress_oneline(z, morphframe_ct)
 	
 	if len(morphdict) > 0:
-		print("...# of unique morphs       = %d" % len(morphdict))
+		core.MY_PRINT_FUNC("...# of unique morphs       = %d" % len(morphdict))
 	
 	return morphframe_list, morphdict
 
@@ -240,12 +240,12 @@ def parse_vmd_camframe(raw) -> list:
 	camframe_list = []
 	# is there enough file left to read a single number?
 	if (len(raw) - core.get_readfrom_byte()) < struct.calcsize(fmt_number):
-		print("Warning: expected camframe_ct field but file ended unexpectedly! Assuming 0 camframes and continuing...")
+		core.MY_PRINT_FUNC("Warning: expected camframe_ct field but file ended unexpectedly! Assuming 0 camframes and continuing...")
 		return camframe_list
 	############################
 	# get the number of cam frames
 	camframe_ct = core.my_unpack(fmt_number, raw)
-	print("...# of camframes           = %d" % camframe_ct)
+	core.MY_PRINT_FUNC("...# of camframes           = %d" % camframe_ct)
 	last_progress = -1
 	for z in range(camframe_ct):
 		# unpack into variables
@@ -270,12 +270,12 @@ def parse_vmd_lightframe(raw) -> list:
 	lightframe_list = []
 	# is there enough file left to read a single number?
 	if (len(raw) - core.get_readfrom_byte()) < struct.calcsize(fmt_number):
-		print("Warning: expected lightframe_ct field but file ended unexpectedly! Assuming 0 lightframes and continuing...")
+		core.MY_PRINT_FUNC("Warning: expected lightframe_ct field but file ended unexpectedly! Assuming 0 lightframes and continuing...")
 		return lightframe_list
 	############################
 	# if it exists, get the number of lightframes
 	lightframe_ct = core.my_unpack(fmt_number, raw)
-	print("...# of lightframes         = %d" % lightframe_ct)
+	core.MY_PRINT_FUNC("...# of lightframes         = %d" % lightframe_ct)
 	for i in range(lightframe_ct):
 		(f, r, g, b, x, y, z) = core.my_unpack(fmt_lightframe, raw)
 		# the r g b actually come back as floats, representing (int)/256
@@ -289,13 +289,13 @@ def parse_vmd_shadowframe(raw) -> list:
 	shadowframe_list = []
 	# is there enough file left to read a single number?
 	if (len(raw) - core.get_readfrom_byte()) < struct.calcsize(fmt_number):
-		print("Warning: expected shadowframe_ct field but file ended unexpectedly! Assuming 0 shadowframes and continuing...")
+		core.MY_PRINT_FUNC("Warning: expected shadowframe_ct field but file ended unexpectedly! Assuming 0 shadowframes and continuing...")
 		return shadowframe_list
 
 	############################
 	# if it exists, get the number of shadowframes
 	shadowframe_ct = core.my_unpack(fmt_number, raw)
-	print("...# of shadowframes        = %d" % shadowframe_ct)
+	core.MY_PRINT_FUNC("...# of shadowframes        = %d" % shadowframe_ct)
 	for i in range(shadowframe_ct):
 		(f, m, v) = core.my_unpack(fmt_shadowframe, raw)
 		v = round(10000 - (v * 100000))
@@ -308,13 +308,13 @@ def parse_vmd_ikdispframe(raw) -> list:
 	ikdispframe_list = []
 	# is there enough file left to read a single number?
 	if (len(raw) - core.get_readfrom_byte()) < struct.calcsize(fmt_number):
-		print("Warning: expected ikdispframe_ct field but file ended unexpectedly! Assuming 0 ikdispframes and continuing...")
+		core.MY_PRINT_FUNC("Warning: expected ikdispframe_ct field but file ended unexpectedly! Assuming 0 ikdispframes and continuing...")
 		return ikdispframe_list
 
 	############################
 	# if it exists, get the number of ikdisp frames
 	ikdispframe_ct = core.my_unpack(fmt_number, raw)
-	print("...# of ik/disp frames      = %d" % ikdispframe_ct)
+	core.MY_PRINT_FUNC("...# of ik/disp frames      = %d" % ikdispframe_ct)
 	for i in range(ikdispframe_ct):
 		(f, disp, numbones) = core.my_unpack(fmt_ikdispframe, raw)
 		# want to print it to file in the old way tho
@@ -333,7 +333,7 @@ def parse_vmd_ikdispframe(raw) -> list:
 
 def encode_vmd_header(nice) -> bytearray:
 	output = bytearray()
-	print("...model name   = JP:'%s'" % nice[1])
+	core.MY_PRINT_FUNC("...model name   = JP:'%s'" % nice[1])
 	##################################
 	# header data
 	# first, version: if ver==1, then use "Vocaloid Motion Data file", if ver==2, then use "Vocaloid Motion Data 0002"
@@ -344,7 +344,7 @@ def encode_vmd_header(nice) -> bytearray:
 		writeme = ["Vocaloid Motion Data file", nice[1]]
 		output += core.my_pack(fmt_header + fmt_modelname_old, writeme)
 	else:
-		print("ERR: unsupported VMD version value", nice[0])
+		core.MY_PRINT_FUNC("ERR: unsupported VMD version value", nice[0])
 		raise ValueError
 	
 	return output
@@ -354,7 +354,7 @@ def encode_vmd_boneframe(nice) -> bytearray:
 	#############################
 	# bone frames
 	# first, the number of frames
-	print("...# of boneframes          = %d" % len(nice))
+	core.MY_PRINT_FUNC("...# of boneframes          = %d" % len(nice))
 	output += core.my_pack(fmt_number, len(nice))
 	# then, all the actual frames
 	last_progress = -1
@@ -371,9 +371,9 @@ def encode_vmd_boneframe(nice) -> bytearray:
 			# then, create one line of the interpolation curve (last 16 values of frame obj)
 			interp = core.my_pack(fmt_boneframe_interpcurve_oneline, frame[-16:])
 		except struct.error as e:
-			print(e)
-			print("line=", i)
-			print("section=boneframe")
+			core.MY_PRINT_FUNC(e)
+			core.MY_PRINT_FUNC("line=", i)
+			core.MY_PRINT_FUNC("section=boneframe")
 			core.pause_and_quit("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
 			return bytearray()
 		# returns bytes, convert to bytearray for easier appending into this
@@ -401,7 +401,7 @@ def encode_vmd_morphframe(nice) -> bytearray:
 	###########################################
 	# morph frames
 	# first, the number of frames
-	print("...# of morphframes         = %d" % len(nice))
+	core.MY_PRINT_FUNC("...# of morphframes         = %d" % len(nice))
 	output += core.my_pack(fmt_number, len(nice))
 	# then, all the actual frames
 	last_progress = -1
@@ -409,9 +409,9 @@ def encode_vmd_morphframe(nice) -> bytearray:
 		try:
 			output += core.my_pack(fmt_morphframe, frame)
 		except struct.error as e:
-			print(e)
-			print("line=", i)
-			print("section=morphframe")
+			core.MY_PRINT_FUNC(e)
+			core.MY_PRINT_FUNC("line=", i)
+			core.MY_PRINT_FUNC("section=morphframe")
 			core.pause_and_quit("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
 
 		# print a progress update every so often just because
@@ -425,7 +425,7 @@ def encode_vmd_camframe(nice) -> bytearray:
 	###########################################
 	# cam frames
 	# first, the number of frames
-	print("...# of camframes           = %d" % len(nice))
+	core.MY_PRINT_FUNC("...# of camframes           = %d" % len(nice))
 	output += core.my_pack(fmt_number, len(nice))
 	# then, all the actual frames
 	last_progress = -1
@@ -435,9 +435,9 @@ def encode_vmd_camframe(nice) -> bytearray:
 		try:
 			output += core.my_pack(fmt_camframe, frame[:5] + xyz_rads + frame[8:])
 		except struct.error as e:
-			print(e)
-			print("line=", i)
-			print("section=camframe")
+			core.MY_PRINT_FUNC(e)
+			core.MY_PRINT_FUNC("line=", i)
+			core.MY_PRINT_FUNC("section=camframe")
 			core.pause_and_quit("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
 		
 		# progress thing just because
@@ -451,7 +451,7 @@ def encode_vmd_lightframe(nice) -> bytearray:
 	###########################################
 	# light frames
 	# first, the number of frames
-	print("...# of lightframes         = %d" % len(nice))
+	core.MY_PRINT_FUNC("...# of lightframes         = %d" % len(nice))
 	output += core.my_pack(fmt_number, len(nice))
 	# then, all the actual frames
 	for i,frame in enumerate(nice):
@@ -463,9 +463,9 @@ def encode_vmd_lightframe(nice) -> bytearray:
 		try:
 			output += core.my_pack(fmt_lightframe, frame)
 		except struct.error as e:
-			print(e)
-			print("line=", i)
-			print("section=lightframe")
+			core.MY_PRINT_FUNC(e)
+			core.MY_PRINT_FUNC("line=", i)
+			core.MY_PRINT_FUNC("section=lightframe")
 			core.pause_and_quit("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
 	return output
 
@@ -474,7 +474,7 @@ def encode_vmd_shadowframe(nice) -> bytearray:
 	###########################################
 	# shadow frames
 	# first, the number of frames
-	print("...# of shadowframes        = %d" % len(nice))
+	core.MY_PRINT_FUNC("...# of shadowframes        = %d" % len(nice))
 	output += core.my_pack(fmt_number, len(nice))
 	# then, all the actual frames
 	for i,frame in enumerate(nice):
@@ -484,9 +484,9 @@ def encode_vmd_shadowframe(nice) -> bytearray:
 		try:
 			output += core.my_pack(fmt_shadowframe, frame)
 		except struct.error as e:
-			print(e)
-			print("line=", i)
-			print("section=shadowframe")
+			core.MY_PRINT_FUNC(e)
+			core.MY_PRINT_FUNC("line=", i)
+			core.MY_PRINT_FUNC("section=shadowframe")
 			core.pause_and_quit("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
 
 	return output
@@ -496,7 +496,7 @@ def encode_vmd_ikdispframe(nice) -> bytearray:
 	###########################################
 	# disp/ik frames
 	# first, the number of frames
-	print("...# of ik/disp frames      = %d" % len(nice))
+	core.MY_PRINT_FUNC("...# of ik/disp frames      = %d" % len(nice))
 	output += core.my_pack(fmt_number, len(nice))
 	# then, all the actual frames
 	for i, frame in enumerate(nice):
@@ -507,9 +507,9 @@ def encode_vmd_ikdispframe(nice) -> bytearray:
 			for z in frame[2]:
 				output += core.my_pack(fmt_ikframe, z)
 		except struct.error as e:
-			print(e)
-			print("line=", i)
-			print("section=ikdispframe")
+			core.MY_PRINT_FUNC(e)
+			core.MY_PRINT_FUNC("line=", i)
+			core.MY_PRINT_FUNC("section=ikdispframe")
 			core.pause_and_quit("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
 
 	return output
@@ -522,10 +522,10 @@ def read_vmd(vmd_filename: str, getdict=False):
 	vmd_filename_clean = core.get_clean_basename(vmd_filename) + ".vmd"
 	# creates object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
 	# assumes the calling function already verified correct file extension
-	print("Begin reading VMD file '%s'" % vmd_filename_clean)
+	core.MY_PRINT_FUNC("Begin reading VMD file '%s'" % vmd_filename_clean)
 	vmd_bytes = core.read_binfile_to_bytes(vmd_filename)
-	print("...total size   = %sKB" % round(len(vmd_bytes) / 1024))
-	print("Begin parsing VMD file '%s'" % vmd_filename_clean)
+	core.MY_PRINT_FUNC("...total size   = %sKB" % round(len(vmd_bytes) / 1024))
+	core.MY_PRINT_FUNC("Begin parsing VMD file '%s'" % vmd_filename_clean)
 	core.reset_unpack()
 	core.set_encoding("shift_jis")
 	
@@ -549,26 +549,26 @@ def read_vmd(vmd_filename: str, getdict=False):
 		# padding with my SIGNATURE is acceptable, anything else is strange
 		leftover = vmd_bytes[core.get_readfrom_byte():]
 		if leftover == bytes(SIGNATURE, encoding="shift_jis"):
-			print("...note: this VMD file was previously modified with this tool!")
+			core.MY_PRINT_FUNC("...note: this VMD file was previously modified with this tool!")
 		else:
-			print("Warning: finished parsing but %d bytes are left over at the tail!" % bytes_remain)
-			print("The file may be corrupt or maybe it contains unknown/unsupported data formats")
-			print(leftover)
+			core.MY_PRINT_FUNC("Warning: finished parsing but %d bytes are left over at the tail!" % bytes_remain)
+			core.MY_PRINT_FUNC("The file may be corrupt or maybe it contains unknown/unsupported data formats")
+			core.MY_PRINT_FUNC(leftover)
 	
 	# this is where sorting happens, if it happens
 	if GUARANTEE_FRAMES_SORTED:
-		# bones & morphs: primarily sorted by frame number, with bone name as tiebreaker. the second sort is the primary one.
-		B.sort(key=core.get1st)
+		# bones & morphs: primarily sorted by NAME, with FRAME# as tiebreaker. the second sort is the primary one.
 		B.sort(key=core.get2nd)
-		C.sort(key=core.get1st)
+		B.sort(key=core.get1st)
 		C.sort(key=core.get2nd)
+		C.sort(key=core.get1st)
 		# all of these only sort by frame number.
 		D.sort(key=core.get1st)
 		E.sort(key=core.get1st)
 		F.sort(key=core.get1st)
 		G.sort(key=core.get1st)
 	
-	print("Done parsing VMD file '%s'" % vmd_filename_clean)
+	core.MY_PRINT_FUNC("Done parsing VMD file '%s'" % vmd_filename_clean)
 	if getdict:
 		return [A, B, C, D, E, F, G], bonedict, morphdict
 	else:
@@ -578,16 +578,16 @@ def write_vmd(vmd: list, vmd_filename: str) -> None:
 	vmd_filename_clean = core.get_clean_basename(vmd_filename) + ".vmd"
 	# recives object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
 	# assumes the calling function already verified correct file extension
-	print("Begin encoding VMD file '%s'" % vmd_filename_clean)
+	core.MY_PRINT_FUNC("Begin encoding VMD file '%s'" % vmd_filename_clean)
 	core.set_encoding("shift_jis")
 	
 	# this is where sorting happens, if it happens
 	if GUARANTEE_FRAMES_SORTED:
-		# bones & morphs: primarily sorted by frame number, with bone name as tiebreaker. the second sort is the primary one.
-		vmd[1].sort(key=core.get1st)
+		# bones & morphs: primarily sorted by NAME, with FRAME# as tiebreaker. the second sort is the primary one.
 		vmd[1].sort(key=core.get2nd)
-		vmd[2].sort(key=core.get1st)
+		vmd[1].sort(key=core.get1st)
 		vmd[2].sort(key=core.get2nd)
+		vmd[2].sort(key=core.get1st)
 		# all of these only sort by frame number.
 		vmd[3].sort(key=core.get1st)
 		vmd[4].sort(key=core.get1st)
@@ -613,10 +613,10 @@ def write_vmd(vmd: list, vmd_filename: str) -> None:
 		# signature to prove that this file was created with this tool
 		output_bytes += bytes(SIGNATURE, encoding="shift_jis")
 	
-	print("Begin writing VMD file '%s'" % vmd_filename_clean)
-	print("...total size   = %sKB" % round(len(output_bytes) / 1024))
+	core.MY_PRINT_FUNC("Begin writing VMD file '%s'" % vmd_filename_clean)
+	core.MY_PRINT_FUNC("...total size   = %sKB" % round(len(output_bytes) / 1024))
 	core.write_bytes_to_binfile(output_bytes, vmd_filename)
-	print("Done writing VMD file '%s'" % vmd_filename_clean)
+	core.MY_PRINT_FUNC("Done writing VMD file '%s'" % vmd_filename_clean)
 	# done with everything!
 	return None
 
@@ -625,26 +625,26 @@ def write_vmd(vmd: list, vmd_filename: str) -> None:
 ########################################################################################################################
 
 def main():
-	print("Specify a VMD file to attempt parsing")
-	print("Because MikuMikuDance pads with garbage, but I pad with zeros, the binary file I write back will not be exactly bitwise identical")
-	print("But I can read the version I wrote and verify that the internal representation matches")
+	core.MY_PRINT_FUNC("Specify a VMD file to attempt parsing")
+	core.MY_PRINT_FUNC("Because MikuMikuDance pads with garbage, but I pad with zeros, the binary file I write back will not be exactly bitwise identical")
+	core.MY_PRINT_FUNC("But I can read the version I wrote and verify that the internal representation matches")
 	input_filename = core.prompt_user_filename(".vmd")
 	# input_filename = "vmdtest.vmd"
 	Z= read_vmd(input_filename)
 	write_vmd(Z, "____vmdparser_selftest_DELETEME.vmd")
 	ZZ = read_vmd("____vmdparser_selftest_DELETEME.vmd")
-	print("")
+	core.MY_PRINT_FUNC("")
 	bb = core.read_binfile_to_bytes(input_filename)
 	bb2 = core.read_binfile_to_bytes("____vmdparser_selftest_DELETEME.vmd")
-	print("Is the binary EXACTLY identical to original?", bb == bb2)
+	core.MY_PRINT_FUNC("Is the binary EXACTLY identical to original?", bb == bb2)
 	exact_result = Z == ZZ
-	print("Is the readback EXACTLY identical to original?", exact_result)
+	core.MY_PRINT_FUNC("Is the readback EXACTLY identical to original?", exact_result)
 	if not exact_result:
 		# boneframelist is different!!! but its just floating-point wibblyness caused by the quaternion transform math
 		fuzzy_result = core.recursively_compare(Z, ZZ)
-		print("Is the readback ALMOST identical to the original?", not fuzzy_result)
-		print("Max difference between two floats:", core.MAXDIFFERENCE)
-		print("Number of floats that exceed reasonable threshold 0.0005:", fuzzy_result)
+		core.MY_PRINT_FUNC("Is the readback ALMOST identical to the original?", not fuzzy_result)
+		core.MY_PRINT_FUNC("Max difference between two floats:", core.MAXDIFFERENCE)
+		core.MY_PRINT_FUNC("Number of floats that exceed reasonable threshold 0.0005:", fuzzy_result)
 	core.pause_and_quit("Parsed without error")
 
 ########################################################################################################################
@@ -652,7 +652,7 @@ def main():
 ########################################################################################################################
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/30/2020 - v3.51")
+	core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
 	if DEBUG:
 		main()
 	else:
@@ -663,5 +663,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call core.pause_and_quit so the window stays open for a bit
-			print(ee)
+			core.MY_PRINT_FUNC(ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")

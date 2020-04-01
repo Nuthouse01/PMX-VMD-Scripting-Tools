@@ -36,16 +36,16 @@ DEBUG = False
 
 def main():
 	# print info to explain the purpose of this file
-	print("This script will print the JP and EN names of all bones and morphs in a PMX model.")
+	core.MY_PRINT_FUNC("This script will print the JP and EN names of all bones and morphs in a PMX model.")
 	# print info to explain what inputs it needs
-	print("Inputs: model PMX 'modelname.pmx'")
+	core.MY_PRINT_FUNC("Inputs: model PMX 'modelname.pmx'")
 	# print info to explain what outputs it creates
-	print("Outputs: morph name list text file '[modelname]_morph_names.txt'")
-	print("         bone name list text file '[modelname]_bone_names.txt'")
-	print("")
+	core.MY_PRINT_FUNC("Outputs: morph name list text file '[modelname]_morph_names.txt'")
+	core.MY_PRINT_FUNC("         bone name list text file '[modelname]_bone_names.txt'")
+	core.MY_PRINT_FUNC("")
 	
 	# prompt PMX name
-	print("Please enter name of PMX input file:")
+	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
 	pmx = pmx_parser.read_pmx(input_filename_pmx)
 	realbones = pmx[5]		# get bones
@@ -75,22 +75,22 @@ def main():
 	output_filename_bone = "%s_bone_names.txt" % core.get_clean_basename(input_filename_pmx)
 	output_filename_bone = output_filename_bone.replace(" ", "_")
 	output_filename_bone = core.get_unused_file_name(output_filename_bone)
-	print("...writing result to file '" + output_filename_bone + "'...")
+	core.MY_PRINT_FUNC("...writing result to file '" + output_filename_bone + "'...")
 	core.write_rawlist_to_txt(bonelist_out, output_filename_bone, use_jis_encoding=False)
-	print("done!")
+	core.MY_PRINT_FUNC("done!")
 
 	output_filename_morph = "%s_morph_names.txt" % core.get_clean_basename(input_filename_pmx)
 	output_filename_morph = output_filename_morph.replace(" ", "_")
 	output_filename_morph = core.get_unused_file_name(output_filename_morph)
-	print("...writing result to file '" + output_filename_morph + "'...")
+	core.MY_PRINT_FUNC("...writing result to file '" + output_filename_morph + "'...")
 	core.write_rawlist_to_txt(morphlist_out, output_filename_morph, use_jis_encoding=False)
-	print("done!")
+	core.MY_PRINT_FUNC("done!")
 	core.pause_and_quit("Done with everything! Goodbye!")
 	return None
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 03/30/2020 - v3.51")
+	core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
 	if DEBUG:
 		main()
 	else:
@@ -101,5 +101,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			print(ee)
+			core.MY_PRINT_FUNC(ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
