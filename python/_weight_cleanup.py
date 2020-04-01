@@ -20,15 +20,20 @@ except ImportError as eee:
 DEBUG = False
 
 
+helptext = '''weight_cleanup:
+This function will fix the vertex weights that are weighted twice to the same bone, a minor issue that sometimes happens when merging bones.
+This also normalizes the weights of all vertices.
+'''
+
+iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_weightfix.pmx"
+'''
+
+
 def begin():
 	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC("This script will fix the vertex weights that are weighted twice to the same bone, a minor issue that sometimes happens when merging bones.")
-	core.MY_PRINT_FUNC("This also normalizes the weights of all vertices.")
-	# print info to explain what inputs it needs
-	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
-	# print info to explain what outputs it creates
-	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_weightfix.pmx'")
-	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC(helptext)
+	# print info to explain what inputs/outputs it needs/creates
+	core.MY_PRINT_FUNC(iotext)
 	
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
@@ -36,7 +41,7 @@ def begin():
 	pmx = pmxlib.read_pmx(input_filename_pmx)
 	return pmx, input_filename_pmx
 
-def weight_cleanup(pmx):
+def weight_cleanup(pmx, moreinfo=False):
 	#############################
 	# ready for logic
 

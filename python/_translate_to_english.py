@@ -20,6 +20,8 @@ except ImportError as eee:
 	core = pmxlib = frame_dict = morph_dict = bone_dict = None
 
 
+# TODO: probably get rid of mymemory provider for smaller library size
+
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
 DEBUG = False
@@ -248,19 +250,25 @@ def fix_eng_name(name_jp: str, name_en: str) -> (str, None):
 	else:
 		# name is good, no translate needed
 		return name_en
-	
+
+
+helptext = '''translate_to_english:
+This tool fills out empty EN names in a PMX model with translated versions of the JP names.
+Machine translation is never 100% reliable, so this is only a stopgap measure to eliminate all the 'Null_##'s and wrongly-encoded garbage and make it easier to use in MMD. A bad translation is better than none at all!
+You can review and manually edit the translated names before they are applied to the model.
+Also, Google Translate only permits ~100 requests per hour, if you exceed this rate you will be locked out for 24 hours (TODO: CONFIRM LOCKOUT TIME)
+But my script has a built in limiter that will prevent you from translating if you would exceed the 100-per-hr limit.
+'''
+
+iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_translate.pmx"
+'''
+
+
 def begin():
 	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC("This tool fills out empty EN names in a PMX model with translated versions of the JP names.")
-	core.MY_PRINT_FUNC("Machine translation is never 100% reliable, so this is only a stopgap measure to eliminate all the 'Null_##'s and wrongly-encoded garbage and make it easier to use in MMD.")
-	core.MY_PRINT_FUNC("A bad translation is better than none at all!")
-	core.MY_PRINT_FUNC("You can review and manually edit the translated names before they are applied to the model.")
-	core.MY_PRINT_FUNC("Also, Google Translate only permits ~100 requests per hour, if you exceed this rate you will be locked out for 24 hours (TODO: CONFIRM LOCKOUT TIME)")
-	# print info to explain what inputs it needs
-	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
-	# print info to explain what outputs it creates
-	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_translate.pmx'")
-	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC(helptext)
+	# print info to explain what inputs/outputs it needs/creates
+	core.MY_PRINT_FUNC(iotext)
 	
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
@@ -268,7 +276,7 @@ def begin():
 	pmx = pmxlib.read_pmx(input_filename_pmx)
 	return pmx, input_filename_pmx
 
-def translate_to_english(pmx):
+def translate_to_english(pmx, moreinfo=False):
 	# run thru all groups, find what can be locally translated, queue up what needs to be googled
 	# do the same for model name
 	# decide what to do for model comment, but store separately (compress newlines here!)

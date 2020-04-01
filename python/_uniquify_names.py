@@ -42,17 +42,19 @@ def uniquify_one_category(used_names: set, new_name: str) -> str:
 	return new_name
 
 
+helptext = '''uniquify_names:
+This function will uniquify all names of materials/bones/morphs/displayframes in the model. Bad things happen when names are not unique.
+'''
 
+iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_unique.pmx"
+'''
 
 
 def begin():
 	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC("This will uniquify all names of materials/bones/morphs/displayframes in the model. Bad things happen when names are not unique.")
-	# print info to explain what inputs it needs
-	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
-	# print info to explain what outputs it creates
-	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_unique.pmx'")
-	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC(helptext)
+	# print info to explain what inputs/outputs it needs/creates
+	core.MY_PRINT_FUNC(iotext)
 	
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
@@ -60,14 +62,14 @@ def begin():
 	pmx = pmxlib.read_pmx(input_filename_pmx)
 	return pmx, input_filename_pmx
 
-def uniquify_names(pmx):
+def uniquify_names(pmx, moreinfo=False):
 	
 	# just uniquify the names
 	# return counts of how many en/jp from each category were changed
 	# but don't print out the actual before/after, don't ask for approval
 	
 	counts = [0] * 8
-	counts_labels = ["material_JP","material_EN","bone_JP","bone_EN","morph_JP","morph_EN","dispframe_JP","dispframe_EN"]
+	counts_labels = ["material_JP","bone_JP","morph_JP","dispframe_JP","material_EN","bone_EN","morph_EN","dispframe_EN"]
 	
 	for cat_id in range(4, 8):
 		category = pmx[cat_id]
@@ -91,10 +93,10 @@ def uniquify_names(pmx):
 				if new_en_name != en_name:
 					# count & store into the structure
 					item[1] = new_en_name
-					counts[cat_id - 3] += 1
+					counts[cat_id] += 1
 	
 	counts_dict = {x:y for x,y in zip(counts_labels, counts) if y != 0}
-
+	
 	if not counts_dict:
 		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False

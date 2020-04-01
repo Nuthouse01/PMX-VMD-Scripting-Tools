@@ -19,6 +19,17 @@ except ImportError as eee:
 # but if launched in a new window it exits immediately so you can't read it.
 DEBUG = False
 
+
+helptext = '''prune_unused_vertices:
+This script will delete any unused vertices from the model, sometimes causing massive file size improvements.
+An unused vertex is one which is not used to define any faces.
+'''
+
+iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_vertprune.pmx"
+'''
+
+
+
 # bisect_left and bisect_right literally just copied from the "bisect" library
 def bisect_left(a, x):
 	"""Return the index where to insert item x in list a, assuming a is sorted.
@@ -109,13 +120,9 @@ def delme_list_to_rangemap(delme_verts: list):
 
 def begin():
 	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC("This script will delete any unused vertices from the model, sometimes causing massive file size improvements.")
-	core.MY_PRINT_FUNC("An unused vertex is one which is not used to define any faces.")
-	# print info to explain what inputs it needs
-	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
-	# print info to explain what outputs it creates
-	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_vertprune.pmx'")
-	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC(helptext)
+	# print info to explain what inputs/outputs it needs/creates
+	core.MY_PRINT_FUNC(iotext)
 	
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
@@ -123,7 +130,7 @@ def begin():
 	pmx = pmxlib.read_pmx(input_filename_pmx)
 	return pmx, input_filename_pmx
 
-def prune_unused_vertices(pmx):
+def prune_unused_vertices(pmx, moreinfo=False):
 	#############################
 	# ready for logic
 
@@ -210,9 +217,6 @@ def prune_unused_vertices(pmx):
 		for x, newval in zip(morph[4], remappedlist):
 			x[0] = newval
 	core.MY_PRINT_FUNC("Done updating vertex references in morphs")
-	
-	# if orphan_vertex_references != 0:
-	# 	print("debug: orphan vertex references removed = ", orphan_vertex_references)
 	
 	# softbody: probably not relevant but eh
 	for soft in pmx[10]:

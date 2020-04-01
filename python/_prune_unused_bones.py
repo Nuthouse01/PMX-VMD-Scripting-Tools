@@ -50,21 +50,29 @@ PRINT_FOUND_UNUSED_BONES = False
 # glasses, dummy_L, dummy_R, view cnt, motherbone
 BONES_TO_PROTECT = ["メガネ", "左ダミー", "右ダミー", "操作中心", "全ての親"]
 
+helptext = '''prune_unused_bones:
+This file identifies and deletes all bones in a PMX model that are NOT being used.
+A bone is USED if any of the following are true:
+    any vertex has nonzero weight with that bone
+    rigid bodies use it as an anchor
+    other used bones use it as parent, AKA it has children
+    other used bones use it as a visual link point
+    other used bones use it for 'append' (inherit movement and/or rotation)
+    it is an IK bone or a link in the IK chain of an IK bone
+A bone is UNUSED if none of these conditions are met.
+All unused bones can be safely removed without affecting the current function of the model.
+The common bones "dummy_L","dummy_R","glasses" are exceptions: they are semistandard accessory attachment points so they will not be removed even if they otherwise fit the definition of "unused" bones.
+'''
+
+iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_boneprune.pmx"
+'''
 
 
 def begin():
 	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC("This script identifies all bones in a PMX model that are not currently being used.")
-	core.MY_PRINT_FUNC("A bone is USED if any of the following are true:\n    other used bones use it as parent, AKA it has children\n    other used bones use it as link point\n    other used bones use it for 'append' (partial parent)\n    it is an IK type bone\n    rigid bodies use it as an anchor\n    any vertex has nonzero weight with that bone")
-	core.MY_PRINT_FUNC("A bone is UNUSED if none of these conditions are met.")
-	core.MY_PRINT_FUNC("All unused bones can be safely removed without affecting the current function of the model.")
-	core.MY_PRINT_FUNC("")
-	
-	# print info to explain what inputs it needs
-	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
-	# print info to explain what outputs it creates
-	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_boneprune.pmx'")
-	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC(helptext)
+	# print info to explain what inputs/outputs it needs/creates
+	core.MY_PRINT_FUNC(iotext)
 	
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
@@ -78,25 +86,11 @@ def identify_unused_bones(pmx):
 	# ready for logic
 
 	# python set: no duplicates! .add(newbone), "in", .discard(delbone)
+	# used_bones is set of BONE INDEXES
 	used_bones = set()
 	unused_bones = set()
-	# python dict: [newbone], "in"
 	vertex_ct = {}
 
-	# # first, build the ordered list of bones for name-to-index lookup later
-	# bone_list = []
-	# for row in rawlist_bone:
-	# 	# ignore all IK links
-	# 	if row[0] != core.pmxe_bone_csv_tag:
-	# 		continue
-	# 	# add JP name to bone-list for lookup
-	# 	bone_list.append(row[1])
-
-	# print('Identified {} bones in total.'.format(len(pmx[5])))
-
-
-	# used_bones is set of BONE INDEXES
-	
 	# first: bones used by a rigidbody
 	for body in pmx[8]:
 		used_bones.add(body[2])
@@ -140,9 +134,15 @@ def identify_unused_bones(pmx):
 	all_bones_list = []
 	all_bones_list.extend(range(len(pmx[5])))
 	all_bones_set = set(all_bones_list)
-
 	
-	# fourth: bone-list check
+	
+	# fourth: mark the "exception" bones as "used" if they are in the model
+	for d,bone in pmx[5]:
+		# look up the jp name of this bone
+		if bone[0] in BONES_TO_PROTECT:
+			used_bones.add(d)
+
+	# fifth: bone-list check
 	# on first pass unused_bones is empty, it will only grow
 	# iterate over bones, growing the list of unused bones each pass
 	# it propagates through the parent-child relationships at this stage
@@ -175,7 +175,7 @@ def identify_unused_bones(pmx):
 			used_bones_from_bones_prev = used_bones_from_bones
 	
 	
-	# fifth: point-at links
+	# sixth: point-at links
 	# after establishing what is actually used, THEN we care about point-at links
 	# anything used as a link for something used is, itself, used
 	# only make 1 pass of this, that way the "used" doesn't propagate downward along the chain
@@ -194,14 +194,6 @@ def identify_unused_bones(pmx):
 	# assemble the final "used" and "unused" sets
 	used_bones = (used_bones.union(used_bones_from_bones)).union(used_bones_from_links)
 	unused_bones = all_bones_set.difference(used_bones)
-	
-	# remove the "exception" bones from the unused set
-	t = set(unused_bones)
-	for idx in t:
-		# look up the jp name of this bone
-		if pmx[5][idx][0] in BONES_TO_PROTECT:
-			unused_bones.remove(idx)
-	
 	unused_bones_list = sorted(list(unused_bones))
 
 	# debug aid
@@ -211,27 +203,26 @@ def identify_unused_bones(pmx):
 			if b in vertex_ct:
 				core.MY_PRINT_FUNC("#: %d    ct: %d" % (b, vertex_ct[b]))
 			
-	# another debug aid:
-	if PRINT_FOUND_UNUSED_BONES:
-		core.MY_PRINT_FUNC("The following bones are unused:")
-		for b in unused_bones_list:
-			core.MY_PRINT_FUNC("#: %d    EN: %s    JP: %s" % (b, pmx[5][b][1], pmx[5][b][0]))
-	
 	return unused_bones_list
 	
 	
 	
-def prune_unused_bones(pmx):
-	
+def prune_unused_bones(pmx, moreinfo=False):
+	# first build the list of bones to delete
 	unused_list = identify_unused_bones(pmx)
 	
 	if not unused_list:
 		core.MY_PRINT_FUNC("Nothing to be done")
 		return pmx, False
 	
+	# another debug aid:
+	if moreinfo:
+		core.MY_PRINT_FUNC("The following bones are unused:")
+		for b in unused_list:
+			core.MY_PRINT_FUNC("#: %d    EN: %s    JP: %s" % (b, pmx[5][b][1], pmx[5][b][0]))
+	
 	# convert the list of individual bones to remove into a list of ranges
 	delme_rangemap = delme_list_to_rangemap(unused_list)
-	# print("blocks", len(delme_rangemap))
 	
 	num_bones_before = len(pmx[5])
 	# acutally delete the bones
@@ -375,7 +366,7 @@ def end(pmx, input_filename_pmx):
 
 def main():
 	pmx, name = begin()
-	pmx, is_changed = prune_unused_bones(pmx)
+	pmx, is_changed = prune_unused_bones(pmx, PRINT_FOUND_UNUSED_BONES)
 	if is_changed:
 		end(pmx, name)
 	core.pause_and_quit("Done with everything! Goodbye!")
