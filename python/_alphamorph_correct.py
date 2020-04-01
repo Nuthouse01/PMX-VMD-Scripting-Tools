@@ -24,11 +24,18 @@ DEBUG = False
 PRINT_AFFECTED_MORPHS = False
 
 
-# opacity, edge size, edge alpha
-#template = [0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
 # opacity, edge size, edge alpha, tex, toon, sph
-template = [0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0]
+template =          [0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0]
+# the above template multiplies everything by 0, below the same result by subtracting 1 from everthing
+template_minusone = [1, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0, -1]
 
+helptext = '''alphamorph_correct:
+This function fixes improper "material hide" morphs in a model.
+Many models simply set the opacity to 0, but forget to zero out the edging effects or other needed fields.
+This also changes all alphamorphs to use the "multiply by 0" approach when the target material is opaque(visible) by default, and use the "add -1" approach when the target is transparent(hidden) by default.
+'''
+
+iotext = '''Inputs: PMX file "[model].pmx"\nOutputs: PMX file "[model]_alphamorph.pmx"'''
 
 def begin():
 	# print info to explain the purpose of this file
@@ -46,7 +53,7 @@ def begin():
 	pmx = pmxlib.read_pmx(input_filename_pmx)
 	return pmx, input_filename_pmx
 
-def alphamorph_correct(pmx):
+def alphamorph_correct(pmx, moreinfo=False):
 	num_fixed = 0
 	total_morphs_affected = 0
 	
@@ -61,18 +68,25 @@ def alphamorph_correct(pmx):
 			# (mat_idx, is_add, diffR, diffG, diffB, diffA, specR, specG, specB, specpower, ambR, ambG, ambB, edgeR,
 			# edgeG, edgeB, edgeA, edgesize, texR, texG, texB, texA, sphR, sphG, sphB, sphA, toonR, toonG, toonB, toonA)
 			# is_add=1, diffA(opacity)=5, edgeA=16, edgesize=17, texA=21, sphA=25, toonA=29
-			# if (mult opacity by 0) OR (add -1 to opacity)
-			# opacity, edge size, edge alpha, tex, toon, sph
+			
+			# if (mult opacity by 0) OR (add -1 to opacity), then this item is (trying to) hide the target material
 			if (mat[1]==0 and mat[5]==0) or (mat[1]==1 and mat[5]==-1):
 				# then replace the entire set of material-morph parameters
-				before = list(mat)  # make a copy
-				mat[1:] = template  # write into the structure
-				if before != mat:   # see if it actually changed
-					this_num_fixed += 1
+				# opacity, edge size, edge alpha, tex, toon, sph
+				# if the target material is initially transparent, replace with add-negative-1
+				if mat[0] != -1 and pmx[4][mat[0]][5] == 0:
+					if mat[1:] != template_minusone:  # if it is not already good,
+						mat[1:] = template_minusone  # rewrite the morph
+						this_num_fixed += 1
+				# if the target material is initally opaque, or targeting the whole model, replace with mult-by-0
+				else:
+					if mat[1:] != template:  # if it is not already good,
+						mat[1:] = template  # rewrite the morph
+						this_num_fixed += 1
 		if this_num_fixed != 0:
 			total_morphs_affected += 1
 			num_fixed += this_num_fixed
-			if PRINT_AFFECTED_MORPHS:
+			if moreinfo:
 				core.MY_PRINT_FUNC("JP: '%s'     EN: '%s'" % (morph[0], morph[1]))
 	
 	if num_fixed == 0:
@@ -93,7 +107,7 @@ def end(pmx, input_filename_pmx):
 
 def main():
 	pmx, name = begin()
-	pmx, is_changed = alphamorph_correct(pmx)
+	pmx, is_changed = alphamorph_correct(pmx, PRINT_AFFECTED_MORPHS)
 	if is_changed:
 		end(pmx, name)
 	core.pause_and_quit("Done with everything! Goodbye!")
