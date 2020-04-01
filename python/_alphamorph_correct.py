@@ -35,7 +35,8 @@ Many models simply set the opacity to 0, but forget to zero out the edging effec
 This also changes all alphamorphs to use the "multiply by 0" approach when the target material is opaque(visible) by default, and use the "add -1" approach when the target is transparent(hidden) by default.
 '''
 
-iotext = '''Inputs: PMX file "[model].pmx"\nOutputs: PMX file "[model]_alphamorph.pmx"'''
+iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_alphamorph.pmx"
+'''
 
 def begin():
 	# print info to explain the purpose of this file

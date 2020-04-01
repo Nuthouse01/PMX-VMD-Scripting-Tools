@@ -25,6 +25,17 @@ MAX_MORPHS_IN_DISPLAY = 250
 
 # UTTERLY IMPOSSIBLE to get multiple frames containing morphs, they are always collapsed into one
 
+helptext = '''dispframe_fix:
+This function fixes issues with display frames.
+Remove "hidden" morphs that would crash MMD (because they are not in either eye/brow/lip/other).
+Ensure there are <250 morphs among all display frames, because that will crash MMD as well.
+This will also ensure that "motherbone" is only bone in "root" frame, add any morphs/bones that aren't already in frames, delete duplicate entries, and delete empty frames.
+'''
+
+iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_dispframe.pmx"
+'''
+
+
 def begin():
 	# print info to explain the purpose of this file
 	core.MY_PRINT_FUNC("This file fixes issues with display frames. Removes morphs that would crash MMD, adds any morphs/bones that aren't already added.")
@@ -41,7 +52,7 @@ def begin():
 	pmx = pmxlib.read_pmx(input_filename_pmx)
 	return pmx, input_filename_pmx
 
-def dispframe_fix(pmx):
+def dispframe_fix(pmx, moreinfo=False):
 	# root group: "Root"/"Root"
 	# facial group: "表情"/"Exp"
 	
