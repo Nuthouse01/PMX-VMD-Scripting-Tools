@@ -30,6 +30,23 @@ PRINT_AFFECTED_MORPHS = False
 DELETE_NEWLY_EMPTIED_MORPHS = True
 
 
+# a vertex is removed from a morph if its total deformation is below this value
+WINNOW_THRESHOLD = 0.0003
+
+USE_EUCLIDIAN_DISTANCE = True
+
+
+helptext = '''morph_winnow:
+To reduce overall file size, this will delete vertices from vertex morphs that move imperceptibly small distances.
+This will also delete any vertex morphs that have all of their controlled vertices deleted this way.
+The default threshold is 0.0003 units. Trust me it really is imperceptible.
+'''
+
+iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_winnow.pmx"
+'''
+
+# TODO: run some heuristics with matplotlib, make a distribution graph of deformation distance so i can pick a good threshold!
+
 def begin():
 	# print info to explain the purpose of this file
 	core.MY_PRINT_FUNC("To reduce overall file size, this will delete vertices from vertex morphs that move imperceptibly small amounts.")
@@ -46,19 +63,19 @@ def begin():
 	pmx = pmxlib.read_pmx(input_filename_pmx)
 	return pmx, input_filename_pmx
 
-def morph_winnow(pmx):
-	core.MY_PRINT_FUNC("Please enter the positive threshold for values that will be reduced to 0:")
-	core.MY_PRINT_FUNC("Threshold of 0 means no change")
-	core.MY_PRINT_FUNC("Recommended threshold is 0.0001 - 0.0005. Do you really think you can see deformation smaller than this?")
-	while True:
-		# continue prompting until the user gives valid input
-		value_str = input(" Enter scale: ")
-		try:
-			value = float(value_str)
-			break
-		except ValueError:
-			# if given invalid input, prompt and loop again
-			core.MY_PRINT_FUNC("invalid number")
+def morph_winnow(pmx, moreinfo=False):
+	# core.MY_PRINT_FUNC("Please enter the positive threshold for values that will be reduced to 0:")
+	# core.MY_PRINT_FUNC("Threshold of 0 means no change")
+	# core.MY_PRINT_FUNC("Recommended threshold is 0.0001 - 0.0005. Do you really think you can see deformation smaller than this?")
+	# while True:
+	# 	# continue prompting until the user gives valid input
+	# 	value_str = input(" Enter scale: ")
+	# 	try:
+	# 		value = float(value_str)
+	# 		break
+	# 	except ValueError:
+	# 		# if given invalid input, prompt and loop again
+	# 		core.MY_PRINT_FUNC("invalid number")
 	
 	total_num_verts = 0
 	total_vert_dropped = 0
@@ -77,13 +94,20 @@ def morph_winnow(pmx):
 		total_num_verts += len(morph[4])
 		while i < len(morph[4]):
 			vert = morph[4][i]
-			vert_modify_ct = 0  # indicates how many values can be zeroed out for this vertex
-			for v in (1, 2, 3):
-				# reduce values to 0 if below threshold
-				if -value < vert[v] < value:
-					vert_modify_ct += 1
-			# if all 3 can be zeroed, then remove this vertex from this vertex morph
-			if vert_modify_ct == 3:
+			# determine if it is worth keeping or deleting
+			if USE_EUCLIDIAN_DISTANCE:
+				# first, calculate euclidian distance
+				length = core.my_euclidian_distance(vert[1:4])
+				delete_me = (length < WINNOW_THRESHOLD)
+			else:
+				vert_modify_ct = 0  # indicates how many values can be zeroed out for this vertex
+				for v in (1, 2, 3):
+					# count if below threshold
+					if -WINNOW_THRESHOLD < vert[v] < WINNOW_THRESHOLD:
+						vert_modify_ct += 1
+				# if all 3 are close to zero, then remove this vertex from this vertex morph
+				delete_me = (vert_modify_ct == 3)
+			if delete_me:
 				morph[4].pop(i)
 				this_vert_dropped += 1
 			else:
@@ -93,7 +117,7 @@ def morph_winnow(pmx):
 			morphs_now_empty.append(d)
 		# increment tracking variables
 		if this_vert_dropped != 0:
-			if PRINT_AFFECTED_MORPHS:
+			if moreinfo:
 				core.MY_PRINT_FUNC("JP: '%s'     EN: '%s'" % (morph[0], morph[1]))
 			total_morphs_affected += 1
 			total_vert_dropped += this_vert_dropped
@@ -156,7 +180,7 @@ def end(pmx, input_filename_pmx):
 
 def main():
 	pmx, name = begin()
-	pmx, is_changed = morph_winnow(pmx)
+	pmx, is_changed = morph_winnow(pmx, PRINT_AFFECTED_MORPHS)
 	if is_changed:
 		end(pmx, name)
 	core.pause_and_quit("Done with everything! Goodbye!")

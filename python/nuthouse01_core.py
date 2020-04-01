@@ -452,6 +452,9 @@ def my_projection(x, y):
 	out = [y_ * scal for y_ in y]
 	return out
 
+def my_euclidian_distance(x):
+	return math.sqrt(my_dot(x, x))
+
 def my_quat_conjugate(q):
 	return [q[0], -q[1], -q[2], -q[3]]
 

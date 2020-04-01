@@ -86,7 +86,7 @@ def rotate3d(origin, angle_quat, point_in):
 	
 	# might need to scale the point down to unit-length???
 	# i'll do it just to be safe, it couldn't hurt
-	length = math.sqrt(core.my_dot(point, point))
+	length = core.my_euclidian_distance(point)
 	if length != 0:
 		point = [p / length for p in point]
 		

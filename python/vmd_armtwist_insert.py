@@ -90,7 +90,7 @@ def swing_twist_decompose(quat_in, axis):
 	twist = [quat_in[0], p[0], p[1], p[2]]
 	
 	# twist.normalize();
-	length = math.sqrt(core.my_dot(twist, twist))
+	length = core.my_euclidian_distance(twist)
 	twist = [t / length for t in twist]
 	
 	# swing = quat_in * twist.conjugated();
@@ -148,7 +148,7 @@ def main():
 			# now have both startpoint and endpoint! find the delta!
 			delta = [b - a for a,b in zip(start_pos, end_pos)]
 			# normalize to length of 1
-			length = math.sqrt(core.my_dot(delta, delta))
+			length = core.my_euclidian_distance(delta)
 			unit = [t / length for t in delta]
 			twistbone_axes.append(unit)
 	
