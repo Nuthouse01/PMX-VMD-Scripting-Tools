@@ -6,15 +6,15 @@
 try:
 	import nuthouse01_core as core
 	import nuthouse01_pmx_parser as pmxlib
-	from _alphamorph_correct import alphamorph_correct
-	from _morph_winnow import morph_winnow
-	from _prune_invalid_faces import prune_invalid_faces
-	from _prune_unused_vertices import prune_unused_vertices
-	from _prune_unused_bones import prune_unused_bones
-	from _translate_to_english import translate_to_english
-	from _weight_cleanup import weight_cleanup
-	from _uniquify_names import uniquify_names
-	from _dispframe_fix import dispframe_fix
+	import _alphamorph_correct
+	import _morph_winnow
+	import _prune_invalid_faces
+	import _prune_unused_vertices
+	import _prune_unused_bones
+	import _translate_to_english
+	import _weight_cleanup
+	import _uniquify_names
+	import _dispframe_fix
 except ImportError as eee:
 	print(eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
@@ -53,17 +53,46 @@ def find_unattached_rigidbodies(pmx):
 
 ########################################################################################################################
 
-def begin():
+helptext = '''pmx_overall_cleanup:
+This file will run through a series of first-pass cleanup operations to fix obvious issues in a model.
+This includes: translating missing english names, correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, cleaning up display frames, and detecting issues that might cause MMD to crash.
+These operations will reduce file size (sometimes massively!) and improve overall model health & usability.
+However, these are only first-pass fixes. The model will definitely require more time and effort to search for and fix all potential issues.
+'''
+
+iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_better.pmx"
+'''
+
+def showallhelp():
 	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC("This file will run through a series of first-pass cleanup operations to fix obvious issues in a model.")
-	core.MY_PRINT_FUNC("This includes: translating missing english names, correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, cleaning up display frames, and detecting issues that might cause MMD to crash.")
-	core.MY_PRINT_FUNC("These operations will reduce file size (sometimes massively!) and improve overall model health & usability.")
-	core.MY_PRINT_FUNC("However, these are only first-pass fixes. The model will definitely require more time and effort to search for and fix all potential issues.")
-	# print info to explain what inputs it needs
-	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
-	# print info to explain what outputs it creates
-	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_better.pmx'")
-	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC(helptext)
+	core.MY_PRINT_FUNC("====================")
+	core.MY_PRINT_FUNC("====================")
+	core.MY_PRINT_FUNC("====================")
+	_prune_invalid_faces.showhelp()
+	core.MY_PRINT_FUNC("====================")
+	_prune_unused_vertices.showhelp()
+	core.MY_PRINT_FUNC("====================")
+	_prune_unused_bones.showhelp()
+	core.MY_PRINT_FUNC("====================")
+	_weight_cleanup.showhelp()
+	core.MY_PRINT_FUNC("====================")
+	_morph_winnow.showhelp()
+	core.MY_PRINT_FUNC("====================")
+	_alphamorph_correct.showhelp()
+	core.MY_PRINT_FUNC("====================")
+	_dispframe_fix.showhelp()
+	core.MY_PRINT_FUNC("====================")
+	_translate_to_english.showhelp()
+	core.MY_PRINT_FUNC("====================")
+	_uniquify_names.showhelp()
+
+def showhelp():
+	# print info to explain the purpose of this file
+	core.MY_PRINT_FUNC(helptext)
+def showprompt():
+	# print info to explain what inputs/outputs it needs/creates
+	core.MY_PRINT_FUNC(iotext)
 	
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
@@ -71,7 +100,7 @@ def begin():
 	pmx = pmxlib.read_pmx(input_filename_pmx)
 	return pmx, input_filename_pmx
 
-def pmx_overall_cleanup(pmx):
+def pmx_overall_cleanup(pmx, moreinfo=False):
 	
 	# verts after faces
 	# weights after verts, but before bones
@@ -83,31 +112,31 @@ def pmx_overall_cleanup(pmx):
 	
 	is_changed = False
 	core.MY_PRINT_FUNC(">>>> Deleting invalid faces <<<<")
-	pmx, is_changed_t = prune_invalid_faces(pmx)
+	pmx, is_changed_t = _prune_invalid_faces.prune_invalid_faces(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC(">>>> Deleting orphaned/unused vertices <<<<")
-	pmx, is_changed_t = prune_unused_vertices(pmx)
+	pmx, is_changed_t = _prune_unused_vertices.prune_unused_vertices(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC(">>>> Deleting unused bones <<<<")
-	pmx, is_changed_t = prune_unused_bones(pmx)
+	pmx, is_changed_t = _prune_unused_bones.prune_unused_bones(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC(">>>> Normalizing weights <<<<")
-	pmx, is_changed_t = weight_cleanup(pmx)
+	pmx, is_changed_t = _weight_cleanup.weight_cleanup(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC(">>>> Pruning imperceptible vertex morphs <<<<")
-	pmx, is_changed_t = morph_winnow(pmx)
+	pmx, is_changed_t = _morph_winnow.morph_winnow(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC(">>>> Fixing alphamorphs that don't account for edging <<<<")
-	pmx, is_changed_t = alphamorph_correct(pmx)
+	pmx, is_changed_t = _alphamorph_correct.alphamorph_correct(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC(">>>> Display groups that contain duplicates, empty groups, or missing bones/morphs <<<<")
-	pmx, is_changed_t = dispframe_fix(pmx)
+	pmx, is_changed_t = _dispframe_fix.dispframe_fix(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC(">>>> Fixing missing english names <<<<")
-	pmx, is_changed_t = translate_to_english(pmx)
+	pmx, is_changed_t = _translate_to_english.translate_to_english(pmx, moreinfo)
 	is_changed |= is_changed_t	# or-equals: if any component returns true, then ultimately this func returns true
 	core.MY_PRINT_FUNC(">>>> Ensuring all names in the model are unique <<<<")
-	pmx, is_changed_t = uniquify_names(pmx)
+	pmx, is_changed_t = _uniquify_names.uniquify_names(pmx, moreinfo)
 	is_changed |= is_changed_t
 
 	bad_bodies = find_unattached_rigidbodies(pmx)
@@ -143,11 +172,11 @@ def end(pmx, input_filename_pmx):
 	output_filename_pmx = input_filename_pmx[0:-4] + "_better.pmx"
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx)
-	
 	return None
 
 def main():
-	pmx, name = begin()
+	showhelp()
+	pmx, name = showprompt()
 	pmx, is_changed = pmx_overall_cleanup(pmx)
 	if is_changed:
 		end(pmx, name)

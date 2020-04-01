@@ -44,9 +44,10 @@ The default threshold is 0.0003 units. Trust me it really is imperceptible.
 iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_winnow.pmx"
 '''
 
-def begin():
+def showhelp():
 	# print info to explain the purpose of this file
 	core.MY_PRINT_FUNC(helptext)
+def showprompt():
 	# print info to explain what inputs/outputs it needs/creates
 	core.MY_PRINT_FUNC(iotext)
 	
@@ -141,15 +142,15 @@ def morph_winnow(pmx, moreinfo=False):
 	
 def end(pmx, input_filename_pmx):
 	# write out
-	output_filename_pmx = "%s_winnow.pmx" % core.get_clean_basename(input_filename_pmx)
-	# output_filename_pmx = input_filename_pmx[0:-4] + "_translate.pmx"
+	# output_filename_pmx = "%s_winnow.pmx" % core.get_clean_basename(input_filename_pmx)
+	output_filename_pmx = input_filename_pmx[0:-4] + "_winnow.pmx"
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx)
-	
 	return None
 
 def main():
-	pmx, name = begin()
+	showhelp()
+	pmx, name = showprompt()
 	pmx, is_changed = morph_winnow(pmx, PRINT_AFFECTED_MORPHS)
 	if is_changed:
 		end(pmx, name)
