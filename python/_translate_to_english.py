@@ -2,18 +2,6 @@
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-import sys
-# first, version check: verify that this is using python3
-# i don't know if it will actually work in 3.4 but i know it will fail in any python2 version
-# actually written/tested with 3.6.6 so guaranteed to work on that or higher
-# between 3.4 and 3.6, who knows
-if sys.version_info < (3, 4):
-	print("Your version of Python is too old to run this script, please update!")
-	print("Your current version = " + sys.version)
-	print("...press ENTER to exit...")
-	input()
-	exit()
-
 import re
 import unicodedata
 from time import sleep, time

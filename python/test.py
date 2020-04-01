@@ -42,8 +42,6 @@ uses the same methods as the Text() widget
 # TODO: config pyinstaller to launch without console so it cannot unexpectedly die
 
 # TODO: completely rethink all error cases, convert to throwing errors which are caught at higher level(s)
-# todo: swap args of file write functions, to (name, content)
-# todo make version check a function and/or happen only in core file?
 
 # todo: convert all print statements in all files to use core.MY_PRINT_FUNC
 # todo: break help/intro text out from "begin" functions
