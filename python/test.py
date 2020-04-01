@@ -43,7 +43,6 @@ uses the same methods as the Text() widget
 
 # TODO: completely rethink all error cases, convert to throwing errors which are caught at higher level(s)
 
-# todo: convert all print statements in all files to use core.MY_PRINT_FUNC
 # todo: break help/intro text out from "begin" functions
 # todo: switch to passing in 'debug' arg instead of global control vars
 

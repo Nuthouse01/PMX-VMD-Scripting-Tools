@@ -38,13 +38,9 @@ iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_dispfram
 
 def begin():
 	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC("This file fixes issues with display frames. Removes morphs that would crash MMD, adds any morphs/bones that aren't already added.")
-	core.MY_PRINT_FUNC("This also deletes empty display frames and ensures there are <250 morphs among all display frames, because that will crash MMD as well.")
-	# print info to explain what inputs it needs
-	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
-	# print info to explain what outputs it creates
-	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_dispframe.pmx'")
-	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC(helptext)
+	# print info to explain what inputs/outputs it needs/creates
+	core.MY_PRINT_FUNC(iotext)
 	
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")

@@ -49,13 +49,9 @@ iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_winnow.p
 
 def begin():
 	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC("To reduce overall file size, this will delete vertices from vertex morphs that move imperceptibly small amounts.")
-	core.MY_PRINT_FUNC("This will also delete any vertex morphs that have all of their controlled vertices deleted this way.")
-	# print info to explain what inputs it needs
-	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
-	# print info to explain what outputs it creates
-	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_winnow.pmx'")
-	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC(helptext)
+	# print info to explain what inputs/outputs it needs/creates
+	core.MY_PRINT_FUNC(iotext)
 	
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")

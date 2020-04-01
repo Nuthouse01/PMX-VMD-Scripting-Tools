@@ -40,13 +40,9 @@ iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_alphamor
 
 def begin():
 	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC("This file fixes improper 'material hide' morphs in a model.")
-	core.MY_PRINT_FUNC("Many models simply set the opacity to 0, but forget to zero out the edging effects or other needed fields.")
-	# print info to explain what inputs it needs
-	core.MY_PRINT_FUNC("Inputs: PMX file 'model.pmx'")
-	# print info to explain what outputs it creates
-	core.MY_PRINT_FUNC("Outputs: PMX file '[model]_alphamorph.pmx'")
-	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC(helptext)
+	# print info to explain what inputs/outputs it needs/creates
+	core.MY_PRINT_FUNC(iotext)
 	
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
