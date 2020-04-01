@@ -131,7 +131,8 @@ def main():
 		# jp bone name is at index 0
 		r = core.my_sublist_find(realbones, 0, jp_twistbones[i])
 		if r is None:
-			core.pause_and_quit("Err: twist bone '{}'({}) cannot be found model, unable to continue. Ensure they use the correct semistandard names, or edit the script to change the JP names it is looking for.".format(jp_twistbones[i], eng_twistbones[i]))
+			core.MY_PRINT_FUNC("Err: twist bone '{}'({}) cannot be found model, unable to continue. Ensure they use the correct semistandard names, or edit the script to change the JP names it is looking for.".format(jp_twistbones[i], eng_twistbones[i]))
+			raise RuntimeError()
 		if r[17] != 0:
 			# this bone DOES have fixed-axis enabled! use the unit vector in r[18]
 			twistbone_axes.append(r[18])
@@ -139,10 +140,12 @@ def main():
 			# i can infer local axis by angle from arm-to-elbow or elbow-to-wrist
 			start = core.my_sublist_find(realbones, 0, jp_sourcebones[i])
 			if start is None:
-				core.pause_and_quit("Err: semistandard bone '%s' is missing from the model, unable to infer axis of rotation" % jp_sourcebones[i])
+				core.MY_PRINT_FUNC("Err: semistandard bone '%s' is missing from the model, unable to infer axis of rotation" % jp_sourcebones[i])
+				raise RuntimeError()
 			end = core.my_sublist_find(realbones, 0, jp_pointat_bones[i])
 			if end is None:
-				core.pause_and_quit("Err: semistandard bone '%s' is missing from the model, unable to infer axis of rotation" % jp_pointat_bones[i])
+				core.MY_PRINT_FUNC("Err: semistandard bone '%s' is missing from the model, unable to infer axis of rotation" % jp_pointat_bones[i])
+				raise RuntimeError()
 			start_pos = start[2:5]
 			end_pos = end[2:5]
 			# now have both startpoint and endpoint! find the delta!
@@ -172,7 +175,8 @@ def main():
 	
 	sourcenumframes = sum([len(x) for x in all_sourcebone_frames])
 	if sourcenumframes == 0:
-		core.pause_and_quit("Err: no arm/elbow bone frames are found in the VMD, nothing for me to do!")
+		core.MY_PRINT_FUNC("Err: no arm/elbow bone frames are found in the VMD, nothing for me to do!")
+		return None, False
 	else:
 		core.MY_PRINT_FUNC("...source contains " + str(sourcenumframes) + " arm/elbow bone frames to decompose...")
 
@@ -299,5 +303,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee)
+			core.MY_PRINT_FUNC(ee.__class__.__name__, ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")

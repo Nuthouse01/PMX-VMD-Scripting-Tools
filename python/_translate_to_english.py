@@ -211,7 +211,8 @@ def actual_translate(jp_str: str) -> str:
 			core.MY_PRINT_FUNC("Google API has rejected the translate request")
 			core.MY_PRINT_FUNC("This is probably due to too many translate requests too quickly")
 			core.MY_PRINT_FUNC("Strangely, this lockout does NOT prevent you from using Google Translate thru your web browser. So go use that instead.")
-			core.pause_and_quit("Get a VPN or try again in about 1 day (TODO: CONFIRM LOCKOUT TIME)")
+			core.MY_PRINT_FUNC("Get a VPN or try again in about 1 day (TODO: CONFIRM LOCKOUT TIME)")
+			raise RuntimeError()
 	else:
 		# some other inferior free translate service called "mymemory"
 		r = jp_to_en_mymemory.translate(jp_str)
@@ -220,7 +221,8 @@ def actual_translate(jp_str: str) -> str:
 			core.MY_PRINT_FUNC(r)
 			core.MY_PRINT_FUNC("MyMemory has rejected the translate request")
 			core.MY_PRINT_FUNC("This is due to a cap on how much you can translate in a day.")
-			core.pause_and_quit("Get a VPN or try again in about 1 day")
+			core.MY_PRINT_FUNC("Get a VPN or try again in about 1 day")
+			raise RuntimeError()
 		return r
 
 

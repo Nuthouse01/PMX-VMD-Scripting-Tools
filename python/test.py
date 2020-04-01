@@ -43,15 +43,15 @@ uses the same methods as the Text() widget
 
 # TODO: completely rethink all error cases, convert to throwing errors which are caught at higher level(s)
 
-# todo: break help/intro text out from "begin" functions
-# todo: switch to passing in 'debug' arg instead of global control vars
-
 
 # todo: its obviously better to handle the translations with a grid of text boxes, instead of ugly printing and seneding to file... but its harder and less generalized...
 # what was the thing Tristan did that I was interested in? aligning the text!!
 
+# TODO: handle "mode-choice" inputs, maybe another function variable in Core that i can override?
+# TODO: handle grid presentation in translate
 
-
+# TODO: restructure the original 5 scripts to use the "begin/middle/end/main" structure
+# TODO: error wrappers in PMX parser? ugh
 
 # eventual todo: how to make this system work for the other major scripts that take different inputs? different number/type of inputs
 
@@ -69,7 +69,17 @@ import nuthouse01_core as core
 import nuthouse01_pmx_parser as pmxlib
 from os import path
 import time
+import sys
 # import pmx_overall_cleanup
+
+
+# d = {}
+# d[4] = "asdf"
+# try:
+# 	print(d[2])
+# except Exception as e:
+# 	print(e)
+# 	print(sys.exc_info())
 
 
 

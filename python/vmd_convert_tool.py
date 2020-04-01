@@ -139,17 +139,20 @@ readfrom_line = 0
 
 def check1_match_len(rawlist_text: list, target_len: int):
 	if len(rawlist_text[readfrom_line]) != target_len:
-		core.pause_and_quit("Err1: on line %d, incomplete or malformed .txt file: expected %d items but found %d" %
+		core.MY_PRINT_FUNC("Err1: on line %d, incomplete or malformed .txt file: expected %d items but found %d" %
 							(readfrom_line+1, target_len, len(rawlist_text[readfrom_line])))
+		raise RuntimeError()
 def check2_match_first_item(rawlist_text: list, label: str):
 	check1_match_len(rawlist_text, 2)
 	if rawlist_text[readfrom_line][0] != label:
-		core.pause_and_quit("Err2: on line %d, incomplete or malformed .txt file: expected '%s' in pos0" %
+		core.MY_PRINT_FUNC("Err2: on line %d, incomplete or malformed .txt file: expected '%s' in pos0" %
 							(readfrom_line + 1, label))
+		raise RuntimeError()
 def check3_match_keystr(rawlist_text: list, keystr: list):
 	if rawlist_text[readfrom_line] != keystr:
-		core.pause_and_quit("Err3: on line %d, incomplete or malformed .txt file: expected keyline '%s'" %
+		core.MY_PRINT_FUNC("Err3: on line %d, incomplete or malformed .txt file: expected keyline '%s'" %
 							(readfrom_line + 1, keystr))
+		raise RuntimeError()
 
 ########################################################################################################################
 # functions to allow reading vmd-as-txt
@@ -345,9 +348,10 @@ def read_vmdtext_ikdispframe(rawlist_text: list) -> list:
 			# this line is variable size, no simple way to check without trying to read it
 			# valid sizes are 2/4/6/8etc, so fail if it is even or if it is less than 2 items
 			if len(rawlist_text[readfrom_line]) < 2 or len(rawlist_text[readfrom_line]) % 2 == 1:
-				core.pause_and_quit(
+				core.MY_PRINT_FUNC(
 					"Err1: on line %d, incomplete or malformed .txt file: expected even# of items >= 2 but found %d" %
 					(readfrom_line + 1, len(rawlist_text[readfrom_line])))
+				raise RuntimeError()
 			l = rawlist_text[readfrom_line]
 			# need to restructure the frame before it becomes the correct nicelist format
 			ik_pairs = []
@@ -483,10 +487,9 @@ def read_vmdtext(vmdtext_filename: str) -> list:
 		F = read_vmdtext_shadowframe(vmdtext_rawlist)
 		G = read_vmdtext_ikdispframe(vmdtext_rawlist)
 	except IndexError as e:
-		core.MY_PRINT_FUNC(e)
-		core.pause_and_quit(
-			"Err: unexpected end-of-file or end-of-line, was reading from line " + str(readfrom_line + 1))
-		return []
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		core.MY_PRINT_FUNC("Err: unexpected end-of-file or end-of-line, was reading from line " + str(readfrom_line + 1))
+		raise RuntimeError()
 	
 	if readfrom_line != len(vmdtext_rawlist):
 		core.MY_PRINT_FUNC("Warning: there are unsupported trailing lines on the end of the file", readfrom_line,
@@ -635,5 +638,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call core.pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee)
+			core.MY_PRINT_FUNC(ee.__class__.__name__, ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")

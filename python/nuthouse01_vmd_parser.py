@@ -112,23 +112,39 @@ def parse_vmd_header(raw) -> list:
 	############################
 	# unpack the header, get file version and model name
 	# version only affects the length of the model name text field, but i'll return it anyway
-	header = core.my_unpack(fmt_header, raw)
+	try:
+		header = core.my_unpack(fmt_header, raw)
+	except Exception as e:
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		core.MY_PRINT_FUNC("section=header")
+		core.MY_PRINT_FUNC("Err: something went wrong while parsing, file is probably corrupt/malformed")
+		raise RuntimeError()
+	
 	if header == "Vocaloid Motion Data 0002":
 		# if this matches, this is version >= 1.30
 		# but i will just return "2"
 		version = 2
 		# model name string is 20-chars long
-		modelname = core.my_unpack(fmt_modelname_new, raw)
+		useme = fmt_modelname_new
 	elif header == "Vocaloid Motion Data file":
 		# this is actually untested & unverified, but according to the docs this is how it's labelled
 		# if this matches, this is version < 1.30
 		# but i will just return "1"
 		version = 1
 		# model name string is 10-chars long
-		modelname = core.my_unpack(fmt_modelname_old, raw)
+		useme = fmt_modelname_old
 	else:
 		core.MY_PRINT_FUNC("ERR: found unsupported file version identifier string, '%s'" % header)
-		raise ValueError()
+		raise RuntimeError()
+	
+	try:
+		modelname = core.my_unpack(useme, raw)
+	except Exception as e:
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		core.MY_PRINT_FUNC("section=modelname")
+		core.MY_PRINT_FUNC("Err: something went wrong while parsing, file is probably corrupt/malformed")
+		raise RuntimeError()
+	
 	core.MY_PRINT_FUNC("...model name   = JP:'%s'" % modelname)
 	
 	return [version, modelname]
@@ -149,41 +165,50 @@ def parse_vmd_boneframe(raw) -> (list, dict):
 	core.MY_PRINT_FUNC("...# of boneframes          = %d" % boneframe_ct)
 	last_progress = -1
 	for z in range(boneframe_ct):
-		# unpack the bone-frame into variables
-		(bname_str, f, xp, yp, zp, xrot_q, yrot_q, zrot_q, wrot_q) = core.my_unpack(fmt_boneframe_no_interpcurve, raw)
-		# break inter_curve into its individual pieces, knowing that the 3rd and 4th bytes in line1 are overwritten with phys
-		# therefore we need to get their data from line2 which is left-shifted by 1 byte, but otherwise a copy
-		(x_ax, y_ax, phys1, phys2, x_ay, y_ay, z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by,
-		 z_ax, r_ax) = core.my_unpack(fmt_boneframe_interpcurve, raw)
-		# convert the quaternion angles to euler angles
-		(xrot, yrot, zrot) = core.quaternion_to_euler([wrot_q, xrot_q, yrot_q, zrot_q])
-		# interpret the physics enable/disable bytes
-		if (phys1, phys2) == (z_ax, r_ax):
-			# if they match the values they should be, they were never overwritten in the first place???
-			phys_off = False
-		elif (phys1, phys2) == (0, 0):
-			# phys stays on
-			phys_off = False
-		elif (phys1, phys2) == (99, 15):
-			# phys turns off
-			phys_off = True
-		else:
-			core.MY_PRINT_FUNC("Warning: found unusual values where I expected to find physics enable/disable! Assuming this means physics off")
-			core.MY_PRINT_FUNC(bname_str, "f=", str(f), "(phys1,phys2)=", str((phys1, phys2)))
-			phys_off = True
-		# store them all on the list
-		# create a list to hold all the boneframe data, then append it onto the return-list
-		this_boneframe = [bname_str, f, xp, yp, zp, xrot, yrot, zrot, phys_off, x_ax, y_ax, z_ax, r_ax, x_ay, y_ay,
-						  z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by]
-		boneframe_list.append(this_boneframe)
-		# update the bonedict
-		# new idea: mask out the boilerplate unused frames! if time=0 and value=0, then its not "used" so dont count it
-		if f != 0 or [xp, yp, zp] != [0, 0, 0] or [xrot_q, yrot_q, zrot_q, wrot_q] != [0, 0, 0, 1]:
-			core.increment_occurance_dict(bonedict, bname_str)
-		# display progress printouts
-		if z > last_progress:
-			last_progress += 1000
-			core.print_progress_oneline(z, boneframe_ct)
+		try:
+			# unpack the bone-frame into variables
+			(bname_str, f, xp, yp, zp, xrot_q, yrot_q, zrot_q, wrot_q) = core.my_unpack(fmt_boneframe_no_interpcurve, raw)
+			# break inter_curve into its individual pieces, knowing that the 3rd and 4th bytes in line1 are overwritten with phys
+			# therefore we need to get their data from line2 which is left-shifted by 1 byte, but otherwise a copy
+			(x_ax, y_ax, phys1, phys2, x_ay, y_ay, z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by,
+			 z_ax, r_ax) = core.my_unpack(fmt_boneframe_interpcurve, raw)
+			# convert the quaternion angles to euler angles
+			(xrot, yrot, zrot) = core.quaternion_to_euler([wrot_q, xrot_q, yrot_q, zrot_q])
+			# interpret the physics enable/disable bytes
+			if (phys1, phys2) == (z_ax, r_ax):
+				# if they match the values they should be, they were never overwritten in the first place???
+				phys_off = False
+			elif (phys1, phys2) == (0, 0):
+				# phys stays on
+				phys_off = False
+			elif (phys1, phys2) == (99, 15):
+				# phys turns off
+				phys_off = True
+			else:
+				core.MY_PRINT_FUNC("Warning: found unusual values where I expected to find physics enable/disable! Assuming this means physics off")
+				core.MY_PRINT_FUNC(bname_str, "f=", str(f), "(phys1,phys2)=", str((phys1, phys2)))
+				phys_off = True
+			# store them all on the list
+			# create a list to hold all the boneframe data, then append it onto the return-list
+			this_boneframe = [bname_str, f, xp, yp, zp, xrot, yrot, zrot, phys_off, x_ax, y_ax, z_ax, r_ax, x_ay, y_ay,
+							  z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by]
+			boneframe_list.append(this_boneframe)
+			# update the bonedict
+			# new idea: mask out the boilerplate unused frames! if time=0 and value=0, then its not "used" so dont count it
+			if f != 0 or [xp, yp, zp] != [0, 0, 0] or [xrot_q, yrot_q, zrot_q, wrot_q] != [0, 0, 0, 1]:
+				core.increment_occurance_dict(bonedict, bname_str)
+			# display progress printouts
+			if z > last_progress:
+				last_progress += 1000
+				core.print_progress_oneline(z, boneframe_ct)
+		except Exception as e:
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
+			core.MY_PRINT_FUNC("frame=", z)
+			core.MY_PRINT_FUNC("totalframes=", boneframe_ct)
+			core.MY_PRINT_FUNC("section=boneframe")
+			core.MY_PRINT_FUNC("Err: something went wrong while parsing, file is probably corrupt/malformed")
+			raise RuntimeError()
+
 	
 	if len(bonedict) > 0:
 		core.MY_PRINT_FUNC("...# of unique bones        = %d" % len(bonedict))
@@ -206,19 +231,27 @@ def parse_vmd_morphframe(raw) -> (list, dict):
 	core.MY_PRINT_FUNC("...# of morphframes         = %d" % morphframe_ct)
 	last_progress = -1
 	for z in range(morphframe_ct):
-		# unpack the morphframe
-		(mname_str, f, v) = core.my_unpack(fmt_morphframe, raw)
-		morphframe_list.append([mname_str, f, v])
-		
-		# update the morphdict
-		# new idea: mask out the boilerplate unused frames! if time=0 and value=0, then its not "used" so dont count it
-		if f != 0 or v != 0:
-			core.increment_occurance_dict(morphdict, mname_str)
-		# display progress printouts
-		if z > last_progress:
-			last_progress += 1000
-			core.print_progress_oneline(z, morphframe_ct)
-	
+		try:
+			# unpack the morphframe
+			(mname_str, f, v) = core.my_unpack(fmt_morphframe, raw)
+			morphframe_list.append([mname_str, f, v])
+			
+			# update the morphdict
+			# new idea: mask out the boilerplate unused frames! if time=0 and value=0, then its not "used" so dont count it
+			if f != 0 or v != 0:
+				core.increment_occurance_dict(morphdict, mname_str)
+			# display progress printouts
+			if z > last_progress:
+				last_progress += 1000
+				core.print_progress_oneline(z, morphframe_ct)
+		except Exception as e:
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
+			core.MY_PRINT_FUNC("frame=", z)
+			core.MY_PRINT_FUNC("totalframes=", morphframe_ct)
+			core.MY_PRINT_FUNC("section=morphframe")
+			core.MY_PRINT_FUNC("Err: something went wrong while parsing, file is probably corrupt/malformed")
+			raise RuntimeError()
+
 	if len(morphdict) > 0:
 		core.MY_PRINT_FUNC("...# of unique morphs       = %d" % len(morphdict))
 	
@@ -236,22 +269,29 @@ def parse_vmd_camframe(raw) -> list:
 	core.MY_PRINT_FUNC("...# of camframes           = %d" % camframe_ct)
 	last_progress = -1
 	for z in range(camframe_ct):
-		# unpack into variables
-		(f, d, xp, yp, zp, xr, yr, zr,
-		 x_ax, x_bx, x_ay, x_by, y_ax, y_bx, y_ay, y_by, z_ax, z_bx, z_ay, z_by, r_ax, r_bx, r_ay, r_by,
-		 dist_ax, dist_bx, dist_ay, dist_by, ang_ax, ang_bx, ang_ay, ang_by,
-		 fov, per) = core.my_unpack(fmt_camframe, raw)
-		# print(x_ax, x_ay, x_bx, x_by)
-		# dont forget radians to degrees
-		this_camframe = [f, d, xp, yp, zp, math.degrees(xr), math.degrees(yr), math.degrees(zr), x_ax, x_bx, x_ay,
-						 x_by, y_ax, y_bx, y_ay, y_by, z_ax, z_bx, z_ay, z_by, r_ax, r_bx, r_ay, r_by, dist_ax,
-						 dist_bx, dist_ay, dist_by, ang_ax, ang_bx, ang_ay, ang_by, fov, per]
-		camframe_list.append(this_camframe)
-		# display progress printouts
-		if z > last_progress:
-			last_progress += 1000
-			core.print_progress_oneline(z, camframe_ct)
-	
+		try:
+			# unpack into variables
+			(f, d, xp, yp, zp, xr, yr, zr,
+			 x_ax, x_bx, x_ay, x_by, y_ax, y_bx, y_ay, y_by, z_ax, z_bx, z_ay, z_by, r_ax, r_bx, r_ay, r_by,
+			 dist_ax, dist_bx, dist_ay, dist_by, ang_ax, ang_bx, ang_ay, ang_by,
+			 fov, per) = core.my_unpack(fmt_camframe, raw)
+			# dont forget radians to degrees
+			this_camframe = [f, d, xp, yp, zp, math.degrees(xr), math.degrees(yr), math.degrees(zr), x_ax, x_bx, x_ay,
+							 x_by, y_ax, y_bx, y_ay, y_by, z_ax, z_bx, z_ay, z_by, r_ax, r_bx, r_ay, r_by, dist_ax,
+							 dist_bx, dist_ay, dist_by, ang_ax, ang_bx, ang_ay, ang_by, fov, per]
+			camframe_list.append(this_camframe)
+			# display progress printouts
+			if z > last_progress:
+				last_progress += 1000
+				core.print_progress_oneline(z, camframe_ct)
+		except Exception as e:
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
+			core.MY_PRINT_FUNC("frame=", z)
+			core.MY_PRINT_FUNC("totalframes=", camframe_ct)
+			core.MY_PRINT_FUNC("section=camframe")
+			core.MY_PRINT_FUNC("Err: something went wrong while parsing, file is probably corrupt/malformed")
+			raise RuntimeError()
+
 	return camframe_list
 
 def parse_vmd_lightframe(raw) -> list:
@@ -265,12 +305,20 @@ def parse_vmd_lightframe(raw) -> list:
 	lightframe_ct = core.my_unpack(fmt_number, raw)
 	core.MY_PRINT_FUNC("...# of lightframes         = %d" % lightframe_ct)
 	for i in range(lightframe_ct):
-		(f, r, g, b, x, y, z) = core.my_unpack(fmt_lightframe, raw)
-		# the r g b actually come back as floats, representing (int)/256
-		# i wanna put them in the textformat as ints tho
-		this_lightframe = [f, round(r * 256), round(g * 256), round(b * 256), x, y, z]
-		lightframe_list.append(this_lightframe)
-	
+		try:
+			(f, r, g, b, x, y, z) = core.my_unpack(fmt_lightframe, raw)
+			# the r g b actually come back as floats, representing (int)/256
+			# i wanna put them in the textformat as ints tho
+			this_lightframe = [f, round(r * 256), round(g * 256), round(b * 256), x, y, z]
+			lightframe_list.append(this_lightframe)
+		except Exception as e:
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
+			core.MY_PRINT_FUNC("frame=", i)
+			core.MY_PRINT_FUNC("totalframes=", lightframe_ct)
+			core.MY_PRINT_FUNC("section=lightframe")
+			core.MY_PRINT_FUNC("Err: something went wrong while parsing, file is probably corrupt/malformed")
+			raise RuntimeError()
+
 	return lightframe_list
 
 def parse_vmd_shadowframe(raw) -> list:
@@ -285,11 +333,19 @@ def parse_vmd_shadowframe(raw) -> list:
 	shadowframe_ct = core.my_unpack(fmt_number, raw)
 	core.MY_PRINT_FUNC("...# of shadowframes        = %d" % shadowframe_ct)
 	for i in range(shadowframe_ct):
-		(f, m, v) = core.my_unpack(fmt_shadowframe, raw)
-		v = round(10000 - (v * 100000))
-		# stored as 0.0 to 0.1 ??? why would it use this range!? also its range-inverted
-		# [0,9999] -> [0.1, 0.0]
-		shadowframe_list.append([f, m, v])
+		try:
+			(f, m, v) = core.my_unpack(fmt_shadowframe, raw)
+			v = round(10000 - (v * 100000))
+			# stored as 0.0 to 0.1 ??? why would it use this range!? also its range-inverted
+			# [0,9999] -> [0.1, 0.0]
+			shadowframe_list.append([f, m, v])
+		except Exception as e:
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
+			core.MY_PRINT_FUNC("frame=", i)
+			core.MY_PRINT_FUNC("totalframes=", shadowframe_ct)
+			core.MY_PRINT_FUNC("section=shadowframe")
+			core.MY_PRINT_FUNC("Err: something went wrong while parsing, file is probably corrupt/malformed")
+			raise RuntimeError()
 	return shadowframe_list
 
 def parse_vmd_ikdispframe(raw) -> list:
@@ -304,15 +360,23 @@ def parse_vmd_ikdispframe(raw) -> list:
 	ikdispframe_ct = core.my_unpack(fmt_number, raw)
 	core.MY_PRINT_FUNC("...# of ik/disp frames      = %d" % ikdispframe_ct)
 	for i in range(ikdispframe_ct):
-		(f, disp, numbones) = core.my_unpack(fmt_ikdispframe, raw)
-		# want to print it to file in the old way tho
-		maybe_ik_bones = []
-		for j in range(numbones):
-			#(ikname, enable)
-			templist = core.my_unpack(fmt_ikframe, raw)
-			maybe_ik_bones.append(templist)
-		this_ikdisp = [f, disp, maybe_ik_bones]
-		ikdispframe_list.append(this_ikdisp)
+		try:
+			(f, disp, numbones) = core.my_unpack(fmt_ikdispframe, raw)
+			# want to print it to file in the old way tho
+			maybe_ik_bones = []
+			for j in range(numbones):
+				#(ikname, enable)
+				templist = core.my_unpack(fmt_ikframe, raw)
+				maybe_ik_bones.append(templist)
+			this_ikdisp = [f, disp, maybe_ik_bones]
+			ikdispframe_list.append(this_ikdisp)
+		except Exception as e:
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
+			core.MY_PRINT_FUNC("frame=",i)
+			core.MY_PRINT_FUNC("totalframes=",ikdispframe_ct)
+			core.MY_PRINT_FUNC("section=ikdispframe")
+			core.MY_PRINT_FUNC("Err: something went wrong while parsing, file is probably corrupt/malformed")
+			raise RuntimeError()
 	return ikdispframe_list
 
 ########################################################################################################################
@@ -358,12 +422,12 @@ def encode_vmd_boneframe(nice) -> bytearray:
 			output += core.my_pack(fmt_boneframe_no_interpcurve, frame[0:5] + quat)
 			# then, create one line of the interpolation curve (last 16 values of frame obj)
 			interp = core.my_pack(fmt_boneframe_interpcurve_oneline, frame[-16:])
-		except struct.error as e:
-			core.MY_PRINT_FUNC(e)
+		except Exception as e:
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
 			core.MY_PRINT_FUNC("section=boneframe")
-			core.pause_and_quit("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
-			return bytearray()
+			core.MY_PRINT_FUNC("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
+			raise RuntimeError()
 		# returns bytes, convert to bytearray for easier appending into this
 		interp = bytearray(interp)
 		# do the dumb copy-and-shift thing to rebuild the original 4-line structure of redundant bytes
@@ -396,11 +460,12 @@ def encode_vmd_morphframe(nice) -> bytearray:
 	for i, frame in enumerate(nice):
 		try:
 			output += core.my_pack(fmt_morphframe, frame)
-		except struct.error as e:
-			core.MY_PRINT_FUNC(e)
+		except Exception as e:
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
 			core.MY_PRINT_FUNC("section=morphframe")
-			core.pause_and_quit("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
+			core.MY_PRINT_FUNC("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
+			raise RuntimeError()
 
 		# print a progress update every so often just because
 		if i > last_progress:
@@ -422,11 +487,12 @@ def encode_vmd_camframe(nice) -> bytearray:
 		xyz_rads = [math.radians(frame[5]), math.radians(frame[6]), math.radians(frame[7])]
 		try:
 			output += core.my_pack(fmt_camframe, frame[:5] + xyz_rads + frame[8:])
-		except struct.error as e:
-			core.MY_PRINT_FUNC(e)
+		except Exception as e:
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
 			core.MY_PRINT_FUNC("section=camframe")
-			core.pause_and_quit("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
+			core.MY_PRINT_FUNC("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
+			raise RuntimeError()
 		
 		# progress thing just because
 		if i > last_progress:
@@ -450,11 +516,12 @@ def encode_vmd_lightframe(nice) -> bytearray:
 		frame[3] = frame[3] / 256
 		try:
 			output += core.my_pack(fmt_lightframe, frame)
-		except struct.error as e:
-			core.MY_PRINT_FUNC(e)
+		except Exception as e:
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
 			core.MY_PRINT_FUNC("section=lightframe")
-			core.pause_and_quit("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
+			core.MY_PRINT_FUNC("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
+			raise RuntimeError()
 	return output
 
 def encode_vmd_shadowframe(nice) -> bytearray:
@@ -471,11 +538,12 @@ def encode_vmd_shadowframe(nice) -> bytearray:
 		frame[2] = (10000 - frame[2]) / 100000
 		try:
 			output += core.my_pack(fmt_shadowframe, frame)
-		except struct.error as e:
-			core.MY_PRINT_FUNC(e)
+		except Exception as e:
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
 			core.MY_PRINT_FUNC("section=shadowframe")
-			core.pause_and_quit("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
+			core.MY_PRINT_FUNC("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
+			raise RuntimeError()
 
 	return output
 
@@ -494,11 +562,12 @@ def encode_vmd_ikdispframe(nice) -> bytearray:
 			# for each ikbone listed in the template:
 			for z in frame[2]:
 				output += core.my_pack(fmt_ikframe, z)
-		except struct.error as e:
-			core.MY_PRINT_FUNC(e)
+		except Exception as e:
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
 			core.MY_PRINT_FUNC("section=ikdispframe")
-			core.pause_and_quit("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
+			core.MY_PRINT_FUNC("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
+			raise RuntimeError()
 
 	return output
 
@@ -651,5 +720,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call core.pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee)
+			core.MY_PRINT_FUNC(ee.__class__.__name__, ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")

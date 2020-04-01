@@ -117,7 +117,8 @@ def build_bonechain(allbones, endbone):
 	while True:
 		r = core.my_sublist_find(allbones, 0, nextbone)
 		if r is None:
-			core.pause_and_quit("Err: unable to find '" + nextbone + "' in input file, unable to build parentage chain")
+			core.MY_PRINT_FUNC("Err: unable to find '" + nextbone + "' in input file, unable to build parentage chain")
+			raise RuntimeError()
 		# 0 = bname, 5 = parent index, 234 = xyz position
 		nextbone = allbones[r[5]][0]
 		newrow = Bone(r[0], r[2], r[3], r[4])
@@ -164,7 +165,8 @@ def main():
 		assert bonechain_l[-1].name == jp_lefttoe
 		assert bonechain_l[-2].name == jp_leftfoot
 	except AssertionError:
-		core.pause_and_quit("Err: unexpected structure found for foot/toe bones, verify semistandard names and structure")
+		core.MY_PRINT_FUNC("Err: unexpected structure found for foot/toe bones, verify semistandard names and structure")
+		raise RuntimeError()
 		
 	# then walk down these 2 lists, add each name to a set: build union of all relevant bones
 	relevant_bones = set()
@@ -188,14 +190,16 @@ def main():
 		assert bonechain_ikl[-1].name == jp_lefttoe_ik
 		assert bonechain_ikl[-2].name == jp_leftfoot_ik
 	except AssertionError:
-		core.pause_and_quit("Err: unexpected structure found for foot/toe IK bones, verify semistandard names and structure")
+		core.MY_PRINT_FUNC("Err: unexpected structure found for foot/toe IK bones, verify semistandard names and structure")
+		raise RuntimeError()
 
 	# verify that the bonechains are symmetric in length
 	try:
 		assert len(bonechain_l) == len(bonechain_r)
 		assert len(bonechain_ikl) == len(bonechain_ikr)
 	except AssertionError:
-		core.pause_and_quit("Err: unexpected structure found, model is not left-right symmetric")
+		core.MY_PRINT_FUNC("Err: unexpected structure found, model is not left-right symmetric")
+		raise RuntimeError()
 
 	# determine how many levels of parentage, this value "t" should hold the first level where they are no longer shared
 	t = 0
@@ -436,5 +440,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee)
+			core.MY_PRINT_FUNC(ee.__class__.__name__, ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")

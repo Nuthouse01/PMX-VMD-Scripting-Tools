@@ -221,8 +221,8 @@ def get_unused_file_name(initial_name: str) -> str:
 		else:
 			test_name = basename + str(append_num) + extension
 	# if it hits here, it tried 1,000 file names and none of them worked
-	pause_and_quit("Err: unable to find unused variation of '" + initial_name + "' for file-write")
-	return ""
+	MY_PRINT_FUNC("Err: unable to find unused variation of '%s' for file-write" % initial_name)
+	raise RuntimeError()
 
 def get_persistient_storage_path(filename="") -> str:
 	# for writing to the "appdata" directory to preserve info between multiple runs of the script, from any location
@@ -295,8 +295,9 @@ def write_rawlist_to_txt(name, content, use_jis_encoding=False, quiet=False):
 			with open(name, "w", encoding="utf-8") as my_file:
 				my_file.write(writeme)
 	except IOError as e:
-		MY_PRINT_FUNC(e)
-		pause_and_quit("Err: unable to write TXT file '" + name + "', maybe its a permissions issue?")
+		MY_PRINT_FUNC(e.__class__.__name__, e)
+		MY_PRINT_FUNC("Err: unable to write TXT file '%s', maybe its a permissions issue?" % name)
+		raise RuntimeError()
 
 
 def read_txt_to_rawlist(input_filename, use_jis_encoding=False, quiet=False):
@@ -313,8 +314,9 @@ def read_txt_to_rawlist(input_filename, use_jis_encoding=False, quiet=False):
 			with open(input_filename, "r", encoding="utf-8") as my_file:
 				rb_unicode = my_file.read()
 	except IOError as e:
-		MY_PRINT_FUNC(e)
-		pause_and_quit("Err: error wile reading '" + input_filename + "', maybe you typed it wrong?")
+		MY_PRINT_FUNC(e.__class__.__name__, e)
+		MY_PRINT_FUNC("Err: error wile reading '%s', maybe you typed it wrong?" % input_filename)
+		raise RuntimeError()
 	# break rb_unicode into a list object
 	rb_list = rb_unicode.splitlines()
 	# set up the csv reader object
@@ -325,8 +327,10 @@ def read_txt_to_rawlist(input_filename, use_jis_encoding=False, quiet=False):
 		for row in reader:
 			csv_content.append(row)
 	except csv.Error as e:
+		MY_PRINT_FUNC(e.__class__.__name__, e)
 		MY_PRINT_FUNC("file {}, line {}: {}".format(input_filename, reader.line_num, e))
-		pause_and_quit("Err: malformed CSV format in the text file prevented parsing from text to list form, check your commas")
+		MY_PRINT_FUNC("Err: malformed CSV format in the text file prevented parsing from text to list form, check your commas")
+		raise RuntimeError()
 	# ideally the csv reader should detect what type each thing is but the encoding is making it all fucky
 	# so, just read everything in as a string i guess, then build a new list 'data' where all the types are correct
 	data = []
@@ -372,8 +376,9 @@ def write_bytes_to_binfile(name, content, quiet=False):
 		with open(name, "wb") as my_file:
 			my_file.write(content)
 	except IOError as e:
-		MY_PRINT_FUNC(e)
-		pause_and_quit("Err: unable to write binary file '" + name + "', maybe its a permissions issue?")
+		MY_PRINT_FUNC(e.__class__.__name__, e)
+		MY_PRINT_FUNC("Err: unable to write binary file '%s', maybe its a permissions issue?" % name)
+		raise RuntimeError()
 
 
 def read_binfile_to_bytes(input_filename, quiet=False):
@@ -388,8 +393,9 @@ def read_binfile_to_bytes(input_filename, quiet=False):
 			# dump from file into variable in memory
 			raw = file.read()
 	except IOError as e:
-		MY_PRINT_FUNC(e)
-		pause_and_quit("Err: error wile reading '" + input_filename + "', maybe you typed it wrong?")
+		MY_PRINT_FUNC(e.__class__.__name__, e)
+		MY_PRINT_FUNC("Err: error wile reading '%s', maybe you typed it wrong?" % input_filename)
+		raise RuntimeError()
 	return bytearray(raw)
 
 
@@ -734,9 +740,11 @@ def encode_string_with_escape(a: str) -> bytearray:
 		try:
 			return bytearray(new_a, UNPACKER_ENCODING)	# no escape char: convert from str to bytearray the standard way
 		except UnicodeEncodeError as e:
-			MY_PRINT_FUNC(e)
-			MY_PRINT_FUNC("warning: serious encoding problem")
-			return bytearray()
+			MY_PRINT_FUNC(e.__class__.__name__, e)
+			MY_PRINT_FUNC("encode_string_with_escape")
+			newerrstr = "err=" + str(e) + "\nstr=" + str(a) + "\nencoding=" + str(UNPACKER_ENCODING)
+			newerr = RuntimeError(newerrstr)
+			raise newerr
 
 def my_t_format_partitioning(fmt:str) -> (tuple, None):
 	# return the indexes within fmt string that produce a slice containing exactly the "t" atom and any preceding numbers
@@ -800,9 +808,13 @@ def unpack_other(fmt:str, raw:bytearray) -> list:
 		autofmt = "<" + fmt
 		r = struct.unpack_from(autofmt, raw, UNPACKER_READFROM_BYTE)
 		UNPACKER_READFROM_BYTE += struct.calcsize(autofmt)	# increment the global read-from tracker
-	except struct.error as e:
-		MY_PRINT_FUNC(e)
-		pause_and_quit("Err: something went wrong while parsing, file is probably corrupt/malformed")
+	except Exception as e:
+		MY_PRINT_FUNC(e.__class__.__name__, e)
+		MY_PRINT_FUNC("unpack_other")
+		# repackage the error to add additional info and throw it again to be caught at a higher level
+		newerrstr = "err=" + str(e) + "\nfmt=" + fmt + "\nbytepos=" + str(UNPACKER_READFROM_BYTE)
+		newerr = RuntimeError(newerrstr)
+		raise newerr
 	# convert from tuple to list
 	return list(r)
 
@@ -831,9 +843,13 @@ def unpack_text(fmt:str, raw:bytearray) -> list:
 			i = r.find(b'\x00')									# look for a null terminator
 			if i != -1:											# if null is found...
 				r = r[0:i]										# ...return only bytes before it
-	except struct.error as e:
-		MY_PRINT_FUNC(e)
-		pause_and_quit("Err: something went wrong while parsing, file is probably corrupt/malformed, bytepos = " + str(UNPACKER_READFROM_BYTE))
+	except Exception as e:
+		MY_PRINT_FUNC(e.__class__.__name__, e)
+		MY_PRINT_FUNC("unpack_text")
+		# repackage the error to add additional info and throw it again to be caught at a higher level
+		newerrstr = "err=" + str(e) + "\nfmt=" + fmt + "\nbytepos=" + str(UNPACKER_READFROM_BYTE)
+		newerr = RuntimeError(newerrstr)
+		raise newerr
 	# r is now a bytearray that should be mappable onto a string, unless it is cut off mid-multibyte-char
 	s = decode_bytes_with_escape(r)
 	# translated string is now in s (maybe with the escape char tacked on)
@@ -896,32 +912,36 @@ def pack_other(fmt: str, args: list) -> bytearray:
 	try:
 		b = struct.pack("<" + fmt, *args)	# now do the actual packing
 		return bytearray(b)
-	except struct.error as e:
+	except Exception as e:
+		MY_PRINT_FUNC(e.__class__.__name__, e)
+		MY_PRINT_FUNC("pack_other")
 		# repackage the error to add additional info and throw it again to be caught at a higher level
 		newerrstr = "err=" + str(e) + "\nfmt=" + fmt + "\nargs=" + str(args)
-		newerr = struct.error(newerrstr)
+		newerr = RuntimeError(newerrstr)
 		raise newerr
 
 def pack_text(fmt: str, args: list) -> bytearray:
 	# input fmt string is exactly either "t" or "#t" or "##t", etc
 	# input args list is list of exactly 1 string
-	n = encode_string_with_escape(args[0])		# convert str to bytearray
-	if fmt == "t":			# auto-text
-		# "t" means "i ##s" where ##=i. convert to bytearray, measure len, replace t with "i ##s"
-		autofmt = "<i" + str(len(n)) + "s"
-		autoargs = [len(n), n]
-	else:					# manual-text
-		autofmt = fmt[:-1] + "s"				# simply replace trailing t with s
-		autoargs = [n]
-		
 	try:
+		n = encode_string_with_escape(args[0])		# convert str to bytearray
+		if fmt == "t":			# auto-text
+			# "t" means "i ##s" where ##=i. convert to bytearray, measure len, replace t with "i ##s"
+			autofmt = "<i" + str(len(n)) + "s"
+			autoargs = [len(n), n]
+		else:					# manual-text
+			autofmt = fmt[:-1] + "s"				# simply replace trailing t with s
+			autoargs = [n]
+		
 		b = struct.pack(autofmt, *autoargs)		# now do the actual packing
 		return bytearray(b)
-	except struct.error as e:
+	except Exception as e:
+		MY_PRINT_FUNC(e.__class__.__name__, e)
+		MY_PRINT_FUNC("pack_text")
 		# repackage the error to add additional info and throw it again to be caught at a higher level
 		# these are the args before replacing t with s, and before converting strings to bytearrays
 		newerrstr = "err=" + str(e) + "\nfmt=" + fmt + "\nargs=" + str(args)
-		newerr = struct.error(newerrstr)
+		newerr = RuntimeError(newerrstr)
 		raise newerr
 
 if __name__ == '__main__':
