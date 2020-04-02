@@ -203,6 +203,7 @@ def actual_translate(jp_str: str) -> str:
 			r = jp_to_en_google.translate(jp_str, dest="en")  # auto
 			return r.text
 		except Exception as e:
+			print(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("error")
 			if hasattr(e, "doc"):
 				core.MY_PRINT_FUNC("Response from Google:")
@@ -313,6 +314,9 @@ def translate_to_english(pmx, moreinfo=False):
 		# for each entry:
 		for i, item in enumerate(category):
 			# jp=0,en=1
+			# strip away newline and return just in case, i saw a few examples where they showed up
+			item[0] = item[0].replace('\r','').replace('\n','')
+			item[1] = item[1].replace('\r','').replace('\n','')
 			jp_name = item[0]
 			en_name = item[1]
 			# second, translate en name
@@ -354,7 +358,6 @@ def translate_to_english(pmx, moreinfo=False):
 		pmx[0][2] = new_en_name
 		
 	
-	# TODO: maybe MMD needs/wants \r\n line ends? reconsider!
 	
 	# comment(jp=3,en=4)
 	comment_state = 0
@@ -507,6 +510,7 @@ def translate_to_english(pmx, moreinfo=False):
 				pmx[0][2] = str(en_new)
 			if i == 4:  # model comment
 				# also un-escape the newlines
+				# TODO: maybe MMD needs/wants \r\n line ends? reconsider!
 				pmx[0][4] = str(en_new).replace(NEWLINE_ESCAPE_CHAR, '\n')
 		else:
 			pmx[cat_id][i][1] = str(en_new)
