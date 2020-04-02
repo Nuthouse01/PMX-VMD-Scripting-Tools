@@ -3,7 +3,7 @@
 #####################
 
 import re
-from time import sleep, time
+from time import time
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -26,9 +26,9 @@ except ImportError as eee:
 DEBUG = False
 
 
-# if true, use the good Google Translate service
-# if false use the worse but less restrictive MyMemory translate service
-USE_GOOGLE_TRANSLATE = True
+# # if true, use the good Google Translate service
+# # if false use the worse but less restrictive MyMemory translate service
+# USE_GOOGLE_TRANSLATE = True
 
 
 # when this is true, it doesn't even attempt online translation. this way you can kinda run the script when
@@ -60,19 +60,19 @@ except ImportError as eee:
 	print(eee)
 	print("ERROR: failed to import primary translation provider library 'googletrans'")
 	print("Please install this library with 'pip install googletrans'")
-	print("Switching to backup provider MyMemory in library 'translate'")
-	USE_GOOGLE_TRANSLATE = False
+	# print("Switching to backup provider MyMemory in library 'translate'")
+	# USE_GOOGLE_TRANSLATE = False
 	googletrans = None
 
-try:
-	import translate
-	# jp_to_en_mymemory = Translator(provider="mymemory", to_lang="en", from_lang="autodetect")  # doesn't work?
-	jp_to_en_mymemory = translate.Translator(provider="mymemory", to_lang="en", from_lang="ja")
-except ImportError as eee:
-	print(eee)
-	print("ERROR: failed to import backup translation provider library 'translate'")
-	print("Please install this library with 'pip install translate'")
-	translate = None
+# try:
+# 	import translate
+# 	# jp_to_en_mymemory = Translator(provider="mymemory", to_lang="en", from_lang="autodetect")  # doesn't work?
+# 	jp_to_en_mymemory = translate.Translator(provider="mymemory", to_lang="en", from_lang="ja")
+# except ImportError as eee:
+# 	print(eee)
+# 	print("ERROR: failed to import backup translation provider library 'translate'")
+# 	print("Please install this library with 'pip install translate'")
+# 	translate = None
 
 
 ################################################################################################################
@@ -167,24 +167,22 @@ def bulk_translate(jp_list: list) -> list:
 	start_idx = 0
 	while start_idx < len(jp_list):
 		core.print_progress_oneline(start_idx, len(jp_list))
-		if USE_GOOGLE_TRANSLATE:
-			# if start_idx != 0:  # sleep 1sec each query except the first, to prevent google from getting mad
-			# 	sleep(1)
-			input_list = jp_list[start_idx:start_idx + TRANSLATE_MAX_LINES_PER_REQUEST]
-			bigstr = "\n".join(input_list)
-			bigresult = actual_translate(bigstr)
-			result_list = bigresult.split("\n")
-			if len(result_list) != len(input_list):
-				core.MY_PRINT_FUNC("Warning: translation messed up and merged some lines, please manually fix the bad outputs")
-				core.MY_PRINT_FUNC(len(result_list), len(input_list), result_list)
-				result_list = ["error"] * len(input_list)
-			retme += result_list
-			start_idx += TRANSLATE_MAX_LINES_PER_REQUEST
-		else:
-			# mymemory limit is # of words, not # of transactions, so there's no reason to join them together
-			# this way is slower, however
-			retme.append(actual_translate(jp_list[start_idx]))
-			start_idx += 1
+		# if USE_GOOGLE_TRANSLATE:
+		input_list = jp_list[start_idx:start_idx + TRANSLATE_MAX_LINES_PER_REQUEST]
+		bigstr = "\n".join(input_list)
+		bigresult = actual_translate(bigstr)
+		result_list = bigresult.split("\n")
+		if len(result_list) != len(input_list):
+			core.MY_PRINT_FUNC("Warning: translation messed up and merged some lines, please manually fix the bad outputs")
+			core.MY_PRINT_FUNC(len(result_list), len(input_list), result_list)
+			result_list = ["error"] * len(input_list)
+		retme += result_list
+		start_idx += TRANSLATE_MAX_LINES_PER_REQUEST
+		# else:
+		# 	# mymemory limit is # of words, not # of transactions, so there's no reason to join them together
+		# 	# this way is slower, however
+		# 	retme.append(actual_translate(jp_list[start_idx]))
+		# 	start_idx += 1
 	return retme
 
 
@@ -192,36 +190,36 @@ def actual_translate(jp_str: str) -> str:
 	# acutally send a single string to Google for translation
 	if DISABLE_INTERNET_TRANSLATE:
 		return jp_str
-	if USE_GOOGLE_TRANSLATE:
-		# google translate
-		try:
-			# TODO: is it better to specify jap, or to use autodetect?
-			# r = jp_to_en_google.translate(jp_str, dest="en", src="ja")  # jap
-			r = jp_to_en_google.translate(jp_str, dest="en")  # auto
-			return r.text
-		except Exception as e:
-			print(e.__class__.__name__, e)
-			core.MY_PRINT_FUNC("error")
-			if hasattr(e, "doc"):
-				core.MY_PRINT_FUNC("Response from Google:")
-				core.MY_PRINT_FUNC(e.doc.split("\n")[7])
-				core.MY_PRINT_FUNC(e.doc.split("\n")[9])
-			core.MY_PRINT_FUNC("Google API has rejected the translate request")
-			core.MY_PRINT_FUNC("This is probably due to too many translate requests too quickly")
-			core.MY_PRINT_FUNC("Strangely, this lockout does NOT prevent you from using Google Translate thru your web browser. So go use that instead.")
-			core.MY_PRINT_FUNC("Get a VPN or try again in about 1 day (TODO: CONFIRM LOCKOUT TIME)")
-			raise RuntimeError()
-	else:
-		# some other inferior free translate service called "mymemory"
-		r = jp_to_en_mymemory.translate(jp_str)
-		if "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY" in r:
-			core.MY_PRINT_FUNC("")
-			core.MY_PRINT_FUNC(r)
-			core.MY_PRINT_FUNC("MyMemory has rejected the translate request")
-			core.MY_PRINT_FUNC("This is due to a cap on how much you can translate in a day.")
-			core.MY_PRINT_FUNC("Get a VPN or try again in about 1 day")
-			raise RuntimeError()
-		return r
+	# if USE_GOOGLE_TRANSLATE:
+	# google translate
+	try:
+		# TODO: is it better to specify jap, or to use autodetect?
+		# r = jp_to_en_google.translate(jp_str, dest="en", src="ja")  # jap
+		r = jp_to_en_google.translate(jp_str, dest="en")  # auto
+		return r.text
+	except Exception as e:
+		print(e.__class__.__name__, e)
+		core.MY_PRINT_FUNC("error")
+		if hasattr(e, "doc"):
+			core.MY_PRINT_FUNC("Response from Google:")
+			core.MY_PRINT_FUNC(e.doc.split("\n")[7])
+			core.MY_PRINT_FUNC(e.doc.split("\n")[9])
+		core.MY_PRINT_FUNC("Google API has rejected the translate request")
+		core.MY_PRINT_FUNC("This is probably due to too many translate requests too quickly")
+		core.MY_PRINT_FUNC("Strangely, this lockout does NOT prevent you from using Google Translate thru your web browser. So go use that instead.")
+		core.MY_PRINT_FUNC("Get a VPN or try again in about 1 day (TODO: CONFIRM LOCKOUT TIME)")
+		raise RuntimeError()
+	# else:
+	# 	# some other inferior free translate service called "mymemory"
+	# 	r = jp_to_en_mymemory.translate(jp_str)
+	# 	if "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY" in r:
+	# 		core.MY_PRINT_FUNC("")
+	# 		core.MY_PRINT_FUNC(r)
+	# 		core.MY_PRINT_FUNC("MyMemory has rejected the translate request")
+	# 		core.MY_PRINT_FUNC("This is due to a cap on how much you can translate in a day.")
+	# 		core.MY_PRINT_FUNC("Get a VPN or try again in about 1 day")
+	# 		raise RuntimeError()
+	# 	return r
 
 
 def fix_eng_name(name_jp: str, name_en: str) -> (str, None):
@@ -395,20 +393,19 @@ def translate_to_english(pmx, moreinfo=False):
 		num_calls = (len(translate_queue) // TRANSLATE_MAX_LINES_PER_REQUEST) + 1 + (comment_state == 1)
 		core.MY_PRINT_FUNC("Making %d requests to Google Translate web API..." % num_calls)
 		
-		global USE_GOOGLE_TRANSLATE
+		global DISABLE_INTERNET_TRANSLATE
 		
 		if not check_translate_budget(num_calls):
-			# shift over to mymemory provider and continue if google is full
-			core.MY_PRINT_FUNC("Switching from GoogleTranslate (preferred) to MyMemory (backup), expect slower translation and worse results")
-			USE_GOOGLE_TRANSLATE = False
 			# no need to print failing statement, the function already does
-			return pmx, False
+			# shift over to mymemory provider and continue if google is full
+			core.MY_PRINT_FUNC("Just copying JP onto EN while Google Translate is disabled")
+			DISABLE_INTERNET_TRANSLATE = False
 		
 		core.MY_PRINT_FUNC("Beginning translation, this may take several seconds")
-		if USE_GOOGLE_TRANSLATE:
-			core.MY_PRINT_FUNC("Using Google Translate web API for translations")
-		else:
-			core.MY_PRINT_FUNC("Using MyMemory free translate service for translation")
+		# if USE_GOOGLE_TRANSLATE:
+		# 	core.MY_PRINT_FUNC("Using Google Translate web API for translations")
+		# else:
+		# 	core.MY_PRINT_FUNC("Using MyMemory free translate service for translation")
 		
 		# now bulk-translate all the strings that are queued
 		results = bulk_translate(translate_queue)
