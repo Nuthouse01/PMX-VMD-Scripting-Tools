@@ -37,10 +37,6 @@ USE_GOOGLE_TRANSLATE = True
 DISABLE_INTERNET_TRANSLATE = False
 
 
-# newlines in model comment get replaced with this when writing to "proposed_translations.txt"
-NEWLINE_ESCAPE_CHAR = "§"
-
-
 # to reduce the number of translation requests, a list of strings is joined into one string broken by newlines
 # hopefully that counts as "fewer requests" for google's API
 # tho in testing, sometimes translations produce different results if on their own vs in a newline list... oh well
@@ -53,6 +49,8 @@ TRANSLATE_BUDGET_MAX_REQUESTS = 80
 # how long (hours) is the timeframe to protect
 # true timeframe is ~1 hr so enforce limit of ~1.2hr just to be safe
 TRANSLATE_BUDGET_TIMEFRAME = 1.2
+
+
 
 
 # set up the acutal translator libraries & objects
@@ -171,8 +169,8 @@ def bulk_translate(jp_list: list) -> list:
 	while start_idx < len(jp_list):
 		core.print_progress_oneline(start_idx, len(jp_list))
 		if USE_GOOGLE_TRANSLATE:
-			if start_idx != 0:  # sleep 1sec each query except the first, to prevent google from getting mad
-				sleep(1)
+			# if start_idx != 0:  # sleep 1sec each query except the first, to prevent google from getting mad
+			# 	sleep(1)
 			input_list = jp_list[start_idx:start_idx + TRANSLATE_MAX_LINES_PER_REQUEST]
 			bigstr = "\n".join(input_list)
 			bigresult = actual_translate(bigstr)
@@ -361,9 +359,7 @@ def translate_to_english(pmx, moreinfo=False):
 	
 	# comment(jp=3,en=4)
 	comment_state = 0
-	comment_jp_clean = ""
-	commentline_print = []
-	commentline_write = []
+	comment_jp_clean = "" # the thing that is given to translate, if needed
 	new_en_name = fix_eng_name(pmx[0][3], pmx[0][4])
 	if new_en_name is None:
 		# googletrans is required, store and translate in bulk later
@@ -373,6 +369,8 @@ def translate_to_english(pmx, moreinfo=False):
 		# comment = pmx[0][3].replace("\n", NEWLINE_ESCAPE_CHAR)
 		comment_jp_clean = pmx[0][3].replace("\r", "")  # delete these linereturn chars
 		comment_jp_clean = re.sub(r'\n\n+', r'\n\n', comment_jp_clean)  # collapse multiple newlines to just 2
+		commentline_print = [label_dict[0], "4", "google", "OLD EN:", "too_long", "NEW EN:", "too_long_to_print", "JP:","too_long"]
+		translate_maps.append(commentline_print)
 		# comment = comment.replace("\n", NEWLINE_ESCAPE_CHAR)
 		# new_en_name = actual_translate(comment)
 		# translate_queue.append(comment)
@@ -383,138 +381,90 @@ def translate_to_english(pmx, moreinfo=False):
 		# DOES get printed (as too_long_to_print), DOES go to translation file (newlines replaced with something) as it is now
 		# apply change & store in list for future printing
 		commentline_print = [label_dict[0], "4", "local", "OLD EN:", "too_long", "NEW EN:", "too_long_to_print", "JP:", "too_long"]
-		comment_jp_write = pmx[0][3].replace("\r", "").replace("\n", NEWLINE_ESCAPE_CHAR)
-		comment_en_old_write = pmx[0][4].replace("\r", "").replace("\n", NEWLINE_ESCAPE_CHAR)
-		comment_en_new_write = new_en_name.replace("\r", "").replace("\n", NEWLINE_ESCAPE_CHAR)
-		commentline_write = [label_dict[0], "4", "local", "OLD EN:", comment_en_old_write, "NEW EN:", comment_en_new_write, "JP:", comment_jp_write]
+		translate_maps.append(commentline_print)
 		pmx[0][4] = new_en_name
 	
-	# return having changed nothing IF translate_queue is empty, translate_budget fails, or user declines
+	# return having changed nothing IF translate_queue is empty, translate_budget fails
 	
-	if (not translate_queue) and (comment_state == 0):
+	if (not translate_queue) and (not translate_maps) and (comment_state == 0):
 		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
 	
 	# num + 1 + 1(if translating comment)
 	num_items = len(translate_queue) + (comment_state == 1)
-	num_calls = (len(translate_queue) // TRANSLATE_MAX_LINES_PER_REQUEST) + 1 + (comment_state == 1)
 	core.MY_PRINT_FUNC("Identified %d items that need Internet translation" % num_items)
-	core.MY_PRINT_FUNC("Making %d requests to Google Translate web API..." % num_calls)
-	
-	global USE_GOOGLE_TRANSLATE
-	
-	if not check_translate_budget(num_calls):
-		# shift over to mymemory provider and continue if google is full
-		core.MY_PRINT_FUNC("Switching from GoogleTranslate (preferred) to MyMemory (backup), expect slower translation and worse results")
-		USE_GOOGLE_TRANSLATE = False
-		# no need to print failing statement, the function already does
-		return pmx, False
-	
-	core.MY_PRINT_FUNC("Beginning translation, this may take several seconds")
-	if USE_GOOGLE_TRANSLATE:
-		core.MY_PRINT_FUNC("Using Google Translate web API for translations")
-	else:
-		core.MY_PRINT_FUNC("Using MyMemory free translate service for translation")
+	if num_items:
+		num_calls = (len(translate_queue) // TRANSLATE_MAX_LINES_PER_REQUEST) + 1 + (comment_state == 1)
+		core.MY_PRINT_FUNC("Making %d requests to Google Translate web API..." % num_calls)
 		
-	# now bulk-translate all the strings that are queued
-	results = bulk_translate(translate_queue)
-	# then assemble these results into the translate_map entries, but DON'T APPLY THE RESULTS!
-	for new_en_name, queue_idx in zip(results, translate_queue_idx):
-		(cat_id, i) = queue_idx
-		# special case for the header things
-		if cat_id == 0:
-			if i == 2:  # modelname
-				newlist = [label_dict[cat_id], str(i), "google", "OLD EN:", pmx[0][2], "NEW EN:", new_en_name, "JP:", pmx[0][1]]
-				translate_maps.append(newlist)
+		global USE_GOOGLE_TRANSLATE
+		
+		if not check_translate_budget(num_calls):
+			# shift over to mymemory provider and continue if google is full
+			core.MY_PRINT_FUNC("Switching from GoogleTranslate (preferred) to MyMemory (backup), expect slower translation and worse results")
+			USE_GOOGLE_TRANSLATE = False
+			# no need to print failing statement, the function already does
+			return pmx, False
+		
+		core.MY_PRINT_FUNC("Beginning translation, this may take several seconds")
+		if USE_GOOGLE_TRANSLATE:
+			core.MY_PRINT_FUNC("Using Google Translate web API for translations")
 		else:
-			newlist = [label_dict[cat_id], str(i), "google", "OLD EN:", pmx[cat_id][i][1], "NEW EN:", new_en_name, "JP:", pmx[cat_id][i][0]]
-			translate_maps.append(newlist)
-	# translate_maps is used for both printing and writing
-
-	# if comment needs translated, do that separately
-	if comment_state == 1:
-		# already removed linereturn and collapsed newlines, ready to go
-		newcomment = actual_translate(comment_jp_clean)
-		commentline_print = [label_dict[0], "4", "google", "OLD EN:", "too_long", "NEW EN:", "too_long_to_print", "JP:", "too_long"]
-		comment_jp_write = comment_jp_clean.replace("\n", NEWLINE_ESCAPE_CHAR)
-		comment_en_old_write = pmx[0][4].replace("\r", "").replace("\n", NEWLINE_ESCAPE_CHAR)
-		comment_en_new_write = newcomment.replace("\r", "").replace("\n", NEWLINE_ESCAPE_CHAR)
-		commentline_write = [label_dict[0], "4", "google", "OLD EN:", comment_en_old_write, "NEW EN:", comment_en_new_write, "JP:", comment_jp_write]
-
+			core.MY_PRINT_FUNC("Using MyMemory free translate service for translation")
+		
+		# now bulk-translate all the strings that are queued
+		results = bulk_translate(translate_queue)
+		# then assemble these results into the translate_map entries
+		# also do apply the results
+		for new_en_name, queue_idx in zip(results, translate_queue_idx):
+			(cat_id, i) = queue_idx
+			# special case for the header things
+			if cat_id == 0:
+				if i == 2:  # modelname
+					newlist = [label_dict[cat_id], str(i), "google", "OLD EN:", pmx[0][2], "NEW EN:", new_en_name, "JP:", pmx[0][1]]
+					translate_maps.append(newlist)
+					pmx[cat_id][i] = new_en_name
+			else:
+				newlist = [label_dict[cat_id], str(i), "google", "OLD EN:", pmx[cat_id][i][1], "NEW EN:", new_en_name, "JP:", pmx[cat_id][i][0]]
+				translate_maps.append(newlist)
+				pmx[cat_id][i][1] = new_en_name
+		# translate_maps is used for both printing and writing
+		
+		# if comment needs translated, do that separately
+		if comment_state == 1:
+			# already removed linereturn and collapsed newlines, ready to go
+			newcomment = actual_translate(comment_jp_clean)
+			pmx[0][4] = newcomment
+	
 	# done translating!!
-
+	
 	# now i use comment_state to know how to handle the comment
-	# and i use commentline_print and _write to print it and write it
 	
 	#######################################
 	# next stage is writing and printing, then wait for approval
 	# printing requires formatting so things display in nice columns
-	core.MY_PRINT_FUNC("Found %d instances where renaming was needed:" % (len(translate_maps) + (comment_state != 0)))
+	core.MY_PRINT_FUNC("Found and fixed %d instances where renaming was needed" % len(translate_maps))
 	
-	# find max width of each column:
-	width = [0] * 9
-	for i in range(len(commentline_print)):
-		width[i] = max(width[i], string_width_cjk(commentline_print[i]))
-	for tmap in translate_maps:
-		for i in range(9):
-			width[i] = max(width[i], string_width_cjk(tmap[i]))
-	# now pretty-print the proposed list of translations:
-	for tmap in translate_maps:
-		args = []
-		# python's formatting tool doesn't play nice with odd-width chars so I'll do it manually
-		for i in range(9):
-			if i==5 or i==3:
-				continue
-			if i in (4,6,8):
-				args.append(my_string_pad("'" + tmap[i] + "'", width[i]))
-			else:
-				args.append(my_string_pad(tmap[i], width[i]))
-		core.MY_PRINT_FUNC("{}{} {} | EN: {} --> {} | {} {}".format(*args))
-	if comment_state != 0:
-		# pretend this was part of the list all along
-		args = []
-		# python's formatting tool doesn't play nice with odd-width chars so I'll do it manually
-		for i in range(9):
-			if i==5 or i==3:
-				continue
-			args.append(my_string_pad(commentline_print[i], width[i]))
-		core.MY_PRINT_FUNC("{}{} {} | EN: {} --> {} | {} {}".format(*args))
+	if moreinfo:
+		# find max width of each column:
+		width = [0] * 9
+		for tmap in translate_maps:
+			for i in range(9):
+				width[i] = max(width[i], string_width_cjk(tmap[i]))
+		# now pretty-print the proposed list of translations:
+		for tmap in translate_maps:
+			args = []
+			# python's formatting tool doesn't play nice with odd-width chars so I'll do it manually
+			for i in range(9):
+				if i==5 or i==3:
+					continue
+				if i in (4,6,8):
+					args.append(my_string_pad("'" + tmap[i] + "'", width[i]+2))
+				else:
+					args.append(my_string_pad(tmap[i], width[i]))
+			core.MY_PRINT_FUNC("{}{} {} | EN: {} --> {} | {} {}".format(*args))
 	
-	# write
-	writelist = list(translate_maps)
-	if comment_state != 0:
-		writelist.append(commentline_write)
-	core.write_rawlist_to_txt("proposed_translate.txt", writelist)
 	
-	# ask for approval
-	core.MY_PRINT_FUNC("Wait here and open 'proposed_translate.txt' for better display of JP chars or to manually edit the translation mapping")
-	core.MY_PRINT_FUNC("Do you accept these new names?  1 = Yes, 2 = No (abort)")
-	r = core.prompt_user_choice((1,2))
-	if r == 2:
-		core.MY_PRINT_FUNC("Aborting: no names were changed")
-		return pmx, False
-
-	###########################################
-	# user has accepted the translations!!!
-	# read back the proposed translation file
-	readlist = core.read_txt_to_rawlist("proposed_translate.txt", quiet=True)
-	
-	# parse and apply what was read from the file
-	for line in readlist:
-		# unpack
-		(cat_label, i, dum1, dum2, en_old, dum3, en_new, dum4, jp_name) = line
-		cat_id = inv_label_dict[cat_label]
-		# special case for the header things
-		if cat_id == 0:
-			if i == 2:  # modelname
-				pmx[0][2] = str(en_new)
-			if i == 4:  # model comment
-				# also un-escape the newlines
-				# TODO: maybe MMD needs/wants \r\n line ends? reconsider!
-				pmx[0][4] = str(en_new).replace(NEWLINE_ESCAPE_CHAR, '\n')
-		else:
-			pmx[cat_id][i][1] = str(en_new)
-		
 	return pmx, True
 	
 def end(pmx, input_filename_pmx):
