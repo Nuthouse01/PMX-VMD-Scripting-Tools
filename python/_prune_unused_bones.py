@@ -138,7 +138,7 @@ def identify_unused_bones(pmx):
 	
 	
 	# fourth: mark the "exception" bones as "used" if they are in the model
-	for d,bone in pmx[5]:
+	for d,bone in enumerate(pmx[5]):
 		# look up the jp name of this bone
 		if bone[0] in BONES_TO_PROTECT:
 			used_bones.add(d)
