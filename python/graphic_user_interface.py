@@ -1,34 +1,4 @@
 
-''' tk_scrolledtext101.py
-explore Tkinter's ScrolledText widget
-inside the edit_space use
-ctrl+c to copy, ctrl+x to cut selected text,
-ctrl+v to paste, and ctrl+a to select all
-uses the same methods as the Text() widget
-'''
-
-
-
-
-# one/two buttons for load PMX/VMD
-
-# "RUN" button
-
-# bigass scrolltext where I print everything
-
-# translate: build an actual grid within a popup containing editable text fields?
-# input: translate confirm/deny (buttons below popup)
-# input: morph winnow threshold
-# debug checkbox
-
-
-# button invokes begin: prompt for name & load
-# "run" invokes the meat of the script
-# "help" button prints all the help info... or opens a popup?
-
-
-# how do I make this look good?
-
 #############################
 # basic size = ~6k
 # size with translate ~10k
@@ -39,41 +9,13 @@ uses the same methods as the Text() widget
 #############################
 
 
-# TODO: config pyinstaller to launch without console so it cannot unexpectedly die
+# pyinstaller --onefile --noconsole GUI_pmx_overall_cleanup.py
 
-
-# todo: its obviously better to handle the translations with a grid of text boxes, instead of ugly printing and seneding to file... but its harder and less generalized...
-# what was the thing Tristan did that I was interested in? aligning the text!!
-
-# TODO: handle "mode-choice" inputs, maybe another function variable in Core that i can override?
-# TODO: handle grid presentation in translate
 
 # TODO: restructure the original 5 scripts to use the "begin/middle/end/main" structure
 # TODO: error wrappers in PMX parser? ugh
 
 # eventual todo: how to make this system work for the other major scripts that take different inputs? different number/type of inputs
-
-
-# execute must be separate from write so that they can be chained!
-
-# standalone main:
-# help
-# prompt
-# execute
-# write
-# pause_and_quit
-
-# gui help:
-# help
-
-# gui run:
-# execute
-# write
-
-
-
-
-
 
 try:
 	# for Python2
@@ -88,13 +30,13 @@ import tkinter.filedialog as fdg
 import nuthouse01_core as core
 import nuthouse01_pmx_parser as pmxlib
 from os import path
-import pmx_overall_cleanup
 import copy
 
 
 
 
 # # a popupwindow to replace the stock "input()" function
+
 # def gui_input(prompt=''):
 # 	win = tk.Toplevel()
 #
@@ -121,8 +63,6 @@ import copy
 # 	win.destroy()
 #
 # 	return userinput
-
-
 
 
 
@@ -255,6 +195,7 @@ class Application(tk.Frame):
 			return
 		if is_changed:
 			try:
+				core.MY_PRINT_FUNC("\n" + ("=" * 20))
 				self.writeout_func(result, self.pmxpath)
 			except Exception as e:
 				core.MY_PRINT_FUNC(e.__class__.__name__, e)

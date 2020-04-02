@@ -146,7 +146,7 @@ def pmx_overall_cleanup(pmx, moreinfo=False):
 		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ")
 		core.MY_PRINT_FUNC("Warning: this model contains rigidbodies that aren't anchored to any bones")
-		core.MY_PRINT_FUNC("This won't crash MMD but it is definitely a mistake that needs corrected")
+		core.MY_PRINT_FUNC("This won't crash MMD but it is probably a mistake that needs corrected")
 		core.MY_PRINT_FUNC("The following bodies are unanchored: ", bad_bodies)
 		core.MY_PRINT_FUNC("")
 	
