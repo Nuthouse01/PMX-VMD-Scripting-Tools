@@ -3,7 +3,6 @@
 #####################
 
 import re
-import unicodedata
 from time import sleep, time
 
 # second, wrap custom imports with a try-except to catch it if files are missing
@@ -145,16 +144,16 @@ def contains_jap_chars(text) -> bool:
 	# print("False;", str(text))
 	return False
 
-
-def num_doublewide_chars(string: str) -> int:
-	return sum((unicodedata.east_asian_width(c) in "WF") for c in string)
-
-def string_width_cjk(string: str) -> int:
-	return len(string) + num_doublewide_chars(string)
+# import unicodedata
+# def num_doublewide_chars(string: str) -> int:
+# 	return sum((unicodedata.east_asian_width(c) in "WF") for c in string)
+#
+# def string_width_cjk(string: str) -> int:
+# 	return len(string) + num_doublewide_chars(string)
 
 def my_string_pad(string: str, width: int) -> str:
 	# how big does it already print as?
-	currsize = string_width_cjk(string)
+	currsize = len(string)
 	# therefore I need to append this many spaces
 	padnum = width - currsize
 	if padnum <= 0:
@@ -256,7 +255,6 @@ def fix_eng_name(name_jp: str, name_en: str) -> (str, None):
 helptext = '''translate_to_english:
 This tool fills out empty EN names in a PMX model with translated versions of the JP names.
 Machine translation is never 100% reliable, so this is only a stopgap measure to eliminate all the 'Null_##'s and wrongly-encoded garbage and make it easier to use in MMD. A bad translation is better than none at all!
-You can review and manually edit the translated names before they are applied to the model.
 Also, Google Translate only permits ~100 requests per hour, if you exceed this rate you will be locked out for 24 hours (TODO: CONFIRM LOCKOUT TIME)
 But my script has a built in limiter that will prevent you from translating if you would exceed the 100-per-hr limit.
 '''
@@ -450,7 +448,7 @@ def translate_to_english(pmx, moreinfo=False):
 		width = [0] * 9
 		for tmap in translate_maps:
 			for i in range(9):
-				width[i] = max(width[i], string_width_cjk(tmap[i]))
+				width[i] = max(width[i], len(tmap[i]))
 		# now pretty-print the proposed list of translations:
 		for tmap in translate_maps:
 			args = []
