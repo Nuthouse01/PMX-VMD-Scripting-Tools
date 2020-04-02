@@ -211,6 +211,7 @@ class Application(tk.Frame):
 		
 		core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
 		core.MY_PRINT_FUNC("Begin by loading an input file, then click 'Run'")
+		core.MY_PRINT_FUNC("Click 'Help' to print out details of what the script does")
 		
 		# done with init
 		return
@@ -319,9 +320,9 @@ def launch_gui(title, help_func, run_func, writeout_func, UIconfig):
 
 
 if __name__ == '__main__':
-	launch_gui("PMX Overall Cleanup",
-			   pmx_overall_cleanup.showallhelp,
-			   pmx_overall_cleanup.pmx_overall_cleanup,
-			   pmx_overall_cleanup.end,
-			   ("pmx",))
+	launch_gui("Do not execute this file directly, this is imported by other modules",
+			   None,
+			   None,
+			   None,
+			   tuple())
 

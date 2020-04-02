@@ -66,6 +66,7 @@ iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_better.p
 
 def showallhelp():
 	# print info to explain the purpose of this file
+	core.MY_PRINT_FUNC("="*20)
 	core.MY_PRINT_FUNC(helptext)
 	core.MY_PRINT_FUNC("="*20)
 	core.MY_PRINT_FUNC("="*20)
