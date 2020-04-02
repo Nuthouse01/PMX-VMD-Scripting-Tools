@@ -22,8 +22,8 @@ except ImportError as eee:
 	input()
 	exit()
 	core = pmxlib = None
-	alphamorph_correct = morph_winnow = prune_unused_vertices = prune_invalid_faces = translate_to_english = None
-	weight_cleanup = uniquify_names = prune_unused_bones = dispframe_fix = None
+	_alphamorph_correct = _morph_winnow = _prune_unused_vertices = _prune_invalid_faces = _translate_to_english = None
+	_weight_cleanup = _uniquify_names = _prune_unused_bones = _dispframe_fix = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -67,25 +67,25 @@ iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_better.p
 def showallhelp():
 	# print info to explain the purpose of this file
 	core.MY_PRINT_FUNC(helptext)
-	core.MY_PRINT_FUNC("====================")
-	core.MY_PRINT_FUNC("====================")
-	core.MY_PRINT_FUNC("====================")
+	core.MY_PRINT_FUNC("="*20)
+	core.MY_PRINT_FUNC("="*20)
+	core.MY_PRINT_FUNC("="*20)
 	_prune_invalid_faces.showhelp()
-	core.MY_PRINT_FUNC("====================")
+	core.MY_PRINT_FUNC("="*20)
 	_prune_unused_vertices.showhelp()
-	core.MY_PRINT_FUNC("====================")
+	core.MY_PRINT_FUNC("="*20)
 	_prune_unused_bones.showhelp()
-	core.MY_PRINT_FUNC("====================")
+	core.MY_PRINT_FUNC("="*20)
 	_weight_cleanup.showhelp()
-	core.MY_PRINT_FUNC("====================")
+	core.MY_PRINT_FUNC("="*20)
 	_morph_winnow.showhelp()
-	core.MY_PRINT_FUNC("====================")
+	core.MY_PRINT_FUNC("="*20)
 	_alphamorph_correct.showhelp()
-	core.MY_PRINT_FUNC("====================")
+	core.MY_PRINT_FUNC("="*20)
 	_dispframe_fix.showhelp()
-	core.MY_PRINT_FUNC("====================")
+	core.MY_PRINT_FUNC("="*20)
 	_translate_to_english.showhelp()
-	core.MY_PRINT_FUNC("====================")
+	core.MY_PRINT_FUNC("="*20)
 	_uniquify_names.showhelp()
 
 def showhelp():
@@ -143,6 +143,7 @@ def pmx_overall_cleanup(pmx, moreinfo=False):
 	bad_bodies = find_unattached_rigidbodies(pmx)
 	if bad_bodies:
 		core.MY_PRINT_FUNC("")
+		core.MY_PRINT_FUNC("! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ")
 		core.MY_PRINT_FUNC("Warning: this model contains rigidbodies that aren't anchored to any bones")
 		core.MY_PRINT_FUNC("This won't crash MMD but it is definitely a mistake that needs corrected")
 		core.MY_PRINT_FUNC("The following bodies are unanchored: ", bad_bodies)
@@ -156,12 +157,11 @@ def pmx_overall_cleanup(pmx, moreinfo=False):
 		core.MY_PRINT_FUNC("CRITICAL WARNING: this model contains invalid joints which WILL cause MMD to crash!")
 		core.MY_PRINT_FUNC("These must be manually deleted or repaired using PMXE")
 		core.MY_PRINT_FUNC("The following joints are invalid: ", crashing_joints)
-		core.MY_PRINT_FUNC("! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ")
 		core.MY_PRINT_FUNC("")
 
 	core.MY_PRINT_FUNC(">>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<")
 	if not is_changed:
-		core.MY_PRINT_FUNC(">>>> OVERALL RESULT: No changes are required <<<<")
+		core.MY_PRINT_FUNC(">>>> OVERALL RESULT: No writeback required <<<<")
 	else:
 		core.MY_PRINT_FUNC(">>>> Done with overall cleanup procedures <<<<")
 	

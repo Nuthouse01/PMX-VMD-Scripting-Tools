@@ -41,8 +41,6 @@ uses the same methods as the Text() widget
 
 # TODO: config pyinstaller to launch without console so it cannot unexpectedly die
 
-# TODO: completely rethink all error cases, convert to throwing errors which are caught at higher level(s)
-
 
 # todo: its obviously better to handle the translations with a grid of text boxes, instead of ugly printing and seneding to file... but its harder and less generalized...
 # what was the thing Tristan did that I was interested in? aligning the text!!
@@ -54,6 +52,28 @@ uses the same methods as the Text() widget
 # TODO: error wrappers in PMX parser? ugh
 
 # eventual todo: how to make this system work for the other major scripts that take different inputs? different number/type of inputs
+
+
+# execute must be separate from write so that they can be chained!
+
+# standalone main:
+# help
+# prompt
+# execute
+# write
+# pause_and_quit
+
+# gui help:
+# help
+
+# gui run:
+# execute
+# write
+
+
+
+
+
 
 try:
 	# for Python2
@@ -70,7 +90,8 @@ import nuthouse01_pmx_parser as pmxlib
 from os import path
 import time
 import sys
-# import pmx_overall_cleanup
+import pmx_overall_cleanup
+import copy
 
 
 # d = {}
@@ -88,27 +109,81 @@ class Application(tk.Frame):
 	def __init__(self, master):
 		tk.Frame.__init__(self, master)
 		
-		# paramaters: payload function, output filename suffix, what kind of input buttons,
+		###############################################
+		# first, handle input parameters
+		# parameters: help function, payload function, writeout function, what kind of input buttons (pmx, vmd, txt)
 		
+		self.help_func =     pmx_overall_cleanup.showallhelp
+		self.run_func =      pmx_overall_cleanup.pmx_overall_cleanup
+		self.writeout_func = pmx_overall_cleanup.end
+		self.UIconfig = ("pmx",)
+		# UI config: do you want a pmx button? do you want a vmd button? do you want both? do you want a txt button?
+		
+		###############################################
+		# second, set up other non-ui class members
+		# this variable is used in this new print function
+		self.last_print_was_progress = False
+		self.pmx_input = []
+		self.vmd_input = []
+		self.txt_input = []
+		self.pmxpath = ""
+		self.vmdpath = ""
+		self.txtpath = ""
+		
+		###############################################
+		# third, build the GUI buttons and etc
+		
+		if "pmx" in self.UIconfig:
+			self.pmx_frame = tk.Frame(master, relief=tk.RAISED, borderwidth=1)
+			self.pmx_frame.pack(side=tk.TOP, fill='x', padx=10, pady=10)
+			
+			# load PMX
+			self.pmx_butt = tk.Button(self.pmx_frame, text="Load PMX", width=10, command=self.get_pmx_file)
+			self.pmx_butt.pack(side=tk.LEFT, padx=10, pady=10)
+			# load PMX label
+			self.pmx_label = tk.Label(self.pmx_frame, text="PMX: ----")
+			self.pmx_label.pack(side=tk.LEFT, fill='x')
+			
+		if "vmd" in self.UIconfig:
+			self.vmd_frame = tk.Frame(master, relief=tk.RAISED, borderwidth=1)
+			self.vmd_frame.pack(side=tk.TOP, padx=10, pady=10)
+			
+			# load vmd
+			self.vmd_butt = tk.Button(self.vmd_frame, text="Load VMD", width=10, command=self.dummy)
+			self.vmd_butt.pack(side=tk.LEFT, padx=10, pady=10)
+			# load vmd label
+			self.vmd_label = tk.Label(self.vmd_frame, text="VMD: ----")
+			self.vmd_label.pack(side=tk.LEFT, fill='x')
+		
+		
+		self.always_frame = tk.Frame(master, relief=tk.RAISED, borderwidth=1)
+		self.always_frame.pack(side=tk.TOP, fill='x', padx=10, pady=10)
+		
+		# "run" button is disabled until a valid combination of inputs is loaded
+		self.run_butt = tk.Button(self.always_frame, text="RUN", width=10, command=self.do_the_thing)
+		self.run_butt.pack(side=tk.LEFT, padx=10, pady=10)
+		self.run_butt.configure(state='disabled')
+		
+		# help
+		self.help_butt = tk.Button(self.always_frame, text="Help", width=10, command=self.help_func)
+		self.help_butt.pack(side=tk.LEFT, padx=10, pady=10)
+		
+		# debug checkbox
+		self.debug_check_var = tk.IntVar()
+		self.debug_check = tk.Checkbutton(self.always_frame, text="show extra info", variable=self.debug_check_var)
+		self.debug_check.pack(side=tk.RIGHT, padx=10, pady=10)
+		
+		# self.debug_check.
 		# # frame = tk.Frame(master, bg='brown')
 		# frame = tk.Frame(master)
 		# frame.pack(fill='both', expand='yes')
-		
-		self.last_print_was_progress = False
-		
-		self.payload_func = None
-
-		self.basename = ""
-		self.pmx = []
-		self.is_debug = 0
-		self.out_suffix = "better"
-		
-		# build the "scrolledtext" object to serve as my output terminal
+		###############################################
+		# fourth, build the "scrolledtext" object to serve as my output terminal
 		self.edit_space = tkst.ScrolledText(
 			master=master,
 			wrap='word',  # wrap text at full words only
-			width=25,  # characters
-			height=10,  # text lines
+			width=100,  # characters
+			height=25,  # text lines
 			bg='beige'  # background color of edit area
 		)
 		self.edit_space.pack(fill='both', expand=True, padx=8, pady=8)
@@ -127,25 +202,8 @@ class Application(tk.Frame):
 		'''
 		core.MY_PRINT_FUNC(mytext)
 		
-		# "run" button is disabled until a valid PMX is loaded
-		self.run_butt = tk.Button(master, text="RUN", width=10, command=self.do_the_thing)
-		self.run_butt.pack(side=tk.LEFT, padx=10, pady=10)
-		self.run_butt.configure(state='disabled')
-		
-		self.load_butt = tk.Button(master, text="Load", width=10, command=self.get_pmx_file)
-		self.load_butt.pack(side=tk.LEFT, padx=10, pady=10)
-		
-		self.load_label = tk.Label(master, text="PMX: ----")
-		self.load_label.pack()
-		
-		self.help_butt = tk.Button(master, text="help", width=10, command=self.get_pmx_file)
-		self.help_butt.pack(side=tk.LEFT, padx=10, pady=10)
-		
-		
-		self.debug_check_var = tk.IntVar()
-		self.debug_check = tk.Checkbutton(master, text="debug", variable=self.debug_check_var)
-		self.debug_check.pack(side=tk.LEFT, padx=10, pady=10)
-		# self.debug_check.
+		# done with init
+		return
 	
 	# replacement for core.basic_print function, print to text thingy instead of to console
 	def my_write(self, *args, is_progress=False):
@@ -173,12 +231,26 @@ class Application(tk.Frame):
 		self._write(the_string)
 	
 	def do_the_thing(self):
-		# run the actual processing code
-		# give it self.pmx
-		self.payload_func(self.pmx)
-		# give it self.debug_check_var.get()
-		# get pmx, bool
-		pass
+		# print visual separator
+		core.MY_PRINT_FUNC("\n" + ("="*20))
+		core.MY_PRINT_FUNC("...preparing...")
+		# first, make a copy of the thing
+		pmx = copy.deepcopy(self.pmx_input)
+		try:
+			result, is_changed = self.run_func(pmx, bool(self.debug_check_var.get()))
+		except Exception as e:
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
+			core.MY_PRINT_FUNC("ERROR: failed to execute target script")
+			return
+		if is_changed:
+			try:
+				self.writeout_func(result, self.pmxpath)
+			except Exception as e:
+				core.MY_PRINT_FUNC(e.__class__.__name__, e)
+				core.MY_PRINT_FUNC("ERROR: failed to write result of script")
+				return
+		return
+		
 		
 	def dummy(self):
 		return
@@ -188,30 +260,42 @@ class Application(tk.Frame):
 		# if not "" then open with pmx reader
 		# load a file & store it into the self.pmx object
 		#
-		print("get file")
 		
-		# file dialog automatically remembers the last path it succesfully opened!! neat!!
-		newpath = fdg.askopenfilename(title="Select input file", filetypes=(("PMX files", "*.pmx"),))
+		# dont trust file dialog to remember last-opened path, do it manually
+		recordpath = core.get_persistient_storage_path("last_opened_dir.txt")
+		c = core.read_txt_to_rawlist(recordpath, quiet=True)
+		if c and path.isdir(c[0][0]):
+			start_here = c[0][0]
+		else:
+			start_here = "."
+		
+		newpath = fdg.askopenfilename(initialdir=start_here, title="Select input file", filetypes=(("PMX files", "*.pmx"),))
 		
 		# if user closed the prompt before giving a file path, quit here
-		if newpath == "": return
+		if newpath == "":
+			return
+		
+		# print visual separator
+		core.MY_PRINT_FUNC("\n" + ("="*20))
+		
+		# they got an existing file! update the last_opened_dir file
+		core.write_rawlist_to_txt(recordpath, [[path.dirname(newpath)]], quiet=True)
 		
 		try:
 			newpmx = pmxlib.read_pmx(newpath)
 		except Exception as e:
-			# todo rearchitect error handling
-			print("oops", e)
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
+			core.MY_PRINT_FUNC("ERROR: failed to parse PMX file")
 			return
 			
 		# if parsed without crashing, hooray!
 		# save the name for displaying under the button
-		basename = path.basename(newpath)
-		self.basename = basename
+		self.pmxpath = newpath
 		# write name into label widget
-		self.load_label.config(text='PMX: "%s"' % basename)
+		self.pmx_label.config(text='PMX: "%s"' % path.basename(newpath))
 		
 		# save the PMX for giving to the actual processing later
-		self.pmx = newpmx
+		self.pmx_input = newpmx
 		
 		# unlock the "run" button once a valid PMX is loaded in
 		self.run_butt.configure(state='normal')

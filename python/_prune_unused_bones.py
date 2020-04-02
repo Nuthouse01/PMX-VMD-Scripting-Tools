@@ -322,7 +322,7 @@ def prune_unused_bones(pmx, moreinfo=False):
 	core.print_progress_oneline(4, 5)
 	# BONES: point-at target, true parent, external parent, partial append, ik stuff
 	for d,bone in enumerate(pmx[5]):
-		core.print_progress_oneline(d, len(pmx[5]))
+		# core.print_progress_oneline(d, len(pmx[5]))
 		# point-at link:
 		if bone[12]:
 			if binary_search_isin(bone[13][0], unused_list):
@@ -385,5 +385,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee)
+			core.MY_PRINT_FUNC(ee.__class__.__name__, ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
