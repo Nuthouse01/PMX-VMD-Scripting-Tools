@@ -55,7 +55,8 @@ def find_unattached_rigidbodies(pmx):
 
 helptext = '''pmx_overall_cleanup:
 This file will run through a series of first-pass cleanup operations to fix obvious issues in a model.
-This includes: translating missing english names, correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, cleaning up display frames, and detecting issues that might cause MMD to crash.
+This includes: translating missing english names, correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, and cleaning up display frames.
+This also scans for some issues that I can detect but not fix, such as improper joints that will crash MMD, and alerts you if it finds them.
 These operations will reduce file size (sometimes massively!) and improve overall model health & usability.
 However, these are only first-pass fixes. The model will definitely require more time and effort to search for and fix all potential issues.
 '''
