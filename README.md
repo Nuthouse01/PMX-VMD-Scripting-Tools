@@ -394,4 +394,9 @@ The following files should be included with this README:
     v3.6:
     various bugfixes and improvements to the "pmx overall cleanup" pipeline
     added a GUI frontend that better displays JP chars and includes a file selection dialoge
+    made "morph winnow" just use hardcoded 0.0003 threshold instead of prompting
+    revised error reporting method across all scripts to rely more on raising/catching errors instead of "pause and quit" thing
+    from translate script, removed MyMemory provider and pretty-printing to reduce final executable size
+    from translate script, removed confirmation of translations to make gui integration cleaner
+    for all(?) scripts, made a "moreinfo" argument to control what used to be debug print statements
     
