@@ -1,4 +1,4 @@
-# Nuthouse01 - 03/30/2020 - v3.51
+# Nuthouse01 - 04/02/2020 - v3.60
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 # massive thanks and credit to "Isometric" for helping me discover the quaternion transformation method used in mmd!!!!
@@ -627,7 +627,7 @@ def convert_vmd_to_txt(input_filename):
 ########################################################################################################################
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
+	core.MY_PRINT_FUNC("Nuthouse01 - 04/02/2020 - v3.60")
 	if DEBUG:
 		main()
 	else:

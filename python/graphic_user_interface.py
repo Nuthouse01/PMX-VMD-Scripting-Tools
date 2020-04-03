@@ -149,7 +149,7 @@ class Application(tk.Frame):
 		# VERY IMPORTANT: overwrite the default print function with one that goes to the GUI
 		core.MY_PRINT_FUNC = self.my_write
 		
-		core.MY_PRINT_FUNC("Nuthouse01 - 03/30/2020 - v3.51")
+		core.MY_PRINT_FUNC("Nuthouse01 - 04/02/2020 - v3.60")
 		core.MY_PRINT_FUNC("Begin by loading an input file, then click 'Run'")
 		core.MY_PRINT_FUNC("Click 'Help' to print out details of what the script does")
 		

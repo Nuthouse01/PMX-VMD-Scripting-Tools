@@ -1,7 +1,7 @@
 # VMD-to-text-Conversion-Tool
 
 VMD Conversion Tool README
-Created by Nuthouse01 - 03/30/2020 - v3.51
+Created by Nuthouse01 - 04/02/2020 - v3.60
 
 ###### Legal:
 This code is free to use and re-distribute, but I cannot be held responsible for damages that it  
@@ -390,4 +390,8 @@ The following files should be included with this README:
         
     v3.51:
     added prune_unused_bones, dispframe_fix, find_crashing_joints into the "pmx_overall_cleanup" pipeline
+    
+    v3.6:
+    various bugfixes and improvements to the "pmx overall cleanup" pipeline
+    added a GUI frontend that better displays JP chars and includes a file selection dialoge
     

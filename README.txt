@@ -1,7 +1,7 @@
 # VMD-to-text-Conversion-Tool
 
 VMD Conversion Tool README
-Created by Nuthouse01 - 03/30/2020 - v3.51
+Created by Nuthouse01 - 04/02/2020 - v3.60
 
 ###### Legal:
 This code is free to use and re-distribute, but I cannot be held responsible for damages that it
