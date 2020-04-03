@@ -5,6 +5,16 @@
 # ▲=25b2, ω=03c9, ∧=2227, □=25a1
 
 # comments are what PMXE builtin translate actually translates them to, but i don't like those names
+
+# ideas for better translating:
+# if it ends with 先 then remove it and append " end" to ultimate result
+# if it ends with 親 then remove it and append " parent" to ultimate result
+# if it contains 右 or 左 then remove it and append "_R" or "_L" to the ultimate result
+# then do substitution of known name-parts:
+# fullwidth chars get replaced with english versions
+# skirt, hair, tongue, breast, ........
+# none of this is NECESSARY, google can handle it just fine
+
 morph_dict = {
 "あ": "a",
 "い": "i",
@@ -178,7 +188,12 @@ bone_dict =  {
 "左胸下": "breast_lower_L",
 "右胸上": "breast_upper_R",
 "右胸上2": "breast_upper2_R",
-"右胸下": "breast_lower_R"
+"右胸下": "breast_lower_R",
+"舌": "tongue",
+"舌１": "tongue1",
+"舌２": "tongue2",
+"舌３": "tongue3",
+"舌０": "tongue0"
 }
 
 frame_dict = {
@@ -192,7 +207,16 @@ frame_dict = {
 "足": "Legs",
 "スカート": "Skirt",
 "その他": "Other",
+}
+
+words_dict = {
+"パンティー" : "panties",
+"パンツ": "panties",
 "右": "right",
-"左": "left"
+"左": "left",
+"先": "end",
+"親": "parent",
+"上": "upper",
+"下": "lower",
 }
 
