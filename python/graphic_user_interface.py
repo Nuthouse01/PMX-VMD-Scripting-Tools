@@ -34,6 +34,13 @@ import copy
 
 
 
+# to get "rerunability" I need to create a deep copy of the PMX input object, either after loading or before running.
+# this takes ~1-2 sec and requires the "copy" library so it slightly increases file size. is it worth it?
+
+# to get better GUI responsiveness, I need to launch the parser and processing functions in separate threads.
+# this causes the GUI progress updates to look all flickery and unpleasant... and it would take the "threading" lib which might
+# increase file size. is it worth it?
+
 
 # # a popupwindow to replace the stock "input()" function
 
@@ -64,6 +71,16 @@ import copy
 #
 # 	return userinput
 
+
+# this lets the window be moved or resized as the target function is executing
+# however, this makes the text kinda flickery, and probably increases the EXE size
+import threading
+def run_as_thread(func):
+	thread = threading.Thread(name="do-the-thing",
+							  target=func,
+							  daemon=True)
+	# start the thread
+	thread.start()
 
 
 class Application(tk.Frame):
@@ -99,7 +116,8 @@ class Application(tk.Frame):
 			self.pmx_frame.pack(side=tk.TOP, fill='x', padx=10, pady=10)
 			
 			# load PMX
-			self.pmx_butt = tk.Button(self.pmx_frame, text="Load PMX", width=10, command=self.get_pmx_file)
+			# self.pmx_butt = tk.Button(self.pmx_frame, text="Load PMX", width=10, command=self.get_pmx_file)
+			self.pmx_butt = tk.Button(self.pmx_frame, text="Load PMX", width=10, command=lambda: run_as_thread(self.get_pmx_file))
 			self.pmx_butt.pack(side=tk.LEFT, padx=10, pady=10)
 			# load PMX label
 			self.pmx_label = tk.Label(self.pmx_frame, text="PMX: ----")
@@ -121,7 +139,8 @@ class Application(tk.Frame):
 		self.always_frame.pack(side=tk.TOP, fill='x', padx=10, pady=10)
 		
 		# "run" button is disabled until a valid combination of inputs is loaded
-		self.run_butt = tk.Button(self.always_frame, text="RUN", width=10, command=self.do_the_thing)
+		# self.run_butt = tk.Button(self.always_frame, text="RUN", width=10, command=self.do_the_thing)
+		self.run_butt = tk.Button(self.always_frame, text="RUN", width=10, command=lambda: run_as_thread(self.do_the_thing))
 		self.run_butt.pack(side=tk.LEFT, padx=10, pady=10)
 		self.run_butt.configure(state='disabled')
 		
@@ -182,6 +201,8 @@ class Application(tk.Frame):
 		self._write(the_string)
 	
 	def do_the_thing(self):
+		# disable run_butt for the duration of this function
+		self.run_butt.configure(state='disabled')
 		# print visual separator
 		core.MY_PRINT_FUNC("\n" + ("="*20))
 		core.MY_PRINT_FUNC("...preparing...")
@@ -192,6 +213,7 @@ class Application(tk.Frame):
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("ERROR: failed to execute target script")
+			self.run_butt.configure(state='normal')
 			return
 		if is_changed:
 			try:
@@ -200,7 +222,7 @@ class Application(tk.Frame):
 			except Exception as e:
 				core.MY_PRINT_FUNC(e.__class__.__name__, e)
 				core.MY_PRINT_FUNC("ERROR: failed to write result of script")
-				return
+		self.run_butt.configure(state='normal')
 		return
 		
 		
@@ -208,10 +230,8 @@ class Application(tk.Frame):
 		return
 	def get_pmx_file(self):
 		# attached to "load PMX" button
-		# get filename:	start in the last directory they opened from
-		# if not "" then open with pmx reader
-		# load a file & store it into the self.pmx object
-		#
+		# disable pmx_butt for the duration of this function
+		self.pmx_butt.configure(state='disabled')
 		
 		# dont trust file dialog to remember last-opened path, do it manually
 		recordpath = core.get_persistient_storage_path("last_opened_dir.txt")
@@ -225,6 +245,7 @@ class Application(tk.Frame):
 		
 		# if user closed the prompt before giving a file path, quit here
 		if newpath == "":
+			self.pmx_butt.configure(state='normal')
 			return
 		
 		# print visual separator
@@ -238,6 +259,7 @@ class Application(tk.Frame):
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("ERROR: failed to parse PMX file")
+			self.pmx_butt.configure(state='normal')
 			return
 			
 		# if parsed without crashing, hooray!
@@ -251,6 +273,7 @@ class Application(tk.Frame):
 		
 		# unlock the "run" button once a valid PMX is loaded in
 		self.run_butt.configure(state='normal')
+		self.pmx_butt.configure(state='normal')
 		return
 
 def launch_gui(title, help_func, run_func, writeout_func, UIconfig):
