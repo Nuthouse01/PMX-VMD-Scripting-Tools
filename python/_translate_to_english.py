@@ -197,9 +197,12 @@ def actual_translate(jp_str: str) -> str:
 		# r = jp_to_en_google.translate(jp_str, dest="en", src="ja")  # jap
 		r = jp_to_en_google.translate(jp_str, dest="en")  # auto
 		return r.text
+	except ConnectionError as e:
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		core.MY_PRINT_FUNC("Check your internet connection?")
+		raise RuntimeError()
 	except Exception as e:
-		print(e.__class__.__name__, e)
-		core.MY_PRINT_FUNC("error")
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
 		if hasattr(e, "doc"):
 			core.MY_PRINT_FUNC("Response from Google:")
 			core.MY_PRINT_FUNC(e.doc.split("\n")[7])
@@ -407,30 +410,33 @@ def translate_to_english(pmx, moreinfo=False):
 		# else:
 		# 	core.MY_PRINT_FUNC("Using MyMemory free translate service for translation")
 		
-		# now bulk-translate all the strings that are queued
-		results = bulk_translate(translate_queue)
-		# then assemble these results into the translate_map entries
-		# also do apply the results
-		for new_en_name, queue_idx in zip(results, translate_queue_idx):
-			(cat_id, i) = queue_idx
-			# special case for the header things
-			if cat_id == 0:
-				if i == 2:  # modelname
-					newlist = [label_dict[cat_id], str(i), "google", "OLD EN:", pmx[0][2], "NEW EN:", new_en_name, "JP:", pmx[0][1]]
+		try:
+			# now bulk-translate all the strings that are queued
+			results = bulk_translate(translate_queue)
+			# then assemble these results into the translate_map entries
+			# also do apply the results
+			for new_en_name, queue_idx in zip(results, translate_queue_idx):
+				(cat_id, i) = queue_idx
+				# special case for the header things
+				if cat_id == 0:
+					if i == 2:  # modelname
+						newlist = [label_dict[cat_id], str(i), "google", "OLD EN:", pmx[0][2], "NEW EN:", new_en_name, "JP:", pmx[0][1]]
+						translate_maps.append(newlist)
+						pmx[cat_id][i] = new_en_name
+				else:
+					newlist = [label_dict[cat_id], str(i), "google", "OLD EN:", pmx[cat_id][i][1], "NEW EN:", new_en_name, "JP:", pmx[cat_id][i][0]]
 					translate_maps.append(newlist)
-					pmx[cat_id][i] = new_en_name
-			else:
-				newlist = [label_dict[cat_id], str(i), "google", "OLD EN:", pmx[cat_id][i][1], "NEW EN:", new_en_name, "JP:", pmx[cat_id][i][0]]
-				translate_maps.append(newlist)
-				pmx[cat_id][i][1] = new_en_name
-		# translate_maps is used for both printing and writing
-		
-		# if comment needs translated, do that separately
-		if comment_state == 1:
-			# already removed linereturn and collapsed newlines, ready to go
-			newcomment = actual_translate(comment_jp_clean)
-			pmx[0][4] = newcomment
-	
+					pmx[cat_id][i][1] = new_en_name
+			# translate_maps is used for both printing and writing
+			
+			# if comment needs translated, do that separately
+			if comment_state == 1:
+				# already removed linereturn and collapsed newlines, ready to go
+				newcomment = actual_translate(comment_jp_clean)
+				pmx[0][4] = newcomment
+		except Exception as e:
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
+			core.MY_PRINT_FUNC("Internet translate unexpectedly failed, attempting to continue...")
 	# done translating!!
 	
 	# now i use comment_state to know how to handle the comment
