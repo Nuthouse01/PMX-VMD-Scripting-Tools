@@ -137,7 +137,7 @@ def contains_jap_chars(text) -> bool:
 	"""
 	# is_jap = re.compile("[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f\uff10-\uff5a]")
 	# match = is_jap.search(str(text))
-	match = re.search("[▲∧ω□\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f\uff10-\uff5a]", str(text))
+	match = re.search("[▲△∧ω□\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f\uff10-\uff5a]", str(text))
 	if match:
 		# print("True;", str(text))
 		return True

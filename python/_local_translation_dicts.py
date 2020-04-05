@@ -23,6 +23,7 @@ morph_dict = {
 "お": "o",
 "ワ": "wa",
 "▲": "^ open",
+"△": "^ open2",
 "∧": "^",
 "ω": "w", # omega
 "ω□": "w open", # omegabox
