@@ -186,9 +186,13 @@ bone_dict =  {
 "左胸上": "breast_upper_L",	 # 3-bone style boobs
 "左胸上2": "breast_upper2_L",
 "左胸下": "breast_lower_L",
+"左胸先": "breast_end_L",
+"左胸下先": "breast_lower_end_L",
 "右胸上": "breast_upper_R",
 "右胸上2": "breast_upper2_R",
 "右胸下": "breast_lower_R",
+"右胸先": "breast_end_R",
+"右胸下先": "breast_lower_end_R",
 "舌": "tongue",
 "舌１": "tongue1",
 "舌２": "tongue2",
@@ -218,5 +222,6 @@ words_dict = {
 "親": "parent",
 "上": "upper",
 "下": "lower",
+"尻尾": "tail",
 }
 
