@@ -400,3 +400,8 @@ The following files should be included with this README:
     from translate script, removed confirmation of translations to make gui integration cleaner
     for all(?) scripts, made a "moreinfo" argument to control what used to be debug print statements
     
+    3.61:
+    added threading module to GUI to allow moving/resizing/scrolling while the script is running
+    added a few more name maps to the local translation file
+
+    
