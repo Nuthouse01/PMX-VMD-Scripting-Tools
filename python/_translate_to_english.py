@@ -19,8 +19,6 @@ except ImportError as eee:
 	core = pmxlib = frame_dict = morph_dict = bone_dict = None
 
 
-# TODO: probably get rid of mymemory provider for smaller library size
-
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
 DEBUG = False
@@ -107,17 +105,20 @@ def check_translate_budget(num_proposed: int) -> bool:
 	else:
 		# cannot do the translate, this would exceed the budget
 		# bonus value: how long until enough records expire that i can do this?
-		to_be_popped = 0
-		idx = 0
-		for idx in range(len(record)):
-			to_be_popped += record[idx][1]
-			if (requests_in_timeframe + num_proposed - to_be_popped) <= TRANSLATE_BUDGET_MAX_REQUESTS:
-				break
-		# when record[idx] becomes too old, then the current proposed number will be okay
-		waittime = record[idx][0] + (TRANSLATE_BUDGET_TIMEFRAME * 60 * 60) - now
-		# convert seconds to minutes
-		waittime = round(waittime / 60)
-		core.MY_PRINT_FUNC("BUDGET: you must wait %d minutes before you can do %d more translation requests with Google" % (waittime, num_proposed))
+		if num_proposed >= TRANSLATE_BUDGET_MAX_REQUESTS:
+			core.MY_PRINT_FUNC("BUDGET: you cannot make this many requests all at once")
+		else:
+			to_be_popped = 0
+			idx = 0
+			for idx in range(len(record)):
+				to_be_popped += record[idx][1]
+				if (requests_in_timeframe + num_proposed - to_be_popped) <= TRANSLATE_BUDGET_MAX_REQUESTS:
+					break
+			# when record[idx] becomes too old, then the current proposed number will be okay
+			waittime = record[idx][0] + (TRANSLATE_BUDGET_TIMEFRAME * 60 * 60) - now
+			# convert seconds to minutes
+			waittime = round(waittime / 60)
+			core.MY_PRINT_FUNC("BUDGET: you must wait %d minutes before you can do %d more translation requests with Google" % (waittime, num_proposed))
 		
 		return False
 
@@ -302,7 +303,6 @@ def translate_to_english(pmx, moreinfo=False):
 	translate_queue_idx = []  # list of corresponding category ID + index within that category
 	
 	label_dict = {0: "header", 4: "material", 5: "bone", 6: "morph", 7: "dispframe"}
-	inv_label_dict = {value: key for key, value in label_dict.items()}
 	
 	# repeat the following for each category of visible names:
 	# materials=4, bones=5, morphs=6, dispframe=7
