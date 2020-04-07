@@ -233,18 +233,18 @@ def parse_pmx_bones(raw: bytearray) -> list:
 	for d in range(i):
 		(name_jp, name_en, posX, posY, posZ, parent_idx, deform_layer, flags1, flags2) = core.my_unpack("t t 3f" + IDX_BONE + "i 2B", raw)
 		# print(name_jp, name_en)
-		tail_type =              flags1 & (1<<0)
-		rotateable =             flags1 & (1<<1)
-		translateable =          flags1 & (1<<2)
-		visible =                flags1 & (1<<3)
-		enabled =                flags1 & (1<<4)
-		ik =                     flags1 & (1<<5)
-		inherit_rot =            flags2 & (1<<0)
-		inherit_trans =          flags2 & (1<<1)
-		fixed_axis =             flags2 & (1<<2)
-		local_axis =             flags2 & (1<<3)
-		deform_after_phys =      flags2 & (1<<4)
-		external_parent =        flags2 & (1<<5)
+		tail_type =              bool(flags1 & (1<<0))
+		rotateable =             bool(flags1 & (1<<1))
+		translateable =          bool(flags1 & (1<<2))
+		visible =                bool(flags1 & (1<<3))
+		enabled =                bool(flags1 & (1<<4))
+		ik =                     bool(flags1 & (1<<5))
+		inherit_rot =            bool(flags2 & (1<<0))
+		inherit_trans =          bool(flags2 & (1<<1))
+		fixed_axis =             bool(flags2 & (1<<2))
+		local_axis =             bool(flags2 & (1<<3))
+		deform_after_phys =      bool(flags2 & (1<<4))
+		external_parent =        bool(flags2 & (1<<5))
 		# important for structure: tail type, inherit, fixed axis, local axis, ext parent, IK
 		maybe_inherit = []
 		maybe_fixed_axis = []
@@ -660,7 +660,7 @@ def encode_pmx_bones(nice: list) -> bytearray:
 			# (xx, xy, xz, zx, zy, zz)
 			out += core.my_pack("6f", core.flatten(bone[20]))
 		if bone[21]:  # external_parent:
-			out += core.my_pack(IDX_BONE, bone[22])
+			out += core.my_pack("i", bone[22])
 		
 		if bone[23]:  # ik:
 			# (ik_target, ik_loops, ik_anglelimit)
