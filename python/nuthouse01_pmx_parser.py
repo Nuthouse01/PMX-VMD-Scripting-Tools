@@ -270,7 +270,7 @@ def parse_pmx_bones(raw: bytearray) -> list:
 			local_axis_z_xyz = [zx, zy, zz]
 			maybe_local_axis = [local_axis_x_xyz, local_axis_z_xyz]
 		if external_parent:
-			maybe_external_parent = core.my_unpack(IDX_BONE, raw)
+			maybe_external_parent = core.my_unpack("i", raw)
 		if ik:
 			(ik_target, ik_loops, ik_anglelimit, num_ik_links) = core.my_unpack(IDX_BONE + "i f i", raw)
 			maybe_ik = [ik_target, ik_loops, ik_anglelimit]
