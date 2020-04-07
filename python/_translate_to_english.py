@@ -433,6 +433,7 @@ def translate_to_english(pmx, moreinfo=False):
 			if comment_state == 1:
 				# already removed linereturn and collapsed newlines, ready to go
 				newcomment = actual_translate(comment_jp_clean)
+				newcomment = newcomment.replace('\n','\r\n')
 				pmx[0][4] = newcomment
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
