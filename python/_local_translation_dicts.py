@@ -51,6 +51,7 @@ morph_dict = {
 "しいたけ": "star eyes",
 "ハート目": "heart eyes",
 "ハート": "heart eyes",
+"ぐるぐる": "spinny eyes",
 "笑い目": "happy eyes",
 "はぅ": ">.<",
 "にやり": "grin",
@@ -61,6 +62,8 @@ morph_dict = {
 "はちゅ目": "O.O",
 "はちゅ目縦潰れ": "O.O height",
 "はちゅ目横潰れ": "O.O width",
+"丸目": "O.O",
+"ハイライト消し": "highlight off",
 "瞳小": "pupil small" # pupil
 }
 
