@@ -9,7 +9,7 @@ from time import time
 try:
 	import nuthouse01_core as core
 	import nuthouse01_pmx_parser as pmxlib
-	from _local_translation_dicts import frame_dict, morph_dict, bone_dict
+	from _local_translation_dicts import translate_local
 except ImportError as eee:
 	print(eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
@@ -23,10 +23,6 @@ except ImportError as eee:
 # but if launched in a new window it exits immediately so you can't read it.
 DEBUG = False
 
-
-# # if true, use the good Google Translate service
-# # if false use the worse but less restrictive MyMemory translate service
-# USE_GOOGLE_TRANSLATE = True
 
 
 # when this is true, it doesn't even attempt online translation. this way you can kinda run the script when
@@ -62,15 +58,6 @@ except ImportError as eee:
 	# USE_GOOGLE_TRANSLATE = False
 	googletrans = None
 
-# try:
-# 	import translate
-# 	# jp_to_en_mymemory = Translator(provider="mymemory", to_lang="en", from_lang="autodetect")  # doesn't work?
-# 	jp_to_en_mymemory = translate.Translator(provider="mymemory", to_lang="en", from_lang="ja")
-# except ImportError as eee:
-# 	print(eee)
-# 	print("ERROR: failed to import backup translation provider library 'translate'")
-# 	print("Please install this library with 'pip install translate'")
-# 	translate = None
 
 
 ################################################################################################################
@@ -132,8 +119,8 @@ def contains_jap_chars(text) -> bool:
 	3400 - 4dbf
 	4e00 - 9fff
 	f900 - faff
-	ff10 - ff5a
-	ff66 - ff9f
+	ff01 - ff5e  # fullwidth chars like ０１２３ＩＫ...   FF01–FF5E(5D/93)  -->  21-7E(5D/93), diff=(FEE0/‭65248‬)
+	ff66 - ff9f  # halfwidth katakana
 	# ▲=25b2, ω=03c9, ∧=2227, □=25a1
 	"""
 	# is_jap = re.compile("[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f\uff10-\uff5a]")
@@ -145,12 +132,6 @@ def contains_jap_chars(text) -> bool:
 	# print("False;", str(text))
 	return False
 
-# import unicodedata
-# def num_doublewide_chars(string: str) -> int:
-# 	return sum((unicodedata.east_asian_width(c) in "WF") for c in string)
-#
-# def string_width_cjk(string: str) -> int:
-# 	return len(string) + num_doublewide_chars(string)
 
 def my_string_pad(string: str, width: int) -> str:
 	# how big does it already print as?
@@ -168,7 +149,6 @@ def bulk_translate(jp_list: list) -> list:
 	start_idx = 0
 	while start_idx < len(jp_list):
 		core.print_progress_oneline(start_idx, len(jp_list))
-		# if USE_GOOGLE_TRANSLATE:
 		input_list = jp_list[start_idx:start_idx + TRANSLATE_MAX_LINES_PER_REQUEST]
 		bigstr = "\n".join(input_list)
 		bigresult = actual_translate(bigstr)
@@ -179,11 +159,6 @@ def bulk_translate(jp_list: list) -> list:
 			result_list = ["error"] * len(input_list)
 		retme += result_list
 		start_idx += TRANSLATE_MAX_LINES_PER_REQUEST
-		# else:
-		# 	# mymemory limit is # of words, not # of transactions, so there's no reason to join them together
-		# 	# this way is slower, however
-		# 	retme.append(actual_translate(jp_list[start_idx]))
-		# 	start_idx += 1
 	return retme
 
 
@@ -191,12 +166,10 @@ def actual_translate(jp_str: str) -> str:
 	# acutally send a single string to Google for translation
 	if DISABLE_INTERNET_TRANSLATE:
 		return jp_str
-	# if USE_GOOGLE_TRANSLATE:
-	# google translate
 	try:
 		# TODO: is it better to specify jap, or to use autodetect?
-		# r = jp_to_en_google.translate(jp_str, dest="en", src="ja")  # jap
-		r = jp_to_en_google.translate(jp_str, dest="en")  # auto
+		r = jp_to_en_google.translate(jp_str, dest="en", src="ja")  # jap
+		# r = jp_to_en_google.translate(jp_str, dest="en")  # auto
 		return r.text
 	except ConnectionError as e:
 		core.MY_PRINT_FUNC(e.__class__.__name__, e)
@@ -213,49 +186,37 @@ def actual_translate(jp_str: str) -> str:
 		core.MY_PRINT_FUNC("Strangely, this lockout does NOT prevent you from using Google Translate thru your web browser. So go use that instead.")
 		core.MY_PRINT_FUNC("Get a VPN or try again in about 1 day (TODO: CONFIRM LOCKOUT TIME)")
 		raise RuntimeError()
-	# else:
-	# 	# some other inferior free translate service called "mymemory"
-	# 	r = jp_to_en_mymemory.translate(jp_str)
-	# 	if "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY" in r:
-	# 		core.MY_PRINT_FUNC("")
-	# 		core.MY_PRINT_FUNC(r)
-	# 		core.MY_PRINT_FUNC("MyMemory has rejected the translate request")
-	# 		core.MY_PRINT_FUNC("This is due to a cap on how much you can translate in a day.")
-	# 		core.MY_PRINT_FUNC("Get a VPN or try again in about 1 day")
-	# 		raise RuntimeError()
-	# 	return r
 
 
 def fix_eng_name(name_jp: str, name_en: str) -> (str, None):
 	# returns a new english name, might be the same as the existing english name
 	# or returns None if tranlsation is needed
 	
-	# if en name is empty OR contains jap/cn OR is just whitespace:
-	if (not name_en) or name_en.isspace() or contains_jap_chars(name_en):
-		# if jp name does not contain jap/cn:
-		if not contains_jap_chars(name_jp):
-			# jp name is already good english, copy jp name -> en name
-			return name_jp
-		elif name_jp in morph_dict:
-			# return known-good translations of semistandard morphs
-			return morph_dict[name_jp]
-		elif name_jp in bone_dict:
-			# return known-good translations of semistandard bones
-			return bone_dict[name_jp]
-		elif name_jp in frame_dict:
-			# return known-good translations of semistandard display frame names
-			return frame_dict[name_jp]
-		else:
-			# translate jp name -> en name
-			# return None so the translations can be done in bulk
-			return None
-	else:
-		# name is good, no translate needed
+	# TODO: maybe my local-translated version should have higher priority than the existing english? nah...
+	
+	# if en name is already good (not blank and not JP), just keep it
+	if name_en and not name_en.isspace() and not contains_jap_chars(name_en):
 		return name_en
+	
+	# jp name is already good english, copy jp name -> en name
+	if name_jp and not name_jp.isspace() and not contains_jap_chars(name_jp):
+		return name_jp
+	
+	# !!!! NEW LOCAL TRANSLATE FUNCTION !!!!
+	local_result = translate_local(name_jp)
+	# if local-translate succeeds, use it! (return None on fail)
+	if local_result is not None:
+		return local_result
+	
+	# i can't translate it myself, then
+	# translate jp name -> en name via google
+	# return None so the translations can be done in bulk
+	return None
 
 
 helptext = '''translate_to_english:
 This tool fills out empty EN names in a PMX model with translated versions of the JP names.
+It tries to do some intelligent piecewise translation using a local dictionary but goes to Google Translate if that fails.
 Machine translation is never 100% reliable, so this is only a stopgap measure to eliminate all the 'Null_##'s and wrongly-encoded garbage and make it easier to use in MMD. A bad translation is better than none at all!
 Also, Google Translate only permits ~100 requests per hour, if you exceed this rate you will be locked out for 24 hours (TODO: CONFIRM LOCKOUT TIME)
 But my script has a built in limiter that will prevent you from translating if you would exceed the 100-per-hr limit.
