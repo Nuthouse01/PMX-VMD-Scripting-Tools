@@ -208,7 +208,8 @@ def prompt_user_filename(extension: str) -> str:
 def get_clean_basename(initial_name: str) -> str:
 	return path.splitext(path.basename(initial_name))[0]
 
-def get_unused_file_name(initial_name: str) -> str:
+def get_unused_file_name(initial_name: str, namelist=None) -> str:
+	# if namelist is given, check against namelist instead of what's on the disk... assume namelist contains all lowercase names
 	# return a name that is unused, might be the same one passed in.
 	# given an initial name, see if it is valid to use. if not, keep appending numbers until you find a name that is unused.
 	sep = initial_name.rfind(".")
@@ -216,7 +217,11 @@ def get_unused_file_name(initial_name: str) -> str:
 	extension = initial_name[sep:]
 	test_name = basename + extension
 	for append_num in range(2, 1000):
-		if not path.isfile(test_name):
+		if namelist is None and not path.isfile(test_name):
+			# if test_name doesn't exist, then its a good name
+			return test_name
+		elif namelist is not None and test_name.lower() not in namelist:
+			# if test_name isn't in the list (case-insensitive matching), then its a good name
 			return test_name
 		else:
 			test_name = basename + str(append_num) + extension

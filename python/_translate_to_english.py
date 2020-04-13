@@ -16,13 +16,22 @@ except ImportError as eee:
 	print("...press ENTER to exit...")
 	input()
 	exit()
-	core = pmxlib = frame_dict = morph_dict = bone_dict = None
+	core = pmxlib = translate_local = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
 DEBUG = False
 
+
+# TODO: maybe my local-translated version should have higher priority than the existing english? nah...
+# this will prefer a successful "local translate" over an existing english name
+PREFER_LOCAL_TRANSLATE = False
+
+
+# TODO: is it better to specify jap, or to use autodetect?
+# when false, force input to be interpreted as Japanese. When true, autodetect input language.
+GOOGLE_AUTODETECT_LANGUAGE = True
 
 
 # when this is true, it doesn't even attempt online translation. this way you can kinda run the script when
@@ -54,8 +63,6 @@ except ImportError as eee:
 	print(eee)
 	print("ERROR: failed to import primary translation provider library 'googletrans'")
 	print("Please install this library with 'pip install googletrans'")
-	# print("Switching to backup provider MyMemory in library 'translate'")
-	# USE_GOOGLE_TRANSLATE = False
 	googletrans = None
 
 
@@ -80,7 +87,7 @@ def check_translate_budget(num_proposed: int) -> bool:
 			i += 1
 	# then interpret the file: how many requests happened in the past <timeframe>
 	requests_in_timeframe = sum([entry[1] for entry in record])
-	core.MY_PRINT_FUNC("You have used %d / %d translation requests within the last %d hrs" %
+	core.MY_PRINT_FUNC("You have used %d / %d translation requests within the last %f hrs" %
 		  (requests_in_timeframe, TRANSLATE_BUDGET_MAX_REQUESTS, TRANSLATE_BUDGET_TIMEFRAME))
 	# make the decision
 	if (requests_in_timeframe + num_proposed) <= TRANSLATE_BUDGET_MAX_REQUESTS:
@@ -167,9 +174,10 @@ def actual_translate(jp_str: str) -> str:
 	if DISABLE_INTERNET_TRANSLATE:
 		return jp_str
 	try:
-		# TODO: is it better to specify jap, or to use autodetect?
-		r = jp_to_en_google.translate(jp_str, dest="en", src="ja")  # jap
-		# r = jp_to_en_google.translate(jp_str, dest="en")  # auto
+		if GOOGLE_AUTODETECT_LANGUAGE:
+			r = jp_to_en_google.translate(jp_str, dest="en")  # auto
+		else:
+			r = jp_to_en_google.translate(jp_str, dest="en", src="ja")  # jap
 		return r.text
 	except ConnectionError as e:
 		core.MY_PRINT_FUNC(e.__class__.__name__, e)
@@ -192,10 +200,20 @@ def fix_eng_name(name_jp: str, name_en: str) -> (str, None):
 	# returns a new english name, might be the same as the existing english name
 	# or returns None if tranlsation is needed
 	
-	# TODO: maybe my local-translated version should have higher priority than the existing english? nah...
+	# mode 1 priorities: without "prefer local translate"
+	# first, return EN name if EN name already good english
+	# second, return JP name if JP name already good english
+	# third, return local translate JP -> EN if it succeeds
+	# fourth, give up and go to google
+	
+	# mode 2 priorities: with "prefer local translate"
+	# first, return JP name if JP name already good english
+	# second, return local translate JP -> EN if it succeeds
+	# third, return EN name if EN name already good english
+	# fourth, give up and go to google
 	
 	# if en name is already good (not blank and not JP), just keep it
-	if name_en and not name_en.isspace() and not contains_jap_chars(name_en):
+	if not PREFER_LOCAL_TRANSLATE and name_en and not name_en.isspace() and not contains_jap_chars(name_en):
 		return name_en
 	
 	# jp name is already good english, copy jp name -> en name
@@ -207,6 +225,10 @@ def fix_eng_name(name_jp: str, name_en: str) -> (str, None):
 	# if local-translate succeeds, use it! (return None on fail)
 	if local_result is not None:
 		return local_result
+	
+	# if en name is already good (not blank and not JP), just keep it
+	if PREFER_LOCAL_TRANSLATE and name_en and not name_en.isspace() and not contains_jap_chars(name_en):
+		return name_en
 	
 	# i can't translate it myself, then
 	# translate jp name -> en name via google
@@ -271,6 +293,8 @@ def translate_to_english(pmx, moreinfo=False):
 		category = pmx[cat_id]
 		# for each entry:
 		for i, item in enumerate(category):
+			if cat_id == 7 and item[2]:
+				continue  # skip "special" display frames
 			# jp=0,en=1
 			# strip away newline and return just in case, i saw a few examples where they showed up
 			item[0] = item[0].replace('\r','').replace('\n','')

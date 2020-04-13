@@ -23,7 +23,7 @@ DEBUG = False
 # just take a wild guess what this field controls
 PRINT_AFFECTED_MORPHS = False
 
-
+# TODO: reconsider whether zeroing out tex/toon/alpha is really necessary/helpful/correct... YYB doesn't do it
 # opacity, edge size, edge alpha, tex, toon, sph
 template =          [0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0]
 # the above template multiplies everything by 0, below the same result by subtracting 1 from everthing

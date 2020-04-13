@@ -68,7 +68,8 @@ def binary_search_isin(x, a):
 
 
 def newval_from_range_map(v, range_map):
-	# support both int and list inputs... do basically the same thing, just looped
+	# support both int and list-of-int inputs... do basically the same thing, just looped
+	# if input is list, IT MUST BE IN ASCENDING SORTED ORDER
 	# core idea: walk BACKWARDS along the range_map until i find the start that is CLOSEST BELOW the input v
 	if isinstance(v, int):
 		# # bisect_right: same as bisect_left but when matching something already in it it goes one to the right
@@ -99,6 +100,7 @@ def newval_from_range_map(v, range_map):
 		return retme
 	
 def delme_list_to_rangemap(delme_verts: list):
+	# INPUT MUST BE IN ASCENDING SORTED ORDER
 	# convert from individual vertices to list of ranges, [start-length]
 	# start begins 0, end begins 1
 	delme_range = []

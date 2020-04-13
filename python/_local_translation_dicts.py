@@ -248,6 +248,7 @@ words_dict = {
 "ブラ": "bra",
 "耳": "ear",
 "みみ": "ear",
+"ヘアー": "hair",
 "髪の毛": "hair",
 "髪": "hair",
 "髮": "hair", # this is actually somehow different from the line above???
@@ -259,6 +260,7 @@ words_dict = {
 "尻": "butt",
 "目": "eye",
 "瞳": "pupil",
+"着地": "landing",
 "水着": "swimsuit",
 "服": "clothes",
 "着": "clothes",
@@ -277,6 +279,7 @@ words_dict = {
 "ハイライト": "highlight",
 "ﾊｲﾗｲﾄ": "highlight",
 "靴": "shoe",
+"くつ": "shoe",
 "顔": "face",
 "足首": "foot",  # this must be high priority, otherwise its components will be individually (wrongly) translated
 "手首": "wrist",  # this must be high priority, otherwise its components will be individually (wrongly) translated
@@ -321,6 +324,8 @@ words_dict = {
 "星": "star",
 "パーツ": "parts",
 "筋": "muscle",
+"帶": "band",
+"袖": "sleeve",
 "歯": "teeth",
 "牙": "fang",
 "犬": "dog",
@@ -358,6 +363,7 @@ words_dict = {
 "背": "back",
 "裏": "back",
 "後": "rear",
+"后": "rear",
 "横": "side", # or horizontal
 "縦": "vert",
 "両": "both",
@@ -395,6 +401,7 @@ words_dict = {
 "細": "thin",  # literally "fine"
 "粗": "coarse",
 "大": "big",
+"巨": "big",
 "暗い": "dark",
 "腹黒": "dark",
 "黒": "black",
