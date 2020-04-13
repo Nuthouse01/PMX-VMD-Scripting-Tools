@@ -53,56 +53,59 @@ def find_unattached_rigidbodies(pmx):
 
 ########################################################################################################################
 
-helptext = '''pmx_overall_cleanup:
-This file will run through a series of first-pass cleanup operations to fix obvious issues in a model.
+myhelptext = '''=================================================
+pmx_overall_cleanup:
+This file will run through a series of first-pass cleanup operations to detect/fix obvious issues in a model.
 This includes: translating missing english names, correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, and cleaning up display frames.
 This also scans for some issues that I can detect but not fix, such as improper joints that will crash MMD, and alerts you if it finds them.
 These operations will reduce file size (sometimes massively!) and improve overall model health & usability.
 However, these are only first-pass fixes. The model will definitely require more time and effort to search for and fix all potential issues.
+
+Outputs: PMX file "[model]_better.pmx"
 '''
 
-iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_better.pmx"
-'''
+allhelp = [
+	myhelptext,
+	"="*20,
+	"="*20,
+	_prune_invalid_faces.helptext,
+	_prune_unused_vertices.helptext,
+	_prune_unused_bones.helptext,
+	_weight_cleanup.helptext,
+	_morph_winnow.helptext,
+	_alphamorph_correct.helptext,
+	_dispframe_fix.helptext,
+	_translate_to_english.helptext,
+	_uniquify_names.helptext
+]
 
-def showallhelp():
-	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC("="*20)
-	core.MY_PRINT_FUNC(helptext)
-	core.MY_PRINT_FUNC("="*20)
-	core.MY_PRINT_FUNC("="*20)
-	core.MY_PRINT_FUNC("="*20)
-	_prune_invalid_faces.showhelp()
-	core.MY_PRINT_FUNC("="*20)
-	_prune_unused_vertices.showhelp()
-	core.MY_PRINT_FUNC("="*20)
-	_prune_unused_bones.showhelp()
-	core.MY_PRINT_FUNC("="*20)
-	_weight_cleanup.showhelp()
-	core.MY_PRINT_FUNC("="*20)
-	_morph_winnow.showhelp()
-	core.MY_PRINT_FUNC("="*20)
-	_alphamorph_correct.showhelp()
-	core.MY_PRINT_FUNC("="*20)
-	_dispframe_fix.showhelp()
-	core.MY_PRINT_FUNC("="*20)
-	_translate_to_english.showhelp()
-	core.MY_PRINT_FUNC("="*20)
-	_uniquify_names.showhelp()
+helptext = '\n'.join(allhelp)
 
-def showhelp():
-	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC(helptext)
-def showprompt():
-	# print info to explain what inputs/outputs it needs/creates
-	core.MY_PRINT_FUNC(iotext)
-	
+# def showallhelp():
+# 	# print info to explain the purpose of this file
+# 	core.MY_PRINT_FUNC(helptext)
+# 	core.MY_PRINT_FUNC("="*20)
+# 	core.MY_PRINT_FUNC("="*20)
+# 	core.MY_PRINT_FUNC("="*20)
+# 	_prune_invalid_faces.showhelp()
+# 	_prune_unused_vertices.showhelp()
+# 	_prune_unused_bones.showhelp()
+# 	_weight_cleanup.showhelp()
+# 	_morph_winnow.showhelp()
+# 	_alphamorph_correct.showhelp()
+# 	_dispframe_fix.showhelp()
+# 	_translate_to_english.showhelp()
+# 	_uniquify_names.showhelp()
+#
+# def showhelp():
+# 	# print info to explain the purpose of this file
+# 	core.MY_PRINT_FUNC(helptext)
+
+def main(moreinfo=False):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
-	input_filename_pmx = core.prompt_user_filename(".pmx")
+	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx)
-	return pmx, input_filename_pmx
-
-def pmx_overall_cleanup(pmx, moreinfo=False):
 	
 	# verts after faces
 	# weights after verts, but before bones
@@ -140,7 +143,7 @@ def pmx_overall_cleanup(pmx, moreinfo=False):
 	core.MY_PRINT_FUNC(">>>> Ensuring all names in the model are unique <<<<")
 	pmx, is_changed_t = _uniquify_names.uniquify_names(pmx, moreinfo)
 	is_changed |= is_changed_t
-
+	
 	bad_bodies = find_unattached_rigidbodies(pmx)
 	if bad_bodies:
 		core.MY_PRINT_FUNC("")
@@ -159,16 +162,13 @@ def pmx_overall_cleanup(pmx, moreinfo=False):
 		core.MY_PRINT_FUNC("These must be manually deleted or repaired using PMXE")
 		core.MY_PRINT_FUNC("The following joints are invalid: ", crashing_joints)
 		core.MY_PRINT_FUNC("")
-
+	
 	core.MY_PRINT_FUNC(">>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<")
 	if not is_changed:
 		core.MY_PRINT_FUNC(">>>> OVERALL RESULT: No writeback required <<<<")
 	else:
 		core.MY_PRINT_FUNC(">>>> Done with overall cleanup procedures <<<<")
 	
-	return pmx, is_changed
-
-def end(pmx, input_filename_pmx):
 	# write out
 	# output_filename_pmx = "%s_better.pmx" % core.get_clean_basename(input_filename_pmx)
 	output_filename_pmx = input_filename_pmx[0:-4] + "_better.pmx"
@@ -176,21 +176,22 @@ def end(pmx, input_filename_pmx):
 	pmxlib.write_pmx(output_filename_pmx, pmx)
 	return None
 
-def main():
-	showhelp()
-	pmx, name = showprompt()
-	pmx, is_changed = pmx_overall_cleanup(pmx)
-	if is_changed:
-		end(pmx, name)
-	core.pause_and_quit("Done with everything! Goodbye!")
 
 if __name__ == '__main__':
 	core.MY_PRINT_FUNC("Nuthouse01 - 04/02/2020 - v3.60")
 	if DEBUG:
+		# print info to explain the purpose of this file
+		core.MY_PRINT_FUNC(helptext)
+		core.MY_PRINT_FUNC("")
 		main()
+		core.pause_and_quit("Done with everything! Goodbye!")
 	else:
 		try:
+			# print info to explain the purpose of this file
+			core.MY_PRINT_FUNC(helptext)
+			core.MY_PRINT_FUNC("")
 			main()
+			core.pause_and_quit("Done with everything! Goodbye!")
 		except (KeyboardInterrupt, SystemExit):
 			# this is normal and expected, do nothing and die normally
 			pass
