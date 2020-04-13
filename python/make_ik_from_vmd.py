@@ -142,7 +142,7 @@ This requires both a PMX model and a VMD motion to run.
 Outputs: VMD file '[dancename]_ik_from_[modelname].vmd' that contains only the IK frames for the dance
 '''
 
-def main():
+def main(moreinfo=False):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")

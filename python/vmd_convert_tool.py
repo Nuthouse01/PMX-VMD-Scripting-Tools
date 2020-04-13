@@ -581,7 +581,7 @@ This takes as input either a VMD file or a TXT file produced by this tool.
 The output will have the same basename, but the opposite file extension.
 '''
 
-def main():
+def main(moreinfo=False):
 	# prompt for "convert text -> VMD" or "VMD -> text"
 	input_filename = core.MY_FILEPROMPT_FUNC([".vmd", ".txt"])
 	

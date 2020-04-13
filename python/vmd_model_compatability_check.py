@@ -36,7 +36,7 @@ Outputs: morph compatability summary text file '[dancename]_morph_compatability_
 '''
 
 
-def main():
+def main(moreinfo=False):
 	# print info to explain the purpose of this file
 	core.MY_PRINT_FUNC(helptext)
 	core.MY_PRINT_FUNC("")

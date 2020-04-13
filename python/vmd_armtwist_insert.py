@@ -114,7 +114,7 @@ This requires both a PMX model and a VMD motion to run.
 Output: dance VMD file '[dancename]_twistbones_for_[modelname].vmd'
 '''
 
-def main():
+def main(moreinfo=False):
 	# the goal: extract rotation around the "arm" bone local X? axis and transfer it to rotation around the "armtwist" bone local axis
 	
 	# prompt PMX name

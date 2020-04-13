@@ -31,7 +31,7 @@ Outputs: morph name list text file '[modelname]_morph_names.txt'
 '''
 
 
-def main():
+def main(moreinfo=False):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
