@@ -201,10 +201,10 @@ def prompt_user_filename(extensions) -> str:
 	MY_PRINT_FUNC('(or path can be relative to here, example: ../../mmd/models/miku.pmx)')
 	while True:
 		# continue prompting until the user gives valid input
-		name = input(" Filename ending with '%s' = " % extensions)
+		name = input(" Filename ending with %s = " % extensions)
 		valid_ext = sum([bool(name.lower().endswith(a.lower())) for a in extensions])
 		if not valid_ext:
-			MY_PRINT_FUNC("Err: given file must have '%s' extension" % extensions)
+			MY_PRINT_FUNC("Err: given file must have %s extension" % extensions)
 		elif not path.isfile(name):
 			MY_PRINT_FUNC(path.abspath(name))
 			MY_PRINT_FUNC("Err: given file does not exist, did you type it wrong?")

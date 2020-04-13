@@ -100,26 +100,26 @@ def swing_twist_decompose(quat_in, axis):
 	return swing, twist
 
 
+helptext = '''=================================================
+vmd_armtwist_insert:
+This script will modify a VMD for a specific model so that the 'arm twist bones' are actually used for twisting the arms.
+This will fix pinching/tearing at the shoulder/elbow of the model, if the armtwist bones are present and properly rigged.
+This is done via a 'swing twist decomposition' to isolate the 'local X-axis rotation' from the arm bone frames.
+(The local X-axis extends down the center of the arm)
+This local X-axis rotation is transferred to the arm twist bones where it is supposed to be.
+The local Y-axis and local Z-axis rotation of the bone stay on the original arm bone.
+The output file contains the entire improved dance, including modified arm/elbow frames and added armtwist/elbowtwist frames.
+
+This requires both a PMX model and a VMD motion to run.
+Output: dance VMD file '[dancename]_twistbones_for_[modelname].vmd'
+'''
 
 def main():
-	
 	# the goal: extract rotation around the "arm" bone local X? axis and transfer it to rotation around the "armtwist" bone local axis
-	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC("This script will modify a VMD for a specific model so that the 'arm twist bones' are actually used for twisting the arms.")
-	core.MY_PRINT_FUNC("This will fix pinching/tearing at the shoulder/elbow of the model.")
-	core.MY_PRINT_FUNC("This is done via a 'swing twist decomposition' to isolate the 'local X axis rotation' from the arm bone frames.")
-	core.MY_PRINT_FUNC("This local X-axis rotation is transferred to the arm twist bones where it is supposed to be.")
-	core.MY_PRINT_FUNC("The local Y-axis and local Z-axis rotation of the bone stay on the original arm bone.")
-	core.MY_PRINT_FUNC("The output file contains the entire improved dance, including modified arm/elbow frames and added armtwist/elbowtwist frames.")
-	# print info to explain what inputs it needs
-	core.MY_PRINT_FUNC("Inputs: dance VMD 'dancename.vmd' and model PMX 'modelname.pmx'")
-	# print info to explain what outputs it creates
-	core.MY_PRINT_FUNC("Outputs: VMD file '[dancename]_twistbones_for_[modelname].vmd'")
-	core.MY_PRINT_FUNC("")
 	
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
-	input_filename_pmx = core.prompt_user_filename(".pmx")
+	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmx_parser.read_pmx(input_filename_pmx)
 	# get bones
 	realbones = pmx[5]
@@ -131,7 +131,7 @@ def main():
 		# jp bone name is at index 0
 		r = core.my_sublist_find(realbones, 0, jp_twistbones[i])
 		if r is None:
-			core.MY_PRINT_FUNC("Err: twist bone '{}'({}) cannot be found model, unable to continue. Ensure they use the correct semistandard names, or edit the script to change the JP names it is looking for.".format(jp_twistbones[i], eng_twistbones[i]))
+			core.MY_PRINT_FUNC("ERROR1: twist bone '{}'({}) cannot be found model, unable to continue. Ensure they use the correct semistandard names, or edit the script to change the JP names it is looking for.".format(jp_twistbones[i], eng_twistbones[i]))
 			raise RuntimeError()
 		if r[17] != 0:
 			# this bone DOES have fixed-axis enabled! use the unit vector in r[18]
@@ -140,11 +140,11 @@ def main():
 			# i can infer local axis by angle from arm-to-elbow or elbow-to-wrist
 			start = core.my_sublist_find(realbones, 0, jp_sourcebones[i])
 			if start is None:
-				core.MY_PRINT_FUNC("Err: semistandard bone '%s' is missing from the model, unable to infer axis of rotation" % jp_sourcebones[i])
+				core.MY_PRINT_FUNC("ERROR2: semistandard bone '%s' is missing from the model, unable to infer axis of rotation" % jp_sourcebones[i])
 				raise RuntimeError()
 			end = core.my_sublist_find(realbones, 0, jp_pointat_bones[i])
 			if end is None:
-				core.MY_PRINT_FUNC("Err: semistandard bone '%s' is missing from the model, unable to infer axis of rotation" % jp_pointat_bones[i])
+				core.MY_PRINT_FUNC("ERROR3: semistandard bone '%s' is missing from the model, unable to infer axis of rotation" % jp_pointat_bones[i])
 				raise RuntimeError()
 			start_pos = start[2:5]
 			end_pos = end[2:5]
@@ -162,7 +162,7 @@ def main():
 	###################################################################################
 	# prompt VMD file name
 	core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
-	input_filename_vmd = core.prompt_user_filename(".vmd")
+	input_filename_vmd = core.MY_FILEPROMPT_FUNC(".vmd")
 	
 	# next, read/use/prune the dance vmd
 	nicelist_in = vmd_parser.read_vmd(input_filename_vmd)
@@ -175,11 +175,12 @@ def main():
 	
 	sourcenumframes = sum([len(x) for x in all_sourcebone_frames])
 	if sourcenumframes == 0:
-		core.MY_PRINT_FUNC("Err: no arm/elbow bone frames are found in the VMD, nothing for me to do!")
-		return None, False
+		core.MY_PRINT_FUNC("No arm/elbow bone frames are found in the VMD, nothing for me to do!")
+		core.MY_PRINT_FUNC("Aborting: no files were changed")
+		return None
 	else:
 		core.MY_PRINT_FUNC("...source contains " + str(sourcenumframes) + " arm/elbow bone frames to decompose...")
-
+	
 	if USE_OVERKEY_BANDAID:
 		# to fix the path that the arms take during interpolation we need to overkey the frames
 		# i.e. create intermediate frames that they should have been passing through already, to FORCE it to take the right path
@@ -226,7 +227,7 @@ def main():
 	if overkeyframes != 0:
 		core.MY_PRINT_FUNC("...overkeying added " + str(overkeyframes) + " arm/elbow bone frames...")
 	core.MY_PRINT_FUNC("...beginning decomposition of " + str(totalnumframes) + " arm/elbow bone frames...")
-
+	
 	# now i am completely done reading the VMD file and parsing its data! everything has been distilled down to:
 	# all_sourcebone_frames = [Larm, Lelbow, Rarm, Relbow] plus nicelist_in[1]
 	
@@ -283,21 +284,30 @@ def main():
 	
 	# write out the VMD
 	output_filename_vmd = "%s_twistbones_for_%s.vmd" % \
-						   (core.get_clean_basename(input_filename_vmd), core.get_clean_basename(input_filename_pmx))
+						   (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx))
 	output_filename_vmd = output_filename_vmd.replace(" ", "_")
 	output_filename_vmd = core.get_unused_file_name(output_filename_vmd)
 	vmd_parser.write_vmd(output_filename_vmd, nicelist_in)
 	
-	core.pause_and_quit("Done with everything! Goodbye!")
 	return None
 
 if __name__ == '__main__':
 	core.MY_PRINT_FUNC("Nuthouse01 - 04/02/2020 - v3.60")
 	if DEBUG:
+		# print info to explain the purpose of this file
+		core.MY_PRINT_FUNC(helptext)
+		core.MY_PRINT_FUNC("")
+		
 		main()
+		core.pause_and_quit("Done with everything! Goodbye!")
 	else:
 		try:
+			# print info to explain the purpose of this file
+			core.MY_PRINT_FUNC(helptext)
+			core.MY_PRINT_FUNC("")
+			
 			main()
+			core.pause_and_quit("Done with everything! Goodbye!")
 		except (KeyboardInterrupt, SystemExit):
 			# this is normal and expected, do nothing and die normally
 			pass

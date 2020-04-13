@@ -23,31 +23,36 @@ except ImportError as eee:
 DEBUG = False
 
 
+
+helptext = '''=================================================
+vmd_model_compatability_check:
+This tool will check the compabability of a given model (PMX) with a given dance motion (VMD).
+This means checking whether the model supports all the bones and/or morphs the VMD dance is trying to use.
+All bone/morph names are compared using the JP names.
+
+This requires both a PMX model and a VMD motion to run.
+Outputs: morph compatability summary text file '[dancename]_morph_compatability_with_[modelname].txt'
+         bone compatability summary text file '[dancename]_bone_compatability_with_[modelname].txt'
+'''
+
+
 def main():
 	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC("This tool will check the compabability of a given model (PMX) with a given dance motion (VMD).")
-	core.MY_PRINT_FUNC("This means checking whether the model supports all the bones and/or morphs the VMD dance is trying to use.")
-	core.MY_PRINT_FUNC("All bone/morph names are compared using the JP names")
-	# print info to explain what inputs it needs
-	core.MY_PRINT_FUNC("Inputs: dance VMD 'dancename.vmd' and model PMX 'modelname.pmx'")
-	# print info to explain what outputs it creates
-	core.MY_PRINT_FUNC("Outputs: morph compatability summary text file '[dancename]_morph_compatability_with_[modelname].txt'")
-	core.MY_PRINT_FUNC("         bone compatability summary text file '[dancename]_bone_compatability_with_[modelname].txt'")
+	core.MY_PRINT_FUNC(helptext)
 	core.MY_PRINT_FUNC("")
 	
-
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
-	input_filename_pmx = core.prompt_user_filename(".pmx")
+	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmx_parser.read_pmx(input_filename_pmx)
 	realbones = pmx[5]		# get bones
 	realmorphs = pmx[6]		# get morphs
 	modelname_jp = pmx[0][1]
 	modelname_en = pmx[0][2]
-
+	
 	# prompt VMD file name
 	core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
-	input_filename_vmd = core.prompt_user_filename(".vmd")
+	input_filename_vmd = core.MY_FILEPROMPT_FUNC(".vmd")
 	nicelist_in, bonedict, morphdict = vmd_parser.read_vmd(input_filename_vmd, getdict=True)
 	
 	core.MY_PRINT_FUNC("")
@@ -85,6 +90,7 @@ def main():
 			# also, if len(vmdmorph_b) = 0-14, check for exact match. if len(vmdmorph_b) = 15, check for begins-with match.
 			# return list of ALL matches, this way i can raise an error if there are multiple matches
 			# TODO LOW: i'm not actually 100% certain it does a begins-with match when len=15, but i'm pretty confident. how else could it work? need to test & confirm how MMD behaves.
+			# TODO HIGH: pretty sure names >= 16 cannot be restored by VMD at all, it only looks for exact match... test and confirm!!
 			if len(vmdmorph_b) < 15:
 				# exact match
 				modelmorphmatch_b = [a for a in morphs_in_model_b if a == vmdmorph_b]
@@ -118,7 +124,7 @@ def main():
 		matching_morphs_list = list(matching_morphs.items())
 		matching_morphs_list.sort(key=core.get1st)  # sort by name as tiebreaker
 		matching_morphs_list.sort(key=core.get2nd, reverse=True)  # sort in-place descending by 2nd element as primary
-	
+		
 		# since only jap names are available, printing to screen won't help. must write to a file.
 		# format:
 		# "vmd_dance_file", -----
@@ -145,11 +151,10 @@ def main():
 		
 		# write out
 		output_filename_morph = "%s_morph_compatability_with_%s.txt" % \
-							  (core.get_clean_basename(input_filename_vmd), core.get_clean_basename(input_filename_pmx))
-		
+							  (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx))
 		output_filename_morph = output_filename_morph.replace(" ", "_")
 		output_filename_morph = core.get_unused_file_name(output_filename_morph)
-		core.MY_PRINT_FUNC("...writing result to file '" + output_filename_morph + "'...")
+		core.MY_PRINT_FUNC("...writing result to file '%s'..." % output_filename_morph)
 		core.write_rawlist_to_txt(output_filename_morph, rawlist_out, use_jis_encoding=False)
 		core.MY_PRINT_FUNC("done!")
 	
@@ -183,6 +188,7 @@ def main():
 			vmdbone_b = core.encode_string_with_escape(vmdbone)
 			# also, if len(vmdbone_b) = 0-14, check for exact match. if len(vmdbone_b) = 15, check for begins-with match.
 			# return list of ALL matches, this way i can raise an error if there are multiple matches
+			# TODO HIGH: pretty sure names >= 16 cannot be restored by VMD at all, it only looks for exact match... test and confirm!!
 			if len(vmdbone_b) < 15:
 				# exact match
 				modelbonematch_b = [a for a in bones_in_model_b if a == vmdbone_b]
@@ -244,13 +250,12 @@ def main():
 		
 		# write out
 		output_filename_bone = "%s_bone_compatability_with_%s.txt" % \
-							   (core.get_clean_basename(input_filename_vmd), core.get_clean_basename(input_filename_pmx))
+							   (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx))
 		output_filename_bone = output_filename_bone.replace(" ", "_")
 		output_filename_bone = core.get_unused_file_name(output_filename_bone)
-		core.MY_PRINT_FUNC("...writing result to file '" + output_filename_bone + "'...")
+		core.MY_PRINT_FUNC("...writing result to file '%s'..." % output_filename_bone)
 		core.write_rawlist_to_txt(output_filename_bone, rawlist_out, use_jis_encoding=False)
 		core.MY_PRINT_FUNC("done!")
-	core.pause_and_quit("Done with everything! Goodbye!")
 	return None
 
 
@@ -258,9 +263,11 @@ if __name__ == '__main__':
 	core.MY_PRINT_FUNC("Nuthouse01 - 04/02/2020 - v3.60")
 	if DEBUG:
 		main()
+		core.pause_and_quit("Done with everything! Goodbye!")
 	else:
 		try:
 			main()
+			core.pause_and_quit("Done with everything! Goodbye!")
 		except (KeyboardInterrupt, SystemExit):
 			# this is normal and expected, do nothing and die normally
 			pass

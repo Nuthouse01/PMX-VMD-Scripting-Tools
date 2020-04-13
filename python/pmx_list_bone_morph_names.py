@@ -21,20 +21,20 @@ except ImportError as eee:
 # but if launched in a new window it exits immediately so you can't read it.
 DEBUG = False
 
+helptext = '''=================================================
+pmx_list_bone_morph_names:
+This very simple script will print the JP and EN names of all bones and morphs in a PMX model.
+This is only useful for users who don't have access to PMXEditor.
+
+Outputs: morph name list text file '[modelname]_morph_names.txt'
+         bone name list text file '[modelname]_bone_names.txt'
+'''
+
 
 def main():
-	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC("This script will print the JP and EN names of all bones and morphs in a PMX model.")
-	# print info to explain what inputs it needs
-	core.MY_PRINT_FUNC("Inputs: model PMX 'modelname.pmx'")
-	# print info to explain what outputs it creates
-	core.MY_PRINT_FUNC("Outputs: morph name list text file '[modelname]_morph_names.txt'")
-	core.MY_PRINT_FUNC("         bone name list text file '[modelname]_bone_names.txt'")
-	core.MY_PRINT_FUNC("")
-	
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
-	input_filename_pmx = core.prompt_user_filename(".pmx")
+	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmx_parser.read_pmx(input_filename_pmx)
 	realbones = pmx[5]		# get bones
 	realmorphs = pmx[6]		# get morphs
@@ -60,30 +60,37 @@ def main():
 	
 	
 	# write out
-	output_filename_bone = "%s_bone_names.txt" % core.get_clean_basename(input_filename_pmx)
-	output_filename_bone = output_filename_bone.replace(" ", "_")
+	output_filename_bone = "%s_bone_names.txt" % input_filename_pmx[0:-4]
+	# output_filename_bone = output_filename_bone.replace(" ", "_")
 	output_filename_bone = core.get_unused_file_name(output_filename_bone)
-	core.MY_PRINT_FUNC("...writing result to file '" + output_filename_bone + "'...")
+	core.MY_PRINT_FUNC("...writing result to file '%s'..." % output_filename_bone)
 	core.write_rawlist_to_txt(output_filename_bone, bonelist_out, use_jis_encoding=False)
-	core.MY_PRINT_FUNC("done!")
 
-	output_filename_morph = "%s_morph_names.txt" % core.get_clean_basename(input_filename_pmx)
-	output_filename_morph = output_filename_morph.replace(" ", "_")
+	output_filename_morph = "%s_morph_names.txt" % input_filename_pmx[0:-4]
+	# output_filename_morph = output_filename_morph.replace(" ", "_")
 	output_filename_morph = core.get_unused_file_name(output_filename_morph)
-	core.MY_PRINT_FUNC("...writing result to file '" + output_filename_morph + "'...")
+	core.MY_PRINT_FUNC("...writing result to file '%s'..." % output_filename_morph)
 	core.write_rawlist_to_txt(output_filename_morph, morphlist_out, use_jis_encoding=False)
-	core.MY_PRINT_FUNC("done!")
-	core.pause_and_quit("Done with everything! Goodbye!")
 	return None
 
 
 if __name__ == '__main__':
 	core.MY_PRINT_FUNC("Nuthouse01 - 04/02/2020 - v3.60")
 	if DEBUG:
+		# print info to explain the purpose of this file
+		core.MY_PRINT_FUNC(helptext)
+		core.MY_PRINT_FUNC("")
+		
 		main()
+		core.pause_and_quit("Done with everything! Goodbye!")
 	else:
 		try:
+			# print info to explain the purpose of this file
+			core.MY_PRINT_FUNC(helptext)
+			core.MY_PRINT_FUNC("")
+			
 			main()
+			core.pause_and_quit("Done with everything! Goodbye!")
 		except (KeyboardInterrupt, SystemExit):
 			# this is normal and expected, do nothing and die normally
 			pass

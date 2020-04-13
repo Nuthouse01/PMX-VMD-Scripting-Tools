@@ -152,7 +152,8 @@ class existfile:
 		self.istop = not bool(relpath.count("\\"))
 	
 
-helptext = '''texture_file_sort:
+helptext = '''=================================================
+texture_file_sort:
 This tool will sort the tex/spheremap/toon files used by a model into folders for each category.
 It also moves unused image files at top-level into an "unused" folder, to declutter things.
 Any files referenced by the PMX that do not exist on disk will be listed.
@@ -167,10 +168,6 @@ Note: unlike my other scripts, this overwrites the original input PMX file(s) in
 
 
 def main(moreinfo=False):
-	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC(helptext)
-	core.MY_PRINT_FUNC("")
-	
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	
@@ -528,14 +525,14 @@ def main(moreinfo=False):
 	if not (used_rename or notused_img_rename):
 		core.MY_PRINT_FUNC("No proposed file changes")
 		core.MY_PRINT_FUNC("Aborting: no files were changed")
-		return
+		return None
 	
 	info = ["Do you accept these new names/locations?",
 			"1 = Yes, 2 = No (abort)"]
 	r = core.MY_SIMPLECHOICE_FUNC((1, 2), info)
 	if r == 2:
 		core.MY_PRINT_FUNC("Aborting: no files were changed")
-		return
+		return None
 	
 	# =========================================================================================================
 	# =========================================================================================================
@@ -562,7 +559,7 @@ def main(moreinfo=False):
 			r = core.MY_SIMPLECHOICE_FUNC((1, 2), info)
 			if r == 2:
 				core.MY_PRINT_FUNC("Aborting: no files were changed")
-				return
+				return None
 	
 	core.MY_PRINT_FUNC("...renaming files on disk...")
 	# second, notused_img_rename on disk: norm -> mapto
@@ -618,10 +615,18 @@ def main(moreinfo=False):
 if __name__ == '__main__':
 	core.MY_PRINT_FUNC("Nuthouse01 - 04/02/2020 - v3.60")
 	if DEBUG:
+		# print info to explain the purpose of this file
+		core.MY_PRINT_FUNC(helptext)
+		core.MY_PRINT_FUNC("")
+		
 		main()
 		core.pause_and_quit("Done with everything! Goodbye!")
 	else:
 		try:
+			# print info to explain the purpose of this file
+			core.MY_PRINT_FUNC(helptext)
+			core.MY_PRINT_FUNC("")
+			
 			main()
 			core.pause_and_quit("Done with everything! Goodbye!")
 		except (KeyboardInterrupt, SystemExit):

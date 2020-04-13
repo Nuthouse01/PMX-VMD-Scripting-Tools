@@ -11,8 +11,6 @@
 # scaling or manual adjustment will probably be required, which kinda defeats the whole point of this script...
 
 
-import math
-
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
 	import nuthouse01_vmd_parser as vmd_parser
@@ -117,7 +115,7 @@ def build_bonechain(allbones, endbone):
 	while True:
 		r = core.my_sublist_find(allbones, 0, nextbone)
 		if r is None:
-			core.MY_PRINT_FUNC("Err: unable to find '" + nextbone + "' in input file, unable to build parentage chain")
+			core.MY_PRINT_FUNC("ERROR: unable to find '" + nextbone + "' in input file, unable to build parentage chain")
 			raise RuntimeError()
 		# 0 = bname, 5 = parent index, 234 = xyz position
 		nextbone = allbones[r[5]][0]
@@ -129,26 +127,25 @@ def build_bonechain(allbones, endbone):
 	buildme.reverse()
 	return buildme
 
+helptext = '''=================================================
+make_ik_from_vmd:
+This script runs forward kinematics for the legs of a model, to calculate where the feet/toes will be and generates IK bone frames for those feet/toes.
+This is only useful when the input dance does NOT already use IK frames, such as the dance Conqueror by IA.
+** Specifically, if a non-IK dance works well for model X but not for model Y (feet clipping thru floor, etc), this would let you copy the foot positions from model X onto model Y.
+** In practice, this isn't very useful... this file is kept around for historical reasons.
+The output is a VMD that should be loaded into MMD *after* the original dance VMD is loaded.
+
+Note: does not handle custom interpolation in the input dance VMD, assumes all interpolation is linear.
+Note: does not handle models with 'hip cancellation' bones
+
+This requires both a PMX model and a VMD motion to run.
+Outputs: VMD file '[dancename]_ik_from_[modelname].vmd' that contains only the IK frames for the dance
+'''
 
 def main():
-	
-	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC("This script runs forward kinematics for the legs of a model, to calculate where the feet/toes will be and generates IK bone frames for those feet/toes.")
-	core.MY_PRINT_FUNC("This is only useful when the input dance does NOT already use IK frames, such as Conqueror by IA.")
-	core.MY_PRINT_FUNC("** Specifically, if a non-IK dance works well for model X but not for model Y (feet clipping thru floor, etc), this would let you copy the foot positions from model X onto model Y.")
-	core.MY_PRINT_FUNC("** In practice, this isn't very useful... this file is kept around for historical reasons.")
-	core.MY_PRINT_FUNC("The output is a VMD that should be loaded into MMD *after* the original dance VMD is loaded.")
-	core.MY_PRINT_FUNC("Note: does not handle custom interpolation in the input dance VMD, assumes all interpolation is linear.")
-	core.MY_PRINT_FUNC("Note: does not handle models with 'hip cancellation' bones")
-	# print info to explain what inputs it needs
-	core.MY_PRINT_FUNC("Inputs: dance VMD 'dancename.vmd' and model PMX 'modelname.pmx'")
-	# print info to explain what outputs it creates
-	core.MY_PRINT_FUNC("Outputs: VMD file '[dancename]_ik_from_[modelname].vmd' that contains only the IK frames for the dance")
-	core.MY_PRINT_FUNC("")
-
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
-	input_filename_pmx = core.prompt_user_filename(".pmx")
+	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmx_parser.read_pmx(input_filename_pmx)
 	# get bones
 	realbones = pmx[5]
@@ -165,7 +162,7 @@ def main():
 		assert bonechain_l[-1].name == jp_lefttoe
 		assert bonechain_l[-2].name == jp_leftfoot
 	except AssertionError:
-		core.MY_PRINT_FUNC("Err: unexpected structure found for foot/toe bones, verify semistandard names and structure")
+		core.MY_PRINT_FUNC("ERROR: unexpected structure found for foot/toe bones, verify semistandard names and structure")
 		raise RuntimeError()
 		
 	# then walk down these 2 lists, add each name to a set: build union of all relevant bones
@@ -190,17 +187,17 @@ def main():
 		assert bonechain_ikl[-1].name == jp_lefttoe_ik
 		assert bonechain_ikl[-2].name == jp_leftfoot_ik
 	except AssertionError:
-		core.MY_PRINT_FUNC("Err: unexpected structure found for foot/toe IK bones, verify semistandard names and structure")
+		core.MY_PRINT_FUNC("ERROR: unexpected structure found for foot/toe IK bones, verify semistandard names and structure")
 		raise RuntimeError()
-
+	
 	# verify that the bonechains are symmetric in length
 	try:
 		assert len(bonechain_l) == len(bonechain_r)
 		assert len(bonechain_ikl) == len(bonechain_ikr)
 	except AssertionError:
-		core.MY_PRINT_FUNC("Err: unexpected structure found, model is not left-right symmetric")
+		core.MY_PRINT_FUNC("ERROR: unexpected structure found, model is not left-right symmetric")
 		raise RuntimeError()
-
+	
 	# determine how many levels of parentage, this value "t" should hold the first level where they are no longer shared
 	t = 0
 	while bonechain_l[t].name == bonechain_ikl[t].name:
@@ -212,11 +209,11 @@ def main():
 	# !!! bonechain_r, bonechain_l, bonechain_ikr, bonechain_ikl, relevant_bones
 	core.MY_PRINT_FUNC("...identified " + str(len(bonechain_l)) + " bones per leg-chain, " + str(len(relevant_bones)) + " relevant bones total")
 	core.MY_PRINT_FUNC("...identified " + str(len(bonechain_ikl)) + " bones per IK leg-chain")
-
+	
 	###################################################################################
 	# prompt VMD file name
 	core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
-	input_filename_vmd = core.prompt_user_filename(".vmd")
+	input_filename_vmd = core.MY_FILEPROMPT_FUNC(".vmd")
 	nicelist_in = vmd_parser.read_vmd(input_filename_vmd)
 	
 	# check if this VMD uses IK or not, print a warning if it does
@@ -399,15 +396,14 @@ def main():
 			core.print_progress_oneline(I, len(relevant_framenums))
 	
 	core.MY_PRINT_FUNC("...done with forward kinematics computation, now writing output...")
-
+	
 	if INCLUDE_IK_ENABLE_FRAME:
 		# create a single ikdispframe that enables the ik bones at frame 0
 		ikdispframe_list = [[0, True, [[jp_rightfoot_ik, True], [jp_righttoe_ik, True], [jp_leftfoot_ik, True], [jp_lefttoe_ik, True]]]]
 	else:
 		ikdispframe_list = []
 		core.MY_PRINT_FUNC("Warning: IK following will NOT be enabled when this VMD is loaded, you will need enable it manually!")
-
-
+	
 	nicelist_out = [[2,"SEMISTANDARD-IK-BONES--------"],
 					ikframe_list,	# bone
 					[],				# morph
@@ -420,21 +416,30 @@ def main():
 	
 	# write out
 	output_filename_vmd = "%s_ik_from_%s.vmd" % \
-						  (core.get_clean_basename(input_filename_vmd), core.get_clean_basename(input_filename_pmx))
+						  (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx))
 	output_filename_vmd = output_filename_vmd.replace(" ", "_")
 	output_filename_vmd = core.get_unused_file_name(output_filename_vmd)
 	vmd_parser.write_vmd(output_filename_vmd, nicelist_out)
 
-	core.pause_and_quit("Done with everything! Goodbye!")
 	return None
 
 if __name__ == '__main__':
 	core.MY_PRINT_FUNC("Nuthouse01 - 04/02/2020 - v3.60")
 	if DEBUG:
+		# print info to explain the purpose of this file
+		core.MY_PRINT_FUNC(helptext)
+		core.MY_PRINT_FUNC("")
+		
 		main()
+		core.pause_and_quit("Done with everything! Goodbye!")
 	else:
 		try:
+			# print info to explain the purpose of this file
+			core.MY_PRINT_FUNC(helptext)
+			core.MY_PRINT_FUNC("")
+			
 			main()
+			core.pause_and_quit("Done with everything! Goodbye!")
 		except (KeyboardInterrupt, SystemExit):
 			# this is normal and expected, do nothing and die normally
 			pass
