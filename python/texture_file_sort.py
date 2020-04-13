@@ -50,13 +50,6 @@ MAKE_BACKUP_BEFORE_RENAMES = True
 BACKUP_SUFFIX = ".renamebackup"
 
 
-# GUI TODO: print, simple-prompt, and file-prompt are each function-variables that are overwriteable when launching in GUI mode!!
-# todo only components of overall-cleanup need broken into segments so thye can be reassembled, others can be the whole original script flow
-# todo one-button run, no separate load button
-# todo change text-mode structure of VMD convert tool to detect vmd/txt and convert appropriately
-# todo change text-mode prompt to accept multiple file extensions
-
-
 # these are the names of the folders that the files will be sorted into, these can be changed to whatever you want
 # they cannot use the same names as eachother, however, all must be unique
 FOLDER_TEX =    "tex"

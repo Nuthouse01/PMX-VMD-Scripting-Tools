@@ -1,152 +1,219 @@
 
-#############################
-# basic size = ~6k
-# size with translate ~10k
-# size with translate + gui ~12k
-# size with just gui ~9k
-
-# re-investigate compression with UPK?
-#############################
+# pyinstaller --onefile --noconsole graphic_user_interface.py
 
 
-# pyinstaller --onefile --noconsole GUI_pmx_overall_cleanup.py
-
-
-# TODO: restructure the original 5 scripts to use the "begin/middle/end/main" structure
 # TODO: error wrappers in PMX parser? ugh
 
-# eventual todo: how to make this system work for the other major scripts that take different inputs? different number/type of inputs
-
-try:
-	# for Python2
-	import Tkinter as tk
-	import ScrolledText as tkst
-except ImportError:
-	# for Python3
-	import tkinter as tk
-	import tkinter.scrolledtext as tkst
+import tkinter as tk
+import tkinter.scrolledtext as tkst
 import tkinter.filedialog as fdg
-
-import nuthouse01_core as core
-import nuthouse01_pmx_parser as pmxlib
 from os import path
-import copy
-
-
-
-# to get "rerunability" I need to create a deep copy of the PMX input object, either after loading or before running.
-# this takes ~1-2 sec and requires the "copy" library so it slightly increases file size. is it worth it?
-
 # to get better GUI responsiveness, I need to launch the parser and processing functions in separate threads.
-# this causes the GUI progress updates to look all flickery and unpleasant... and it would take the "threading" lib which might
-# increase file size. is it worth it?
+# this causes the GUI progress updates to look all flickery and unpleasant... but its worth it.
+import threading
+
+# second, wrap custom imports with a try-except to catch it if files are missing
+try:
+	import make_ik_from_vmd
+	import pmx_list_bone_morph_names
+	import pmx_overall_cleanup
+	import texture_file_sort
+	import vmd_armtwist_insert
+	import vmd_convert_tool
+	import vmd_model_compatability_check
+	import nuthouse01_core as core
+	import nuthouse01_pmx_parser as pmxlib
+except ImportError as eee:
+	print(eee)
+	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
+	print("...press ENTER to exit...")
+	input()
+	exit()
+	vmd_convert_tool = pmx_overall_cleanup = texture_file_sort = vmd_model_compatability_check = None
+	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = None
+	core = pmxlib = None
 
 
-# # a popupwindow to replace the stock "input()" function
+FILE_EXTENSION_MAP = {
+	".csv": ("CSV file", "*.csv"),
+	".txt": ("Text file", "*.txt"),
+	".pmx": ("PMX model", "*.pmx"),
+	".vmd": ("VMD file", "*.vmd"),
+	"*": ("Any file", "*")
+}
 
-# def gui_input(prompt=''):
-# 	win = tk.Toplevel()
-#
-# 	# normally when x button is pressed, it calls "destroy". this replaces that with "quit", to break mainloop
-# 	# that way the x button resumes executing below win.mainloop and the script continues
-# 	win.protocol("WM_DELETE_WINDOW", win.quit)
-#
-# 	label= tk.Label(win, text=prompt)
-# 	label.pack()
-#
-# 	userinput= tk.StringVar(win)
-# 	entry= tk.Entry(win, textvariable=userinput)
-# 	entry.pack()
-#
-# 	# pressing the button should stop the mainloop
-# 	button= tk.Button(win, text="ok", command=win.quit)
-# 	button.pack()
-#
-# 	# block execution until the user presses the OK button
-# 	win.mainloop()
-#
-# 	# mainloop has ended. Read the value of the Entry, then destroy the GUI.
-# 	userinput= userinput.get()
-# 	win.destroy()
-#
-# 	return userinput
+def gui_fileprompt(extensions) -> str:
+	# replaces core func MY_FILEPROMPT_FUNC when running in GUI mode
+	
+	# todo make it filter files differently
+	
+	# accepts string or iterable
+	if isinstance(extensions, str):
+		# force extensions to be a list
+		extensions = [extensions]
+	
+	# make this list into a new, separate thing: list of identifiers + globs
+	extensions_labels = []
+	for ex in extensions:
+		if ex in FILE_EXTENSION_MAP:
+			extensions_labels.append(FILE_EXTENSION_MAP[ex])
+		else:
+			extensions_labels.append(("Unknown type", "*" + ex))
+	extensions_labels = tuple(extensions_labels)
+	
+	# dont trust file dialog to remember last-opened path, manually save/read it
+	recordpath = core.get_persistient_storage_path("last_opened_dir.txt")
+	c = core.read_txt_to_rawlist(recordpath, quiet=True)
+	if c and path.isdir(c[0][0]):
+		start_here = c[0][0]
+	else:
+		start_here = "."
+	
+	newpath = fdg.askopenfilename(initialdir=start_here,
+								  title="Select input file: %s" % extensions,
+								  filetypes=extensions_labels)
+	
+	# if user closed the prompt before giving a file path, quit here
+	if newpath == "":
+		core.MY_PRINT_FUNC("ERROR: this script requires an input file to run")
+		raise RuntimeError()
+	
+	# they got an existing file! update the last_opened_dir file
+	core.write_rawlist_to_txt(recordpath, [[path.dirname(newpath)]], quiet=True)
+	
+	return newpath
+
+
+
+simplechoice_args = None
+simplechoice_done = threading.Event()
+simplechoice_done.clear()
+simplechoice_result = -1
+
+def gui_simplechoice_trigger(options, explain_info=None):
+	# print("trig")
+	global simplechoice_args
+	# write into simplechoice_args to signify that I want a popup
+	simplechoice_args = [options, explain_info]
+	# wait for a choice to be made from within the popup
+	simplechoice_done.wait()
+	simplechoice_done.clear()
+	if simplechoice_result == -1:
+		# if they clicked x without choosing a result, return the first option
+		return options[0]
+	else:
+		return simplechoice_result
+
+
+def gui_simplechoice(options, explain_info=None):
+	# a popupwindow to replace the stock "input()" function when running in GUI mode
+	# print("pop")
+	# create popup
+	win = tk.Toplevel()
+	win.title("Make a selection")
+	# normally when x button is pressed, it calls "destroy". this replaces that with "quit", so i return from mainloop
+	# that way the x button resumes executing below win.mainloop and the script continues
+	def on_x():
+		simplechoice_done.set()
+		win.destroy()
+	win.protocol("WM_DELETE_WINDOW", on_x)
+	
+	global simplechoice_result
+	simplechoice_result = -1
+	
+	# if explain_info is given, create labels that display those strings
+	if isinstance(explain_info, str):
+		explain_info = [explain_info]
+	if explain_info is not None:
+		labelframe = tk.Frame(win)
+		labelframe.pack(side=tk.TOP, fill='x')
+		for f in explain_info:
+			# create labels for each line
+			# todo: make them centered & wrap nicely
+			label = tk.Label(labelframe, text=f)
+			label.pack(side=tk.TOP, fill='x', padx=10, pady=10)
+			core.MY_PRINT_FUNC(f)
+		
+	buttonframe = tk.Frame(win)
+	buttonframe.pack(side=tk.TOP)
+	
+	def setresult(r):
+		global simplechoice_result
+		simplechoice_result = r
+		# pressing the button should stop the mainloop
+		simplechoice_done.set()
+		win.destroy()
+	
+	# create buttons for each numbered option
+	for i in options:
+		c = lambda v=i: setresult(v)
+		button = tk.Button(buttonframe, text=str(i), command=c)
+		button.pack(side=tk.LEFT, padx=10, pady=10)
+	
+	return None
 
 
 # this lets the window be moved or resized as the target function is executing
-# however, this makes the text kinda flickery, and probably increases the EXE size
-import threading
+# however, this makes the text kinda flickery, oh well
 def run_as_thread(func):
-	thread = threading.Thread(name="do-the-thing",
-							  target=func,
-							  daemon=True)
+	thread = threading.Thread(name="do-the-thing", target=func, daemon=True)
 	# start the thread
 	thread.start()
 
 
+
+
 class Application(tk.Frame):
-	def __init__(self, master, help_func, run_func, writeout_func, UIconfig):
+	def __init__(self, master):
 		tk.Frame.__init__(self, master)
 		
-		###############################################
-		# first, handle input parameters
-		# parameters: help function, payload function, writeout function, what kind of input buttons (pmx, vmd, txt)
+		# from each script, get main() and helptext
+		self.payload = None
+		self.helptext = ""
 		
-		self.help_func =     help_func
-		self.run_func =      run_func
-		self.writeout_func = writeout_func
-		self.UIconfig =      UIconfig
-		# UI config: do you want a pmx button? do you want a vmd button? do you want both? do you want a txt button?
+		# list of all possible displayed names in the OptionMenu, with assoc helptext and mainfunc
+		self.all_script_list = [
+			("vmd_convert_tool.py",              vmd_convert_tool.helptext,              vmd_convert_tool.main),
+			("pmx_overall_cleanup.py",           pmx_overall_cleanup.helptext,           pmx_overall_cleanup.main),
+			("texture_file_sort.py",             texture_file_sort.helptext,             texture_file_sort.main),
+			("make_ik_from_vmd.py",              make_ik_from_vmd.helptext,              make_ik_from_vmd.main),
+			("pmx_list_bone_morph_names.py",     pmx_list_bone_morph_names.helptext,     pmx_list_bone_morph_names.main),
+			("vmd_armtwist_insert.py",           vmd_armtwist_insert.helptext,           vmd_armtwist_insert.main),
+			("vmd_model_compatability_check.py", vmd_model_compatability_check.helptext, vmd_model_compatability_check.main),
+		]
+		
+		self.optionvar = tk.StringVar(master)
+		self.optionvar.trace("w", self.change_mode)
+		self.optionvar.set(self.all_script_list[0][0])
+		
+		self.which_script = tk.OptionMenu(master, self.optionvar, *[x[0] for x in self.all_script_list])
+		# todo make it prettier
+		# opt.config(width=90, font=('Helvetica', 12))
+		self.which_script.pack()
+		
+		
 		
 		###############################################
 		# second, set up other non-ui class members
-		# this variable is used in this new print function
+		# this variable is used in this new print function, very important
 		self.last_print_was_progress = False
-		self.pmx_input = []
-		self.vmd_input = []
-		self.txt_input = []
-		self.pmxpath = ""
-		self.vmdpath = ""
-		self.txtpath = ""
 		
 		###############################################
 		# third, build the GUI buttons and etc
 		
-		if "pmx" in self.UIconfig:
-			self.pmx_frame = tk.Frame(master, relief=tk.RAISED, borderwidth=1)
-			self.pmx_frame.pack(side=tk.TOP, fill='x', padx=10, pady=10)
-			
-			# load PMX
-			# self.pmx_butt = tk.Button(self.pmx_frame, text="Load PMX", width=10, command=self.get_pmx_file)
-			self.pmx_butt = tk.Button(self.pmx_frame, text="Load PMX", width=10, command=lambda: run_as_thread(self.get_pmx_file))
-			self.pmx_butt.pack(side=tk.LEFT, padx=10, pady=10)
-			# load PMX label
-			self.pmx_label = tk.Label(self.pmx_frame, text="PMX: ----")
-			self.pmx_label.pack(side=tk.LEFT, fill='x')
-			
-		if "vmd" in self.UIconfig:
-			self.vmd_frame = tk.Frame(master, relief=tk.RAISED, borderwidth=1)
-			self.vmd_frame.pack(side=tk.TOP, padx=10, pady=10)
-			
-			# load vmd
-			self.vmd_butt = tk.Button(self.vmd_frame, text="Load VMD", width=10, command=self.dummy)
-			self.vmd_butt.pack(side=tk.LEFT, padx=10, pady=10)
-			# load vmd label
-			self.vmd_label = tk.Label(self.vmd_frame, text="VMD: ----")
-			self.vmd_label.pack(side=tk.LEFT, fill='x')
-		
-		
 		self.always_frame = tk.Frame(master, relief=tk.RAISED, borderwidth=1)
 		self.always_frame.pack(side=tk.TOP, fill='x', padx=10, pady=10)
 		
-		# "run" button is disabled until a valid combination of inputs is loaded
-		# self.run_butt = tk.Button(self.always_frame, text="RUN", width=10, command=self.do_the_thing)
 		self.run_butt = tk.Button(self.always_frame, text="RUN", width=10, command=lambda: run_as_thread(self.do_the_thing))
 		self.run_butt.pack(side=tk.LEFT, padx=10, pady=10)
-		self.run_butt.configure(state='disabled')
 		
 		# help
 		self.help_butt = tk.Button(self.always_frame, text="Help", width=10, command=self.help_func)
 		self.help_butt.pack(side=tk.LEFT, padx=10, pady=10)
+		
+		# clear
+		self.clear_butt = tk.Button(self.always_frame, text="clear", width=10, command=self.clear_func)
+		self.clear_butt.pack(side=tk.LEFT, padx=10, pady=10)
 		
 		# debug checkbox
 		self.debug_check_var = tk.IntVar()
@@ -167,10 +234,16 @@ class Application(tk.Frame):
 		
 		# VERY IMPORTANT: overwrite the default print function with one that goes to the GUI
 		core.MY_PRINT_FUNC = self.my_write
+		# VERY IMPORTANT: overwrite the default simple-choice function with one that makes a popup
+		core.MY_SIMPLECHOICE_FUNC = gui_simplechoice_trigger
+		# VERY IMPORTANT: overwrite the default fileprompt function with one that uses a popup filedialogue
+		core.MY_FILEPROMPT_FUNC = gui_fileprompt
 		
-		core.MY_PRINT_FUNC("Nuthouse01 - 04/02/2020 - v3.60")
-		core.MY_PRINT_FUNC("Begin by loading an input file, then click 'Run'")
-		core.MY_PRINT_FUNC("Click 'Help' to print out details of what the script does")
+		self.print_header()
+		
+		self.spin_to_handle_inputs()
+		
+		self.change_mode()
 		
 		# done with init
 		return
@@ -178,8 +251,7 @@ class Application(tk.Frame):
 	# replacement for core.basic_print function, print to text thingy instead of to console
 	def my_write(self, *args, is_progress=False):
 		the_string = ' '.join([str(x) for x in args])
-		# todo remove this probably?
-		core.basic_print(the_string, is_progress=is_progress)
+		core.basic_print(the_string, is_progress=is_progress)  # todo remove this probably?
 		# if last print was a progress update, then overwrite it with next print
 		if self.last_print_was_progress:	self._overwrite(the_string)
 		# if last print was a normal print, then print normally
@@ -200,93 +272,77 @@ class Application(tk.Frame):
 		self.edit_space.delete(last_insert[0], last_insert[1])  # delete
 		self._write(the_string)
 	
+	def spin_to_handle_inputs(self):
+		# check if an input is requested
+		# print("spin")
+		global simplechoice_args
+		if simplechoice_args is not None:
+			# print("do")
+			# if it is requested, create the popup
+			gui_simplechoice(simplechoice_args[0], simplechoice_args[1])
+			# print("return")
+			# dismiss the request for the popup
+			simplechoice_args = None
+		
+		self.after(200, self.spin_to_handle_inputs)
+		
+	def help_func(self):
+		core.MY_PRINT_FUNC(self.helptext)
+	
 	def do_the_thing(self):
 		# disable run_butt for the duration of this function
 		self.run_butt.configure(state='disabled')
-		# print visual separator
-		core.MY_PRINT_FUNC("\n" + ("="*20))
-		core.MY_PRINT_FUNC("...preparing...")
-		# first, make a copy of the thing
-		pmx = copy.deepcopy(self.pmx_input)
-		try:
-			result, is_changed = self.run_func(pmx, bool(self.debug_check_var.get()))
-		except Exception as e:
-			core.MY_PRINT_FUNC(e.__class__.__name__, e)
-			core.MY_PRINT_FUNC("ERROR: failed to execute target script")
-			self.run_butt.configure(state='normal')
-			return
-		if is_changed:
-			try:
-				core.MY_PRINT_FUNC("\n" + ("=" * 20))
-				self.writeout_func(result, self.pmxpath)
-			except Exception as e:
-				core.MY_PRINT_FUNC(e.__class__.__name__, e)
-				core.MY_PRINT_FUNC("ERROR: failed to write result of script")
-		self.run_butt.configure(state='normal')
-		return
-		
-		
-	def dummy(self):
-		return
-	def get_pmx_file(self):
-		# attached to "load PMX" button
-		# disable pmx_butt for the duration of this function
-		self.pmx_butt.configure(state='disabled')
-		
-		# dont trust file dialog to remember last-opened path, do it manually
-		recordpath = core.get_persistient_storage_path("last_opened_dir.txt")
-		c = core.read_txt_to_rawlist(recordpath, quiet=True)
-		if c and path.isdir(c[0][0]):
-			start_here = c[0][0]
-		else:
-			start_here = "."
-		
-		newpath = fdg.askopenfilename(initialdir=start_here, title="Select input file", filetypes=(("PMX files", "*.pmx"),))
-		
-		# if user closed the prompt before giving a file path, quit here
-		if newpath == "":
-			self.pmx_butt.configure(state='normal')
-			return
-		
-		# print visual separator
-		core.MY_PRINT_FUNC("\n" + ("="*20))
-		
-		# they got an existing file! update the last_opened_dir file
-		core.write_rawlist_to_txt(recordpath, [[path.dirname(newpath)]], quiet=True)
+		# disable spinbox
+		self.which_script.configure(state='disabled')
+		# disable clear button, help button
+		self.clear_butt.configure(state='disabled')
+		self.help_butt.configure(state='disabled')
 		
 		try:
-			newpmx = pmxlib.read_pmx(newpath)
+			self.payload(bool(self.debug_check_var.get()))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
-			core.MY_PRINT_FUNC("ERROR: failed to parse PMX file")
-			self.pmx_butt.configure(state='normal')
-			return
-			
-		# if parsed without crashing, hooray!
-		# save the name for displaying under the button
-		self.pmxpath = newpath
-		# write name into label widget
-		self.pmx_label.config(text='PMX: "%s"' % path.basename(newpath))
+			core.MY_PRINT_FUNC("ERROR: failed to complete target script")
 		
-		# save the PMX for giving to the actual processing later
-		self.pmx_input = newpmx
-		
-		# unlock the "run" button once a valid PMX is loaded in
+		# re-enable GUI elements when finished running
 		self.run_butt.configure(state='normal')
-		self.pmx_butt.configure(state='normal')
+		self.which_script.configure(state='normal')
+		self.clear_butt.configure(state='normal')
+		self.help_butt.configure(state='normal')
 		return
-
-def launch_gui(title, help_func, run_func, writeout_func, UIconfig):
+	
+	def print_header(self):
+		core.MY_PRINT_FUNC("Nuthouse01 - 04/02/2020 - v3.60")
+		core.MY_PRINT_FUNC("Begin by selecting a script above, then click 'Run'")
+		core.MY_PRINT_FUNC("Click 'Help' to print out details of what the selected script does")
+		return
+		
+	def change_mode(self, *args):
+		# need to have *args here even if i dont use them
+		newstr = self.optionvar.get()
+		idx = [x[0] for x in self.all_script_list].index(newstr)
+		self.helptext = self.all_script_list[idx][1]
+		self.payload = self.all_script_list[idx][2]
+		core.MY_PRINT_FUNC(">>>>>>>>>>")
+		core.MY_PRINT_FUNC("Load new script '%s'" % newstr)
+		core.MY_PRINT_FUNC("")
+		return
+		
+	def clear_func(self):
+		self.edit_space.configure(state='normal')
+		self.edit_space.delete("1.0", tk.END)
+		self.print_header()
+		# these print functions will immediately set it back to the 'disabled' state
+		return
+	
+	
+def launch_gui(title):
 	root = tk.Tk()
 	root.title(title)
-	app = Application(root, help_func, run_func, writeout_func, UIconfig)
+	app = Application(root)
 	app.mainloop()
 
 
 if __name__ == '__main__':
-	launch_gui("Do not execute this file directly, this is imported by other modules",
-			   None,
-			   None,
-			   None,
-			   tuple())
+	launch_gui("Nuthouse01 MMD PMX VMD tools")
 
