@@ -152,6 +152,8 @@ def parse_vmd_header(raw) -> list:
 def parse_vmd_boneframe(raw) -> (list, dict):
 	# get all the bone-frames, store in a list of lists
 	boneframe_list = []
+	# all bones will be stored in this set (prevents duplicates)
+	allboneset = set()
 	# all bones usages will be counted in this dictionary
 	bonedict = {}
 	# verify that there is enough file left to read a single number
@@ -194,6 +196,7 @@ def parse_vmd_boneframe(raw) -> (list, dict):
 							  z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by]
 			boneframe_list.append(this_boneframe)
 			# update the bonedict
+			allboneset.add(bname_str)
 			# new idea: mask out the boilerplate unused frames! if time=0 and value=0, then its not "used" so dont count it
 			if f != 0 or [xp, yp, zp] != [0, 0, 0] or [xrot_q, yrot_q, zrot_q, wrot_q] != [0, 0, 0, 1]:
 				core.increment_occurance_dict(bonedict, bname_str)
@@ -212,6 +215,7 @@ def parse_vmd_boneframe(raw) -> (list, dict):
 	
 	if len(bonedict) > 0:
 		core.MY_PRINT_FUNC("...# of unique bones        = %d" % len(bonedict))
+		core.MY_PRINT_FUNC("...unique bones, used/total = %d / %d" % (len(bonedict), len(allboneset)))
 	
 	return boneframe_list, bonedict
 
@@ -219,6 +223,8 @@ def parse_vmd_morphframe(raw) -> (list, dict):
 	# get all the morph-frames, store in a list of lists
 	morphframe_list = []
 	# all morphs will be stored in this set (prevents duplicates)
+	allmorphset = set()
+	# morphs that are actually used will have usages counted here
 	morphdict = {}
 	# is there enough file left to read a single number?
 	if (len(raw) - core.get_readfrom_byte()) < struct.calcsize(fmt_number):
@@ -238,6 +244,7 @@ def parse_vmd_morphframe(raw) -> (list, dict):
 			
 			# update the morphdict
 			# new idea: mask out the boilerplate unused frames! if time=0 and value=0, then its not "used" so dont count it
+			allmorphset.add(mname_str)
 			if f != 0 or v != 0:
 				core.increment_occurance_dict(morphdict, mname_str)
 			# display progress printouts
@@ -253,7 +260,8 @@ def parse_vmd_morphframe(raw) -> (list, dict):
 			raise RuntimeError()
 
 	if len(morphdict) > 0:
-		core.MY_PRINT_FUNC("...# of unique morphs       = %d" % len(morphdict))
+		# core.MY_PRINT_FUNC("...# of unique morphs       = %d" % len(morphdict))
+		core.MY_PRINT_FUNC("...unique morphs, used/total= %d / %d" % (len(morphdict), len(allmorphset)))
 	
 	return morphframe_list, morphdict
 
