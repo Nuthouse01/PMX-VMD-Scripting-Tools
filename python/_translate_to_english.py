@@ -236,7 +236,8 @@ def fix_eng_name(name_jp: str, name_en: str) -> (str, None):
 	return None
 
 
-helptext = '''translate_to_english:
+helptext = '''====================
+translate_to_english:
 This tool fills out empty EN names in a PMX model with translated versions of the JP names.
 It tries to do some intelligent piecewise translation using a local dictionary but goes to Google Translate if that fails.
 Machine translation is never 100% reliable, so this is only a stopgap measure to eliminate all the 'Null_##'s and wrongly-encoded garbage and make it easier to use in MMD. A bad translation is better than none at all!

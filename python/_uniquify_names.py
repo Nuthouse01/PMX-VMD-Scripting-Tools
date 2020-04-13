@@ -42,7 +42,8 @@ def uniquify_one_category(used_names: set, new_name: str) -> str:
 	return new_name
 
 
-helptext = '''uniquify_names:
+helptext = '''====================
+uniquify_names:
 This function will uniquify all names of materials/bones/morphs/displayframes in the model. Bad things happen when names are not unique.
 '''
 

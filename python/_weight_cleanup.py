@@ -20,7 +20,8 @@ except ImportError as eee:
 DEBUG = False
 
 
-helptext = '''weight_cleanup:
+helptext = '''====================
+weight_cleanup:
 This function will fix the vertex weights that are weighted twice to the same bone, a minor issue that sometimes happens when merging bones.
 This also normalizes the weights of all vertices.
 '''

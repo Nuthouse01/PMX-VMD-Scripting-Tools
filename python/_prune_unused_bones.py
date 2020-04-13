@@ -50,7 +50,8 @@ PRINT_FOUND_UNUSED_BONES = False
 # glasses, dummy_L, dummy_R, view cnt, motherbone
 BONES_TO_PROTECT = ["メガネ", "左ダミー", "右ダミー", "操作中心", "全ての親"]
 
-helptext = '''prune_unused_bones:
+helptext = '''====================
+prune_unused_bones:
 This file identifies and deletes all bones in a PMX model that are NOT being used.
 A bone is USED if any of the following are true:
     any vertex has nonzero weight with that bone

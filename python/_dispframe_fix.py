@@ -25,7 +25,8 @@ MAX_MORPHS_IN_DISPLAY = 250
 
 # UTTERLY IMPOSSIBLE to get multiple frames containing morphs, they are always collapsed into one
 
-helptext = '''dispframe_fix:
+helptext = '''====================
+dispframe_fix:
 This function fixes issues with display frames.
 Remove "hidden" morphs that would crash MMD (because they are not in either eye/brow/lip/other).
 Ensure there are <250 morphs among all display frames, because that will crash MMD as well.

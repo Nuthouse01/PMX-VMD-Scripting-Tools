@@ -20,7 +20,8 @@ except ImportError as eee:
 DEBUG = False
 
 
-helptext = '''prune_invalid_faces:
+helptext = '''====================
+prune_invalid_faces:
 This script will delete any invalid faces in the model, a simple operation.
 An invalid face is any face whose 3 defining vertices are not unique with respect to eachother.
 '''

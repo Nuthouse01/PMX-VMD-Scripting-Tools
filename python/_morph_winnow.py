@@ -35,7 +35,8 @@ DELETE_NEWLY_EMPTIED_MORPHS = True
 WINNOW_THRESHOLD = 0.0003
 
 
-helptext = '''morph_winnow:
+helptext = '''====================
+morph_winnow:
 To reduce overall file size, this will delete vertices from vertex morphs that move imperceptibly small distances.
 This will also delete any vertex morphs that have all of their controlled vertices deleted this way.
 The default threshold is 0.0003 units. Trust me it really is imperceptible.

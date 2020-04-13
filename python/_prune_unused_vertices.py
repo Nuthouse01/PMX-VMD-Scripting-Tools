@@ -20,7 +20,8 @@ except ImportError as eee:
 DEBUG = False
 
 
-helptext = '''prune_unused_vertices:
+helptext = '''====================
+prune_unused_vertices:
 This script will delete any unused vertices from the model, sometimes causing massive file size improvements.
 An unused vertex is one which is not used to define any faces.
 '''

@@ -29,7 +29,8 @@ template =          [0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1,
 # the above template multiplies everything by 0, below the same result by subtracting 1 from everthing
 template_minusone = [1, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0, -1]
 
-helptext = '''alphamorph_correct:
+helptext = '''====================
+alphamorph_correct:
 This function fixes improper "material hide" morphs in a model.
 Many models simply set the opacity to 0, but forget to zero out the edging effects or other needed fields.
 This also changes all alphamorphs to use the "multiply by 0" approach when the target material is opaque(visible) by default, and use the "add -1" approach when the target is transparent(hidden) by default.
