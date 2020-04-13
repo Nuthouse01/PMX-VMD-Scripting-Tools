@@ -84,7 +84,7 @@ def basic_print(*args, is_progress=False):
 		# otherwise use the normal print
 		print(the_string)
 
-# global variable holding a function pointer that i can overwrite with a different function pointer
+# global variable holding a function pointer that i can overwrite with a different function pointer when in GUI mode
 MY_PRINT_FUNC = basic_print
 
 def pause_and_quit(message):
@@ -162,8 +162,15 @@ def increment_occurance_dict(d: dict, k):
 		d[k] = 1
 	return None
 
-def prompt_user_choice(options):
-	# assumes that options is a list of ints
+def prompt_user_choice(options, explain_info=None):
+	# loop until the user chooses one of the specified options, returns as int
+	# options is a list of ints
+	# explain_info is a list of strings to print before beginning prompt loop, or maybe just 1
+	if isinstance(explain_info, (list, tuple)):
+		for p in explain_info:
+			MY_PRINT_FUNC(p)
+	elif isinstance(explain_info, str):
+		MY_PRINT_FUNC(explain_info)
 	# create set for matching against
 	choicelist = [str(i) for i in options]
 	# create printable string which is all options separated by slashes
@@ -179,18 +186,25 @@ def prompt_user_choice(options):
 		MY_PRINT_FUNC("invalid choice")
 	return int(choice)
 
-def prompt_user_filename(extension: str) -> str:
+# global variable holding a function pointer that i can overwrite with a different function pointer when in GUI mode
+MY_SIMPLECHOICE_FUNC = prompt_user_choice
+
+def prompt_user_filename(extensions) -> str:
 	# loop until user enters the name of an existing file with the specified extension
+	# accepts string or iterable
+	# returns the case-correct name, matches relative/absolute of input
+	if isinstance(extensions, str):
+		# force extensions to be a list
+		extensions = [extensions]
 	MY_PRINT_FUNC('(type/paste the path to the file, ".." means "go up a folder")')
 	MY_PRINT_FUNC('(path can be absolute, like C:/username/Documents/miku.pmx)')
 	MY_PRINT_FUNC('(or path can be relative to here, example: ../../mmd/models/miku.pmx)')
 	while True:
 		# continue prompting until the user gives valid input
-		name = input(" Filename (ending with " + extension + ") = ")
-		if len(name) <= 4:
-			MY_PRINT_FUNC("Err: file name too short to be valid")
-		elif name.lower()[-4:] != extension.lower():
-			MY_PRINT_FUNC("Err: given file must have '"+extension+"' extension")
+		name = input(" Filename ending with '%s' = " % extensions)
+		valid_ext = sum([bool(name.lower().endswith(a.lower())) for a in extensions])
+		if not valid_ext:
+			MY_PRINT_FUNC("Err: given file must have '%s' extension" % extensions)
 		elif not path.isfile(name):
 			MY_PRINT_FUNC(path.abspath(name))
 			MY_PRINT_FUNC("Err: given file does not exist, did you type it wrong?")
@@ -204,6 +218,9 @@ def prompt_user_filename(extension: str) -> str:
 			return path.join(path.dirname(name), casename)
 	# just in case something goes sideways
 	return name
+
+# global variable holding a function pointer that i can overwrite with a different function pointer when in GUI mode
+MY_FILEPROMPT_FUNC = prompt_user_filename
 
 def get_clean_basename(initial_name: str) -> str:
 	return path.splitext(path.basename(initial_name))[0]

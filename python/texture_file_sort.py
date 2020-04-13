@@ -168,11 +168,11 @@ Note: unlike my other scripts, this overwrites the original input PMX file(s) in
 
 def main(moreinfo=False):
 	# print info to explain the purpose of this file
-	print(helptext)
-	print("")
+	core.MY_PRINT_FUNC(helptext)
+	core.MY_PRINT_FUNC("")
 	
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
-	input_filename_pmx = core.prompt_user_filename(".pmx")
+	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	
 	# absolute path to directory holding the pmx
 	startpath = os.path.dirname(os.path.normpath(os.path.abspath(input_filename_pmx)))
@@ -191,7 +191,7 @@ def main(moreinfo=False):
 		if not neighbor_pmx:
 			neighbor_pmx = [os.path.join(where, f) for f in files if f.lower().endswith(".pmx")]
 		absolue_files_that_exist += [os.path.join(where, f) for f in files]
-	print("ALL EXISTING FILES:", len(absolue_files_that_exist))
+	core.MY_PRINT_FUNC("ALL EXISTING FILES:", len(absolue_files_that_exist))
 	# "neighbor_pmx" has absolute paths of top-level pmx files, including the target
 	# "absolue_files_that_exist" has absolute paths of ALL files, including target and neighbors
 	files_that_exist = []
@@ -204,13 +204,13 @@ def main(moreinfo=False):
 		# create the object that will hold all the relevent information as processing goes on
 		files_that_exist.append(existfile(f, rel))
 		
-	print("RELEVANT EXISTING FILES:", len(files_that_exist))
+	core.MY_PRINT_FUNC("RELEVANT EXISTING FILES:", len(files_that_exist))
 	# for x in files_that_exist:
-	# 	print("  " , x)
+	# 	core.MY_PRINT_FUNC("  " , x)
 	
 	# remove self from neighbor_pmx
 	neighbor_pmx.remove(os.path.abspath(input_filename_pmx))
-	print("NEIGHBOR PMX FILES:", len(neighbor_pmx))
+	core.MY_PRINT_FUNC("NEIGHBOR PMX FILES:", len(neighbor_pmx))
 	
 	# =========================================================================================================
 	# =========================================================================================================
@@ -220,18 +220,19 @@ def main(moreinfo=False):
 	pmx_filenames = [input_filename_pmx]
 	
 	if neighbor_pmx:
-		print("")
-		print("Detected %d top-level neighboring PMX files, these probably share the same filebase as the target." % len(neighbor_pmx))
-		print("If files are moved/renamed but the neighbors are not processed, the neighbor texture references will probably break.")
-		print("Do you want to process all neighbors in addition to the target? (highly recommended)")
-		print("  1 = Yes, 2 = No")
-		r = core.prompt_user_choice((1, 2))
+		core.MY_PRINT_FUNC("")
+		info = [
+			"Detected %d top-level neighboring PMX files, these probably share the same filebase as the target." % len(neighbor_pmx),
+			"If files are moved/renamed but the neighbors are not processed, the neighbor texture references will probably break.",
+			"Do you want to process all neighbors in addition to the target? (highly recommended)",
+			"1 = Yes, 2 = No"]
+		r = core.MY_SIMPLECHOICE_FUNC((1, 2), info)
 		if r == 1:
-			print("Processing target + all neighbor files")
+			core.MY_PRINT_FUNC("Processing target + all neighbor files")
 			# append neighbor PMX files onto the list of files to be processed
 			pmx_filenames += neighbor_pmx
 		else:
-			print("WARNING: Processing only target, ignoring %d neighbor PMX files" % len(neighbor_pmx))
+			core.MY_PRINT_FUNC("WARNING: Processing only target, ignoring %d neighbor PMX files" % len(neighbor_pmx))
 			
 		
 	# ===================== begin for-each-pmx section
@@ -284,7 +285,7 @@ def main(moreinfo=False):
 					# if neither acknowledges the dupe, then mark one as such
 					# this is rather rare, might as well print something for it
 					if moreinfo:
-						print("unify dupe within pmx: idx%d='%s', idx%d='%s'" % (pj.index_per_file[this_pmx_name], pj.orig,
+						core.MY_PRINT_FUNC("unify dupe within pmx: idx%d='%s', idx%d='%s'" % (pj.index_per_file[this_pmx_name], pj.orig,
 																				 pk.index_per_file[this_pmx_name], pk.orig))
 					# the greater-index one has dupe set to reference the lower-index one
 					pk.dupe = pj.index_per_file[this_pmx_name]
@@ -365,10 +366,10 @@ def main(moreinfo=False):
 				k += 1
 		j += 1
 	
-	print("PMX SOURCE FILES:", len(files_in_pmx))
+	core.MY_PRINT_FUNC("PMX SOURCE FILES:", len(files_in_pmx))
 	if moreinfo:
 		for x in files_in_pmx:
-			print("  " + str(x))
+			core.MY_PRINT_FUNC("  " + str(x))
 	
 	# =========================================================================================================
 	# =========================================================================================================
@@ -490,21 +491,21 @@ def main(moreinfo=False):
 	# for each section, if it exists, print its names sorted first by directory depth then alphabetically (case insensitive)
 	
 	if notexist:
-		print("="*60)
-		print("Found %d references to images that don't exist (no proposed changes)" % len(notexist))
+		core.MY_PRINT_FUNC("="*60)
+		core.MY_PRINT_FUNC("Found %d references to images that don't exist (no proposed changes)" % len(notexist))
 		for p in sorted(notexist, key=lambda y: sortbydirdepth(y.orig)):
 			# print orig name, usage modes, # used, and # files that use it
-			print("   " + str(p))
+			core.MY_PRINT_FUNC("   " + str(p))
 	if notused_img_norename:
-		print("="*60)
-		print("Found %d not-used images in the file structure (no proposed changes)" % len(notused_img_norename))
+		core.MY_PRINT_FUNC("="*60)
+		core.MY_PRINT_FUNC("Found %d not-used images in the file structure (no proposed changes)" % len(notused_img_norename))
 		for p in sorted(notused_img_norename, key=lambda y: sortbydirdepth(y.orig)):
-			print("   " + p.orig)
+			core.MY_PRINT_FUNC("   " + p.orig)
 	if notused_notimg:
-		print("="*60)
-		print("Found %d not-used not-images in the file structure (no proposed changes)" % len(notused_notimg))
+		core.MY_PRINT_FUNC("="*60)
+		core.MY_PRINT_FUNC("Found %d not-used not-images in the file structure (no proposed changes)" % len(notused_notimg))
 		for p in sorted(notused_notimg, key=lambda y: sortbydirdepth(y.orig)):
-			print("   " + p.orig)
+			core.MY_PRINT_FUNC("   " + p.orig)
 	# print with all "from" file names left-justified so all the arrows are nicely lined up (unless they use jp characters)
 	longest_name_len = 0
 	for p in used_rename:
@@ -512,27 +513,28 @@ def main(moreinfo=False):
 	for p in notused_img_rename:
 		longest_name_len = max(longest_name_len, len(p.orig))
 	if used_rename:
-		print("="*60)
-		print("Found %d used files to be moved/renamed:" % len(used_rename))
+		core.MY_PRINT_FUNC("="*60)
+		core.MY_PRINT_FUNC("Found %d used files to be moved/renamed:" % len(used_rename))
 		for p in sorted(used_rename, key=lambda y: sortbydirdepth(y.orig)):
 			# print 'from' with the case/separator it uses in the PMX
-			print("   {0:<{size}} --> {1:s}".format(p.orig, p.mapto, size=longest_name_len))
+			core.MY_PRINT_FUNC("   {0:<{size}} --> {1:s}".format(p.orig, p.mapto, size=longest_name_len))
 	if notused_img_rename:
-		print("="*60)
-		print("Found %d not-used images to be moved/renamed:" % len(notused_img_rename))
+		core.MY_PRINT_FUNC("="*60)
+		core.MY_PRINT_FUNC("Found %d not-used images to be moved/renamed:" % len(notused_img_rename))
 		for p in sorted(notused_img_rename, key=lambda y: sortbydirdepth(y.orig)):
-			print("   {0:<{size}} --> {1:s}".format(p.orig, p.mapto, size=longest_name_len))
-	print("="*60)
+			core.MY_PRINT_FUNC("   {0:<{size}} --> {1:s}".format(p.orig, p.mapto, size=longest_name_len))
+	core.MY_PRINT_FUNC("="*60)
 	
 	if not (used_rename or notused_img_rename):
-		print("No proposed file changes")
-		print("Aborting: no files were changed")
+		core.MY_PRINT_FUNC("No proposed file changes")
+		core.MY_PRINT_FUNC("Aborting: no files were changed")
 		return
 	
-	print("Do you accept these new names/locations?  1 = Yes, 2 = No (abort)")
-	r = core.prompt_user_choice((1, 2))
+	info = ["Do you accept these new names/locations?",
+			"1 = Yes, 2 = No (abort)"]
+	r = core.MY_SIMPLECHOICE_FUNC((1, 2), info)
 	if r == 2:
-		print("Aborting: no files were changed")
+		core.MY_PRINT_FUNC("Aborting: no files were changed")
 		return
 	
 	# =========================================================================================================
@@ -545,23 +547,24 @@ def main(moreinfo=False):
 		# need to add .zip for checking against already-exising files and for printing
 		zipname = startpath + BACKUP_SUFFIX + ".zip"
 		zipname = core.get_unused_file_name(zipname)
-		print("...making backup archive:")
-		print(zipname)
+		core.MY_PRINT_FUNC("...making backup archive:")
+		core.MY_PRINT_FUNC(zipname)
 		try:
 			root_dir = os.path.dirname(startpath)
 			base_dir = os.path.basename(startpath)
 			# need to remove .zip suffix because zipper forcefully adds .zip whether its already on the name or not
 			shutil.make_archive(zipname[:-4], 'zip', root_dir, base_dir)
 		except Exception as e:
-			print(e.__class__.__name__, e)
-			print("ERROR3! Unable to create zipfile for backup")
-			print("Do you want to continue without a zipfile backup?  1 = Yes, 2 = No (abort)")
-			r = core.prompt_user_choice((1, 2))
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
+			info = ["ERROR3! Unable to create zipfile for backup.",
+					"Do you want to continue without a zipfile backup?",
+					"1 = Yes, 2 = No (abort)"]
+			r = core.MY_SIMPLECHOICE_FUNC((1, 2), info)
 			if r == 2:
-				print("Aborting: no files were changed")
+				core.MY_PRINT_FUNC("Aborting: no files were changed")
 				return
 	
-	print("...renaming files on disk...")
+	core.MY_PRINT_FUNC("...renaming files on disk...")
 	# second, notused_img_rename on disk: norm -> mapto
 	for i,p in enumerate(notused_img_rename):
 		try:
@@ -571,8 +574,8 @@ def main(moreinfo=False):
 		except OSError as e:
 			# if this fails for some reason, i may have moved some number of the files...
 			# ending the operation halfway through is unacceptable! attempt to continue
-			print(e.__class__.__name__, e)
-			print("ERROR1!: unable to rename file '%s' --> '%s', attempting to continue with other file rename operations"
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
+			core.MY_PRINT_FUNC("ERROR1!: unable to rename file '%s' --> '%s', attempting to continue with other file rename operations"
 				  % (p.norm, p.mapto))
 	
 	# third, used_rename on disk: norm -> mapto
@@ -580,8 +583,8 @@ def main(moreinfo=False):
 		try:
 			os.renames(os.path.join(startpath, p.norm), os.path.join(startpath, p.mapto))
 		except OSError as e:
-			print(e.__class__.__name__, e)
-			print("ERROR2!: unable to rename file '%s' --> '%s', attempting to continue with other file rename operations"
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
+			core.MY_PRINT_FUNC("ERROR2!: unable to rename file '%s' --> '%s', attempting to continue with other file rename operations"
 				  % (p.norm, p.mapto))
 			# change this to empty to signify that it didn't actually get moved, check this before changing PMX paths
 			p.mapto = ""
@@ -599,7 +602,7 @@ def main(moreinfo=False):
 			# acutally write the new name into the correct location within this pmx obj
 			this_pmx_obj[3][index] = p.mapto
 	
-	print("...done renaming!")
+	core.MY_PRINT_FUNC("...done renaming!")
 	
 	# write out
 	for this_pmx_name, this_pmx_obj in all_pmx_obj.items():
@@ -613,7 +616,7 @@ def main(moreinfo=False):
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 04/02/2020 - v3.60")
+	core.MY_PRINT_FUNC("Nuthouse01 - 04/02/2020 - v3.60")
 	if DEBUG:
 		main()
 		core.pause_and_quit("Done with everything! Goodbye!")
@@ -626,5 +629,5 @@ if __name__ == '__main__':
 			pass
 		except Exception as ee:
 			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			print(ee)
+			core.MY_PRINT_FUNC(ee)
 			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
