@@ -169,7 +169,6 @@ def read_vmdtext_header(rawlist_text: list) -> list:
 	# read version
 	version = rawlist_text[readfrom_line][1]
 	readfrom_line += 1
-	# print("...header                                   = " + rawlist_text[readfrom_line][1])
 
 	# check for bad format again
 	check2_match_first_item(rawlist_text, keystr_modelname)
@@ -488,7 +487,7 @@ def read_vmdtext(vmdtext_filename: str) -> list:
 		G = read_vmdtext_ikdispframe(vmdtext_rawlist)
 	except IndexError as e:
 		core.MY_PRINT_FUNC(e.__class__.__name__, e)
-		core.MY_PRINT_FUNC("Err: unexpected end-of-file or end-of-line, was reading from line " + str(readfrom_line + 1))
+		core.MY_PRINT_FUNC("ERROR: unexpected end-of-file or end-of-line, was reading from line " + str(readfrom_line + 1))
 		raise RuntimeError()
 	
 	if readfrom_line != len(vmdtext_rawlist):
@@ -530,78 +529,26 @@ def write_summary_dicts(bonedict: dict, morphdict: dict, summary_filename: str) 
 # MAIN & menu, also convert_txt_to_vmd() and convert_vmd_to_txt()
 ########################################################################################################################
 
-def main():
-	core.MY_PRINT_FUNC("This tool is for converting VMD files to and from human-readable text form.")
-	core.MY_PRINT_FUNC("This supports all types of VMD frame data: bones, morphs, camera, lighting, shadow, IK/disp.")
-	core.MY_PRINT_FUNC("That means this tool supports literally ALL types of VMD files: dance, cam, facial, etc.")
-	core.MY_PRINT_FUNC("The text output file is arranged as valid CSV (comma-separated value) format, so you can technically change the file extension and load it into Microsoft Excel or whatever. But Excel doesn't properly display the Japanese characters so this is not recommended.")
-	core.MY_PRINT_FUNC("See 'README.txt' for more details about output formats.")
-	
-	# prompt for "convert text -> VMD" or "VMD -> text"
-	core.MY_PRINT_FUNC("Please select conversion direction: enter 1 or 2")
-	core.MY_PRINT_FUNC(" 1 = VMD -> text")
-	core.MY_PRINT_FUNC(" 2 = text -> VMD")
-	mode = core.prompt_user_choice((1, 2))
-	
-	if mode == 1:
-		core.MY_PRINT_FUNC("")
-		core.MY_PRINT_FUNC("Inputs: VMD dance/cam/other file 'vmdname.vmd'")
-		core.MY_PRINT_FUNC("Outputs: text file '[vmdname]%s', lists ALL of the frame data from the input VMD in human-readable form" % filestr_txt)
-		core.MY_PRINT_FUNC("")
-		
-		# prompt for name of VMD
-		core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
-		input_filename = core.prompt_user_filename(".vmd")
-		
-		# activate correct function
-		convert_vmd_to_txt(input_filename)
-	
-	elif mode == 2:
-		# print info
-		core.MY_PRINT_FUNC("")
-		core.MY_PRINT_FUNC("Inputs: text file 'vmdtextname%s' with the same format as text files created by this tool" % filestr_txt)
-		core.MY_PRINT_FUNC("Outputs: VMD file '[vmdtextname].vmd' containing all of the frame data from the text file, ready to load into MikuMikuDance")
-		core.MY_PRINT_FUNC("")
-		
-		# prompt for name of text file
-		core.MY_PRINT_FUNC("Please enter name of %s input file:" % filestr_txt)
-		input_filename = core.prompt_user_filename(filestr_txt)
-		
-		# activate correct function
-		convert_txt_to_vmd(input_filename)
-	
-	else:
-		core.MY_PRINT_FUNC("Err: you're not supposed to be able to hit this???")
-	
-	core.pause_and_quit("Done with everything! Goodbye!")
-
 def convert_txt_to_vmd(input_filename):
-	# global readfrom_line
-	
-	# determine the base filename used for the output file
-	base_filename = core.get_clean_basename(input_filename)
-	
 	# read the VMD-as-text into the nicelist format, all in one function
 	vmd_nicelist = read_vmdtext(input_filename)
 	
 	# identify an unused filename for writing the output
-	dumpname = core.get_unused_file_name(base_filename + ".vmd")
+	dumpname = core.get_unused_file_name(input_filename[0:-4] + ".vmd")
 	# write the output VMD-as-text file
 	vmd_parser.write_vmd(dumpname, vmd_nicelist)
 	
 	# done!
 	return None
 
+
 def convert_vmd_to_txt(input_filename):
-	# determine the base filename used for the output file
-	base_filename = core.get_clean_basename(input_filename)
-	
 	# read the entire VMD, all in this one function
 	# also create the bonedict & morphdict
 	vmd_nicelist, bonedict, morphdict = vmd_parser.read_vmd(input_filename, getdict=True)
 	
 	# identify an unused filename for writing the output
-	dumpname = core.get_unused_file_name(base_filename + filestr_txt)
+	dumpname = core.get_unused_file_name(input_filename[0:-4] + filestr_txt)
 	# write the output VMD-as-text file
 	write_vmdtext(vmd_nicelist, dumpname)
 	
@@ -622,6 +569,30 @@ def convert_vmd_to_txt(input_filename):
 	# done!
 	return None
 
+helptext = '''=================================================
+vmd_convert_tool:
+This tool is for converting VMD files to and from human-readable text form.
+This supports all types of VMD frame data: bones, morphs, camera, lighting, shadow, IK/disp.
+That means this tool supports literally ALL types of VMD files: dance, cam, or facials.
+The text output file is arranged as valid CSV (comma-separated value) format, so you can technically change the file extension and load it into Microsoft Excel or whatever. But Excel doesn't properly display the Japanese characters so this is not recommended.
+See 'README.txt' for more details about output format.
+
+This takes as input either a VMD file or a TXT file produced by this tool.
+The output will have the same basename, but the opposite file extension.
+'''
+
+def main():
+	# prompt for "convert text -> VMD" or "VMD -> text"
+	input_filename = core.MY_FILEPROMPT_FUNC([".vmd", ".txt"])
+	
+	if input_filename.lower().endswith(".vmd"):
+		# activate correct function
+		convert_vmd_to_txt(input_filename)
+	else:
+		# activate correct function
+		convert_txt_to_vmd(input_filename)
+	return None
+	
 ########################################################################################################################
 # after all the funtions are defined, actually execute main()
 ########################################################################################################################
@@ -629,10 +600,20 @@ def convert_vmd_to_txt(input_filename):
 if __name__ == '__main__':
 	core.MY_PRINT_FUNC("Nuthouse01 - 04/02/2020 - v3.60")
 	if DEBUG:
+		# print info to explain the purpose of this file
+		core.MY_PRINT_FUNC(helptext)
+		core.MY_PRINT_FUNC("")
+		
 		main()
+		core.pause_and_quit("Done with everything! Goodbye!")
 	else:
 		try:
+			# print info to explain the purpose of this file
+			core.MY_PRINT_FUNC(helptext)
+			core.MY_PRINT_FUNC("")
+			
 			main()
+			core.pause_and_quit("Done with everything! Goodbye!")
 		except (KeyboardInterrupt, SystemExit):
 			# this is normal and expected, do nothing and die normally
 			pass
