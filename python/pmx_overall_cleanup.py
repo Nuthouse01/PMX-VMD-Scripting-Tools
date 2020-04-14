@@ -81,25 +81,6 @@ allhelp = [
 
 helptext = '\n'.join(allhelp)
 
-# def showallhelp():
-# 	# print info to explain the purpose of this file
-# 	core.MY_PRINT_FUNC(helptext)
-# 	core.MY_PRINT_FUNC("="*20)
-# 	core.MY_PRINT_FUNC("="*20)
-# 	core.MY_PRINT_FUNC("="*20)
-# 	_prune_invalid_faces.showhelp()
-# 	_prune_unused_vertices.showhelp()
-# 	_prune_unused_bones.showhelp()
-# 	_weight_cleanup.showhelp()
-# 	_morph_winnow.showhelp()
-# 	_alphamorph_correct.showhelp()
-# 	_dispframe_fix.showhelp()
-# 	_translate_to_english.showhelp()
-# 	_uniquify_names.showhelp()
-#
-# def showhelp():
-# 	# print info to explain the purpose of this file
-# 	core.MY_PRINT_FUNC(helptext)
 
 def main(moreinfo=False):
 	# prompt PMX name
@@ -116,42 +97,40 @@ def main(moreinfo=False):
 	# uniquify after translate
 	
 	is_changed = False
-	core.MY_PRINT_FUNC(">>>> Deleting invalid faces <<<<")
+	core.MY_PRINT_FUNC("\n>>>> Deleting invalid faces <<<<")
 	pmx, is_changed_t = _prune_invalid_faces.prune_invalid_faces(pmx, moreinfo)
 	is_changed |= is_changed_t
-	core.MY_PRINT_FUNC(">>>> Deleting orphaned/unused vertices <<<<")
+	core.MY_PRINT_FUNC("\n>>>> Deleting orphaned/unused vertices <<<<")
 	pmx, is_changed_t = _prune_unused_vertices.prune_unused_vertices(pmx, moreinfo)
 	is_changed |= is_changed_t
-	core.MY_PRINT_FUNC(">>>> Deleting unused bones <<<<")
+	core.MY_PRINT_FUNC("\n>>>> Deleting unused bones <<<<")
 	pmx, is_changed_t = _prune_unused_bones.prune_unused_bones(pmx, moreinfo)
 	is_changed |= is_changed_t
-	core.MY_PRINT_FUNC(">>>> Normalizing weights <<<<")
+	core.MY_PRINT_FUNC("\n>>>> Normalizing weights <<<<")
 	pmx, is_changed_t = _weight_cleanup.weight_cleanup(pmx, moreinfo)
 	is_changed |= is_changed_t
-	core.MY_PRINT_FUNC(">>>> Pruning imperceptible vertex morphs <<<<")
+	core.MY_PRINT_FUNC("\n>>>> Pruning imperceptible vertex morphs <<<<")
 	pmx, is_changed_t = _morph_winnow.morph_winnow(pmx, moreinfo)
 	is_changed |= is_changed_t
-	core.MY_PRINT_FUNC(">>>> Fixing alphamorphs that don't account for edging <<<<")
+	core.MY_PRINT_FUNC("\n>>>> Fixing alphamorphs that don't account for edging <<<<")
 	pmx, is_changed_t = _alphamorph_correct.alphamorph_correct(pmx, moreinfo)
 	is_changed |= is_changed_t
-	core.MY_PRINT_FUNC(">>>> Display groups that contain duplicates, empty groups, or missing bones/morphs <<<<")
+	core.MY_PRINT_FUNC("\n>>>> Display groups that contain duplicates, empty groups, or missing bones/morphs <<<<")
 	pmx, is_changed_t = _dispframe_fix.dispframe_fix(pmx, moreinfo)
 	is_changed |= is_changed_t
-	core.MY_PRINT_FUNC(">>>> Fixing missing english names <<<<")
+	core.MY_PRINT_FUNC("\n>>>> Fixing missing english names <<<<")
 	pmx, is_changed_t = _translate_to_english.translate_to_english(pmx, moreinfo)
 	is_changed |= is_changed_t	# or-equals: if any component returns true, then ultimately this func returns true
-	core.MY_PRINT_FUNC(">>>> Ensuring all names in the model are unique <<<<")
+	core.MY_PRINT_FUNC("\n>>>> Ensuring all names in the model are unique <<<<")
 	pmx, is_changed_t = _uniquify_names.uniquify_names(pmx, moreinfo)
 	is_changed |= is_changed_t
 	
 	bad_bodies = find_unattached_rigidbodies(pmx)
 	if bad_bodies:
 		core.MY_PRINT_FUNC("")
-		core.MY_PRINT_FUNC("! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ")
-		core.MY_PRINT_FUNC("Warning: this model contains rigidbodies that aren't anchored to any bones")
+		core.MY_PRINT_FUNC("Minor warning: this model contains rigidbodies that aren't anchored to any bones")
 		core.MY_PRINT_FUNC("This won't crash MMD but it is probably a mistake that needs corrected")
-		core.MY_PRINT_FUNC("The following bodies are unanchored: ", bad_bodies)
-		core.MY_PRINT_FUNC("")
+		core.MY_PRINT_FUNC("The following bodies are unanchored (index): ", bad_bodies)
 	
 	crashing_joints = find_crashing_joints(pmx)
 	if crashing_joints:
@@ -163,11 +142,12 @@ def main(moreinfo=False):
 		core.MY_PRINT_FUNC("The following joints are invalid: ", crashing_joints)
 		core.MY_PRINT_FUNC("")
 	
-	core.MY_PRINT_FUNC(">>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<")
+	core.MY_PRINT_FUNC("\n>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<")
 	if not is_changed:
-		core.MY_PRINT_FUNC(">>>> OVERALL RESULT: No writeback required <<<<")
-	else:
-		core.MY_PRINT_FUNC(">>>> Done with overall cleanup procedures <<<<")
+		core.MY_PRINT_FUNC(">>>> No writeback required <<<<")
+		return
+	
+	core.MY_PRINT_FUNC(">>>> Done with cleanup, saving improvements to file <<<<")
 	
 	# write out
 	# output_filename_pmx = "%s_better.pmx" % core.get_clean_basename(input_filename_pmx)
