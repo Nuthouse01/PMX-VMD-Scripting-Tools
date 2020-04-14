@@ -1,3 +1,6 @@
+# Nuthouse01 - 04/13/2020 - v4.00
+# This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
+#####################
 
 # pyinstaller --onefile --noconsole graphic_user_interface.py
 
@@ -166,13 +169,13 @@ class Application(tk.Frame):
 		
 		# list of all possible displayed names in the OptionMenu, with assoc helptext and mainfunc
 		self.all_script_list = [
-			("vmd_convert_tool.py",              vmd_convert_tool.helptext,              vmd_convert_tool.main),
 			("pmx_overall_cleanup.py",           pmx_overall_cleanup.helptext,           pmx_overall_cleanup.main),
 			("texture_file_sort.py",             texture_file_sort.helptext,             texture_file_sort.main),
+			("vmd_model_compatability_check.py", vmd_model_compatability_check.helptext, vmd_model_compatability_check.main),
+			("vmd_armtwist_insert.py",           vmd_armtwist_insert.helptext,           vmd_armtwist_insert.main),
+			("vmd_convert_tool.py",              vmd_convert_tool.helptext,              vmd_convert_tool.main),
 			("make_ik_from_vmd.py",              make_ik_from_vmd.helptext,              make_ik_from_vmd.main),
 			("pmx_list_bone_morph_names.py",     pmx_list_bone_morph_names.helptext,     pmx_list_bone_morph_names.main),
-			("vmd_armtwist_insert.py",           vmd_armtwist_insert.helptext,           vmd_armtwist_insert.main),
-			("vmd_model_compatability_check.py", vmd_model_compatability_check.helptext, vmd_model_compatability_check.main),
 		]
 		
 		self.optionvar = tk.StringVar(master)
@@ -305,7 +308,7 @@ class Application(tk.Frame):
 		return
 	
 	def print_header(self):
-		core.MY_PRINT_FUNC("Nuthouse01 - 04/02/2020 - v3.60")
+		core.MY_PRINT_FUNC("Nuthouse01 - 04/13/2020 - v4.00")
 		core.MY_PRINT_FUNC("Begin by selecting a script above, then click 'Run'")
 		core.MY_PRINT_FUNC("Click 'Help' to print out details of what the selected script does")
 		return
