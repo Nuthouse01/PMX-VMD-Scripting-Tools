@@ -1,7 +1,7 @@
 # VMD-to-text-Conversion-Tool
 
 VMD Conversion Tool README
-Created by Nuthouse01 - 04/02/2020 - v3.60
+Created by Nuthouse01 - 04/13/2020 - v4.00
 
 ###### Legal:
 This code is free to use and re-distribute, but I cannot be held responsible for damages that it
@@ -403,4 +403,14 @@ The following files should be included with this README:
     3.61:
     added threading module to GUI to allow moving/resizing/scrolling while the script is running
     added a few more name maps to the local translation file
+
+    4.00:
+    add "texture_file_sort" script to organize file references within a PMX file
+    rebuilt GUI and combined all scripts into one package, The Perfect Unified GUI
+    removed "load" button, removed ability to load once and run multiple times
+    added "clear" button to GUI
+    bugfix PMX parser because online file spec was incorrect
+    MASSIVE upgrades to local translation ability
+    modify how # of unique bones/morphs is printed when parsing VMD
+    create more overrideable function pointers MY_FILEPROMPT_FUNC, MY_SIMPLECHOICE_FUNC just the same as MY_PRINT_FUNC
 
