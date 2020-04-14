@@ -83,37 +83,17 @@ This script will parse a PMX file and print the JP names alongside the EN names 
 morphs. This way you can see the full list of morphs the model contains without needing to use  
 PMXE.  
   
-##### nuthouse01_core.py, nuthouse01_vmd_parser.py, nuthouse01_pmx_parser.py
-These files contains code used by the other files. Do not run this file directly.  
-  
-  
 ### Notes:
 Note: Bones and morphs are stored in the VMD format by their JAPANESE NAME. It is not possible to  
 get any english name info from the VMD.  
   
-Note: This tool supports ALL types of frame data, and I had to work really hard to reverse engineer  
-the data structure and get it to this point. A detailed technical description of the format is  
-included in a section lower down. Supported types include:  
-* header data (version and model name)  
-* boneframe data (bone position, angle, physics on/off, interpolation curve, etc)  
-* morphframe data (morph name and value)  
-* cameraframe data (camera position, angle, FOV, interpolation curve, etc)  
-* lightframe data (light source color and direction)  
-* shadowframe data (global setting for self-shadow mode and shadow range)  
-* ikdispframe data (IK bone enable/disable and model hide/display)  
-
-The following data can be controlled by keyframes and stored within an MMD project, but cannot be  
-stored in or restored by a VMD file:  
+Note: The following data can be controlled by keyframes and stored within an MMD project, but cannot  
+be stored in or restored by a VMD file:  
 * gravity data  
 * outside parent settings  
 * accessory data  
   
 Note: "morph" is a synonym for "facial"  
-  
-Note: It is very likely that the script will be unable to properly display Japanese charaters in  
-the window it runs inside; but this is just a display issue, they are stored just fine inside of  
-the txt/vmd file result. In fact, if you copy all of the missing-symbol-squares and paste into  
-Notepad++ or something, it will show up as the proper kanji.  
   
 Note: If using an English-translated version of MikuMikuDance, you will not be able to directly   
 see the Japanese names of bones/morphs in your model. To see the Japanese names, use the script  
@@ -275,31 +255,9 @@ The following files should be included with this README:
 * LICENSE
 * README.md
 * README.txt
-* exe/vmd_convert_tool.exe
-* exe/vmd_model_compatability_check.exe
-* exe/vmd_armtwist_insert.exe
-* exe/make_ik_from_vmd.exe
-* exe/pmx_list_bone_morph_names.exe
-* exe/pmx_overall_cleanup.exe
-* python/vmd_convert_tool.py
-* python/vmd_model_compatability_check.py
-* python/vmd_armtwist_insert.py
-* python/make_ik_from_vmd.py
-* python/pmx_list_bone_morph_names.py
-* python/pmx_overall_cleanup.py
-* python/nuthouse01_core.py
-* python/nuthouse01_pmx_parser.py
-* python/nuthouse01_vmd_parser.py
-* python/_alphamorph_correct.py
-* python/_dispframe_fix.py
-* python/_local_translation_dicts.py
-* python/_morph_winnow.py
-* python/_prune_invalid_faces.py
-* python/_prune_unused_vertices.py
-* python/_prune_unused_bones.py
-* python/_translate_to_english.py
-* python/_uniquify_names.py
-* python/_weight_cleanup.py
+* graphic_user_interface.py
+* graphic_user_interface.exe
+* python/*.py
 
 #### Changelog: 
 
@@ -414,4 +372,7 @@ The following files should be included with this README:
     modify how # of unique bones/morphs is printed when parsing VMD
     create more overrideable function pointers MY_FILEPROMPT_FUNC, MY_SIMPLECHOICE_FUNC just the same as MY_PRINT_FUNC
     
+    4.01:
+    learned that VMD does not handle long bone/morphs, changed model-compatability to only use exact match checking
+    moved "graphic_user_interface" up a level to make it more important
     
