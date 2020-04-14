@@ -12,11 +12,11 @@ import math
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
-	import nuthouse01_vmd_parser as vmd_parser
-	import nuthouse01_pmx_parser as pmx_parser
-	import nuthouse01_core as core
+	from . import nuthouse01_vmd_parser as vmd_parser
+	from . import nuthouse01_pmx_parser as pmx_parser
+	from . import nuthouse01_core as core
 except ImportError as eee:
-	print(eee)
+	print(eee.__class__.__name__, eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 	print("...press ENTER to exit...")
 	input()

@@ -4,19 +4,19 @@
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
-	import nuthouse01_core as core
-	import nuthouse01_pmx_parser as pmxlib
-	import _alphamorph_correct
-	import _morph_winnow
-	import _prune_invalid_faces
-	import _prune_unused_vertices
-	import _prune_unused_bones
-	import _translate_to_english
-	import _weight_cleanup
-	import _uniquify_names
-	import _dispframe_fix
+	from . import nuthouse01_core as core
+	from . import nuthouse01_pmx_parser as pmxlib
+	from . import _alphamorph_correct
+	from . import _morph_winnow
+	from . import _prune_invalid_faces
+	from . import _prune_unused_vertices
+	from . import _prune_unused_bones
+	from . import _translate_to_english
+	from . import _weight_cleanup
+	from . import _uniquify_names
+	from . import _dispframe_fix
 except ImportError as eee:
-	print(eee)
+	print(eee.__class__.__name__, eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 	print("...press ENTER to exit...")
 	input()
@@ -143,12 +143,12 @@ def main(moreinfo=False):
 		core.MY_PRINT_FUNC("These will work just fine in MMD but will not properly save/load in VMD motion files")
 		if longbone:
 			longbone_str = "[" + ", ".join(longbone[0:10]) + "]"
-			if len(longbone) >= 10: 
+			if len(longbone) > 10:
 				longbone_str += "..."
 			core.MY_PRINT_FUNC("These %d bones are too long (index/length): %s" % (len(longbone), longbone_str))
 		if longmorph:
 			longmorph_str = "[" + ", ".join(longmorph[0:10]) + "]"
-			if len(longmorph) >= 10: 
+			if len(longmorph) > 10:
 				longmorph_str += "..."
 			core.MY_PRINT_FUNC("These %d morphs are too long (index/length): %s" % (len(longmorph), longmorph_str))
 
