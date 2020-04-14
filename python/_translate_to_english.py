@@ -24,12 +24,12 @@ except ImportError as eee:
 DEBUG = False
 
 
-# TODO: maybe my local-translated version should have higher priority than the existing english? nah...
+# use this when each material's name is just "en" or something equally unhelpful
 # this will prefer a successful "local translate" over an existing english name
 PREFER_LOCAL_TRANSLATE = False
 
 
-# TODO: is it better to specify jap, or to use autodetect?
+# sometimes chinese translation gives better results than japanese translation
 # when false, force input to be interpreted as Japanese. When true, autodetect input language.
 GOOGLE_AUTODETECT_LANGUAGE = True
 
@@ -340,8 +340,8 @@ def translate_to_english(pmx, moreinfo=False):
 		newlist = [label_dict[0], "2", "local", "OLD EN:", pmx[0][2], "NEW EN:", new_en_name, "JP:", pmx[0][1]]
 		translate_maps.append(newlist)
 		pmx[0][2] = new_en_name
-		
 	
+	translate_local_count = len(translate_maps)
 	
 	# comment(jp=3,en=4)
 	comment_state = 0
@@ -376,11 +376,16 @@ def translate_to_english(pmx, moreinfo=False):
 		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
 	
+	translate_local_count += (comment_state == 2)
+	
 	# num + 1 + 1(if translating comment)
 	num_items = len(translate_queue) + (comment_state == 1)
 	core.MY_PRINT_FUNC("Identified %d items that need Internet translation" % num_items)
 	if num_items:
-		num_calls = (len(translate_queue) // TRANSLATE_MAX_LINES_PER_REQUEST) + 1 + (comment_state == 1)
+		v = len(translate_queue) / TRANSLATE_MAX_LINES_PER_REQUEST
+		if v != int(v): # "rounding up" in a hacky way cuz I dont want to import "math" library just for one ceil() call
+			v = int(v) + 1
+		num_calls = v + (comment_state == 1)
 		core.MY_PRINT_FUNC("Making %d requests to Google Translate web API..." % num_calls)
 		
 		global DISABLE_INTERNET_TRANSLATE
@@ -392,10 +397,6 @@ def translate_to_english(pmx, moreinfo=False):
 			DISABLE_INTERNET_TRANSLATE = False
 		
 		core.MY_PRINT_FUNC("Beginning translation, this may take several seconds")
-		# if USE_GOOGLE_TRANSLATE:
-		# 	core.MY_PRINT_FUNC("Using Google Translate web API for translations")
-		# else:
-		# 	core.MY_PRINT_FUNC("Using MyMemory free translate service for translation")
 		
 		try:
 			# now bulk-translate all the strings that are queued
@@ -432,7 +433,8 @@ def translate_to_english(pmx, moreinfo=False):
 	#######################################
 	# next stage is writing and printing, then wait for approval
 	# printing requires formatting so things display in nice columns
-	core.MY_PRINT_FUNC("Found and fixed %d instances where renaming was needed" % len(translate_maps))
+	core.MY_PRINT_FUNC("Fixed %d instances where translation was needed (%d local + %d Google)" %
+					   (len(translate_maps), translate_local_count, len(translate_maps) - translate_local_count))
 	
 	if moreinfo:
 		# find max width of each column:

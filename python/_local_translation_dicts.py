@@ -568,6 +568,7 @@ def translate_local(s: str) -> (None, str):
 
 # import nuthouse01_core as core
 # import nuthouse01_pmx_parser as pmxlib
+# import _translate_to_english
 #
 # def main():
 # 	input_filename_pmx = core.prompt_user_filename(".pmx")
@@ -585,28 +586,28 @@ def translate_local(s: str) -> (None, str):
 # 	print("MATERIALS", len(matnames))
 # 	print("="*50)
 # 	for n in matnames:
-# 		if translate_local(n) is not None:
+# 		if not _translate_to_english.contains_jap_chars(translate_local(n)):
 # 			numpass += 1
 # 	print("")
 # 	print("="*50)
 # 	print("BONES", len(bonenames))
 # 	print("="*50)
 # 	for n in bonenames:
-# 		if translate_local(n) is not None:
+# 		if not _translate_to_english.contains_jap_chars(translate_local(n)):
 # 			numpass += 1
 # 	print("")
 # 	print("="*50)
 # 	print("MORPHS", len(morphnames))
 # 	print("="*50)
 # 	for n in morphnames:
-# 		if translate_local(n) is not None:
+# 		if not _translate_to_english.contains_jap_chars(translate_local(n)):
 # 			numpass += 1
 # 	print("")
 # 	print("="*50)
 # 	print("DISPFRAME", len(dispnames))
 # 	print("="*50)
 # 	for n in dispnames:
-# 		if translate_local(n) is not None:
+# 		if not _translate_to_english.contains_jap_chars(translate_local(n)):
 # 			numpass += 1
 #
 # 	numtotal = len(matnames) + len(bonenames) + len(morphnames) + len(dispnames)
