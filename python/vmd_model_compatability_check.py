@@ -87,17 +87,11 @@ def main(moreinfo=False):
 			# question: does "vmdmorph" match something in "morphs_in_model"?
 			# BUT, doing comparison in bytes-space to handle escape characters: vmdmorph_b vs morphs_in_model_b
 			vmdmorph_b = core.encode_string_with_escape(vmdmorph)
-			# also, if len(vmdmorph_b) = 0-14, check for exact match. if len(vmdmorph_b) = 15, check for begins-with match.
+			# NOTE: MMD does not try to use "begins-with" matching like I had hoped/assumed, it only looks for exact matches
 			# return list of ALL matches, this way i can raise an error if there are multiple matches
-			# TODO LOW: i'm not actually 100% certain it does a begins-with match when len=15, but i'm pretty confident. how else could it work? need to test & confirm how MMD behaves.
-			# TODO HIGH: pretty sure names >= 16 cannot be restored by VMD at all, it only looks for exact match... test and confirm!!
-			if len(vmdmorph_b) < 15:
-				# exact match
-				modelmorphmatch_b = [a for a in morphs_in_model_b if a == vmdmorph_b]
-			else:
-				# begins-with match
-				modelmorphmatch_b = [a for a in morphs_in_model_b if a[0:15] == vmdmorph_b[0:15]]
-				
+			# exact match
+			modelmorphmatch_b = [a for a in morphs_in_model_b if a == vmdmorph_b]
+			
 			# copy the key,val in one of the dicts depending on results of matching attempt
 			if len(modelmorphmatch_b) == 0:
 				# MISS! key is the VMD morph name since that's the best clue Ive got
@@ -186,15 +180,10 @@ def main(moreinfo=False):
 			# question: does "vmdbone" match something in "bones_in_model"?
 			# BUT, doing comparison in bytes-space to handle escape characters: vmdbone_b vs bones_in_model_b
 			vmdbone_b = core.encode_string_with_escape(vmdbone)
-			# also, if len(vmdbone_b) = 0-14, check for exact match. if len(vmdbone_b) = 15, check for begins-with match.
+			# NOTE: MMD does not try to use "begins-with" matching like I had hoped/assumed, it only looks for exact matches
 			# return list of ALL matches, this way i can raise an error if there are multiple matches
-			# TODO HIGH: pretty sure names >= 16 cannot be restored by VMD at all, it only looks for exact match... test and confirm!!
-			if len(vmdbone_b) < 15:
-				# exact match
-				modelbonematch_b = [a for a in bones_in_model_b if a == vmdbone_b]
-			else:
-				# begins-with match
-				modelbonematch_b = [a for a in bones_in_model_b if a[0:15] == vmdbone_b[0:15]]
+			# exact match
+			modelbonematch_b = [a for a in bones_in_model_b if a == vmdbone_b]
 			
 			# copy the key,val in one of the dicts depending on results of matching attempt
 			if len(modelbonematch_b) == 0:
