@@ -7,34 +7,33 @@
 
 # TODO: error wrappers in PMX parser? ugh
 
-import tkinter as tk
-import tkinter.scrolledtext as tkst
-import tkinter.filedialog as fdg
-from os import path
 # to get better GUI responsiveness, I need to launch the parser and processing functions in separate threads.
 # this causes the GUI progress updates to look all flickery and unpleasant... but its worth it.
 import threading
+import tkinter as tk
+import tkinter.filedialog as fdg
+import tkinter.scrolledtext as tkst
+from os import path
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
-	import make_ik_from_vmd
-	import pmx_list_bone_morph_names
-	import pmx_overall_cleanup
-	import texture_file_sort
-	import vmd_armtwist_insert
-	import vmd_convert_tool
-	import vmd_model_compatability_check
-	import nuthouse01_core as core
-	import nuthouse01_pmx_parser as pmxlib
+	from python import nuthouse01_core as core
+	from python import make_ik_from_vmd
+	from python import pmx_list_bone_morph_names
+	from python import pmx_overall_cleanup
+	from python import texture_file_sort
+	from python import vmd_armtwist_insert
+	from python import vmd_convert_tool
+	from python import vmd_model_compatability_check
 except ImportError as eee:
-	print(eee)
+	print(eee.__class__.__name__, eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 	print("...press ENTER to exit...")
 	input()
 	exit()
 	vmd_convert_tool = pmx_overall_cleanup = texture_file_sort = vmd_model_compatability_check = None
 	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = None
-	core = pmxlib = None
+	core = None
 
 
 FILE_EXTENSION_MAP = {
@@ -293,6 +292,7 @@ class Application(tk.Frame):
 		core.MY_PRINT_FUNC(self.helptext)
 	
 	def do_the_thing(self):
+		core.MY_PRINT_FUNC("="*50)
 		# disable run_butt for the duration of this function
 		self.run_butt.configure(state='disabled')
 		# disable spinbox
