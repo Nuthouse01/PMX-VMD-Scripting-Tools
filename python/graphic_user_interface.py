@@ -182,10 +182,14 @@ class Application(tk.Frame):
 		self.optionvar.trace("w", self.change_mode)
 		self.optionvar.set(self.all_script_list[0][0])
 		
-		self.which_script = tk.OptionMenu(master, self.optionvar, *[x[0] for x in self.all_script_list])
-		# todo make it prettier
-		# opt.config(width=90, font=('Helvetica', 12))
-		self.which_script.pack()
+		self.which_script_frame = tk.Frame(master)
+		self.which_script_frame.pack(side=tk.TOP, padx=10, pady=5)
+		
+		lab = tk.Label(self.which_script_frame, text="Active script:")
+		lab.pack(side=tk.LEFT)
+		
+		self.which_script = tk.OptionMenu(self.which_script_frame, self.optionvar, *[x[0] for x in self.all_script_list])
+		self.which_script.pack(side=tk.LEFT, padx=10)
 		
 		
 		
@@ -197,23 +201,26 @@ class Application(tk.Frame):
 		###############################################
 		# third, build the GUI buttons and etc
 		
-		self.always_frame = tk.Frame(master, relief=tk.RAISED, borderwidth=1)
-		self.always_frame.pack(side=tk.TOP, fill='x', padx=10, pady=10)
+		self.control_frame = tk.Frame(master, relief=tk.RAISED, borderwidth=1)
+		self.control_frame.pack(side=tk.TOP, fill='x', padx=10, pady=5)
 		
-		self.run_butt = tk.Button(self.always_frame, text="RUN", width=10, command=lambda: run_as_thread(self.do_the_thing))
+		self.run_butt = tk.Button(self.control_frame, text="RUN", width=7, command=lambda: run_as_thread(self.do_the_thing))
+		self.defaultfont = self.run_butt.cget("font")
+		# print(self.defaultfont)
+		self.run_butt.configure(font=(self.defaultfont, 18))
 		self.run_butt.pack(side=tk.LEFT, padx=10, pady=10)
 		
 		# help
-		self.help_butt = tk.Button(self.always_frame, text="Help", width=10, command=self.help_func)
+		self.help_butt = tk.Button(self.control_frame, text="Help", width=10, command=self.help_func)
 		self.help_butt.pack(side=tk.LEFT, padx=10, pady=10)
 		
 		# clear
-		self.clear_butt = tk.Button(self.always_frame, text="clear", width=10, command=self.clear_func)
+		self.clear_butt = tk.Button(self.control_frame, text="Clear", width=10, command=self.clear_func)
 		self.clear_butt.pack(side=tk.LEFT, padx=10, pady=10)
 		
 		# debug checkbox
 		self.debug_check_var = tk.IntVar()
-		self.debug_check = tk.Checkbutton(self.always_frame, text="show extra info", variable=self.debug_check_var)
+		self.debug_check = tk.Checkbutton(self.control_frame, text="show extra info", variable=self.debug_check_var)
 		self.debug_check.pack(side=tk.RIGHT, padx=10, pady=10)
 		
 		###############################################
