@@ -189,13 +189,14 @@ def prompt_user_choice(options, explain_info=None):
 # global variable holding a function pointer that i can overwrite with a different function pointer when in GUI mode
 MY_SIMPLECHOICE_FUNC = prompt_user_choice
 
-def prompt_user_filename(extensions) -> str:
+def prompt_user_filename(extensions_in: str) -> str:
 	# loop until user enters the name of an existing file with the specified extension
 	# accepts string or iterable
 	# returns the case-correct name, matches relative/absolute of input
-	if isinstance(extensions, str):
-		# force extensions to be a list
-		extensions = [extensions]
+	extensions = extensions_in.split(" ")
+	# if isinstance(extensions, str):
+	# 	# force extensions to be a list
+	# 	extensions = [extensions]
 	MY_PRINT_FUNC('(type/paste the path to the file, ".." means "go up a folder")')
 	MY_PRINT_FUNC('(path can be absolute, like C:/username/Documents/miku.pmx)')
 	MY_PRINT_FUNC('(or path can be relative to here, example: ../../mmd/models/miku.pmx)')

@@ -35,31 +35,24 @@ except ImportError as eee:
 
 
 FILE_EXTENSION_MAP = {
+	".vmd .txt": ("VMD/TXT file", "*.txt *.vmd *.vmd.bak"),
+	".txt .vmd": ("VMD/TXT file", "*.txt *.vmd *.vmd.bak"),
 	".csv": ("CSV file", "*.csv"),
 	".txt": ("Text file", "*.txt"),
 	".pmx": ("PMX model", "*.pmx"),
-	".vmd": ("VMD file", "*.vmd"),
-	"*": ("Any file", "*")
+	".vmd": ("VMD file", "*.vmd *.vmd.bak"),
+	"*": tuple()
 }
 
-def gui_fileprompt(extensions) -> str:
+def gui_fileprompt(extensions: str) -> str:
 	# replaces core func MY_FILEPROMPT_FUNC when running in GUI mode
 	
-	# todo make it filter files differently
-	
-	# accepts string or iterable
-	if isinstance(extensions, str):
-		# force extensions to be a list
-		extensions = [extensions]
-	
 	# make this list into a new, separate thing: list of identifiers + globs
-	extensions_labels = []
-	for ex in extensions:
-		if ex in FILE_EXTENSION_MAP:
-			extensions_labels.append(FILE_EXTENSION_MAP[ex])
-		else:
-			extensions_labels.append(("Unknown type", "*" + ex))
-	extensions_labels = tuple(extensions_labels)
+	if extensions in FILE_EXTENSION_MAP:
+		extensions_labels = FILE_EXTENSION_MAP[extensions]
+	else:
+		extensions_labels = ("Unknown type", extensions)
+	extensions_labels = (extensions_labels,)
 	
 	# dont trust file dialog to remember last-opened path, manually save/read it
 	recordpath = core.get_persistient_storage_path("last_opened_dir.txt")
@@ -70,7 +63,7 @@ def gui_fileprompt(extensions) -> str:
 		start_here = "."
 	
 	newpath = fdg.askopenfilename(initialdir=start_here,
-								  title="Select input file: %s" % extensions,
+								  title="Select input file: {%s}" % extensions,
 								  filetypes=extensions_labels)
 	
 	# if user closed the prompt before giving a file path, quit here

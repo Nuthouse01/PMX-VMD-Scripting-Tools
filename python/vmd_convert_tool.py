@@ -583,7 +583,7 @@ The output will have the same basename, but the opposite file extension.
 
 def main(moreinfo=False):
 	# prompt for "convert text -> VMD" or "VMD -> text"
-	input_filename = core.MY_FILEPROMPT_FUNC([".vmd", ".txt"])
+	input_filename = core.MY_FILEPROMPT_FUNC(".vmd .txt")
 	
 	if input_filename.lower().endswith(".vmd"):
 		# activate correct function
