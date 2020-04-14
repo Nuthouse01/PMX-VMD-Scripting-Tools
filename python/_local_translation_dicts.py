@@ -489,7 +489,7 @@ TRANSLATE_JOINCHAR = ' '
 DEBUG = False
 
 # use the local dicts defined here to attempt intelligent translation without going to Google
-# return "None" if unable to completely succeed with translation
+# returns its best translation attempt, even if unsuccessful/incomplete
 # takes JP string as input, assumes I have already checked for the case where JP name is already only english (copyable)
 def translate_local(s: str) -> (None, str):
 	if (not s) or s.isspace():
@@ -555,18 +555,16 @@ def translate_local(s: str) -> (None, str):
 				out = out[:begin] + newtrans + out[begin+len(key):]
 	
 	# pretty much done!
-	# did i translate the whole thing? check whether results are all "normal" characters
-	complete = True
-	for c in out:
-		if ord(c) > 0x7f:
-			complete = False
-			break
 	if DEBUG:
+		# did i translate the whole thing? check whether results are all "normal" characters
+		complete = True
+		for c in out:
+			if ord(c) > 0x7f:
+				complete = False
+				break
 		print("%d :: %s :: %s" % (complete, s, out))
-	if complete:
-		return out
-	else:
-		return None
+	# return what it produced, even if not completely successful
+	return out
 
 # import nuthouse01_core as core
 # import nuthouse01_pmx_parser as pmxlib

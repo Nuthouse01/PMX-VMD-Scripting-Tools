@@ -64,6 +64,7 @@ except ImportError as eee:
 	print("ERROR: failed to import primary translation provider library 'googletrans'")
 	print("Please install this library with 'pip install googletrans'")
 	googletrans = None
+	DISABLE_INTERNET_TRANSLATE = True
 
 
 
@@ -223,7 +224,7 @@ def fix_eng_name(name_jp: str, name_en: str) -> (str, None):
 	# !!!! NEW LOCAL TRANSLATE FUNCTION !!!!
 	local_result = translate_local(name_jp)
 	# if local-translate succeeds, use it! (return None on fail)
-	if local_result is not None:
+	if not contains_jap_chars(local_result):
 		return local_result
 	
 	# if en name is already good (not blank and not JP), just keep it
