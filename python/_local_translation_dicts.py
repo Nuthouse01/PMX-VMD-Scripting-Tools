@@ -616,6 +616,6 @@ def translate_local(s: str) -> (None, str):
 # 		numpass, numtotal, numpass / numtotal))
 #
 # if __name__ == '__main__':
-# 	core.MY_PRINT_FUNC("Nuthouse01 - 04/13/2020 - v4.00")
+# 	core.MY_PRINT_FUNC("Nuthouse01 - 04/15/2020 - v4.02")
 # 	main()
 #
