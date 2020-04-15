@@ -304,8 +304,6 @@ def main(moreinfo=False):
 	
 	# output array
 	ikframe_list = []
-	# progress tracker
-	last_progress = -1
 
 	# # have list of bones, parentage, initial pos
 	# # have list of frames
@@ -391,9 +389,7 @@ def main(moreinfo=False):
 				ikframe_list.append(ikframe)
 		# now done with a timeframe for all bones on both sides
 		# print progress updates
-		if I > last_progress:
-			last_progress += 200
-			core.print_progress_oneline(I, len(relevant_framenums))
+		core.print_progress_oneline(I / len(relevant_framenums))
 	
 	core.MY_PRINT_FUNC("...done with forward kinematics computation, now writing output...")
 	

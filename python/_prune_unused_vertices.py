@@ -4,8 +4,8 @@
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
-	from . import nuthouse01_core as core
-	from . import nuthouse01_pmx_parser as pmxlib
+	from python import nuthouse01_core as core
+	from python import nuthouse01_pmx_parser as pmxlib
 except ImportError as eee:
 	print(eee.__class__.__name__, eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
@@ -172,32 +172,33 @@ def prune_unused_vertices(pmx, moreinfo=False):
 	
 	delme_range = delme_list_to_rangemap(delme_verts)
 	
-	core.MY_PRINT_FUNC("Detected %d orphan vertices arranged in %d contiguous blocks" % (len(delme_verts), len(delme_range)))
+	core.MY_PRINT_FUNC("Detected %d orphan vertices arranged in %d contiguous blocks" % (len(delme_verts), len(delme_range[0])))
 	
 	# need to update places that reference vertices: faces, morphs, softbody
+	# first get the total # of iterations I need to do, for progress purposes: #faces + sum of len of all UV and vert morphs
+	totalwork = len(pmx[2]) + sum([len(m[4]) for m in pmx[6] if (m[3] == 1 or 3 <= m[3] <= 7)])
+	
 	# faces:
-	last_progress = -1
+	d = 0
 	for d,face in enumerate(pmx[2]):
-		# display progress printouts
-		if d > last_progress:
-			last_progress += 2000
-			core.print_progress_oneline(d, len(pmx[2]))
-		
 		# vertices in a face are not guaranteed sorted, and changing their order is a Very Bad Idea
 		# therefore they must be handled individually
 		face[0] = newval_from_range_map(face[0], delme_range)
 		face[1] = newval_from_range_map(face[1], delme_range)
 		face[2] = newval_from_range_map(face[2], delme_range)
-	core.MY_PRINT_FUNC("Done updating vertex references in faces")
+		# display progress printouts
+		core.print_progress_oneline(d / totalwork)
+		
+	# core.MY_PRINT_FUNC("Done updating vertex references in faces")
 	
 	# morphs:
 	orphan_vertex_references = 0
-	for d,morph in enumerate(pmx[6]):
-		core.print_progress_oneline(d, len(pmx[6]))
+	for morph in pmx[6]:
 		# if not a vertex morph or UV morph, skip it
 		if not (3 <= morph[3] <= 7) and morph[3] != 1:
 			continue
-		# first, it is plausible that vertex/uv morphs could reference orphan vertices, so I should check for and delete those
+		lenbefore = len(morph[4])
+		# it is plausible that vertex/uv morphs could reference orphan vertices, so I should check for and delete those
 		i = 0
 		while i < len(morph[4]):
 			# if the vertex being manipulated is in the list of verts being deleted,
@@ -213,14 +214,41 @@ def prune_unused_vertices(pmx, moreinfo=False):
 		# morphs usually contain vertexes in sorted order, but not guaranteed!!! MAKE it sorted, nobody will mind
 		morph[4].sort(key=lambda x: x[0])
 		
-		# assemble the vertices from the morph entries into a list of their own, for more efficient remapping
+		# # remove all orphan verts from the list of affected verts
+		# # delme_verts is sorted, morph[4] is sorted, this walk-side-by-side approach should be much more efficient
+		# idx_m = idx_del = 0
+		# n = []
+		# while idx_m < len(morph[4]) and idx_del < len(delme_verts):
+		# 	v_m = morph[4][idx_m][0]
+		# 	v_del = delme_verts[idx_del]
+		# 	if v_m < v_del:
+		# 		# if v_m is lesser, then dellist jumped over this vert, therefore this is a keep vert
+		# 		# save it and walk up mlist
+		# 		n.append(morph[4][idx_m])
+		# 		idx_m += 1
+		# 	elif v_m > v_del:
+		# 		# if v_del is lesser, then delllist needs to catch up, walk up dellist
+		# 		idx_del += 1
+		# 	else:  # v_m == v_del:
+		# 		# this is a vert to be deleted... inc both but dont save the m
+		# 		idx_m += 1
+		# 		idx_del += 1
+		# morph[4] = n
+		# # count how many I removed
+		# orphan_vertex_references += (lenbefore - len(morph[4]))
+		
+		# separate the vertices from the morph entries into a list of their own, for more efficient remapping
 		vertlist = [x[0] for x in morph[4]]
 		# remap
 		remappedlist = newval_from_range_map(vertlist, delme_range)
 		# write the remapped values back into where they came from
 		for x, newval in zip(morph[4], remappedlist):
 			x[0] = newval
-	core.MY_PRINT_FUNC("Done updating vertex references in morphs")
+		# display progress printouts
+		d += lenbefore
+		core.print_progress_oneline(d / totalwork)
+
+	# core.MY_PRINT_FUNC("Done updating vertex references in morphs")
 	
 	# softbody: probably not relevant but eh
 	for soft in pmx[10]:

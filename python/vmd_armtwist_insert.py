@@ -237,7 +237,6 @@ def main(moreinfo=False):
 	# output array
 	new_twistbone_frames = []
 	# progress tracker
-	last_progress = -1
 	curr_progress = 0
 	
 	# for each sourcebone & corresponding twistbone,
@@ -268,9 +267,7 @@ def main(moreinfo=False):
 			new_twistbone_frames[-1].append(newframe)
 			# print progress updates
 			curr_progress += 1
-			if curr_progress > last_progress:
-				last_progress += 200
-				core.print_progress_oneline(curr_progress, totalnumframes)
+			core.print_progress_oneline(curr_progress / totalnumframes)
 	
 	
 	######################################################################

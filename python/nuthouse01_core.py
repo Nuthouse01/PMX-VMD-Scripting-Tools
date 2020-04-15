@@ -94,11 +94,28 @@ def pause_and_quit(message):
 	input()
 	exit()
 
-def print_progress_oneline(curr, outof):
-	# print progress updates on one line, continually overwriting itself
-	# cursor gets left at the beginning of line, so the next print will overwrite this one
-	p = "...working: {:06.2%}".format(curr / outof)
-	MY_PRINT_FUNC(p, is_progress=True)
+# def print_progress_oneline(curr, outof):
+# 	# print progress updates on one line, continually overwriting itself
+# 	# cursor gets left at the beginning of line, so the next print will overwrite this one
+# 	p = "...working: {:06.2%}".format(curr / outof)
+# 	MY_PRINT_FUNC(p, is_progress=True)
+
+# new version:
+# >THIS LEVEL< decides when it's appropriate to print, not the calling level
+# track last % i did print to know when it's time to print again
+# track last curr, when "curr" decreases, then i reset my tracker
+PROGRESS_REFRESH_RATE = 0.04
+PROGRESS_LAST_VALUE = 0.0  # last%
+def print_progress_oneline(newpercent):
+	global PROGRESS_LAST_VALUE
+	# if 'curr' is lower than it was last printed (meaning reset), or it's been a while since i last printed a %, then print
+	if (newpercent < PROGRESS_LAST_VALUE) or (newpercent >= PROGRESS_LAST_VALUE + PROGRESS_REFRESH_RATE):
+		# print progress updates on one line, continually overwriting itself
+		# cursor gets left at the beginning of line, so the next print will overwrite this one
+		p = "...working: {:05.1%}".format(newpercent)
+		# MY_PRINT_FUNC(p)
+		MY_PRINT_FUNC(p, is_progress=True)
+		PROGRESS_LAST_VALUE = newpercent
 
 
 # useful as keys for sorting

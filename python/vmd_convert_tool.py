@@ -199,7 +199,6 @@ def read_vmdtext_boneframe(rawlist_text: list) -> list:
 		# if it is indeed here, then inc the readpointer
 		readfrom_line += 1
 		
-		last_progress = -1
 		for i in range(boneframe_ct):
 			# ensure it has the right # of items on the line
 			check1_match_len(rawlist_text, len(keystr_boneframekey))
@@ -208,9 +207,7 @@ def read_vmdtext_boneframe(rawlist_text: list) -> list:
 			# increment the readfrom_line pointer
 			readfrom_line += 1
 			# progress tracker just because
-			if i > last_progress:
-				last_progress += 1000
-				core.print_progress_oneline(i, boneframe_ct)
+			core.print_progress_oneline(i / boneframe_ct)
 	return bone_list
 
 def read_vmdtext_morphframe(rawlist_text: list) -> list:
@@ -231,7 +228,6 @@ def read_vmdtext_morphframe(rawlist_text: list) -> list:
 		# if it is indeed here, then inc the readpointer
 		readfrom_line += 1
 		
-		last_progress = -1
 		for i in range(morphframe_ct):
 			# ensure it has the right # of items on the line
 			check1_match_len(rawlist_text, len(keystr_morphframekey))
@@ -239,9 +235,7 @@ def read_vmdtext_morphframe(rawlist_text: list) -> list:
 			# increment the readfrom_line pointer
 			readfrom_line += 1
 			# progress tracker just because
-			if i > last_progress:
-				last_progress += 1000
-				core.print_progress_oneline(i, morphframe_ct)
+			core.print_progress_oneline(i / morphframe_ct)
 	return morph_list
 
 def read_vmdtext_camframe(rawlist_text: list) -> list:
@@ -261,7 +255,6 @@ def read_vmdtext_camframe(rawlist_text: list) -> list:
 		# if it is indeed here, then inc the readpointer
 		readfrom_line += 1
 		
-		last_progress = -1
 		for i in range(camframe_ct):
 			# ensure it has the right # of items on the line
 			check1_match_len(rawlist_text, len(keystr_camframekey))
@@ -269,9 +262,7 @@ def read_vmdtext_camframe(rawlist_text: list) -> list:
 			# increment the readfrom_line pointer
 			readfrom_line += 1
 			# progress tracker just because
-			if i > last_progress:
-				last_progress += 1000
-				core.print_progress_oneline(i, camframe_ct)
+			core.print_progress_oneline(i / camframe_ct)
 	return cam_list
 
 def read_vmdtext_lightframe(rawlist_text: list) -> list:

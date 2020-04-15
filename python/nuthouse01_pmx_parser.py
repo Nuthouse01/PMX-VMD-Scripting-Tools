@@ -11,7 +11,7 @@
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
-	from . import nuthouse01_core as core
+	from python import nuthouse01_core as core
 except ImportError as eee:
 	print(eee.__class__.__name__, eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
@@ -29,6 +29,21 @@ DEBUG = False
 # by default encode files with utf-16
 # utf-8 might make files very slightly smaller but i haven't tested it
 ENCODE_WITH_UTF8 = False
+
+
+# for progress printouts, estimates of how long each section will take relative to the whole (when parsing/encoding)
+PARSE_PERCENT_VERT = 0.60
+PARSE_PERCENT_FACE = 0.15
+PARSE_PERCENT_VERTFACE = PARSE_PERCENT_FACE + PARSE_PERCENT_VERT
+PARSE_PERCENT_MORPH = 0.25
+ENCODE_PERCENT_VERT = 0
+ENCODE_PERCENT_FACE = 0
+ENCODE_PERCENT_VERTFACE = 0
+ENCODE_PERCENT_MORPH = 0
+
+# flag to indicate whether more info is desired or not
+PMX_MOREINFO = False
+
 
 # how many extra vec4s each vertex has with it
 ADDL_VERTEX_VEC4 = 0
@@ -73,7 +88,7 @@ def parse_pmx_header(raw: bytearray) -> list:
 	(magic, ver, numglobal) = core.my_unpack(fmt_magic, raw)
 	if magic != expectedmagic:
 		core.MY_PRINT_FUNC("Warning: this file does not begin with the correct magic bytes. Maybe it was locked? Locks wont stop me!")
-		core.MY_PRINT_FUNC("Expected '%s' but found '%s'" % (expectedmagic.hex(), magic.hex()))
+		if PMX_MOREINFO: core.MY_PRINT_FUNC("Expected '%s' but found '%s'" % (expectedmagic.hex(), magic.hex()))
 	
 	# only first 8 bytes have known uses
 	# more bytes have no known purpose but need to be accounted for anyway
@@ -86,7 +101,7 @@ def parse_pmx_header(raw: bytearray) -> list:
 	elif globalflags[0] == 1:
 		core.set_encoding("utf_8")
 	else:
-		core.MY_PRINT_FUNC("unsupported value")
+		core.MY_PRINT_FUNC("unsupported encoding value", globalflags[0])
 	# byte 1: additional vec4 per vertex
 	global ADDL_VERTEX_VEC4
 	ADDL_VERTEX_VEC4 = globalflags[1]
@@ -111,9 +126,8 @@ def parse_pmx_header(raw: bytearray) -> list:
 def parse_pmx_vertices(raw: bytearray) -> list:
 	# first item is int, how many vertices
 	i = core.my_unpack("i", raw)
-	core.MY_PRINT_FUNC("...# of verts            =", i)
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of verts            =", i)
 	retme = []
-	last_progress = -1
 	for d in range(i):
 		# first, basic stuff
 		(posX, posY, posZ, normX, normY, normZ, u, v) = core.my_unpack("8f", raw)
@@ -145,13 +159,11 @@ def parse_pmx_vertices(raw: bytearray) -> list:
 			# (b1, b2, b3, b4, b1w, b2w, b3w, b4w)
 			weights = core.my_unpack("4" + IDX_BONE + "4f", raw)
 		else:
-			core.MY_PRINT_FUNC("invalid weight type for vertex")
+			core.MY_PRINT_FUNC("invalid weight type for vertex", weighttype)
 		# then there is one final float after the weight crap
 		edgescale = core.my_unpack("f", raw)
 		# display progress printouts
-		if d > last_progress:
-			last_progress += 1000
-			core.print_progress_oneline(d, i)
+		core.print_progress_oneline(PARSE_PERCENT_VERT * d / i)
 
 		# assemble all the info into a list for returning
 		thisvert = [posX, posY, posZ, normX, normY, normZ, u, v, addl_vec4s, weighttype, weights, edgescale]
@@ -165,22 +177,19 @@ def parse_pmx_surfaces(raw: bytearray) -> list:
 	i = core.my_unpack("i", raw)
 	retme = []
 	i = int(i / 3)
-	core.MY_PRINT_FUNC("...# of faces            =", i)
-	last_progress = -1
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of faces            =", i)
 	for d in range(i):
 		# each entry is a group of 3 vertex indeces that make a face
 		thisface = core.my_unpack("3" + IDX_VERT, raw)
 		# display progress printouts
-		if d > last_progress:
-			last_progress += 1000
-			core.print_progress_oneline(d, i)
+		core.print_progress_oneline(PARSE_PERCENT_VERT + (PARSE_PERCENT_FACE * d / i))
 		retme.append(thisface)
 	return retme
 
 def parse_pmx_textures(raw: bytearray) -> list:
 	# first item is int, how many textures
 	i = core.my_unpack("i", raw)
-	core.MY_PRINT_FUNC("...# of textures         =", i)
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of textures         =", i)
 	retme = []
 	for d in range(i):
 		filepath = core.my_unpack("t", raw)
@@ -191,7 +200,7 @@ def parse_pmx_textures(raw: bytearray) -> list:
 def parse_pmx_materials(raw: bytearray) -> list:
 	# first item is int, how many materials
 	i = core.my_unpack("i", raw)
-	core.MY_PRINT_FUNC("...# of materials        =", i)
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of materials        =", i)
 	retme = []
 	for d in range(i):
 		(name_jp, name_en, diffR, diffG, diffB, diffA, specR, specG, specB, specpower) = core.my_unpack("t t 4f 4f", raw)
@@ -228,7 +237,7 @@ def parse_pmx_materials(raw: bytearray) -> list:
 def parse_pmx_bones(raw: bytearray) -> list:
 	# first item is int, how many bones
 	i = core.my_unpack("i", raw)
-	core.MY_PRINT_FUNC("...# of bones            =", i)
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of bones            =", i)
 	retme = []
 	for d in range(i):
 		(name_jp, name_en, posX, posY, posZ, parent_idx, deform_layer, flags1, flags2) = core.my_unpack("t t 3f" + IDX_BONE + "i 2B", raw)
@@ -302,9 +311,8 @@ def parse_pmx_bones(raw: bytearray) -> list:
 def parse_pmx_morphs(raw: bytearray) -> list:
 	# first item is int, how many morphs
 	i = core.my_unpack("i", raw)
-	core.MY_PRINT_FUNC("...# of morphs           =", i)
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of morphs           =", i)
 	retme = []
-	last_progress = -1
 	for d in range(i):
 		(name_jp, name_en, panel, morphtype, itemcount) = core.my_unpack("t t b b i", raw)
 		# print(name_jp, name_en)
@@ -346,13 +354,11 @@ def parse_pmx_morphs(raw: bytearray) -> list:
 				# (rb_idx, is_local, movX, movY, movZ, rotX, rotY, rotZ)
 				this_item = core.my_unpack(IDX_RB + "b 3f 3f", raw)
 			else:
-				core.MY_PRINT_FUNC("unsupported morph type value")
+				core.MY_PRINT_FUNC("unsupported morph type value", morphtype)
 			these_items.append(this_item)
 		
 		# display progress printouts
-		if d > last_progress:
-			last_progress += 10
-			core.print_progress_oneline(d, i)
+		core.print_progress_oneline(PARSE_PERCENT_VERTFACE + (PARSE_PERCENT_MORPH * d / i))
 		# assemble the data into list for returning
 		thismorph = [name_jp, name_en, panel, morphtype, these_items]
 		retme.append(thismorph)
@@ -361,7 +367,7 @@ def parse_pmx_morphs(raw: bytearray) -> list:
 def parse_pmx_dispframes(raw: bytearray) -> list:
 	# first item is int, how many dispframes
 	i = core.my_unpack("i", raw)
-	core.MY_PRINT_FUNC("...# of dispframes       =", i)
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of dispframes       =", i)
 	retme = []
 	for d in range(i):
 		(name_jp, name_en, is_special, itemcount) = core.my_unpack("t t b i", raw)
@@ -384,7 +390,7 @@ def parse_pmx_dispframes(raw: bytearray) -> list:
 def parse_pmx_rigidbodies(raw: bytearray) -> list:
 	# first item is int, how many rigidbodies
 	i = core.my_unpack("i", raw)
-	core.MY_PRINT_FUNC("...# of rigidbodies      =", i)
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of rigidbodies      =", i)
 	retme = []
 	for d in range(i):
 		(name_jp, name_en, bone_idx, group, nocollide_mask, shape) = core.my_unpack("t t" + IDX_BONE + "b H b", raw)
@@ -403,7 +409,7 @@ def parse_pmx_rigidbodies(raw: bytearray) -> list:
 def parse_pmx_joints(raw: bytearray) -> list:
 	# first item is int, how many joints
 	i = core.my_unpack("i", raw)
-	core.MY_PRINT_FUNC("...# of joints           =", i)
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of joints           =", i)
 	retme = []
 	for d in range(i):
 		(name_jp, name_en, jointtype, rb1_idx, rb2_idx, posX, posY, posZ) = core.my_unpack("t t b 2" + IDX_RB + "3f", raw)
@@ -426,7 +432,7 @@ def parse_pmx_softbodies(raw: bytearray) -> list:
 	# this is mostly to consume the data so there are no bytes left over when done parsing a file to trigger warnings
 	# note: this is also untested because i dont care about it lol
 	i = core.my_unpack("i", raw)
-	core.MY_PRINT_FUNC("...# of softbodies       =", i)
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of softbodies       =", i)
 	retme = []
 	for d in range(i):
 		(name_jp, name_en, shape, idx_mat, group, nocollide_mask, flags) = core.my_unpack("t t b" + IDX_MAT + "b H b", raw)
@@ -520,8 +526,7 @@ def encode_pmx_vertices(nice: list) -> bytearray:
 	# first item is int, how many vertices
 	i = len(nice)
 	out = core.my_pack("i", i)
-	core.MY_PRINT_FUNC("...# of verts            =", i)
-	last_progress = -1
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of verts            =", i)
 	# [posX, posY, posZ, normX, normY, normZ, u, v, addl_vec4s, weighttype, weights, edgescale]
 	for d, vert in enumerate(nice):
 		# first, basic stuff
@@ -559,13 +564,11 @@ def encode_pmx_vertices(nice: list) -> bytearray:
 			# (b1, b2, b3, b4, b1w, b2w, b3w, b4w)
 			out += core.my_pack("4" + IDX_BONE + "4f", weights)
 		else:
-			core.MY_PRINT_FUNC("invalid weight type for vertex")
+			core.MY_PRINT_FUNC("invalid weight type for vertex", weighttype)
 		# then there is one final float after the weight crap
 		out += core.my_pack("f", vert[11])
 		# display progress printouts
-		if d > last_progress:
-			last_progress += 1000
-			core.print_progress_oneline(d, i)
+		core.print_progress_oneline(ENCODE_PERCENT_VERT * d / i)
 	return out
 
 def encode_pmx_surfaces(nice: list) -> bytearray:
@@ -574,22 +577,19 @@ def encode_pmx_surfaces(nice: list) -> bytearray:
 	# each face is 3 vertex indices
 	i = len(nice)
 	out = core.my_pack("i", i * 3)
-	core.MY_PRINT_FUNC("...# of faces            =", i)
-	last_progress = -1
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of faces            =", i)
 	for d, face in enumerate(nice):
 		# each entry is a group of 3 vertex indeces that make a face
 		out += core.my_pack("3" + IDX_VERT, face)
 		# display progress printouts
-		if d > last_progress:
-			last_progress += 1000
-			core.print_progress_oneline(d, i)
+		core.print_progress_oneline(ENCODE_PERCENT_VERT + (ENCODE_PERCENT_FACE * d / i))
 	return out
 
 def encode_pmx_textures(nice: list) -> bytearray:
 	# first item is int, how many textures
 	i = len(nice)
 	out = core.my_pack("i", i)
-	core.MY_PRINT_FUNC("...# of textures         =", i)
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of textures         =", i)
 	for d, filepath in enumerate(nice):
 		out += core.my_pack("t", filepath)
 	return out
@@ -598,7 +598,7 @@ def encode_pmx_materials(nice: list) -> bytearray:
 	# first item is int, how many materials
 	i = len(nice)
 	out = core.my_pack("i", i)
-	core.MY_PRINT_FUNC("...# of materials        =", i)
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of materials        =", i)
 	for d, mat in enumerate(nice):
 		# (name_jp, name_en, diffR, diffG, diffB, diffA, specR, specG, specB, specpower, ambR, ambG, ambB)
 		out += core.my_pack("t t 4f 4f 3f", mat[0:13])
@@ -629,7 +629,7 @@ def encode_pmx_bones(nice: list) -> bytearray:
 	# first item is int, how many bones
 	i = len(nice)
 	out = core.my_pack("i", i)
-	core.MY_PRINT_FUNC("...# of bones            =", i)
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of bones            =", i)
 	flag1_idx = [12, 8, 9, 10, 11, 23]
 	flag2_idx = [14, 15, 17, 19, 7, 21]
 	for d, bone in enumerate(nice):
@@ -683,8 +683,7 @@ def encode_pmx_morphs(nice: list) -> bytearray:
 	# first item is int, how many morphs
 	i = len(nice)
 	out = core.my_pack("i", i)
-	core.MY_PRINT_FUNC("...# of morphs           =", i)
-	last_progress = -1
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of morphs           =", i)
 	for d, morph in enumerate(nice):
 		# (name_jp, name_en, panel, morphtype)
 		out += core.my_pack("t t b b", morph[0:4])
@@ -727,19 +726,17 @@ def encode_pmx_morphs(nice: list) -> bytearray:
 				# (rb_idx, is_local, movX, movY, movZ, rotX, rotY, rotZ)
 				out += core.my_pack(IDX_RB + "b 3f 3f", zzz)
 			else:
-				core.MY_PRINT_FUNC("unsupported morph type value")
+				core.MY_PRINT_FUNC("unsupported morph type value", morphtype)
 		
 		# display progress printouts
-		if d > last_progress:
-			last_progress += 10
-			core.print_progress_oneline(d, i)
+		core.print_progress_oneline(ENCODE_PERCENT_VERTFACE + (ENCODE_PERCENT_MORPH * d / i))
 	return out
 
 def encode_pmx_dispframes(nice: list) -> bytearray:
 	# first item is int, how many dispframes
 	i = len(nice)
 	out = core.my_pack("i", i)
-	core.MY_PRINT_FUNC("...# of dispframes       =", i)
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of dispframes       =", i)
 	for d, frame in enumerate(nice):
 		# (name_jp, name_en, is_special)
 		out += core.my_pack("t t b", frame[0:3])
@@ -758,7 +755,7 @@ def encode_pmx_rigidbodies(nice: list) -> bytearray:
 	# first item is int, how many rigidbodies
 	i = len(nice)
 	out = core.my_pack("i", i)
-	core.MY_PRINT_FUNC("...# of rigidbodies      =", i)
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of rigidbodies      =", i)
 	for d, body in enumerate(nice):
 		# thisbody = [name_jp, name_en, bone_idx, group, nocollide_mask, shape, sizeX, sizeY, sizeZ, posX, posY, posZ,
 		# 			rotX, rotY, rotZ, mass, move_damp, rot_damp, repel, friction, physmode]
@@ -770,7 +767,7 @@ def encode_pmx_joints(nice: list) -> bytearray:
 	# first item is int, how many joints
 	i = len(nice)
 	out = core.my_pack("i", i)
-	core.MY_PRINT_FUNC("...# of joints           =", i)
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of joints           =", i)
 	for d, joint in enumerate(nice):
 		# thisjoint = [name_jp, name_en, jointtype, rb1_idx, rb2_idx, posX, posY, posZ,
 		# 			 rotX, rotY, rotZ, posminX, posminY, posminZ, posmaxX, posmaxY, posmaxZ,
@@ -785,7 +782,7 @@ def encode_pmx_softbodies(nice: list) -> bytearray:
 	# note: this is also untested because i dont care about it lol
 	i = len(nice)
 	out = core.my_pack("i", i)
-	core.MY_PRINT_FUNC("...# of softbodies       =", i)
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of softbodies       =", i)
 	for d, soft in enumerate(nice):
 		# (name_jp, name_en, shape, idx_mat, group, nocollide_mask, flags) = core.my_unpack("t t b" + IDX_MAT + "b H b", raw)
 		# (b_link_create_dist, num_clusters, total_mass, collision_marign, aerodynamics_model) = core.my_unpack("iiffi", raw)
@@ -808,7 +805,9 @@ def encode_pmx_softbodies(nice: list) -> bytearray:
 
 ########################################################################################################################
 
-def read_pmx(pmx_filename: str) -> list:
+def read_pmx(pmx_filename: str, moreinfo=False) -> list:
+	global PMX_MOREINFO
+	PMX_MOREINFO = moreinfo
 	pmx_filename_clean = core.get_clean_basename(pmx_filename) + ".pmx"
 	# assumes the calling function already verified correct file extension
 	core.MY_PRINT_FUNC("Begin reading PMX file '%s'" % pmx_filename_clean)
@@ -817,7 +816,7 @@ def read_pmx(pmx_filename: str) -> list:
 	core.MY_PRINT_FUNC("Begin parsing PMX file '%s'" % pmx_filename_clean)
 	core.reset_unpack()
 	A = parse_pmx_header(pmx_bytes)
-	core.MY_PRINT_FUNC("...PMX version  = v%s" % str(A[0]))
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...PMX version  = v%s" % str(A[0]))
 	core.MY_PRINT_FUNC("...model name   = JP:'%s' / EN:'%s'" % (A[1], A[2]))
 	B = parse_pmx_vertices(pmx_bytes)
 	C = parse_pmx_surfaces(pmx_bytes)
@@ -844,18 +843,31 @@ def read_pmx(pmx_filename: str) -> list:
 	return [A, B, C, D, E, F, G, H, I, J, K]
 
 
-def write_pmx(pmx_filename: str, pmx: list) -> None:
+def write_pmx(pmx_filename: str, pmx: list, moreinfo=False) -> None:
+	global PMX_MOREINFO
+	PMX_MOREINFO = moreinfo
 	pmx_filename_clean = core.get_clean_basename(pmx_filename) + ".pmx"
 	# recives object 	(......)
 	# assumes the calling function already verified correct file extension
 	core.MY_PRINT_FUNC("Begin encoding PMX file '%s'" % pmx_filename_clean)
 
-	core.MY_PRINT_FUNC("...PMX version  = v%s" % str(pmx[0][0]))
+	if PMX_MOREINFO: core.MY_PRINT_FUNC("...PMX version  = v%s" % str(pmx[0][0]))
 	core.MY_PRINT_FUNC("...model name   = JP:'%s' / EN:'%s'" % (pmx[0][1], pmx[0][2]))
 	
 	# arg "pmx" is the same structure created by "read_pmx()"
 	# assume the object is perfect, no sanity-checking needed
 	output_bytes = bytearray()
+	global ENCODE_PERCENT_VERT
+	global ENCODE_PERCENT_FACE
+	global ENCODE_PERCENT_VERTFACE
+	global ENCODE_PERCENT_MORPH
+	
+	# total progress = verts + faces/3 + sum of morphs/3
+	ALLPROGRESSIZE = len(pmx[1]) + len(pmx[2])/4 + sum([len(m[4]) for m in pmx[6]])/2
+	ENCODE_PERCENT_VERT = len(pmx[1]) / ALLPROGRESSIZE
+	ENCODE_PERCENT_FACE = (len(pmx[2]) / 4) / ALLPROGRESSIZE
+	ENCODE_PERCENT_VERTFACE = ENCODE_PERCENT_VERT + ENCODE_PERCENT_FACE
+	ENCODE_PERCENT_MORPH = (sum([len(m[4]) for m in pmx[6]]) / 2) / ALLPROGRESSIZE
 	
 	lookahead = encode_pmx_lookahead(pmx)
 	output_bytes += encode_pmx_header(pmx[0], lookahead)

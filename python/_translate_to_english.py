@@ -156,7 +156,7 @@ def bulk_translate(jp_list: list) -> list:
 	retme = []
 	start_idx = 0
 	while start_idx < len(jp_list):
-		core.print_progress_oneline(start_idx, len(jp_list))
+		core.print_progress_oneline(start_idx / len(jp_list))
 		input_list = jp_list[start_idx:start_idx + TRANSLATE_MAX_LINES_PER_REQUEST]
 		bigstr = "\n".join(input_list)
 		bigresult = actual_translate(bigstr)

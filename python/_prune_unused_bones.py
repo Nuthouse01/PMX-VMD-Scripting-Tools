@@ -217,14 +217,15 @@ def prune_unused_bones(pmx, moreinfo=False):
 		core.MY_PRINT_FUNC("Nothing to be done")
 		return pmx, False
 	
+	# convert the list of individual bones to remove into a list of ranges
+	delme_rangemap = delme_list_to_rangemap(unused_list)
+	core.MY_PRINT_FUNC("Detected %d unused bones arranged in %d contiguous blocks" % (len(unused_list), len(delme_rangemap[0])))
+	
 	# another debug aid:
 	if moreinfo:
 		core.MY_PRINT_FUNC("The following bones are unused:")
 		for b in unused_list:
 			core.MY_PRINT_FUNC("#: %d    EN: %s    JP: %s" % (b, pmx[5][b][1], pmx[5][b][0]))
-	
-	# convert the list of individual bones to remove into a list of ranges
-	delme_rangemap = delme_list_to_rangemap(unused_list)
 	
 	num_bones_before = len(pmx[5])
 	# acutally delete the bones
@@ -243,12 +244,11 @@ def prune_unused_bones(pmx, moreinfo=False):
 	# bone external parent: remap only
 	# bone ik stuff: remap only
 	
-	core.print_progress_oneline(0, 5)
+	core.print_progress_oneline(0 / 5)
 	# VERTICES:
 	# just remap the bones that have weight
 	# any references to bones being deleted will definitely have 0 weight
 	for d,vert in enumerate(pmx[1]):
-		# core.print_progress_oneline(d, len(pmx[1]))
 		weighttype = vert[9]
 		weights = vert[10]
 		if weighttype==0:
@@ -275,10 +275,9 @@ def prune_unused_bones(pmx, moreinfo=False):
 					weights[i] = newval_from_range_map(weights[i], delme_rangemap)
 	# done with verts
 	
-	core.print_progress_oneline(1, 5)
+	core.print_progress_oneline(1 / 5)
 	# MORPHS:
 	for d,morph in enumerate(pmx[6]):
-		# core.print_progress_oneline(d, len(pmx[6]))
 		# only operate on bone morphs
 		if morph[3] != 2:
 			continue
@@ -293,10 +292,9 @@ def prune_unused_bones(pmx, moreinfo=False):
 				i += 1
 	# done with morphs
 	
-	core.print_progress_oneline(2, 5)
+	core.print_progress_oneline(2 / 5)
 	# DISPLAY FRAMES
 	for d,frame in enumerate(pmx[7]):
-		# core.print_progress_oneline(d, len(pmx[7]))
 		i = 0
 		while i < len(frame[3]):
 			item = frame[3][i]
@@ -312,18 +310,16 @@ def prune_unused_bones(pmx, moreinfo=False):
 					i += 1
 	# done with frames
 	
-	core.print_progress_oneline(3, 5)
+	core.print_progress_oneline(3 / 5)
 	#RIGIDBODY
 	for d,body in enumerate(pmx[8]):
-		# core.print_progress_oneline(d, len(pmx[8]))
 		# only remap, no possibility of one of these bones being deleted
 		body[2] = newval_from_range_map(body[2], delme_rangemap)
 	# done with bodies
 	
-	core.print_progress_oneline(4, 5)
+	core.print_progress_oneline(4 / 5)
 	# BONES: point-at target, true parent, external parent, partial append, ik stuff
 	for d,bone in enumerate(pmx[5]):
-		# core.print_progress_oneline(d, len(pmx[5]))
 		# point-at link:
 		if bone[12]:
 			if binary_search_isin(bone[13][0], unused_list):
