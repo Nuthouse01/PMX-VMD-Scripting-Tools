@@ -1,7 +1,7 @@
 # VMD-to-text-Conversion-Tool
 
 VMD Conversion Tool README
-Created by Nuthouse01 - 04/13/2020 - v4.00
+Created by Nuthouse01 - 04/15/2020 - v4.02
 
 ###### Legal:
 This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause. You are permitted to examine and modify the code as you see fit, but I make no guarantees about the safety or quality of the result.
@@ -308,3 +308,11 @@ The following files should be included with this README:
     4.01:
     learned that VMD does not handle long bone/morphs, changed model-compatability to only use exact match checking
     moved "graphic_user_interface" up a level to make it more important
+
+    4.02:
+    bugfix: texture_file_sort wasn't overwriting the original files as I had intended
+    limit # of longbones/longmorphs/noboneRBs that can be printed by pmx_overall_cleanup to 20
+    texture_file_sort: if all the files in a folder are unused, display that folder name with *** instead of each individual file
+    changed progress_print_oneline approach
+    fixed imports to work whether imported or standalone
+    "more info" checkbox now controls whether VMD/PMX breakdown is shown or not
