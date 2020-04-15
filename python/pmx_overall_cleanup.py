@@ -142,14 +142,14 @@ def main(moreinfo=False):
 		core.MY_PRINT_FUNC("Minor warning: this model contains bones/morphs with JP names that are too long (>15 bytes)")
 		core.MY_PRINT_FUNC("These will work just fine in MMD but will not properly save/load in VMD motion files")
 		if longbone:
-			longbone_str = "[" + ", ".join(longbone[0:10]) + "]"
-			if len(longbone) > 10:
-				longbone_str += "..."
+			longbone_str = "[" + ", ".join(longbone[0:20]) + "]"
+			if len(longbone) > 20:
+				longbone_str = longbone_str[0:-1] + ", ...]"
 			core.MY_PRINT_FUNC("These %d bones are too long (index/length): %s" % (len(longbone), longbone_str))
 		if longmorph:
-			longmorph_str = "[" + ", ".join(longmorph[0:10]) + "]"
-			if len(longmorph) > 10:
-				longmorph_str += "..."
+			longmorph_str = "[" + ", ".join(longmorph[0:20]) + "]"
+			if len(longmorph) > 20:
+				longmorph_str = longmorph_str[0:-1] + ", ...]"
 			core.MY_PRINT_FUNC("These %d morphs are too long (index/length): %s" % (len(longmorph), longmorph_str))
 
 	bad_bodies = find_unattached_rigidbodies(pmx)
@@ -157,7 +157,10 @@ def main(moreinfo=False):
 		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("Minor warning: this model contains rigidbodies that aren't anchored to any bones")
 		core.MY_PRINT_FUNC("This won't crash MMD but it is probably a mistake that needs corrected")
-		core.MY_PRINT_FUNC("These %d bodies are unanchored (index): %s" % (len(bad_bodies), bad_bodies))
+		bad_body_str = str(bad_bodies[0:20])
+		if len(bad_bodies) > 20:
+			bad_body_str = bad_body_str[0:-1] + ", ...]"
+		core.MY_PRINT_FUNC("These %d bodies are unanchored (index): %s" % (len(bad_bodies), bad_body_str))
 	
 	crashing_joints = find_crashing_joints(pmx)
 	if crashing_joints:
