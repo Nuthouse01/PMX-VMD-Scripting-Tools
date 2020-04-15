@@ -710,7 +710,7 @@ def encode_pmx_morphs(nice: list) -> bytearray:
 				# UV
 				# what these values do depends on the UV layer they are affecting, but the docs dont say what...
 				# oh well, i dont need to use them so i dont care :)
-				# (bone_idx, A, B, C, D)
+				# (vert_idx, A, B, C, D)
 				out += core.my_pack(IDX_VERT + "4f", zzz)
 			elif morphtype == 8:
 				# material
