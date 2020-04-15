@@ -598,7 +598,7 @@ def main(moreinfo=False):
 		# NOTE: this is OVERWRITING THE PREVIOUS PMX FILE, NOT CREATING A NEW ONE
 		# because I make a zipfile backup I don't need to feel worried about preserving the old version
 		output_filename_pmx = this_pmx_name
-		output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
+		# output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 		pmxlib.write_pmx(output_filename_pmx, this_pmx_obj)
 	
 	return None
