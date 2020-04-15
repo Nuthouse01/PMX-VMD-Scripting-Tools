@@ -12,16 +12,21 @@ import math
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
-	from . import nuthouse01_vmd_parser as vmd_parser
-	from . import nuthouse01_pmx_parser as pmx_parser
+	from . import nuthouse01_vmd_parser as vmdlib
+	from . import nuthouse01_pmx_parser as pmxlib
 	from . import nuthouse01_core as core
 except ImportError as eee:
-	print(eee.__class__.__name__, eee)
-	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-	print("...press ENTER to exit...")
-	input()
-	exit()
-	core = vmd_parser = pmx_parser = None
+	try:
+		import nuthouse01_vmd_parser as vmdlib
+		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_core as core
+	except ImportError as eee:
+		print(eee.__class__.__name__, eee)
+		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
+		print("...press ENTER to exit...")
+		input()
+		exit()
+		core = vmd_parser = pmx_parser = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,

@@ -16,14 +16,27 @@ try:
 	from . import _uniquify_names
 	from . import _dispframe_fix
 except ImportError as eee:
-	print(eee.__class__.__name__, eee)
-	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-	print("...press ENTER to exit...")
-	input()
-	exit()
-	core = pmxlib = None
-	_alphamorph_correct = _morph_winnow = _prune_unused_vertices = _prune_invalid_faces = _translate_to_english = None
-	_weight_cleanup = _uniquify_names = _prune_unused_bones = _dispframe_fix = None
+	try:
+		import nuthouse01_core as core
+		import nuthouse01_pmx_parser as pmxlib
+		import _alphamorph_correct
+		import _morph_winnow
+		import _prune_invalid_faces
+		import _prune_unused_vertices
+		import _prune_unused_bones
+		import _translate_to_english
+		import _weight_cleanup
+		import _uniquify_names
+		import _dispframe_fix
+	except ImportError as eee:
+		print(eee.__class__.__name__, eee)
+		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
+		print("...press ENTER to exit...")
+		input()
+		exit()
+		core = pmxlib = None
+		_alphamorph_correct = _morph_winnow = _prune_unused_vertices = _prune_invalid_faces = _translate_to_english = None
+		_weight_cleanup = _uniquify_names = _prune_unused_bones = _dispframe_fix = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,

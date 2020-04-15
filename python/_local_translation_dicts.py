@@ -566,9 +566,9 @@ def translate_local(s: str) -> (None, str):
 	# return what it produced, even if not completely successful
 	return out
 
-# from . import nuthouse01_core as core
-# from . import nuthouse01_pmx_parser as pmxlib
-# from . import _translate_to_english
+# import nuthouse01_core as core
+# import nuthouse01_pmx_parser as pmxlib
+# import _translate_to_english
 #
 # def main():
 # 	input_filename_pmx = core.prompt_user_filename(".pmx")

@@ -8,13 +8,18 @@ try:
 	from . import nuthouse01_pmx_parser as pmxlib
 	from ._prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap, binary_search_isin
 except ImportError as eee:
-	print(eee.__class__.__name__, eee)
-	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-	print("...press ENTER to exit...")
-	input()
-	exit()
-	core = pmxlib = None
-	newval_from_range_map = delme_list_to_rangemap = binary_search_isin = None
+	try:
+		import nuthouse01_core as core
+		import nuthouse01_pmx_parser as pmxlib
+		from _prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap, binary_search_isin
+	except ImportError as eee:
+		print(eee.__class__.__name__, eee)
+		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
+		print("...press ENTER to exit...")
+		input()
+		exit()
+		core = pmxlib = None
+		newval_from_range_map = delme_list_to_rangemap = binary_search_isin = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
