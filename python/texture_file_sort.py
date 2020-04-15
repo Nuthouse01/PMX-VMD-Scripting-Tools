@@ -58,7 +58,7 @@ FOLDER_MULTI =  "multi"
 FOLDER_UNUSED = "unused"
 
 IMG_EXT = (".jpg", ".jpeg", ".png", ".bmp", ".spa", ".sph", ".tga", ".xcf", ".dds", ".gif", ".psd")
-KEEP_FOLDERS_TEX = ("cloth", "outfit", "uniform", "wear", "body", "tex", "weapon", "acc", "face")
+KEEP_FOLDERS_TEX = ("cloth", "outfit", "uniform", "wear", "body", "tex", "weapon", "acc", "face", "tx")
 KEEP_FOLDERS_TOON = ("tn", "toon")
 KEEP_FOLDERS_SPH = ("sph", "spa", "sp")
 # all files I expect to find alongside a PMX and don't want to touch/move
@@ -86,9 +86,9 @@ def match_in_top_folder(s: str, keep: tuple) -> bool:
 
 
 def sortbydirdepth(s: str) -> str:
-	# pipe gets sorted last, so prepend pipes to make something get sorted lower
+	# pipe gets sorted last, so prepend end-of-unicode char to make something get sorted lower
 	# more slashes in name = more subdirectories = lower on the tree
-	return ("|" * s.count("\\")) + s.lower()
+	return (chr(0x10FFFF) * s.count("\\")) + s.lower()
 
 
 def remove_pattern(s: str) -> str:
@@ -148,12 +148,13 @@ helptext = '''=================================================
 texture_file_sort:
 This tool will sort the tex/spheremap/toon files used by a model into folders for each category.
 It also moves unused image files at top-level into an "unused" folder, to declutter things.
-Any files referenced by the PMX that do not exist on disk will be listed.
 Any unused files elsewhere will be listed but not renamed. You can move them or delete them however you want, it doesn't matter since they aren't actually used in the model.
+Any files referenced by the PMX that do not exist on disk will be listed.
 Before actually changing anything, it will list all proposed file renames and ask for final confirmation.
 It also creates a zipfile backup of the entire folder, just in case.
 Bonus: this can process all "neighbor" pmx files in addition to the target, this highly recommended because neighbors usually reference similar sets of files.
 
+Note: *** means "all files within this folder"
 Note: unfortunately, any "preview" images that exist cannot be distinguished from clutter, and will be moved into the "unused" folder. Remember to move them back!
 Note: unlike my other scripts, this overwrites the original input PMX file(s) instead of creating a new file with a suffix. This is because I already create a zipfile that contains the original input PMX, so that serves as a good backup.
 '''
@@ -476,7 +477,42 @@ def main(moreinfo=False):
 	notused_img_rename = [u for u in notused_img if u.mapto != ""]
 	notused_img_norename = [u for u in notused_img if u.mapto == ""]
 	
-	# todo bonus goal: if ALL files under a folder are unused, replace its name with a star? seems really hard for just a printout thing
+	# bonus goal: if ALL files under a folder are unused, replace its name with a star
+	relative_allfilesthatexist = [os.path.relpath(f, startpath) for f in absolue_files_that_exist]
+	# first build dict of each dirs to each file any depth below that dir
+	all_dirnames = {}
+	for f in relative_allfilesthatexist:
+		d = os.path.dirname(f)
+		while d != "":
+			try:				all_dirnames[d].append(f)
+			except KeyError:	all_dirnames[d] = [f]
+			d = os.path.dirname(d)
+	unused_dirnames = []
+	all_notused_searchable = [x.orig for x in notused_img_norename] + [x.orig for x in notused_notimg]
+	for d,files_under_d in all_dirnames.items():
+		# if all files beginning with d are notused (either type), this dir can be replaced with *
+		# note: min crashes if input list is empty, but this is guaranteed to not be empty
+		dir_notused = min([(f in all_notused_searchable) for f in files_under_d])
+		if dir_notused:
+			unused_dirnames.append(d)
+	# print("allundir", unused_dirnames)
+	# now, remove all dirnames that are encompassed by another dirname
+	j = 0
+	while j < len(unused_dirnames):
+		dj = unused_dirnames[j]
+		k = 0
+		while k < len(unused_dirnames):
+			dk = unused_dirnames[k]
+			if dj != dk and dk.startswith(dj):
+				unused_dirnames.pop(k)
+			else:
+				k += 1
+		j += 1
+	# make sure unused_dirnames has the deepest directories first
+	unused_dirnames = sorted(unused_dirnames, key=sortbydirdepth, reverse=True)
+	# print("unqundir", unused_dirnames)
+	# then as I go to print notused_img_norename or notused_notimg, collapse them?
+	
 	# for each section, if it exists, print its names sorted first by directory depth then alphabetically (case insensitive)
 	
 	if notexist:
@@ -487,14 +523,42 @@ def main(moreinfo=False):
 			core.MY_PRINT_FUNC("   " + str(p))
 	if notused_img_norename:
 		core.MY_PRINT_FUNC("="*60)
-		core.MY_PRINT_FUNC("Found %d not-used images in the file structure (no proposed changes)" % len(notused_img_norename))
-		for p in sorted(notused_img_norename, key=lambda y: sortbydirdepth(y.orig)):
-			core.MY_PRINT_FUNC("   " + p.orig)
+		core.MY_PRINT_FUNC("Found %d not-used images in the file tree (no proposed changes)" % len(notused_img_norename))
+		printme = set()
+		for p in notused_img_norename:
+			# is this notused-file anywhere below any unused dir?
+			t = False
+			for d in unused_dirnames:
+				if p.orig.startswith(d):
+					# add this dir, not this file, to the print set
+					printme.add(os.path.join(d, "***"))
+					t = True
+			if not t:
+				# if not encompassed by an unused dir, add the filename
+				printme.add(p.orig)
+		# convert set back to sorted list
+		printme = sorted(list(printme), key=sortbydirdepth)
+		for s in printme:
+			core.MY_PRINT_FUNC("   " + s)
 	if notused_notimg:
 		core.MY_PRINT_FUNC("="*60)
-		core.MY_PRINT_FUNC("Found %d not-used not-images in the file structure (no proposed changes)" % len(notused_notimg))
-		for p in sorted(notused_notimg, key=lambda y: sortbydirdepth(y.orig)):
-			core.MY_PRINT_FUNC("   " + p.orig)
+		core.MY_PRINT_FUNC("Found %d not-used not-images in the file tree (no proposed changes)" % len(notused_notimg))
+		printme = set()
+		for p in notused_notimg:
+			# is this notused-file anywhere below any unused dir?
+			t = False
+			for d in unused_dirnames:
+				if p.orig.startswith(d):
+					# add this dir, not this file, to the print set
+					printme.add(os.path.join(d, "***"))
+					t = True
+			if not t:
+				# if not encompassed by an unused dir, add the filename
+				printme.add(p.orig)
+		# convert set back to sorted list
+		printme = sorted(list(printme), key=sortbydirdepth)
+		for s in printme:
+			core.MY_PRINT_FUNC("   " + s)
 	# print with all "from" file names left-justified so all the arrows are nicely lined up (unless they use jp characters)
 	longest_name_len = 0
 	for p in used_rename:
