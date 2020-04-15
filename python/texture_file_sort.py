@@ -231,7 +231,7 @@ def main(moreinfo=False):
 	# holds all textures that are referenced by all PMX files
 	files_in_pmx = []
 	for this_pmx_name in pmx_filenames:
-		this_pmx_obj = pmxlib.read_pmx(this_pmx_name)
+		this_pmx_obj = pmxlib.read_pmx(this_pmx_name, moreinfo=moreinfo)
 		all_pmx_obj[this_pmx_name] = this_pmx_obj
 		# pmx[3] is list of all filepaths used in the model
 		
@@ -663,7 +663,7 @@ def main(moreinfo=False):
 		# because I make a zipfile backup I don't need to feel worried about preserving the old version
 		output_filename_pmx = this_pmx_name
 		# output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
-		pmxlib.write_pmx(output_filename_pmx, this_pmx_obj)
+		pmxlib.write_pmx(output_filename_pmx, this_pmx_obj, moreinfo=moreinfo)
 	
 	return None
 

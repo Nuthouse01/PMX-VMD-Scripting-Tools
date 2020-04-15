@@ -598,7 +598,7 @@ def read_vmd(vmd_filename: str, getdict=False, moreinfo=False):
 	E = parse_vmd_lightframe(vmd_bytes)
 	F = parse_vmd_shadowframe(vmd_bytes)
 	G = parse_vmd_ikdispframe(vmd_bytes)
-	core.print_failed_decodes()
+	if VMD_MOREINFO: core.print_failed_decodes()
 	
 	bytes_remain = len(vmd_bytes) - core.get_readfrom_byte()
 	if bytes_remain != 0:

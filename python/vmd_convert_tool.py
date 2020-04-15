@@ -520,23 +520,23 @@ def write_summary_dicts(bonedict: dict, morphdict: dict, summary_filename: str) 
 # MAIN & menu, also convert_txt_to_vmd() and convert_vmd_to_txt()
 ########################################################################################################################
 
-def convert_txt_to_vmd(input_filename):
+def convert_txt_to_vmd(input_filename, moreinfo=True):
 	# read the VMD-as-text into the nicelist format, all in one function
 	vmd_nicelist = read_vmdtext(input_filename)
 	
 	# identify an unused filename for writing the output
 	dumpname = core.get_unused_file_name(input_filename[0:-4] + ".vmd")
 	# write the output VMD-as-text file
-	vmd_parser.write_vmd(dumpname, vmd_nicelist)
+	vmd_parser.write_vmd(dumpname, vmd_nicelist, moreinfo=moreinfo)
 	
 	# done!
 	return None
 
 
-def convert_vmd_to_txt(input_filename):
+def convert_vmd_to_txt(input_filename, moreinfo=True):
 	# read the entire VMD, all in this one function
 	# also create the bonedict & morphdict
-	vmd_nicelist, bonedict, morphdict = vmd_parser.read_vmd(input_filename, getdict=True)
+	vmd_nicelist, bonedict, morphdict = vmd_parser.read_vmd(input_filename, getdict=True, moreinfo=moreinfo)
 	
 	# identify an unused filename for writing the output
 	dumpname = core.get_unused_file_name(input_filename[0:-4] + filestr_txt)
@@ -578,10 +578,10 @@ def main(moreinfo=False):
 	
 	if input_filename.lower().endswith(".vmd"):
 		# activate correct function
-		convert_vmd_to_txt(input_filename)
+		convert_vmd_to_txt(input_filename, moreinfo=moreinfo)
 	else:
 		# activate correct function
-		convert_txt_to_vmd(input_filename)
+		convert_txt_to_vmd(input_filename, moreinfo=moreinfo)
 	return None
 	
 ########################################################################################################################

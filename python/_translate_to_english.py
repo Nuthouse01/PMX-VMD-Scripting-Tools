@@ -260,7 +260,7 @@ def showprompt():
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
 	input_filename_pmx = core.prompt_user_filename(".pmx")
-	pmx = pmxlib.read_pmx(input_filename_pmx)
+	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=True)
 	return pmx, input_filename_pmx
 
 def translate_to_english(pmx, moreinfo=False):
@@ -463,7 +463,7 @@ def end(pmx, input_filename_pmx):
 	# output_filename_pmx = "%s_translate.pmx" % core.get_clean_basename(input_filename_pmx)
 	output_filename_pmx = input_filename_pmx[0:-4] + "_translate.pmx"
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
-	pmxlib.write_pmx(output_filename_pmx, pmx)
+	pmxlib.write_pmx(output_filename_pmx, pmx, moreinfo=True)
 	return None
 
 def main():

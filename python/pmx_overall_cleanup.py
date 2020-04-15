@@ -97,7 +97,7 @@ def main(moreinfo=False):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
-	pmx = pmxlib.read_pmx(input_filename_pmx)
+	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	
 	# verts after faces
 	# weights after verts, but before bones
@@ -182,7 +182,7 @@ def main(moreinfo=False):
 	# output_filename_pmx = "%s_better.pmx" % core.get_clean_basename(input_filename_pmx)
 	output_filename_pmx = input_filename_pmx[0:-4] + "_better.pmx"
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
-	pmxlib.write_pmx(output_filename_pmx, pmx)
+	pmxlib.write_pmx(output_filename_pmx, pmx, moreinfo=moreinfo)
 	return None
 
 

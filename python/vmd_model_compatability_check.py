@@ -36,15 +36,11 @@ Outputs: morph compatability summary text file '[dancename]_morph_compatability_
 '''
 
 
-def main(moreinfo=False):
-	# print info to explain the purpose of this file
-	core.MY_PRINT_FUNC(helptext)
-	core.MY_PRINT_FUNC("")
-	
+def main(moreinfo=True):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
-	pmx = pmx_parser.read_pmx(input_filename_pmx)
+	pmx = pmx_parser.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	realbones = pmx[5]		# get bones
 	realmorphs = pmx[6]		# get morphs
 	modelname_jp = pmx[0][1]
@@ -53,7 +49,7 @@ def main(moreinfo=False):
 	# prompt VMD file name
 	core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
 	input_filename_vmd = core.MY_FILEPROMPT_FUNC(".vmd")
-	nicelist_in, bonedict, morphdict = vmd_parser.read_vmd(input_filename_vmd, getdict=True)
+	nicelist_in, bonedict, morphdict = vmd_parser.read_vmd(input_filename_vmd, getdict=True, moreinfo=moreinfo)
 	
 	core.MY_PRINT_FUNC("")
 	
@@ -148,7 +144,7 @@ def main(moreinfo=False):
 							  (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx))
 		output_filename_morph = output_filename_morph.replace(" ", "_")
 		output_filename_morph = core.get_unused_file_name(output_filename_morph)
-		core.MY_PRINT_FUNC("...writing result to file '%s'..." % output_filename_morph)
+		core.MY_PRINT_FUNC("...writing result to file '%s'..." % (core.get_clean_basename(output_filename_morph) + ".txt"))
 		core.write_rawlist_to_txt(output_filename_morph, rawlist_out, use_jis_encoding=False)
 		core.MY_PRINT_FUNC("done!")
 	
@@ -242,7 +238,7 @@ def main(moreinfo=False):
 							   (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx))
 		output_filename_bone = output_filename_bone.replace(" ", "_")
 		output_filename_bone = core.get_unused_file_name(output_filename_bone)
-		core.MY_PRINT_FUNC("...writing result to file '%s'..." % output_filename_bone)
+		core.MY_PRINT_FUNC("...writing result to file '%s'..." % (core.get_clean_basename(output_filename_bone) + ".txt"))
 		core.write_rawlist_to_txt(output_filename_bone, rawlist_out, use_jis_encoding=False)
 		core.MY_PRINT_FUNC("done!")
 	return None
@@ -251,10 +247,18 @@ def main(moreinfo=False):
 if __name__ == '__main__':
 	core.MY_PRINT_FUNC("Nuthouse01 - 04/13/2020 - v4.00")
 	if DEBUG:
+		# print info to explain the purpose of this file
+		core.MY_PRINT_FUNC(helptext)
+		core.MY_PRINT_FUNC("")
+		
 		main()
 		core.pause_and_quit("Done with everything! Goodbye!")
 	else:
 		try:
+			# print info to explain the purpose of this file
+			core.MY_PRINT_FUNC(helptext)
+			core.MY_PRINT_FUNC("")
+			
 			main()
 			core.pause_and_quit("Done with everything! Goodbye!")
 		except (KeyboardInterrupt, SystemExit):
