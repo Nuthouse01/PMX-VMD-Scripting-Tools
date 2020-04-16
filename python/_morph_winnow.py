@@ -50,6 +50,43 @@ The default threshold is 0.0003 units. Trust me it really is imperceptible.
 iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_winnow.pmx"
 '''
 
+def apply_morph_remapping(pmx, morph_dellist, morph_shiftmap):
+	# actually delete the morphs from the list
+	for f in reversed(morph_dellist):
+		pmx[6].pop(f)
+	
+	# frames:
+	for d, frame in enumerate(pmx[7]):
+		i = 0
+		while i < len(frame[3]):
+			item = frame[3][i]
+			# if this item is a bone, skip it
+			if not item[0]:
+				i += 1
+			else:
+				# if this is one of the morphs being deleted, delete it here too. otherwise remap.
+				if binary_search_isin(item[1], morph_dellist):
+					frame[3].pop(i)
+				else:
+					item[1] = newval_from_range_map(item[1], morph_shiftmap)
+					i += 1
+	
+	# group/flip morphs:
+	for d, morph in enumerate(pmx[6]):
+		# group/flip = 0/9
+		if morph[3] not in (0, 9):
+			continue
+		i = 0
+		while i < len(morph[4]):
+			# if this is one of the morphs being deleted, delete it here too. otherwise remap.
+			if binary_search_isin(morph[4][i][0], morph_dellist):
+				morph[4].pop(i)
+			else:
+				morph[4][i][0] = newval_from_range_map(morph[4][i][0], morph_shiftmap)
+				i += 1
+	return pmx
+
+
 def showhelp():
 	# print info to explain the purpose of this file
 	core.MY_PRINT_FUNC(helptext)
@@ -110,39 +147,7 @@ def morph_winnow(pmx, moreinfo=False):
 		core.MY_PRINT_FUNC("Deleted %d morphs that had all of their vertices below the threshold" % len(morphs_now_empty))
 		rangemap = delme_list_to_rangemap(morphs_now_empty)
 		
-		# actually delete the morphs from the list
-		for f in reversed(morphs_now_empty):
-			pmx[6].pop(f)
-
-		# frames:
-		for d, frame in enumerate(pmx[7]):
-			i = 0
-			while i < len(frame[3]):
-				item = frame[3][i]
-				# if this item is a bone, skip it
-				if not item[0]:
-					i += 1
-				else:
-					# if this is one of the morphs being deleted, delete it here too. otherwise remap.
-					if binary_search_isin(item[1], morphs_now_empty):
-						frame[3].pop(i)
-					else:
-						item[1] = newval_from_range_map(item[1], rangemap)
-						i += 1
-		
-		# group/flip morphs:
-		for d, morph in enumerate(pmx[6]):
-			# group/flip = 0/9
-			if morph[3] not in (0,9):
-				continue
-			i = 0
-			while i < len(morph[4]):
-				# if this is one of the morphs being deleted, delete it here too. otherwise remap.
-				if binary_search_isin(morph[4][i][0], morphs_now_empty):
-					morph[4].pop(i)
-				else:
-					morph[4][i][0] = newval_from_range_map(morph[4][i][0], rangemap)
-					i += 1
+		pmx = apply_morph_remapping(pmx, morphs_now_empty, rangemap)
 		
 	return pmx, True
 	
