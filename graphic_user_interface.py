@@ -19,6 +19,7 @@ from os import path
 try:
 	from python import nuthouse01_core as core
 	from python import make_ik_from_vmd
+	from python import pmx_arm_ik_addremove
 	from python import pmx_list_bone_morph_names
 	from python import pmx_overall_cleanup
 	from python import texture_file_sort
@@ -174,6 +175,7 @@ class Application(tk.Frame):
 			("vmd_armtwist_insert.py",           vmd_armtwist_insert.helptext,           vmd_armtwist_insert.main),
 			("vmd_convert_tool.py",              vmd_convert_tool.helptext,              vmd_convert_tool.main),
 			("make_ik_from_vmd.py",              make_ik_from_vmd.helptext,              make_ik_from_vmd.main),
+			("pmx_arm_ik_addremove.py",          pmx_arm_ik_addremove.helptext,          pmx_arm_ik_addremove.main),
 			("pmx_list_bone_morph_names.py",     pmx_list_bone_morph_names.helptext,     pmx_list_bone_morph_names.main),
 		]
 		
