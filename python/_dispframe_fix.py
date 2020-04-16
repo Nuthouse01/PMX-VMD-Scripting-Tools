@@ -64,11 +64,10 @@ def dispframe_fix(pmx, moreinfo=False):
 	empty_groups_removed = 0
 	
 	# find the ID# for motherbone... if not found, use whatever is at 0
-	motherid = 0
-	for d,bone in enumerate(pmx[5]):
-		if bone[0] == "全ての親":
-			motherid = d
-			break
+	motherid = core.my_sublist_find(pmx[5], 0, "全ての親", getindex=True)
+	if motherid is None:
+		motherid = 0
+	
 	# ensure that "motherbone" and nothing else is in the root:
 	for d,frame in enumerate(pmx[7]):
 		# only operate on the root group
