@@ -124,11 +124,14 @@ def get1st(x):
 def get2nd(x):
 	return x[1]
 
-def my_sublist_find(searchme, sublist_idx, matchme):
-	# in a list of lists, find the list with the specified item at the specified index
-	for row in searchme:
+def my_sublist_find(searchme, sublist_idx, matchme, getindex=False):
+	# in a list of lists, find the list with the specified value at the specified sub-index
+	for d,row in enumerate(searchme):
 		if row[sublist_idx] == matchme:
-			return row
+			if getindex:
+				return d
+			else:
+				return row
 	return None
 
 MAXDIFFERENCE = 0
