@@ -212,8 +212,132 @@ def identify_unused_bones(pmx):
 			
 	return unused_bones_list
 	
+
+def apply_bone_remapping(pmx, bone_dellist, bone_shiftmap):
+	# where are all places bones are used in the model?
 	
+	# !vertex weight
+	# 	vertices will have 0 weight, and have thier now-invalid index set to 0
+	# !morph bone: delete that entry
+	# !dispframes: delete that entry
+	# rigidbody anchor: remap only
+	# !bone point-at target: set to -1 ? set to offset 0,0,0 ?
+	# bone partial append: remap only
+	# bone external parent: remap only
+	# bone ik stuff: remap only
 	
+	# acutally delete the bones
+	for f in reversed(bone_dellist):
+		pmx[5].pop(f)
+
+	core.print_progress_oneline(0 / 5)
+	# VERTICES:
+	# just remap the bones that have weight
+	# any references to bones being deleted will definitely have 0 weight
+	for d, vert in enumerate(pmx[1]):
+		weighttype = vert[9]
+		weights = vert[10]
+		if weighttype == 0:
+			# just remap, this cannot have 0 weight
+			weights[0] = newval_from_range_map(weights[0], bone_shiftmap)
+		elif weighttype == 1 or weighttype == 3:
+			# b1, b2, b1w
+			# if b1w == 0, zero out b1
+			if weights[2] == 0:
+				weights[0] = 0
+			else:
+				weights[0] = newval_from_range_map(weights[0], bone_shiftmap)
+			# if b1w == 1, then b2w == 0 so zero out b2
+			if weights[2] == 1:
+				weights[1] = 0
+			else:
+				weights[1] = newval_from_range_map(weights[1], bone_shiftmap)
+		elif weighttype == 2 or weighttype == 4:
+			for i in range(4):
+				# if weight == 0, then change its bone to 0. otherwise, remap
+				if weights[i + 4] == 0:
+					weights[i] = 0
+				else:
+					weights[i] = newval_from_range_map(weights[i], bone_shiftmap)
+	# done with verts
+	
+	core.print_progress_oneline(1 / 5)
+	# MORPHS:
+	for d, morph in enumerate(pmx[6]):
+		# only operate on bone morphs
+		if morph[3] != 2:
+			continue
+		# first, it is plausible that bone morphs could reference otherwise unused bones, so I should check for and delete those
+		i = 0
+		while i < len(morph[4]):
+			# if the bone being manipulated is in the list of bones being deleted, delete it here too. otherwise remap.
+			if binary_search_isin(morph[4][i][0], bone_dellist):
+				morph[4].pop(i)
+			else:
+				morph[4][i][0] = newval_from_range_map(morph[4][i][0], bone_shiftmap)
+				i += 1
+	# done with morphs
+	
+	core.print_progress_oneline(2 / 5)
+	# DISPLAY FRAMES
+	for d, frame in enumerate(pmx[7]):
+		i = 0
+		while i < len(frame[3]):
+			item = frame[3][i]
+			# if this item is a morph, skip it
+			if item[0]:
+				i += 1
+			else:
+				# if this is one of the bones being deleted, delete it here too. otherwise remap.
+				if binary_search_isin(item[1], bone_dellist):
+					frame[3].pop(i)
+				else:
+					item[1] = newval_from_range_map(item[1], bone_shiftmap)
+					i += 1
+	# done with frames
+	
+	core.print_progress_oneline(3 / 5)
+	# RIGIDBODY
+	for d, body in enumerate(pmx[8]):
+		# only remap, no possibility of one of these bones being deleted
+		body[2] = newval_from_range_map(body[2], bone_shiftmap)
+	# done with bodies
+	
+	core.print_progress_oneline(4 / 5)
+	# BONES: point-at target, true parent, external parent, partial append, ik stuff
+	for d, bone in enumerate(pmx[5]):
+		# point-at link:
+		if bone[12]:
+			if binary_search_isin(bone[13][0], bone_dellist):
+				# if pointing at a bone that will be deleted, instead change to offset with offset 0,0,0
+				bone[12] = 0
+				bone[13] = [0, 0, 0]
+			else:
+				# otherwise, remap
+				bone[13][0] = newval_from_range_map(bone[13][0], bone_shiftmap)
+		# other 4 categories only need remapping
+		# true parent:
+		bone[5] = newval_from_range_map(bone[5], bone_shiftmap)
+		# partial append:
+		if (bone[14] or bone[15]) and bone[16][1] != 0:
+			if binary_search_isin(bone[16][0], bone_dellist):
+				# if a bone is getting partial append from a bone getting deleted, break that relationship
+				bone[14] = 0
+				bone[15] = 0
+			else:
+				bone[16][0] = newval_from_range_map(bone[16][0], bone_shiftmap)
+		# # external parent: i don't think external parent cares about the values of bones INSIDE the model?
+		# if bone[21]:
+		# 	bone[22] = newval_from_range_map(bone[22], bone_shiftmap)
+		# ik stuff:
+		if bone[23]:
+			bone[24][0] = newval_from_range_map(bone[24][0], bone_shiftmap)
+			for iklink in bone[24][3]:
+				iklink[0] = newval_from_range_map(iklink[0], bone_shiftmap)
+	# done with bones
+	return pmx
+
+
 def prune_unused_bones(pmx, moreinfo=False):
 	# first build the list of bones to delete
 	unused_list = identify_unused_bones(pmx)
@@ -233,122 +357,7 @@ def prune_unused_bones(pmx, moreinfo=False):
 			core.MY_PRINT_FUNC("#: %d    EN: %s    JP: %s" % (b, pmx[5][b][1], pmx[5][b][0]))
 	
 	num_bones_before = len(pmx[5])
-	# acutally delete the bones
-	for f in reversed(unused_list):
-		pmx[5].pop(f)
-
-	# where are all places bones are used in the model?
-	
-	# !vertex weight
-	# 	vertices will have 0 weight, and have thier now-invalid index set to 0
-	# !morph bone: delete that entry
-	# !dispframes: delete that entry
-	# rigidbody anchor: remap only
-	# !bone point-at target: set to -1 ? set to offset 0,0,0 ?
-	# bone partial append: remap only
-	# bone external parent: remap only
-	# bone ik stuff: remap only
-	
-	core.print_progress_oneline(0 / 5)
-	# VERTICES:
-	# just remap the bones that have weight
-	# any references to bones being deleted will definitely have 0 weight
-	for d,vert in enumerate(pmx[1]):
-		weighttype = vert[9]
-		weights = vert[10]
-		if weighttype==0:
-			# just remap, this cannot have 0 weight
-			weights[0] = newval_from_range_map(weights[0], delme_rangemap)
-		elif weighttype==1 or weighttype==3:
-			# b1, b2, b1w
-			# if b1w == 0, zero out b1
-			if weights[2] == 0:
-				weights[0] = 0
-			else:
-				weights[0] = newval_from_range_map(weights[0], delme_rangemap)
-			# if b1w == 1, then b2w == 0 so zero out b2
-			if weights[2] == 1:
-				weights[1] = 0
-			else:
-				weights[1] = newval_from_range_map(weights[1], delme_rangemap)
-		elif weighttype==2 or weighttype==4:
-			for i in range(4):
-				# if weight == 0, then change its bone to 0. otherwise, remap
-				if weights[i+4] == 0:
-					weights[i] = 0
-				else:
-					weights[i] = newval_from_range_map(weights[i], delme_rangemap)
-	# done with verts
-	
-	core.print_progress_oneline(1 / 5)
-	# MORPHS:
-	for d,morph in enumerate(pmx[6]):
-		# only operate on bone morphs
-		if morph[3] != 2:
-			continue
-		# first, it is plausible that bone morphs could reference otherwise unused bones, so I should check for and delete those
-		i = 0
-		while i < len(morph[4]):
-			# if the bone being manipulated is in the list of bones being deleted, delete it here too. otherwise remap.
-			if binary_search_isin(morph[4][i][0], unused_list):
-				morph[4].pop(i)
-			else:
-				morph[4][i][0] = newval_from_range_map(morph[4][i][0], delme_rangemap)
-				i += 1
-	# done with morphs
-	
-	core.print_progress_oneline(2 / 5)
-	# DISPLAY FRAMES
-	for d,frame in enumerate(pmx[7]):
-		i = 0
-		while i < len(frame[3]):
-			item = frame[3][i]
-			# if this item is a morph, skip it
-			if item[0]:
-				i += 1
-			else:
-				# if this is one of the bones being deleted, delete it here too. otherwise remap.
-				if binary_search_isin(item[1], unused_list):
-					frame[3].pop(i)
-				else:
-					item[1] = newval_from_range_map(item[1], delme_rangemap)
-					i += 1
-	# done with frames
-	
-	core.print_progress_oneline(3 / 5)
-	#RIGIDBODY
-	for d,body in enumerate(pmx[8]):
-		# only remap, no possibility of one of these bones being deleted
-		body[2] = newval_from_range_map(body[2], delme_rangemap)
-	# done with bodies
-	
-	core.print_progress_oneline(4 / 5)
-	# BONES: point-at target, true parent, external parent, partial append, ik stuff
-	for d,bone in enumerate(pmx[5]):
-		# point-at link:
-		if bone[12]:
-			if binary_search_isin(bone[13][0], unused_list):
-				# if pointing at a bone that will be deleted, instead change to offset with offset 0,0,0
-				bone[12] = 0
-				bone[13] = [0,0,0]
-			else:
-				# otherwise, remap
-				bone[13][0] = newval_from_range_map(bone[13][0], delme_rangemap)
-		# other 4 categories only need remapping
-		# true parent:
-		bone[5] = newval_from_range_map(bone[5], delme_rangemap)
-		# partial append:
-		if (bone[14] or bone[15]) and bone[16][1] != 0:
-			bone[16][0] = newval_from_range_map(bone[16][0], delme_rangemap)
-		# external parent:
-		if bone[21]:
-			bone[22] = newval_from_range_map(bone[22], delme_rangemap)
-		# ik stuff:
-		if bone[23]:
-			bone[24][0] = newval_from_range_map(bone[24][0], delme_rangemap)
-			for iklink in bone[24][3]:
-				iklink[0] = newval_from_range_map(iklink[0], delme_rangemap)
-	# done with bones
+	pmx = apply_bone_remapping(pmx, unused_list, delme_rangemap)
 	
 	# print("Done deleting unused bones")
 	core.MY_PRINT_FUNC("Found and deleted {} / {} = {:.1%} unused bones".format(
