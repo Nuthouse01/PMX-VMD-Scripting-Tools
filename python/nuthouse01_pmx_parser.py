@@ -304,10 +304,10 @@ def parse_pmx_bones(raw: bytearray) -> list:
 		# assemble all the info into a list for returning
 		# note that these are arranged within the list in a different order from how they are arranged in the binary
 		# this way the flags which control optional fields are next to the fields they control
-		thisbone = [name_jp, name_en, posX, posY, posZ, parent_idx, deform_layer, deform_after_phys,
-					rotateable, translateable, visible, enabled,
-					tail_type, maybe_tail, inherit_rot, inherit_trans, maybe_inherit, fixed_axis, maybe_fixed_axis,
-					local_axis, maybe_local_axis, external_parent, maybe_external_parent, ik, maybe_ik]
+		thisbone = [name_jp, name_en, posX, posY, posZ, parent_idx, deform_layer, deform_after_phys, # 0-7
+					rotateable, translateable, visible, enabled, # 8-11
+					tail_type, maybe_tail, inherit_rot, inherit_trans, maybe_inherit, fixed_axis, maybe_fixed_axis, # 12-18
+					local_axis, maybe_local_axis, external_parent, maybe_external_parent, ik, maybe_ik] # 19-24
 		retme.append(thisbone)
 	return retme
 
