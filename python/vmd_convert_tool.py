@@ -33,15 +33,15 @@
 #
 # VMD -> TEXT:
 # convert_vmd_to_txt()
-# 	vmd_parser.read_vmd()
+# 	vmdlib.read_vmd()
 # 		core.read_binfile_to_bytes()
-# 		vmd_parser.parse_vmd_header()
-# 		vmd_parser.parse_vmd_boneframe()
-# 		vmd_parser.parse_vmd_morphframe()
-# 		vmd_parser.parse_vmd_camframe()
-# 		vmd_parser.parse_vmd_lightframe()
-# 		vmd_parser.parse_vmd_shadowframe()
-# 		vmd_parser.parse_vmd_ikdispframe()
+# 		vmdlib.parse_vmd_header()
+# 		vmdlib.parse_vmd_boneframe()
+# 		vmdlib.parse_vmd_morphframe()
+# 		vmdlib.parse_vmd_camframe()
+# 		vmdlib.parse_vmd_lightframe()
+# 		vmdlib.parse_vmd_shadowframe()
+# 		vmdlib.parse_vmd_ikdispframe()
 # 	write_vmdtext()
 # 		format_nicelist_as_rawlist()
 # 		core.write_rawlist_to_txt()
@@ -57,14 +57,14 @@
 # 		read_vmdtext_lightframe()
 # 		read_vmdtext_shadowframe()
 # 		read_vmdtext_ikdispframe()
-# 	vmd_parser.write_vmd()
-# 		vmd_parser.encode_vmd_header()
-# 		vmd_parser.encode_vmd_boneframe()
-# 		vmd_parser.encode_vmd_morphframe()
-# 		vmd_parser.encode_vmd_camframe()
-# 		vmd_parser.encode_vmd_lightframe()
-# 		vmd_parser.encode_vmd_shadowframe()
-# 		vmd_parser.encode_vmd_ikdispframe()
+# 	vmdlib.write_vmd()
+# 		vmdlib.encode_vmd_header()
+# 		vmdlib.encode_vmd_boneframe()
+# 		vmdlib.encode_vmd_morphframe()
+# 		vmdlib.encode_vmd_camframe()
+# 		vmdlib.encode_vmd_lightframe()
+# 		vmdlib.encode_vmd_shadowframe()
+# 		vmdlib.encode_vmd_ikdispframe()
 # 		core.write_bytes_to_binfile()
 
 
@@ -83,7 +83,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = vmd_parser = None
+		core = vmdlib = None
 
 ########################################################################################################################
 # constants & options
@@ -531,7 +531,7 @@ def convert_txt_to_vmd(input_filename, moreinfo=True):
 	# identify an unused filename for writing the output
 	dumpname = core.get_unused_file_name(input_filename[0:-4] + ".vmd")
 	# write the output VMD-as-text file
-	vmd_parser.write_vmd(dumpname, vmd_nicelist, moreinfo=moreinfo)
+	vmdlib.write_vmd(dumpname, vmd_nicelist, moreinfo=moreinfo)
 	
 	# done!
 	return None
@@ -540,7 +540,7 @@ def convert_txt_to_vmd(input_filename, moreinfo=True):
 def convert_vmd_to_txt(input_filename, moreinfo=True):
 	# read the entire VMD, all in this one function
 	# also create the bonedict & morphdict
-	vmd_nicelist, bonedict, morphdict = vmd_parser.read_vmd(input_filename, getdict=True, moreinfo=moreinfo)
+	vmd_nicelist, bonedict, morphdict = vmdlib.read_vmd(input_filename, getdict=True, moreinfo=moreinfo)
 	
 	# identify an unused filename for writing the output
 	dumpname = core.get_unused_file_name(input_filename[0:-4] + filestr_txt)

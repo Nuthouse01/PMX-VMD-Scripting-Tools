@@ -27,7 +27,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = vmd_parser = pmx_parser = None
+		core = vmdlib = pmxlib = None
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
@@ -151,7 +151,7 @@ def main(moreinfo=True):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
-	pmx = pmx_parser.read_pmx(input_filename_pmx, moreinfo=moreinfo)
+	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	# get bones
 	realbones = pmx[5]
 	# then, make 2 lists: one starting from jp_righttoe, one starting from jp_lefttoe
@@ -219,7 +219,7 @@ def main(moreinfo=True):
 	# prompt VMD file name
 	core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
 	input_filename_vmd = core.MY_FILEPROMPT_FUNC(".vmd")
-	nicelist_in = vmd_parser.read_vmd(input_filename_vmd, moreinfo=moreinfo)
+	nicelist_in = vmdlib.read_vmd(input_filename_vmd, moreinfo=moreinfo)
 	
 	# check if this VMD uses IK or not, print a warning if it does
 	any_ik_on = False
@@ -420,7 +420,7 @@ def main(moreinfo=True):
 						  (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx))
 	output_filename_vmd = output_filename_vmd.replace(" ", "_")
 	output_filename_vmd = core.get_unused_file_name(output_filename_vmd)
-	vmd_parser.write_vmd(output_filename_vmd, nicelist_out, moreinfo=moreinfo)
+	vmdlib.write_vmd(output_filename_vmd, nicelist_out, moreinfo=moreinfo)
 
 	return None
 

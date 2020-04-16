@@ -18,7 +18,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = vmd_parser = pmx_parser = None
+		core = vmdlib = pmxlib = None
 
 
 
@@ -45,7 +45,7 @@ def main(moreinfo=True):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
-	pmx = pmx_parser.read_pmx(input_filename_pmx, moreinfo=moreinfo)
+	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	realbones = pmx[5]		# get bones
 	realmorphs = pmx[6]		# get morphs
 	modelname_jp = pmx[0][1]
@@ -54,7 +54,7 @@ def main(moreinfo=True):
 	# prompt VMD file name
 	core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
 	input_filename_vmd = core.MY_FILEPROMPT_FUNC(".vmd")
-	nicelist_in, bonedict, morphdict = vmd_parser.read_vmd(input_filename_vmd, getdict=True, moreinfo=moreinfo)
+	nicelist_in, bonedict, morphdict = vmdlib.read_vmd(input_filename_vmd, getdict=True, moreinfo=moreinfo)
 	
 	core.MY_PRINT_FUNC("")
 	
