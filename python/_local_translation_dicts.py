@@ -257,6 +257,7 @@ words_dict = {
 "アホ毛": "ahoge",
 "新規": "new",
 "材質": "material",
+"なみだ": "tears",
 "尻": "butt",
 "目": "eye",
 "瞳": "pupil",
