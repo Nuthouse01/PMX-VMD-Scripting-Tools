@@ -317,3 +317,8 @@ The following files should be included with this README:
     fixed imports to work whether imported or standalone
     "more info" checkbox now controls whether VMD/PMX breakdown is shown or not
     
+    4.03:
+    bugfix: did imports wrong oops
+    new script: "pmx_arm_ik_addremove" for adding arm IK rigs
+    
+    
