@@ -80,7 +80,7 @@ def weight_cleanup(pmx, moreinfo=False):
 			weights = w[4:8]
 			is_modified = False
 			for i in range(4):
-				if (bones[i] != -1) and (bones[i] in usedbones):
+				if not (bones[i] == 0 and weights[i] == 0.0) and (bones[i] in usedbones):
 					is_modified = True  # then this is a duplicate bone!
 					where = usedbones.index(bones[i])  # find index where it was first used
 					weights[where] += weights[i]  # combine this bone's weight with the first place it was used
