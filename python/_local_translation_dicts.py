@@ -468,6 +468,7 @@ words_dict = {
 "▲": "^ open",
 "△": "^ open2",
 "∧": "^",
+"ー": "--", # not sure what to do with this, often used to mean continuation of a sound/syllable...
 }
 
 
