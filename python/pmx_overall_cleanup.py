@@ -7,6 +7,7 @@ try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
 	from . import _alphamorph_correct
+	from . import _bonedeform_fix
 	from . import _morph_winnow
 	from . import _prune_invalid_faces
 	from . import _prune_unused_vertices
@@ -20,6 +21,7 @@ except ImportError as eee:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
 		import _alphamorph_correct
+		import _bonedeform_fix
 		import _morph_winnow
 		import _prune_invalid_faces
 		import _prune_unused_vertices
@@ -36,7 +38,7 @@ except ImportError as eee:
 		exit()
 		core = pmxlib = None
 		_alphamorph_correct = _morph_winnow = _prune_unused_vertices = _prune_invalid_faces = _translate_to_english = None
-		_weight_cleanup = _uniquify_names = _prune_unused_bones = _dispframe_fix = None
+		_weight_cleanup = _uniquify_names = _prune_unused_bones = _dispframe_fix = _bonedeform_fix = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -107,9 +109,9 @@ def find_jointless_physbodies(pmx):
 myhelptext = '''=================================================
 pmx_overall_cleanup:
 This file will run through a series of first-pass cleanup operations to detect/fix obvious issues in a model.
-This includes: translating missing english names, correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, and cleaning up display frames.
-This also scans for some issues that I can detect but not fix, such as improper joints that will crash MMD, and alerts you if it finds them.
-These operations will reduce file size (sometimes massively!) and improve overall model health & usability.
+This includes: translating missing english names, correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, fixing bone deformation order, and cleaning up display frames.
+This also scans for several issues that I can detect but not fix, such as improper joints that will crash MMD, and alerts you if it finds them.
+These operations will reduce file size (sometimes 30-50%!) and improve overall model health & usability.
 However, these are only first-pass fixes. The model will definitely require more time and effort to search for and fix all potential issues.
 
 Outputs: PMX file "[model]_better.pmx"
@@ -122,6 +124,7 @@ allhelp = [
 	_prune_invalid_faces.helptext,
 	_prune_unused_vertices.helptext,
 	_prune_unused_bones.helptext,
+	_bonedeform_fix.helptext,
 	_weight_cleanup.helptext,
 	_morph_winnow.helptext,
 	_alphamorph_correct.helptext,
@@ -156,6 +159,9 @@ def main(moreinfo=False):
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Deleting unused bones <<<<")
 	pmx, is_changed_t = _prune_unused_bones.prune_unused_bones(pmx, moreinfo)
+	is_changed |= is_changed_t
+	core.MY_PRINT_FUNC("\n>>>> Fixing bone deform order <<<<")
+	pmx, is_changed_t = _bonedeform_fix.bonedeform_fix(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Normalizing weights <<<<")
 	pmx, is_changed_t = _weight_cleanup.weight_cleanup(pmx, moreinfo)
