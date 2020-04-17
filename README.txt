@@ -1,7 +1,7 @@
 # VMD-to-text-Conversion-Tool
 
 VMD Conversion Tool README
-Created by Nuthouse01 - 04/16/2020 - v4.03
+Created by Nuthouse01 - 04/17/2020 - v4.04
 
 ###### Legal:
 This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause. You are permitted to examine and modify the code as you see fit, but I make no guarantees about the safety or quality of the result.
@@ -320,4 +320,10 @@ The following files should be included with this README:
     4.03:
     bugfix: did imports wrong oops
     new script: "pmx_arm_ik_addremove" for adding arm IK rigs
+
+    4.04:
+    bugfix: weight_cleanup was incorrectly counting the number of changes it made (was actually operating correctly tho)
+    new: pmx_overall_cleanup finds "shadowy materials" i.e. hidden materials with visible edging
+    new: pmx_overall_cleanup finds physics bodies that aren't constrained by any joints
+    new: pmx_overall_cleanup fixes bone deform order issues, or causes a warning if it finds a circular relationship
 
