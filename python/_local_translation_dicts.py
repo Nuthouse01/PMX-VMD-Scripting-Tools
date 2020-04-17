@@ -449,6 +449,7 @@ words_dict = {
 "小": "small",
 "小さく": "small",
 "消し": "erase",
+"けし": "erase",
 "消": "erase",
 "裸": "naked",
 "あ": "a",
