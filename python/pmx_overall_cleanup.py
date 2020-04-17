@@ -44,6 +44,10 @@ except ImportError as eee:
 DEBUG = False
 
 
+# what is the max # of items to show in the "warnings" section before concatenating?
+MAX_WARNING_LIST = 15
+
+
 # TODO: fix bad normals (hard)
 
 
@@ -56,7 +60,7 @@ def find_crashing_joints(pmx):
 			retme.append(d)
 	return retme
 
-def find_unattached_rigidbodies(pmx):
+def find_boneless_rigidbodies(pmx):
 	# check for rigidbodies that aren't attached to any bones, this usually doesn't cause crashes but is definitely a mistake
 	retme = []
 	for d,body in enumerate(pmx[8]):
@@ -64,7 +68,7 @@ def find_unattached_rigidbodies(pmx):
 			retme.append(d)
 	return retme
 
-def find_toolong_morphs(pmx):
+def find_toolong_bonemorph(pmx):
 	# check for morphs with JP names that are too long and will not be successfully saved/loaded with VMD files
 	# for each morph, convert from string to bytes encoding to determine its length
 	core.set_encoding("shift_jis")
@@ -82,6 +86,21 @@ def find_shadowy_materials(pmx):
 		if mat[5] == 0 and mat[13][4] and mat[17] != 0 and mat[18] != 0:
 			retme.append(d)
 	return retme
+
+def find_jointless_physbodies(pmx):
+	# check for rigidbodies with physics enabled that are NOT the dependent-body of any joint
+	# these will just wastefully roll around on the floor draining processing power
+	retme = []
+	for d,body in enumerate(pmx[8]):
+		# if this is a physics body (not a bone body)
+		if body[20] != 0:
+			# look for any joint that has this body as the dependent
+			f = core.my_sublist_find(pmx[9], 4, d)
+			# if not found, then this body is unattached
+			if f is None:
+				retme.append(d)
+	return retme
+
 
 ########################################################################################################################
 
@@ -157,42 +176,53 @@ def main(moreinfo=False):
 	pmx, is_changed_t = _uniquify_names.uniquify_names(pmx, moreinfo)
 	is_changed |= is_changed_t
 	
-	longbone, longmorph = find_toolong_morphs(pmx)
+	longbone, longmorph = find_toolong_bonemorph(pmx)
 	if longmorph or longbone:
 		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("Minor warning: this model contains bones/morphs with JP names that are too long (>15 bytes)")
 		core.MY_PRINT_FUNC("These will work just fine in MMD but will not properly save/load in VMD motion files")
 		if longbone:
-			ss = "[" + ", ".join(longbone[0:20]) + "]"
-			if len(longbone) > 20:
+			ss = "[" + ", ".join(longbone[0:MAX_WARNING_LIST]) + "]"
+			if len(longbone) > MAX_WARNING_LIST:
 				ss = ss[0:-1] + ", ...]"
 			core.MY_PRINT_FUNC("These %d bones are too long (index/length): %s" % (len(longbone), ss))
 		if longmorph:
-			ss = "[" + ", ".join(longmorph[0:20]) + "]"
-			if len(longmorph) > 20:
+			ss = "[" + ", ".join(longmorph[0:MAX_WARNING_LIST]) + "]"
+			if len(longmorph) > MAX_WARNING_LIST:
 				ss = ss[0:-1] + ", ...]"
 			core.MY_PRINT_FUNC("These %d morphs are too long (index/length): %s" % (len(longmorph), ss))
-
-	bad_bodies = find_unattached_rigidbodies(pmx)
-	if bad_bodies:
-		core.MY_PRINT_FUNC("")
-		core.MY_PRINT_FUNC("Minor warning: this model contains rigidbodies that aren't anchored to any bones")
-		core.MY_PRINT_FUNC("This won't crash MMD but it is probably a mistake that needs corrected")
-		ss = str(bad_bodies[0:20])
-		if len(bad_bodies) > 20:
-			ss = ss[0:-1] + ", ...]"
-		core.MY_PRINT_FUNC("These %d bodies are unanchored (index): %s" % (len(bad_bodies), ss))
-		
+	
 	shadowy_mats = find_shadowy_materials(pmx)
 	if shadowy_mats:
 		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("Minor warning: this model contains transparent materials with visible edging")
 		core.MY_PRINT_FUNC("Edging is visible even if the material is transparent, so this will look like an ugly silhouette")
-		ss = str(shadowy_mats[0:20])
-		if len(shadowy_mats) > 20:
+		core.MY_PRINT_FUNC("Either disable edging in MMD when using this model, or reduce the edge parameters to 0 and re-add them in the morph that restores its opacity")
+		ss = str(shadowy_mats[0:MAX_WARNING_LIST])
+		if len(shadowy_mats) > MAX_WARNING_LIST:
 			ss = ss[0:-1] + ", ...]"
 		core.MY_PRINT_FUNC("These %d materials need edging disabled (index): %s" % (len(shadowy_mats), ss))
 	
+	boneless_bodies = find_boneless_rigidbodies(pmx)
+	if boneless_bodies:
+		core.MY_PRINT_FUNC("")
+		core.MY_PRINT_FUNC("Minor warning: this model contains rigidbodies that aren't anchored to any bones")
+		core.MY_PRINT_FUNC("This won't crash MMD but it is probably a mistake that needs corrected")
+		ss = str(boneless_bodies[0:MAX_WARNING_LIST])
+		if len(boneless_bodies) > MAX_WARNING_LIST:
+			ss = ss[0:-1] + ", ...]"
+		core.MY_PRINT_FUNC("These %d bodies are boneless (index): %s" % (len(boneless_bodies), ss))
+		
+	jointless_bodies = find_jointless_physbodies(pmx)
+	if jointless_bodies:
+		core.MY_PRINT_FUNC("")
+		core.MY_PRINT_FUNC("WARNING: this model has physics rigidbodies that aren't constrained by joints")
+		core.MY_PRINT_FUNC("These will just roll around on the floor wasting processing power in MMD")
+		ss = str(jointless_bodies[0:MAX_WARNING_LIST])
+		if len(jointless_bodies) > MAX_WARNING_LIST:
+			ss = ss[0:-1] + ", ...]"
+		core.MY_PRINT_FUNC("These %d bodies are jointless (index): %s" % (len(jointless_bodies), ss))
+		
 	crashing_joints = find_crashing_joints(pmx)
 	if crashing_joints:
 		# make the biggest fucking alert i can cuz this is a critical issue
