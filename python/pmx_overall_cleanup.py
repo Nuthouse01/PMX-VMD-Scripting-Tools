@@ -72,8 +72,16 @@ def find_toolong_morphs(pmx):
 	toolong_list_bone = ["%d/%d" % (d, len(mb)) for d,mb in enumerate(bones_bytes) if len(mb) > 15]
 	morphs_bytes = [core.encode_string_with_escape(m[0]) for m in pmx[6]]
 	toolong_list_morph = ["%d/%d" % (d, len(mb)) for d,mb in enumerate(morphs_bytes) if len(mb) > 15]
-
 	return toolong_list_bone, toolong_list_morph
+
+def find_shadowy_materials(pmx):
+	# identify materials that start transparent but still have edging
+	retme = []
+	for d,mat in enumerate(pmx[4]):
+		# opacity is zero AND edge is enabled AND edge has nonzero opacity AND edge has nonzero size 
+		if mat[5] == 0 and mat[13][4] and mat[17] != 0 and mat[18] != 0:
+			retme.append(d)
+	return retme
 
 ########################################################################################################################
 
@@ -155,25 +163,35 @@ def main(moreinfo=False):
 		core.MY_PRINT_FUNC("Minor warning: this model contains bones/morphs with JP names that are too long (>15 bytes)")
 		core.MY_PRINT_FUNC("These will work just fine in MMD but will not properly save/load in VMD motion files")
 		if longbone:
-			longbone_str = "[" + ", ".join(longbone[0:20]) + "]"
+			ss = "[" + ", ".join(longbone[0:20]) + "]"
 			if len(longbone) > 20:
-				longbone_str = longbone_str[0:-1] + ", ...]"
-			core.MY_PRINT_FUNC("These %d bones are too long (index/length): %s" % (len(longbone), longbone_str))
+				ss = ss[0:-1] + ", ...]"
+			core.MY_PRINT_FUNC("These %d bones are too long (index/length): %s" % (len(longbone), ss))
 		if longmorph:
-			longmorph_str = "[" + ", ".join(longmorph[0:20]) + "]"
+			ss = "[" + ", ".join(longmorph[0:20]) + "]"
 			if len(longmorph) > 20:
-				longmorph_str = longmorph_str[0:-1] + ", ...]"
-			core.MY_PRINT_FUNC("These %d morphs are too long (index/length): %s" % (len(longmorph), longmorph_str))
+				ss = ss[0:-1] + ", ...]"
+			core.MY_PRINT_FUNC("These %d morphs are too long (index/length): %s" % (len(longmorph), ss))
 
 	bad_bodies = find_unattached_rigidbodies(pmx)
 	if bad_bodies:
 		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("Minor warning: this model contains rigidbodies that aren't anchored to any bones")
 		core.MY_PRINT_FUNC("This won't crash MMD but it is probably a mistake that needs corrected")
-		bad_body_str = str(bad_bodies[0:20])
+		ss = str(bad_bodies[0:20])
 		if len(bad_bodies) > 20:
-			bad_body_str = bad_body_str[0:-1] + ", ...]"
-		core.MY_PRINT_FUNC("These %d bodies are unanchored (index): %s" % (len(bad_bodies), bad_body_str))
+			ss = ss[0:-1] + ", ...]"
+		core.MY_PRINT_FUNC("These %d bodies are unanchored (index): %s" % (len(bad_bodies), ss))
+		
+	shadowy_mats = find_shadowy_materials(pmx)
+	if shadowy_mats:
+		core.MY_PRINT_FUNC("")
+		core.MY_PRINT_FUNC("Minor warning: this model contains transparent materials with visible edging")
+		core.MY_PRINT_FUNC("Edging is visible even if the material is transparent, so this will look like an ugly silhouette")
+		ss = str(shadowy_mats[0:20])
+		if len(shadowy_mats) > 20:
+			ss = ss[0:-1] + ", ...]"
+		core.MY_PRINT_FUNC("These %d materials need edging disabled (index): %s" % (len(shadowy_mats), ss))
 	
 	crashing_joints = find_crashing_joints(pmx)
 	if crashing_joints:
