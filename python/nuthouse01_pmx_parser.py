@@ -209,14 +209,14 @@ def parse_pmx_materials(raw: bytearray) -> list:
 		(name_jp, name_en, diffR, diffG, diffB, diffA, specR, specG, specB, specpower) = core.my_unpack("t t 4f 4f", raw)
 		# print(name_jp, name_en)
 		(ambR, ambG, ambB, flags, edgeR, edgeG, edgeB, edgeA, edgescale, tex_idx) = core.my_unpack("3f B 5f" + IDX_TEX, raw)
-		no_backface_culling = flags & (1<<0) # does this mean it is 2-sided?
-		cast_ground_shadow  = flags & (1<<1)
-		cast_shadow         = flags & (1<<2)
-		receive_shadow      = flags & (1<<3)
-		use_edge            = flags & (1<<4)
-		vertex_color        = flags & (1<<5) # v2.1 only
-		draw_as_points      = flags & (1<<6) # v2.1 only
-		draw_as_lines       = flags & (1<<7) # v2.1 only
+		no_backface_culling = bool(flags & (1<<0)) # does this mean it is 2-sided?
+		cast_ground_shadow  = bool(flags & (1<<1))
+		cast_shadow         = bool(flags & (1<<2))
+		receive_shadow      = bool(flags & (1<<3))
+		use_edge            = bool(flags & (1<<4))
+		vertex_color        = bool(flags & (1<<5)) # v2.1 only
+		draw_as_points      = bool(flags & (1<<6)) # v2.1 only
+		draw_as_lines       = bool(flags & (1<<7)) # v2.1 only
 		(sph_idx, sph_mode, toon_mode) = core.my_unpack(IDX_TEX + "b b", raw)
 		if toon_mode == 0:
 			# toon is using a texture reference

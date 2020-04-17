@@ -33,7 +33,7 @@ except ImportError as eee:
 	input()
 	exit()
 	vmd_convert_tool = pmx_overall_cleanup = texture_file_sort = vmd_model_compatability_check = None
-	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = None
+	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = pmx_arm_ik_addremove = None
 	core = None
 
 
