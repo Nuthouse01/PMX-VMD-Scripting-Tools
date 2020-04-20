@@ -129,31 +129,23 @@ def identify_unused_bones(pmx):
 	# NOTE: must remove null string from set of "used bones"
 	used_bones.discard(-1)
 
-	# third: IK bones and IK links, make this a separate stage just for compartmentalization
-	for d,bone in enumerate(pmx[5]):
-		if bone[23]:  # if ik enabled for this bone,
-			used_bones.add(d)  # mark this bone as used
-			used_bones.add(bone[24][0])  # mark this bone's target as used
-			for iklink in bone[24][3]:
-				used_bones.add(iklink[0])  # mark all this bone's IK links as used
-	
 	# set of all bones, for inverting purposes
 	all_bones_list = []
 	all_bones_list.extend(range(len(pmx[5])))
 	all_bones_set = set(all_bones_list)
 	
-	
-	# fourth: mark the "exception" bones as "used" if they are in the model
+	# third: mark the "exception" bones as "used" if they are in the model
 	for d,bone in enumerate(pmx[5]):
 		# look up the jp name of this bone
 		if bone[0] in BONES_TO_PROTECT:
 			used_bones.add(d)
-
-	# fifth: bone-list check
+	
+	# fourth: inheritance chains
+	# this is the clever bit, i forget how it works tho lol
+	# this propagates through the parent-child relationships, a bone is used if anything that inherits from it is used
+	# completely ignore bone point-at links, for now. do that as the final stage.
 	# on first pass unused_bones is empty, it will only grow
 	# iterate over bones, growing the list of unused bones each pass
-	# it propagates through the parent-child relationships at this stage
-	# completely ignore bone point-at links, for now. do that as the final stage.
 	used_bones_from_bones_prev = set()
 	while True:
 		used_bones_from_bones = set()
@@ -161,17 +153,17 @@ def identify_unused_bones(pmx):
 			### if i am useless, then skip all the checks below
 			if d in unused_bones:
 				continue
-			# a bone is used if...
+			# if this bone is not definitely unused, then assume it is useful
 			
 			# other bones use as parent, AKA has !useful! children [13]
-			### if i am not useless, add my parent to used bones
+			### if i am maybe useful, add my parent to used bones
 			used_bones_from_bones.add(bone[5])
 			
 			# has append and append value is not 0
-			### if i am not useless, add my "append" source to used bones
+			### if i am maybe useful, add my "append" source to used bones
 			if (bone[14] or bone[15]) and bone[16][1] != 0:
 				used_bones_from_bones.add(bone[16][0])
-				
+		
 		unused_bones = all_bones_set.difference(used_bones.union(used_bones_from_bones))
 		# print("boneloop used from bones:", len(used_bones_from_bones))
 		
@@ -181,10 +173,65 @@ def identify_unused_bones(pmx):
 		else:
 			used_bones_from_bones_prev = used_bones_from_bones
 	
+	# make the complement, unused -> used
+	used_bones = all_bones_set.difference(unused_bones)
 	
-	# sixth: point-at links
-	# after establishing what is actually used, THEN we care about point-at links
-	# anything used as a link for something used is, itself, used
+	# fifth: ik groups
+	# IK + chain + target are treated as a group... if any 1 is used, all of them are used. build those groups now.
+	ik_groups = []
+	for d,bone in enumerate(pmx[5]):
+		if bone[23]:  # if ik enabled for this bone,
+			ik_set = set()
+			ik_set.add(d)  # this bone
+			ik_set.add(bone[24][0])  # this bone's target
+			for iklink in bone[24][3]:
+				ik_set.add(iklink[0])  # all this bone's IK links
+			ik_groups.append(ik_set)
+	# now identify ik groups which contain used bones
+	used_ik_groups = []
+	for d in used_bones:
+		for group in ik_groups:
+			if d in group:
+				used_ik_groups.append(group)
+	# now add those groups to the set of known used bones
+	for group in used_ik_groups:
+		used_bones = used_bones.union(group)
+	
+	# update the complement, used -> unused
+	unused_bones = all_bones_set.difference(used_bones)
+	
+	# sixth: inheritance chains, again
+	# don't forget to include parents of any IK bones
+	used_bones_from_bones_prev = set()
+	while True:
+		used_bones_from_bones = set()
+		for d, bone in enumerate(pmx[5]):
+			### if i am useless, then skip all the checks below
+			if d in unused_bones:
+				continue
+			# if this bone is not definitely unused, then assume it is useful
+			
+			# other bones use as parent, AKA has !useful! children [13]
+			### if i am maybe useful, add my parent to used bones
+			used_bones_from_bones.add(bone[5])
+			
+			# has append and append value is not 0
+			### if i am maybe useful, add my "append" source to used bones
+			if (bone[14] or bone[15]) and bone[16][1] != 0:
+				used_bones_from_bones.add(bone[16][0])
+		
+		unused_bones = all_bones_set.difference(used_bones.union(used_bones_from_bones))
+		# print("boneloop used from bones:", len(used_bones_from_bones))
+		
+		# repeat until "used from bones" used list no longer changes
+		if used_bones_from_bones == used_bones_from_bones_prev:
+			break
+		else:
+			used_bones_from_bones_prev = used_bones_from_bones
+	
+	# seventh: point-at links
+	# after establishing what is truly actually used, THEN we care about point-at links
+	# anything used as a link for something used is, itself, weakly used
 	# only make 1 pass of this, that way the "used" doesn't propagate downward along the chain
 	used_bones_from_links = set(())
 	for d, bone in enumerate(pmx[5]):
@@ -202,14 +249,14 @@ def identify_unused_bones(pmx):
 	used_bones = (used_bones.union(used_bones_from_bones)).union(used_bones_from_links)
 	unused_bones = all_bones_set.difference(used_bones)
 	unused_bones_list = sorted(list(unused_bones))
-
+	
 	# debug aid
 	if PRINT_VERTICES_CONTROLLED_BY_EACH_BONE:
 		core.MY_PRINT_FUNC("Number of vertices controlled by each bone:")
 		for b in all_bones_list:
 			if b in vertex_ct:
 				core.MY_PRINT_FUNC("#: %d    ct: %d" % (b, vertex_ct[b]))
-			
+	
 	return unused_bones_list
 	
 
