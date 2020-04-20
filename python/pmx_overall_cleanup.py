@@ -182,21 +182,25 @@ def main(moreinfo=False):
 	pmx, is_changed_t = _uniquify_names.uniquify_names(pmx, moreinfo)
 	is_changed |= is_changed_t
 	
-	longbone, longmorph = find_toolong_bonemorph(pmx)
-	if longmorph or longbone:
-		core.MY_PRINT_FUNC("")
-		core.MY_PRINT_FUNC("Minor warning: this model contains bones/morphs with JP names that are too long (>15 bytes)")
-		core.MY_PRINT_FUNC("These will work just fine in MMD but will not properly save/load in VMD motion files")
-		if longbone:
-			ss = "[" + ", ".join(longbone[0:MAX_WARNING_LIST]) + "]"
-			if len(longbone) > MAX_WARNING_LIST:
-				ss = ss[0:-1] + ", ...]"
-			core.MY_PRINT_FUNC("These %d bones are too long (index/length): %s" % (len(longbone), ss))
-		if longmorph:
-			ss = "[" + ", ".join(longmorph[0:MAX_WARNING_LIST]) + "]"
-			if len(longmorph) > MAX_WARNING_LIST:
-				ss = ss[0:-1] + ", ...]"
-			core.MY_PRINT_FUNC("These %d morphs are too long (index/length): %s" % (len(longmorph), ss))
+	try:
+		longbone, longmorph = find_toolong_bonemorph(pmx)
+		if longmorph or longbone:
+			core.MY_PRINT_FUNC("")
+			core.MY_PRINT_FUNC("Minor warning: this model contains bones/morphs with JP names that are too long (>15 bytes)")
+			core.MY_PRINT_FUNC("These will work just fine in MMD but will not properly save/load in VMD motion files")
+			if longbone:
+				ss = "[" + ", ".join(longbone[0:MAX_WARNING_LIST]) + "]"
+				if len(longbone) > MAX_WARNING_LIST:
+					ss = ss[0:-1] + ", ...]"
+				core.MY_PRINT_FUNC("These %d bones are too long (index/length): %s" % (len(longbone), ss))
+			if longmorph:
+				ss = "[" + ", ".join(longmorph[0:MAX_WARNING_LIST]) + "]"
+				if len(longmorph) > MAX_WARNING_LIST:
+					ss = ss[0:-1] + ", ...]"
+				core.MY_PRINT_FUNC("These %d morphs are too long (index/length): %s" % (len(longmorph), ss))
+	except RuntimeError as eeee:
+		core.MY_PRINT_FUNC(eeee.__class__.__name__, eeee)
+		core.MY_PRINT_FUNC("WARNING: this model contains strings that are not supported by SHIFT-JIS codec! MMD will behave very strangely unless these are fixed!")
 	
 	shadowy_mats = find_shadowy_materials(pmx)
 	if shadowy_mats:
