@@ -60,9 +60,15 @@ def gui_fileprompt(extensions: str) -> str:
 	# dont trust file dialog to remember last-opened path, manually save/read it
 	recordpath = core.get_persistient_storage_path("last_opened_dir.txt")
 	c = core.read_txt_to_rawlist(recordpath, quiet=True)
-	if c and path.isdir(c[0][0]):
-		start_here = c[0][0]
+	if c:
+		c = c[0][0]
+		# if it has been used before, use the path from last time.
+		# if the path from last time does not exist, walk up the path till I find a level that does still exist.
+		while c and not path.isdir(c):
+			c = path.dirname(c)
+		start_here = c
 	else:
+		# if never used before, start in the executable directory
 		start_here = "."
 	
 	newpath = fdg.askopenfilename(initialdir=start_here,
