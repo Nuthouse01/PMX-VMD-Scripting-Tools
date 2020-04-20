@@ -783,9 +783,10 @@ def encode_string_with_escape(a: str) -> bytearray:
 		try:
 			return bytearray(new_a, UNPACKER_ENCODING)	# no escape char: convert from str to bytearray the standard way
 		except UnicodeEncodeError as e:
-			MY_PRINT_FUNC(e.__class__.__name__, e)
-			MY_PRINT_FUNC("encode_string_with_escape")
-			newerrstr = "err=" + str(e) + "\nstr=" + str(a) + "\nencoding=" + str(UNPACKER_ENCODING)
+			# MY_PRINT_FUNC(e.__class__.__name__, e)
+			# MY_PRINT_FUNC("encode_string_with_escape")
+			newerrstr = "encode_string_with_escape: chr='%s', str='%s', encoding=%s, err=%s" % (a[e.start:e.end], a, e.encoding, e.reason),
+			# newerrstr = "err=" + str(e) + "\nstr=" + str(a) + "\nencoding=" + str(UNPACKER_ENCODING)
 			newerr = RuntimeError(newerrstr)
 			raise newerr
 

@@ -74,10 +74,27 @@ def find_toolong_bonemorph(pmx):
 	# check for morphs with JP names that are too long and will not be successfully saved/loaded with VMD files
 	# for each morph, convert from string to bytes encoding to determine its length
 	core.set_encoding("shift_jis")
-	bones_bytes = [core.encode_string_with_escape(m[0]) for m in pmx[5]]
-	toolong_list_bone = ["%d/%d" % (d, len(mb)) for d,mb in enumerate(bones_bytes) if len(mb) > 15]
-	morphs_bytes = [core.encode_string_with_escape(m[0]) for m in pmx[6]]
-	toolong_list_morph = ["%d/%d" % (d, len(mb)) for d,mb in enumerate(morphs_bytes) if len(mb) > 15]
+	toolong_list_bone = []
+	failct = 0
+	for d,m in enumerate(pmx[5]):
+		try:
+			mb = core.encode_string_with_escape(m[0])
+			if len(mb) > 15:
+				toolong_list_bone.append("%d[%d]" % (d, len(mb)))
+		except RuntimeError as e:
+			core.MY_PRINT_FUNC(str(e.args[0][0]))
+			failct += 1
+	toolong_list_morph = []
+	for d,m in enumerate(pmx[6]):
+		try:
+			mb = core.encode_string_with_escape(m[0])
+			if len(mb) > 15:
+				toolong_list_morph.append("%d[%d]" % (d, len(mb)))
+		except RuntimeError as e:
+			core.MY_PRINT_FUNC(str(e.args[0][0]))
+			failct += 1
+	if failct:
+		core.MY_PRINT_FUNC("WARNING: found %d JP names that cannot be encoded with SHIFT-JIS, this will cause MMD to behave strangely. Please replace the bad characters in the strings printed above!" % failct)
 	return toolong_list_bone, toolong_list_morph
 
 def find_shadowy_materials(pmx):
@@ -182,25 +199,21 @@ def main(moreinfo=False):
 	pmx, is_changed_t = _uniquify_names.uniquify_names(pmx, moreinfo)
 	is_changed |= is_changed_t
 	
-	try:
-		longbone, longmorph = find_toolong_bonemorph(pmx)
-		if longmorph or longbone:
-			core.MY_PRINT_FUNC("")
-			core.MY_PRINT_FUNC("Minor warning: this model contains bones/morphs with JP names that are too long (>15 bytes)")
-			core.MY_PRINT_FUNC("These will work just fine in MMD but will not properly save/load in VMD motion files")
-			if longbone:
-				ss = "[" + ", ".join(longbone[0:MAX_WARNING_LIST]) + "]"
-				if len(longbone) > MAX_WARNING_LIST:
-					ss = ss[0:-1] + ", ...]"
-				core.MY_PRINT_FUNC("These %d bones are too long (index/length): %s" % (len(longbone), ss))
-			if longmorph:
-				ss = "[" + ", ".join(longmorph[0:MAX_WARNING_LIST]) + "]"
-				if len(longmorph) > MAX_WARNING_LIST:
-					ss = ss[0:-1] + ", ...]"
-				core.MY_PRINT_FUNC("These %d morphs are too long (index/length): %s" % (len(longmorph), ss))
-	except RuntimeError as eeee:
-		core.MY_PRINT_FUNC(eeee.__class__.__name__, eeee)
-		core.MY_PRINT_FUNC("WARNING: this model contains strings that are not supported by SHIFT-JIS codec! MMD will behave very strangely unless these are fixed!")
+	longbone, longmorph = find_toolong_bonemorph(pmx)
+	if longmorph or longbone:
+		core.MY_PRINT_FUNC("")
+		core.MY_PRINT_FUNC("Minor warning: this model contains bones/morphs with JP names that are too long (>15 bytes)")
+		core.MY_PRINT_FUNC("These will work just fine in MMD but will not properly save/load in VMD motion files")
+		if longbone:
+			ss = "[" + ", ".join(longbone[0:MAX_WARNING_LIST]) + "]"
+			if len(longbone) > MAX_WARNING_LIST:
+				ss = ss[0:-1] + ", ...]"
+			core.MY_PRINT_FUNC("These %d bones are too long (index[length]): %s" % (len(longbone), ss))
+		if longmorph:
+			ss = "[" + ", ".join(longmorph[0:MAX_WARNING_LIST]) + "]"
+			if len(longmorph) > MAX_WARNING_LIST:
+				ss = ss[0:-1] + ", ...]"
+			core.MY_PRINT_FUNC("These %d morphs are too long (index[length]): %s" % (len(longmorph), ss))
 	
 	shadowy_mats = find_shadowy_materials(pmx)
 	if shadowy_mats:
