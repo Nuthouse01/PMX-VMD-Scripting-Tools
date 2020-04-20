@@ -75,7 +75,8 @@ def bonedeform_fix(pmx, moreinfo=False):
 			# decide if this bone has a good deform layer!
 			# each bone must deform after its parent
 			is_good = True
-			is_good &= good_deform_relationship(d, bone[5])
+			if bone[5] != -1:
+				is_good &= good_deform_relationship(d, bone[5])
 			# each bone must deform after its partial inherit source, if it uses it
 			if (bone[14] or bone[15]) and bone[16][1] != 0:
 				is_good &= good_deform_relationship(d, bone[16][0])
