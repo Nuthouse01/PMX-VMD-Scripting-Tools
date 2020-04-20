@@ -72,7 +72,6 @@ def uniquify_names(pmx, moreinfo=False):
 	
 	# just uniquify the names
 	# return counts of how many en/jp from each category were changed
-	# but don't print out the actual before/after, don't ask for approval
 	
 	counts = [0] * 8
 	counts_labels = ["material_JP","bone_JP","morph_JP","dispframe_JP","material_EN","bone_EN","morph_EN","dispframe_EN"]
@@ -89,6 +88,7 @@ def uniquify_names(pmx, moreinfo=False):
 				new_jp_name = uniquify_one_category(used_jp_names, jp_name)
 				used_jp_names.add(new_jp_name)
 				if new_jp_name != jp_name:
+					if moreinfo: core.MY_PRINT_FUNC("%s: #%d    %s --> %s" % (counts_labels[cat_id - 4], i, jp_name, new_jp_name))
 					# count & store into the structure
 					item[0] = new_jp_name
 					counts[cat_id - 4] += 1
@@ -97,6 +97,7 @@ def uniquify_names(pmx, moreinfo=False):
 				new_en_name = uniquify_one_category(used_en_names, en_name)
 				used_en_names.add(new_en_name)
 				if new_en_name != en_name:
+					if moreinfo: core.MY_PRINT_FUNC("%s: #%d    %s --> %s" % (counts_labels[cat_id], i, en_name, new_en_name))
 					# count & store into the structure
 					item[1] = new_en_name
 					counts[cat_id] += 1
