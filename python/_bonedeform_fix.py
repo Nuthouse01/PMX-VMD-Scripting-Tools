@@ -53,9 +53,37 @@ def bonedeform_fix(pmx, moreinfo=False):
 	# make a parallel list of the deform layers for each bone so I can work there
 	# if I encounter a recursive relationship I will have not touched the acutal PMX and can err and return it unchanged
 	deforms = [p[6] for p in pmx[5]]
+	
+	# make a list of the "ik master" for each bone
+	# it is possible for a bone to be controlled by multiple IK masters, actually every foot bone of every model is this way
+	ikmasters = [set() for x in pmx[5]]
+	
+	for d,bone in enumerate(pmx[5]):
+		# find IK bones
+		if bone[23]:
+			# target uses me as master
+			ikmasters[bone[24][0]].add(d)
+			for link in bone[24][3]:
+				# links use me as master
+				ikmasters[link[0]].add(d)
+	
 	modified_bones = set()
 	
+	# ASK: does "me" deform after "parent"?
 	def good_deform_relationship(me_idx, parent_idx):
+		# anything that inherits from an IKCHAIN bone has to be >= that bone's ik master, EXCEPT for bones actually in that ik group
+		# if parent has a master AND (parent master != my master): parent=max(parent,master), but need to expand this for sets:
+		# if parent has a master AND no overlap between my master and parent master: parent=max(parent,master)=master cuz master >= parent
+		# else: parent=parent
+		if ikmasters[parent_idx]:
+			# is me in the IK group of the parent? me is the ikmaster or me shares an ikmaster with parent
+			# if this IS in the ik group then DON'T overwrite parent_idx
+			if not (me_idx in ikmasters[parent_idx] or ikmasters[me_idx].intersection(ikmasters[parent_idx])):
+				l = list(ikmasters[parent_idx]) # turn set into list
+				l.sort() # sort by bone order, tiebreaker
+				l.sort(key=lambda x: deforms[x]) # sort by deform level, primary sort
+				parent_idx = l[-1] # this means the parent is the last-deforming master of any masters of the bone
+		
 		# "after" means idx>source and layer >= source or idx<source and layer > source
 		# note: if somehow me_idx == parent_idx this returns true to prevent infinite looping
 		if me_idx < parent_idx:
@@ -73,9 +101,9 @@ def bonedeform_fix(pmx, moreinfo=False):
 		has_changed = False
 		for d,bone in enumerate(pmx[5]):
 			# decide if this bone has a good deform layer!
-			# each bone must deform after its parent
 			is_good = True
-			if bone[5] != -1:
+			# each bone must deform after its parent
+			if bone[5] != -1: # -1 is not a valid parent to check
 				is_good &= good_deform_relationship(d, bone[5])
 			# each bone must deform after its partial inherit source, if it uses it
 			if (bone[14] or bone[15]) and bone[16][1] != 0:
@@ -103,6 +131,8 @@ def bonedeform_fix(pmx, moreinfo=False):
 	if loops == 1000:
 		# if yes, warn & return without changes
 		core.MY_PRINT_FUNC("ERROR: recursive inheritance relationship among bones!! You must manually investigate and resolve this issue.")
+		suspects = [i for i,de in enumerate(deforms) if de > 50]
+		core.MY_PRINT_FUNC("Suspicious bones: " + str(suspects))
 		core.MY_PRINT_FUNC("Bone deform order not changed")
 		return pmx, False
 	
