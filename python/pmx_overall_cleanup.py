@@ -62,12 +62,15 @@ def find_crashing_joints(pmx):
 			retme.append(d)
 	return retme
 
-def find_boneless_rigidbodies(pmx):
+def find_boneless_bonebodies(pmx):
 	# check for rigidbodies that aren't attached to any bones, this usually doesn't cause crashes but is definitely a mistake
 	retme = []
 	for d,body in enumerate(pmx[8]):
-		if body[2] == -1:
-			retme.append(d)
+		# if this is a bone body
+		if body[20] == 0:
+			# if there is no bone associated with it
+			if body[2] == -1:
+				retme.append(d)
 	return retme
 
 def find_toolong_bonemorph(pmx):
@@ -226,10 +229,10 @@ def main(moreinfo=False):
 			ss = ss[0:-1] + ", ...]"
 		core.MY_PRINT_FUNC("These %d materials need edging disabled (index): %s" % (len(shadowy_mats), ss))
 	
-	boneless_bodies = find_boneless_rigidbodies(pmx)
+	boneless_bodies = find_boneless_bonebodies(pmx)
 	if boneless_bodies:
 		core.MY_PRINT_FUNC("")
-		core.MY_PRINT_FUNC("Minor warning: this model contains rigidbodies that aren't anchored to any bones")
+		core.MY_PRINT_FUNC("WARNING: this model has bone-type rigidbodies that aren't anchored to any bones")
 		core.MY_PRINT_FUNC("This won't crash MMD but it is probably a mistake that needs corrected")
 		ss = str(boneless_bodies[0:MAX_WARNING_LIST])
 		if len(boneless_bodies) > MAX_WARNING_LIST:
@@ -239,7 +242,7 @@ def main(moreinfo=False):
 	jointless_bodies = find_jointless_physbodies(pmx)
 	if jointless_bodies:
 		core.MY_PRINT_FUNC("")
-		core.MY_PRINT_FUNC("WARNING: this model has physics rigidbodies that aren't constrained by joints")
+		core.MY_PRINT_FUNC("WARNING: this model has physics-type rigidbodies that aren't constrained by joints")
 		core.MY_PRINT_FUNC("These will just roll around on the floor wasting processing power in MMD")
 		ss = str(jointless_bodies[0:MAX_WARNING_LIST])
 		if len(jointless_bodies) > MAX_WARNING_LIST:
