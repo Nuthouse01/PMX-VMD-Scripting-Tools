@@ -72,7 +72,7 @@ morph_dict = {
 "下": "brow down", # "go down"
 "前": "brow fwd",
 "涙": "tears",
-"ん": "hmm",
+"ん": "hmm", # wtf is this translation
 }
 
 bone_dict =  {
@@ -233,6 +233,9 @@ words_dict = {
 "ﾄﾞﾚｽ": "dress",
 "ドレス": "dress",
 "リボン": "ribbon",
+"ワンピース": "one-piece", # as in a one-piece dress
+"ピン": "pin",
+"シャツ": "shirt",
 "パンティー" : "panties",
 "パンツ": "panties",
 "ﾊﾟﾝﾂ": "panties",
@@ -242,6 +245,7 @@ words_dict = {
 "ヘッドセット": "headset",
 "センター": "center",
 "グルーブ": "groove",
+"タイツ": "tights",
 "腰": "waist",
 "舌": "tongue",
 "胸": "breast",
@@ -251,6 +255,7 @@ words_dict = {
 "みみ": "ear",
 "ヘアー": "hair",
 "髪の毛": "hair",
+"毛": "hair",
 "髪": "hair",
 "髮": "hair", # this is actually somehow different from the line above???
 "ヘア": "hair",
@@ -287,6 +292,7 @@ words_dict = {
 "手首": "wrist",  # this must be high priority, otherwise its components will be individually (wrongly) translated
 "足": "leg",
 "脚部": "leg",
+"脚": "leg",
 "腿": "thigh",
 "手袋": "glove",
 "グローブ": "glove",
@@ -315,12 +321,15 @@ words_dict = {
 "紐": "string",
 "ダミー": "dummy",
 "ﾀﾞﾐ": "dummy",
-"半身": "body",
+"半": "half",
+"身": "body",
 "体": "body",
 "ボディ": "body",
 "肌": "skin",
+"裙": "skirt",
 "輪": "round",
 "武器": "weapon",
+"釦": "button",
 "連動": "interlock",
 "捩": "twist",
 "捻り": "twist",
@@ -330,6 +339,7 @@ words_dict = {
 "パーツ": "parts",
 "筋": "muscle",
 "帶": "band",
+"そで": "sleeve",
 "袖": "sleeve",
 "歯": "teeth",
 "牙": "fang",
@@ -341,6 +351,7 @@ words_dict = {
 "まぶた": "eyelid",
 "瞼": "eyelid",
 "睫毛": "eyelash",
+"睫": "eyelash",
 "よだれ": "drool",
 "眉毛": "brow",
 "眉": "brow",
@@ -350,6 +361,9 @@ words_dict = {
 "表情": "expression",
 "襟": "collar",
 "頂点": "vertex",
+"式": "model",
+"甲": "armor",
+"胴": "torso",
 
 
 # modifiers
@@ -398,8 +412,10 @@ words_dict = {
 "無し": "none",
 "なし": "none",
 "消えて": "disappear", # as in whole model disappear
+"消える": "disappear", 
 "透明": "transparent",
-"広げ": "wide",
+"広げ": "wide", # literally "spread"
+"広い": "wide",
 "広": "wide",
 "潰れ": "shrink",  # literally "collapse"
 "狭": "narrow",
@@ -415,6 +431,7 @@ words_dict = {
 "非表示": "hide",
 "追従": "follow",
 "開く": "open",
+"開け": "open",
 "まばたき": "blink",
 "笑い": "happy",
 "ウィンク": "wink",
@@ -434,8 +451,8 @@ words_dict = {
 "しいたけ": "star", # "shiitake"
 "ハート": "heart",
 "はぁと": "heart",
-"ぐるぐる": "spinny",
-"グルグル": "spinny",
+"ぐるぐる": "dizzy", # perhaps "spinny"
+"グルグル": "dizzy", # perhaps "spinny"
 "カメラ": "camera", # for looking at the camera
 "はぅ": ">.<",
 "にやり": "grin",
@@ -446,16 +463,21 @@ words_dict = {
 "黄": "yellow",
 "赤": "red",
 "蒼": "blue",
+"金": "gold",
+"銀": "silver",
 "汗": "sweat",
+"円": "circle",
+"表": "front", # not sure about this one, front as in outward-facing geometry, opposite of backward-facing geometry. literally means "table" tho lol
+"縁": "edge",
 "丸": "round",
 "はちゅ": "round",
 "縮小": "small",
-"小": "small",
 "小さく": "small",
+"小": "small",
 "消し": "erase",
 "けし": "erase",
 "消": "erase",
-"裸": "naked",
+"裸": "bare", # or "naked" like bare legs
 "あ": "a",
 "ア": "a",
 "い": "i",
@@ -472,7 +494,10 @@ words_dict = {
 "▲": "^ open",
 "△": "^ open2",
 "∧": "^",
+"の": "of",
 "ー": "--", # not sure what to do with this, often used to mean continuation of a sound/syllable...
+"┗": "  ", # indentation for structure
+"└": "  ",
 }
 
 
