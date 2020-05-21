@@ -90,13 +90,44 @@ def alphamorph_correct(pmx, moreinfo=False):
 			total_morphs_affected += 1
 			num_fixed += this_num_fixed
 			if moreinfo:
-				core.MY_PRINT_FUNC("JP: '%s'     EN: '%s'" % (morph[0], morph[1]))
+				core.MY_PRINT_FUNC("morph JP: '%s'     EN: '%s'" % (morph[0], morph[1]))
+	
+	# identify materials that start transparent but still have edging
+	mats_fixed = 0
+	for d,mat in enumerate(pmx[4]):
+		# if opacity is zero AND edge is enabled AND edge has nonzero opacity AND edge has nonzero size
+		if mat[5] == 0 and mat[13][4] and mat[17] != 0 and mat[18] != 0:
+			edgeA = mat[17]
+			edgeSize = mat[18]
+			this_num_edgefixed = 0
+			# THEN check for any material morphs that add opacity to this material
+			for morph in pmx[6]:
+				# if not a material morph, skip it
+				if morph[3] != 8:
+					continue
+				# for each material in this material morph:
+				for item in morph[4]:
+					# if it is adding, and opacity > 0
+					if item[1] == 1 and item[5] > 0:
+						# set it to add the edge amounts from the material
+						item[16] = edgeA
+						item[17] = edgeSize
+						this_num_edgefixed += 1
+			# done looping over morphs
+			# if it modified any locations, zero out the edge params in the material
+			if this_num_edgefixed != 0:
+				mat[17] = 0
+				mat[18] = 0
+				num_fixed += this_num_edgefixed
+				mats_fixed += 1
+				if moreinfo:
+					core.MY_PRINT_FUNC("mat JP: '%s'     EN: '%s'" % (mat[0], mat[1]))
 	
 	if num_fixed == 0:
 		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
 	
-	core.MY_PRINT_FUNC("Fixed %d locations from among %d affected morphs" % (num_fixed, total_morphs_affected))
+	core.MY_PRINT_FUNC("Fixed %d locations from among %d affected morphs and %d materials" % (num_fixed, total_morphs_affected, mats_fixed))
 	return pmx, True
 
 def end(pmx, input_filename_pmx):
