@@ -150,8 +150,9 @@ def weight_cleanup(pmx, moreinfo=False):
 		flatlist = [item for sublist in pmx[2] for item in sublist]
 		
 		# second, for each face-vertex, check if it is a bad vertex
+		#(this takes 70% of time)
 		for d, facevert in enumerate(flatlist):
-			core.print_progress_oneline(d / len(flatlist))
+			core.print_progress_oneline(.7 * d / len(flatlist))
 			# bad vertices are unique and in sorted order, can use binary search to further optimize
 			whereinlist = prune_unused_vertices.binary_search_wherein(facevert, normbad)
 			if whereinlist != -1:
@@ -159,9 +160,10 @@ def weight_cleanup(pmx, moreinfo=False):
 				(normbad_linked_faces[whereinlist]).append(d // 3)
 		
 		# for each bad vert:
+		#(this takes 30% of time)
 		for d, (badvert_idx, badvert_faces) in enumerate(zip(normbad, normbad_linked_faces)):
 			newnorm = [0,0,0] # default value in case something goes wrong
-			core.print_progress_oneline(d / len(normbad))
+			core.print_progress_oneline(.7 + (.3 * d / len(normbad)))
 			# iterate over the faces it is connected to
 			for face_id in badvert_faces:
 				# for each face, does the perpendicular normal already exist in the parallel list? if not, calculate and save it for reuse
