@@ -504,6 +504,12 @@ def my_projection(x, y):
 def my_euclidian_distance(x):
 	return math.sqrt(my_dot(x, x))
 
+def my_cross_product(a, b):
+	# assume a and b are exactly length 3
+	return [a[1]*b[2] - a[2]*b[1],
+			a[2]*b[0] - a[0]*b[2],
+			a[0]*b[1] - a[1]*b[0]]
+
 def my_quat_conjugate(q):
 	return [q[0], -q[1], -q[2], -q[3]]
 

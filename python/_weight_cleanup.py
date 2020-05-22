@@ -6,17 +6,19 @@
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import _prune_unused_vertices as prune_unused_vertices
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import _prune_unused_vertices as prune_unused_vertices
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = None
+		core = pmxlib = prune_unused_vertices = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -27,7 +29,7 @@ DEBUG = False
 helptext = '''====================
 weight_cleanup:
 This function will fix the vertex weights that are weighted twice to the same bone, a minor issue that sometimes happens when merging bones.
-This also normalizes the weights of all vertices.
+This also normalizes the weights of all vertices, and normalizes the normal vectors for all vertices.
 '''
 
 iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_weightfix.pmx"
@@ -52,10 +54,15 @@ def weight_cleanup(pmx, moreinfo=False):
 	# ready for logic
 
 	# number of vertices fixed
-	fix_ct = 0
+	weight_fix = 0
+	norm_fix = 0
+	
+	normbad = []
+	normbad_err = 0
 	
 	# for each vertex:
-	for vert in pmx[1]:
+	for d,vert in enumerate(pmx[1]):
+		# clean/normalize the weights
 		weighttype = vert[9]
 		w = vert[10]
 		# type0=BDEF1, one bone has 100% weight
@@ -63,16 +70,17 @@ def weight_cleanup(pmx, moreinfo=False):
 		# type2=BDEF4, 4 bones 4 weights
 		# type3=SDEF, 2 bones 1 weight and 12 values i don't understand.
 		# type4=QDEF, 4 bones 4 weights
-		# TODO: if a bone has 0 weight, set that bone to index 0
 		if weighttype == 0:
 			# nothing to be fixed here
-			continue
+			# continue
+			pass
 		elif weighttype == 1:
 			# only check for and combine duplicates
+			# no need to normalize because the 2nd weight is implicit, not explicit
 			if w[0] == w[1] and w[0] != -1:
 				w[1] = 0  # second bone is not used
 				w[2] = 1.0  # first bone has full weight
-				fix_ct += 1
+				weight_fix += 1
 		elif weighttype == 2 or weighttype == 4:
 			# bdef4 and qdef handled the same way: check for dupes and also normalize
 			usedbones = []
@@ -106,18 +114,111 @@ def weight_cleanup(pmx, moreinfo=False):
 			if is_modified:
 				w[0:4] = bones
 				w[4:8] = weights
-				fix_ct += 1
+				weight_fix += 1
 		elif weighttype == 3:
 			# dont understand, don't touch
-			continue
+			# continue
+			pass
 		else:
 			core.MY_PRINT_FUNC("invalid weight type for vertex")
 	
-	if fix_ct == 0:
+		# normalize the normal, vert[3:6]
+		if vert[3:6] == [0, 0, 0]:
+			# invalid normals will be taken care of below
+			normbad.append(d)
+		else:
+			norm_L = core.my_euclidian_distance(vert[3:6])
+			if round(norm_L, 6) != 1.0:
+				norm_fix += 1
+				vert[3:6] = [n / norm_L for n in vert[3:6]]
+	
+	if weight_fix:
+		core.MY_PRINT_FUNC("Fixed weights for {} / {} = {:.1%} of all vertices".format(weight_fix, len(pmx[1]), weight_fix/len(pmx[1])))
+	if norm_fix:
+		core.MY_PRINT_FUNC("Normalized ordinary normals for {} / {} = {:.1%} of all vertices".format(norm_fix, len(pmx[1]), norm_fix/len(pmx[1])))
+	
+	# previously identify all verts w/ 0,0,0 normals so I can get a progress %
+	if normbad:
+		# create a list in parallel with the faces list for holding the perpendicular normal to each face
+		facenorm_list = [None] * len(pmx[2])
+		# create a list in paralle with normbad for holding the set of connected faces
+		normbad_linked_faces = [list() for i in normbad]
+		
+		# goal: build the sets of faces that are associated with each bad vertex
+		
+		# first, flatten the list of face-vertices, probably faster to search that way
+		flatlist = [item for sublist in pmx[2] for item in sublist]
+		
+		# second, for each face-vertex, check if it is a bad vertex
+		for d, facevert in enumerate(flatlist):
+			core.print_progress_oneline(d / len(flatlist))
+			# bad vertices are unique and in sorted order, can use binary search to further optimize
+			whereinlist = prune_unused_vertices.binary_search_wherein(facevert, normbad)
+			if whereinlist != -1:
+				# if it is a bad vertex, int div by 3 to get face ID
+				(normbad_linked_faces[whereinlist]).append(d // 3)
+		
+		# for each bad vert:
+		for d, (badvert_idx, badvert_faces) in enumerate(zip(normbad, normbad_linked_faces)):
+			newnorm = [0,0,0] # default value in case something goes wrong
+			core.print_progress_oneline(d / len(normbad))
+			# iterate over the faces it is connected to
+			for face_id in badvert_faces:
+				# for each face, does the perpendicular normal already exist in the parallel list? if not, calculate and save it for reuse
+				facenorm = facenorm_list[face_id]
+				if facenorm is None:
+					# need to calculate it! use cross product or whatever
+					# order of vertices is important! not sure what's right
+					q = pmx[1][ pmx[2][face_id][0] ][0:3]
+					r = pmx[1][ pmx[2][face_id][1] ][0:3]
+					s = pmx[1][ pmx[2][face_id][2] ][0:3]
+					qr = [0,0,0]
+					qs = [0,0,0]
+					for i in range(3):
+						qr[i] = r[i] - q[i]
+						qs[i] = s[i] - q[i]
+					facenorm = core.my_cross_product(qr, qs)
+					# then normalize the fresh normal
+					norm_L = core.my_euclidian_distance(facenorm)
+					try:
+						facenorm = [n / norm_L for n in facenorm]
+					except ZeroDivisionError:
+						# this should never happen in normal cases
+						facenorm = [0,1,0]
+					# then save the result so I don't have to do this again
+					facenorm_list[face_id] = facenorm
+				# once I have the perpendicular normal, then accumulate it
+				for i in range(3):
+					newnorm[i] += facenorm[i]
+			# error case check, theoretically possible for this to happen if there are no connected faces or their normals exactly cancel out
+			if newnorm == [0,0,0]:
+				if len(badvert_faces) == 0:
+					# if there are no connected faces, set the normal to 0,1,0 (same handling as PMXE)
+					pmx[1][badvert_idx][3:6] = [0,1,0]
+				else:
+					# if there are faces that just so happened to perfectly cancel, choose the first face and use its normal
+					pmx[1][badvert_idx][3:6] = facenorm_list[badvert_faces[0]]
+				normbad_err += 1
+				continue
+			# when done accumulating, divide by # to make an average
+			newnorm = [n / len(badvert_faces) for n in newnorm]
+			# then normalize this, again
+			norm_L = core.my_euclidian_distance(newnorm)
+			newnorm = [n / norm_L for n in newnorm]
+			# finally, apply this new normal
+			pmx[1][badvert_idx][3:6] = newnorm
+	
+	normbad_fix = len(normbad)
+	if len(normbad):
+		core.MY_PRINT_FUNC(
+			"Repaired invalid normals for {} / {} = {:.1%} of all vertices".format(len(normbad), len(pmx[1]),len(normbad) / len(pmx[1])))
+		if normbad_err and moreinfo:
+			core.MY_PRINT_FUNC("WARNING: used fallback vertex repair method for %d vertices" % normbad_err)
+	
+	if weight_fix == 0 and norm_fix == 0 and normbad_fix == 0:
 		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
 	
-	core.MY_PRINT_FUNC("Fixed weights for {} / {} = {:.1%} of all vertices".format(fix_ct, len(pmx[1]), fix_ct/len(pmx[1])))
 	return pmx, True
 	
 def end(pmx, input_filename_pmx):

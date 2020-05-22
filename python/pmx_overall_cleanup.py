@@ -50,8 +50,6 @@ DEBUG = False
 MAX_WARNING_LIST = 15
 
 
-# TODO: fix bad normals (hard)
-
 
 def find_crashing_joints(pmx):
 	# check for invalid joints that would crash MMD, this is such a small operation that it shouldn't get its own file

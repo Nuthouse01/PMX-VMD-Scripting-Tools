@@ -67,9 +67,15 @@ def bisect_right(a, x):
 	return lo
 
 def binary_search_isin(x, a):
-	# if x is in a, return its index. otherwise return -1
+	# if x is in a, return TRUE. otherwise return FALSE.
 	pos = bisect_left(a, x)  # find insertion position
 	return True if pos != len(a) and a[pos] == x else False  # don't walk off the end
+
+def binary_search_wherein(x, a):
+	# if x is in a, return its index. otherwise return -1
+	pos = bisect_left(a, x)  # find insertion position
+	return pos if pos != len(a) and a[pos] == x else -1  # don't walk off the end
+
 
 
 def newval_from_range_map(v, range_map):
