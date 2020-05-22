@@ -327,3 +327,11 @@ The following files should be included with this README:
     new: pmx_overall_cleanup finds physics bodies that aren't constrained by any joints
     new: pmx_overall_cleanup fixes bone deform order issues, or causes a warning if it finds a circular relationship
 
+    4.05:
+    bone deform check: bugfixes, better IK understanding
+    more translation words
+    warn about bone/morph names that can't be stored in SHIFT-JIS
+    prune unused bones: actually check that IK bones are used instead of just assuming
+    refine boneless rigidbody checks & warnings
+    automatically fix edging on default hidden materials with "show" morphs
+    weight cleanup: also normalize normals, including 0,0,0 "invalid" normals
