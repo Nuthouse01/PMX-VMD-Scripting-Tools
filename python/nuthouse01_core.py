@@ -209,6 +209,30 @@ def prompt_user_choice(options, explain_info=None):
 # global variable holding a function pointer that i can overwrite with a different function pointer when in GUI mode
 MY_SIMPLECHOICE_FUNC = prompt_user_choice
 
+def general_input(valid_check, explain_info=None):
+	# prompt for text-form input, loop until it passes
+	# 'valid_check' is a function that checks whether the input is """good""" and may print errors if not, return true if good
+	# both the check and the explanation for why it doesn't pass will be unique
+	# explain_info is a list of strings to print before beginning prompt loop, or maybe just 1
+	if isinstance(explain_info, (list, tuple)):
+		for p in explain_info:
+			MY_PRINT_FUNC(p)
+	elif isinstance(explain_info, str):
+		MY_PRINT_FUNC(explain_info)
+	while True:
+		s = input("> ")
+		# perform valid-check
+		if valid_check(s):
+			break
+		else:
+			# if given invalid input, prompt and loop again
+			MY_PRINT_FUNC("invalid input")
+	return s
+
+# global variable holding a function pointer that i can overwrite with a different function pointer when in GUI mode
+MY_GENERAL_INPUT_FUNC = general_input
+
+
 def prompt_user_filename(extensions_in: str) -> str:
 	# loop until user enters the name of an existing file with the specified extension
 	# accepts string or iterable

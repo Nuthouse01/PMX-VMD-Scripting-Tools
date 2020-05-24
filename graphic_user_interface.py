@@ -21,6 +21,7 @@ try:
 	from python import make_ik_from_vmd
 	from python import pmx_arm_ik_addremove
 	from python import pmx_list_bone_morph_names
+	from python import morph_invert
 	from python import pmx_overall_cleanup
 	from python import texture_file_sort
 	from python import vmd_armtwist_insert
@@ -34,7 +35,7 @@ except ImportError as eee:
 	exit()
 	vmd_convert_tool = pmx_overall_cleanup = texture_file_sort = vmd_model_compatability_check = None
 	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = pmx_arm_ik_addremove = None
-	core = None
+	core = pmx_morph_invert = None
 
 
 FILE_EXTENSION_MAP = {
@@ -87,41 +88,54 @@ def gui_fileprompt(extensions: str) -> str:
 
 
 
-simplechoice_args = None
-simplechoice_done = threading.Event()
-simplechoice_done.clear()
-simplechoice_result = -1
+inputpopup_args = None
+inputpopup_done = threading.Event()
+inputpopup_done.clear()
+inputpopup_result = None
 
-def gui_simplechoice_trigger(options, explain_info=None):
+# this is the function called by the script-thread to invoke a popup
+# waits for the popup to be dismissed before getting the result & resuming the thread
+def gui_inputpopup_trigger(args, explain_info=None):
 	# print("trig")
-	global simplechoice_args
+	global inputpopup_args
 	# write into simplechoice_args to signify that I want a popup
-	simplechoice_args = [options, explain_info]
+	inputpopup_args = [args, explain_info]
 	# wait for a choice to be made from within the popup
-	simplechoice_done.wait()
-	simplechoice_done.clear()
-	if simplechoice_result == -1:
-		# if they clicked x without choosing a result, return the first option
-		return options[0]
+	inputpopup_done.wait()
+	inputpopup_done.clear()
+	# if they clicked x ...
+	if inputpopup_result is None:
+		if callable(args):
+			# this is general-input mode
+			# return empty string (usually aborts the script)
+			return ""
+		else:
+			# this is simplechoice (multichoice) mode
+			# return the first option
+			return args[0]
 	else:
-		return simplechoice_result
+		core.MY_PRINT_FUNC(str(inputpopup_result))
+		return inputpopup_result
 
-
-def gui_simplechoice(options, explain_info=None):
-	# a popupwindow to replace the stock "input()" function when running in GUI mode
+# a popupwindow controlled by the GUI thread
+# contains buttons
+def gui_inputpopup(args, explain_info=None):
 	# print("pop")
 	# create popup
 	win = tk.Toplevel()
-	win.title("Make a selection")
-	# normally when x button is pressed, it calls "destroy". this replaces that with "quit", so i return from mainloop
-	# that way the x button resumes executing below win.mainloop and the script continues
+	win.title("User input required")
+	# normally when X button is pressed, it calls "destroy". that would leave the script-thread indefinitely waiting on the flag!
+	# this redefine will set the flag so the script resumes when X is clicked
 	def on_x():
-		simplechoice_done.set()
+		global inputpopup_result
+		inputpopup_result = None
+		inputpopup_done.set()
 		win.destroy()
 	win.protocol("WM_DELETE_WINDOW", on_x)
 	
-	global simplechoice_result
-	simplechoice_result = -1
+	# init the result to None, just because
+	global inputpopup_result
+	inputpopup_result = None
 	
 	# if explain_info is given, create labels that display those strings
 	if isinstance(explain_info, str):
@@ -135,28 +149,48 @@ def gui_simplechoice(options, explain_info=None):
 			label = tk.Label(labelframe, text=f)
 			label.pack(side=tk.TOP, fill='x', padx=10, pady=10)
 			core.MY_PRINT_FUNC(f)
+	
+	# this function commits the result & closes the popup
+	def setresult(r):
+		global inputpopup_result
+		inputpopup_result = r
+		# pressing the button should stop the mainloop
+		inputpopup_done.set()
+		win.destroy()
 		
+	# build a frame for the interactables to live in
 	buttonframe = tk.Frame(win)
 	buttonframe.pack(side=tk.TOP)
 	
-	def setresult(r):
-		global simplechoice_result
-		simplechoice_result = r
-		# pressing the button should stop the mainloop
-		simplechoice_done.set()
-		win.destroy()
-	
-	# create buttons for each numbered option
-	for i in options:
-		c = lambda v=i: setresult(v)
-		button = tk.Button(buttonframe, text=str(i), command=c)
-		button.pack(side=tk.LEFT, padx=10, pady=10)
+	# decide what the mode is & how to fill the popup
+	if callable(args):
+		# this is general-input mode, create text-entry box and submit button
+		textbox = tk.Entry(buttonframe, width=50, bg='snow')
+		textbox.pack(side=tk.TOP, padx=10, pady=10)
+		def submit_callback():
+			# validate the text input using the "args" function
+			# if its good then invoke "setresult", if its bad then clear the text box and the 'args' func should print something
+			t = textbox.get()
+			if args(t):
+				setresult(t)
+			else:
+				textbox.delete(0, tk.END)
+		submit = tk.Button(buttonframe, text="Submit", command=submit_callback)
+		submit.pack(side=tk.TOP, padx=10, pady=10)
+		pass
+	else:
+		# this is simplechoice (multichoice) mode, "args" is a list... create buttons for each option
+		# create buttons for each numbered option
+		for i in args:
+			# each button will call "setresult" with its corresponding number, lambda needs to be written EXACTLY like this, i forget why it works
+			c = lambda v=i: setresult(v)
+			button = tk.Button(buttonframe, text=str(i), command=c)
+			button.pack(side=tk.LEFT, padx=10, pady=10)
 	
 	return None
 
 
 # this lets the window be moved or resized as the target function is executing
-# however, this makes the text kinda flickery, oh well
 def run_as_thread(func):
 	thread = threading.Thread(name="do-the-thing", target=func, daemon=True)
 	# start the thread
@@ -177,6 +211,7 @@ class Application(tk.Frame):
 		self.all_script_list = [
 			("pmx_overall_cleanup.py",           pmx_overall_cleanup.helptext,           pmx_overall_cleanup.main),
 			("texture_file_sort.py",             texture_file_sort.helptext,             texture_file_sort.main),
+			("morph_invert.py",                  morph_invert.helptext,                  morph_invert.main),
 			("vmd_model_compatability_check.py", vmd_model_compatability_check.helptext, vmd_model_compatability_check.main),
 			("vmd_armtwist_insert.py",           vmd_armtwist_insert.helptext,           vmd_armtwist_insert.main),
 			("vmd_convert_tool.py",              vmd_convert_tool.helptext,              vmd_convert_tool.main),
@@ -185,16 +220,17 @@ class Application(tk.Frame):
 			("pmx_list_bone_morph_names.py",     pmx_list_bone_morph_names.helptext,     pmx_list_bone_morph_names.main),
 		]
 		
+		# underlying variable tied to the dropdown menu
 		self.optionvar = tk.StringVar(master)
 		self.optionvar.trace("w", self.change_mode)
 		self.optionvar.set(self.all_script_list[0][0])
 		
 		self.which_script_frame = tk.Frame(master)
 		self.which_script_frame.pack(side=tk.TOP, padx=10, pady=5)
-		
 		lab = tk.Label(self.which_script_frame, text="Active script:")
 		lab.pack(side=tk.LEFT)
 		
+		# build the acutal dropdown menu
 		self.which_script = tk.OptionMenu(self.which_script_frame, self.optionvar, *[x[0] for x in self.all_script_list])
 		self.which_script.pack(side=tk.LEFT, padx=10)
 		
@@ -245,7 +281,9 @@ class Application(tk.Frame):
 		# VERY IMPORTANT: overwrite the default print function with one that goes to the GUI
 		core.MY_PRINT_FUNC = self.my_write
 		# VERY IMPORTANT: overwrite the default simple-choice function with one that makes a popup
-		core.MY_SIMPLECHOICE_FUNC = gui_simplechoice_trigger
+		core.MY_SIMPLECHOICE_FUNC = gui_inputpopup_trigger
+		# VERY IMPORTANT: overwrite the default general input function with one that makes a popup
+		core.MY_GENERAL_INPUT_FUNC = gui_inputpopup_trigger
 		# VERY IMPORTANT: overwrite the default fileprompt function with one that uses a popup filedialogue
 		core.MY_FILEPROMPT_FUNC = gui_fileprompt
 		
@@ -284,16 +322,15 @@ class Application(tk.Frame):
 	
 	def spin_to_handle_inputs(self):
 		# check if an input is requested
-		# print("spin")
-		global simplechoice_args
-		if simplechoice_args is not None:
+		global inputpopup_args
+		if inputpopup_args is not None:
 			# print("do")
 			# if it is requested, create the popup
-			gui_simplechoice(simplechoice_args[0], simplechoice_args[1])
+			gui_inputpopup(inputpopup_args[0], inputpopup_args[1])
 			# print("return")
-			# dismiss the request for the popup
-			simplechoice_args = None
-		
+			# clear the request for the popup
+			inputpopup_args = None
+		# re-call self every 200ms to check if threads have requested a popup
 		self.after(200, self.spin_to_handle_inputs)
 		
 	def help_func(self):
@@ -301,13 +338,13 @@ class Application(tk.Frame):
 	
 	def do_the_thing(self):
 		core.MY_PRINT_FUNC("="*50)
-		# disable run_butt for the duration of this function
+		# disable all gui elements for the duration of this function
+		# run_butt, spinbox, clear, help, debug
 		self.run_butt.configure(state='disabled')
-		# disable spinbox
 		self.which_script.configure(state='disabled')
-		# disable clear button, help button
 		self.clear_butt.configure(state='disabled')
 		self.help_butt.configure(state='disabled')
+		self.debug_check.configure(state='disabled')
 		
 		try:
 			self.payload(bool(self.debug_check_var.get()))
@@ -320,6 +357,7 @@ class Application(tk.Frame):
 		self.which_script.configure(state='normal')
 		self.clear_butt.configure(state='normal')
 		self.help_butt.configure(state='normal')
+		self.debug_check.configure(state='normal')
 		return
 	
 	def print_header(self):
@@ -330,8 +368,11 @@ class Application(tk.Frame):
 		
 	def change_mode(self, *args):
 		# need to have *args here even if i dont use them
+		# the the currently displayed item in the dropdown menu
 		newstr = self.optionvar.get()
+		# find which index within all_script_list it corresponds to
 		idx = [x[0] for x in self.all_script_list].index(newstr)
+		# set helptext and execute func
 		self.helptext = self.all_script_list[idx][1]
 		self.payload = self.all_script_list[idx][2]
 		core.MY_PRINT_FUNC(">>>>>>>>>>")
@@ -340,10 +381,11 @@ class Application(tk.Frame):
 		return
 		
 	def clear_func(self):
+		# need to "enable" the box to delete its contents
 		self.edit_space.configure(state='normal')
 		self.edit_space.delete("1.0", tk.END)
-		self.print_header()
 		# these print functions will immediately set it back to the 'disabled' state
+		self.print_header()
 		return
 	
 	
