@@ -72,7 +72,6 @@ def weight_cleanup(pmx, moreinfo=False):
 		# type4=QDEF, 4 bones 4 weights
 		if weighttype == 0:
 			# nothing to be fixed here
-			# continue
 			pass
 		elif weighttype == 1:
 			# only check for and combine duplicates
@@ -117,7 +116,6 @@ def weight_cleanup(pmx, moreinfo=False):
 				weight_fix += 1
 		elif weighttype == 3:
 			# dont understand, don't touch
-			# continue
 			pass
 		else:
 			core.MY_PRINT_FUNC("invalid weight type for vertex")
@@ -135,7 +133,7 @@ def weight_cleanup(pmx, moreinfo=False):
 	if weight_fix:
 		core.MY_PRINT_FUNC("Fixed weights for {} / {} = {:.1%} of all vertices".format(weight_fix, len(pmx[1]), weight_fix/len(pmx[1])))
 	if norm_fix:
-		core.MY_PRINT_FUNC("Normalized ordinary normals for {} / {} = {:.1%} of all vertices".format(norm_fix, len(pmx[1]), norm_fix/len(pmx[1])))
+		core.MY_PRINT_FUNC("Normalized normals for {} / {} = {:.1%} of all vertices".format(norm_fix, len(pmx[1]), norm_fix/len(pmx[1])))
 	
 	# previously identify all verts w/ 0,0,0 normals so I can get a progress %
 	if normbad:
