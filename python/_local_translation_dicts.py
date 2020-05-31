@@ -194,7 +194,7 @@ bone_dict =  {
 "おっぱい調整": "breast_adjust",
 "左胸": "breast_L",
 "右胸": "breast_R",
-"乳": "breast",
+"乳": "breast",  # chinese symbol for breast, sometimes used
 "左乳": "breast_L",
 "右乳": "breast_R",
 }
@@ -281,6 +281,7 @@ words_dict = {
 "ブロック": "block", # literally burroku, not sure why he picked this name
 "花": "flower",
 "鳥": "bird",
+"弓": "bow",
 "その他": "other",
 "他": "other",
 "ハイライト": "highlight",
@@ -300,6 +301,7 @@ words_dict = {
 "手": "hand",
 "首": "neck",
 "親指": "thumb",  # this must be high priority, otherwise its components will be individually (wrongly) translated
+"人差指": "fore",  # this must be high priority, otherwise its components will be individually (wrongly) translated
 "人指": "fore",  # this must be high priority, otherwise its components will be individually (wrongly) translated
 "中指": "middle",  # this must be high priority, otherwise its components will be individually (wrongly) translated
 "薬指": "third",  # this must be high priority, otherwise its components will be individually (wrongly) translated
@@ -363,6 +365,7 @@ words_dict = {
 "頂点": "vertex",
 "式": "model",
 "甲": "armor",
+"鎧": "armor",
 "胴": "torso",
 
 
@@ -494,7 +497,7 @@ words_dict = {
 "▲": "^ open",
 "△": "^ open2",
 "∧": "^",
-"の": "of",
+"の": "of", # technically "A の B" translates more closely to "B of A" but I can't do that switcheroo without major changes
 "ー": "--", # not sure what to do with this, often used to mean continuation of a sound/syllable...
 "┗": "  ", # indentation for structure
 "└": "  ",
