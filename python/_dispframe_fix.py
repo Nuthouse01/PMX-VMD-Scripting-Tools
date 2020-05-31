@@ -21,7 +21,7 @@ except ImportError as eee:
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
-DEBUG = True
+DEBUG = False
 
 
 # if MMD has 256+ morphs among all display groups, it will crash
@@ -85,9 +85,9 @@ def dispframe_fix(pmx, moreinfo=False):
 	# build sets of all bones/morphs that are in the panels
 	# delete bones that are in the panels more than once
 	# remove all morphs that are group 0
-	for d,frame in enumerate(pmx[7]):
+	for d,frame in enumerate(pmx[7]):  # for each display group,
 		i = 0
-		while i < len(frame[3]):
+		while i < len(frame[3]):  # for each item in that display group,
 			item = frame[3][i]
 			if item[0]:  # if it is a morph
 				# figure out what panel of this morph is
