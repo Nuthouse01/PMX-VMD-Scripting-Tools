@@ -221,6 +221,7 @@ def general_input(valid_check, explain_info=None):
 		MY_PRINT_FUNC(explain_info)
 	while True:
 		s = input("> ")
+		s = s.rstrip()  # no use for trailing whitespace, sometimes have use for leading whitespace
 		# perform valid-check
 		if valid_check(s):
 			break

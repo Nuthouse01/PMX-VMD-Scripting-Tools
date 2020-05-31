@@ -21,7 +21,9 @@ try:
 	from python import make_ik_from_vmd
 	from python import pmx_arm_ik_addremove
 	from python import pmx_list_bone_morph_names
+	from python import morph_hide
 	from python import morph_invert
+	from python import morph_scale
 	from python import pmx_overall_cleanup
 	from python import texture_file_sort
 	from python import vmd_armtwist_insert
@@ -35,7 +37,7 @@ except ImportError as eee:
 	exit()
 	vmd_convert_tool = pmx_overall_cleanup = texture_file_sort = vmd_model_compatability_check = None
 	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = pmx_arm_ik_addremove = None
-	core = pmx_morph_invert = None
+	core = morph_invert = morph_hide = morph_scale = None
 
 
 FILE_EXTENSION_MAP = {
@@ -123,7 +125,7 @@ def gui_inputpopup(args, explain_info=None):
 	# print("pop")
 	# create popup
 	win = tk.Toplevel()
-	win.title("User input required")
+	win.title("User input needed")
 	# normally when X button is pressed, it calls "destroy". that would leave the script-thread indefinitely waiting on the flag!
 	# this redefine will set the flag so the script resumes when X is clicked
 	def on_x():
@@ -145,7 +147,6 @@ def gui_inputpopup(args, explain_info=None):
 		labelframe.pack(side=tk.TOP, fill='x')
 		for f in explain_info:
 			# create labels for each line
-			# todo: make them centered & wrap nicely
 			label = tk.Label(labelframe, text=f)
 			label.pack(side=tk.TOP, fill='x', padx=10, pady=10)
 			core.MY_PRINT_FUNC(f)
@@ -162,22 +163,31 @@ def gui_inputpopup(args, explain_info=None):
 	buttonframe = tk.Frame(win)
 	buttonframe.pack(side=tk.TOP)
 	
+	# guarantee the popup is in front of the main window
+	win.lift()
+	# guarantee the popup has focus
+	win.focus_set()
+	
 	# decide what the mode is & how to fill the popup
 	if callable(args):
 		# this is general-input mode, create text-entry box and submit button
+		# for some reason the snow/white color still looks beige? :( oh well i tried
 		textbox = tk.Entry(buttonframe, width=50, bg='snow')
 		textbox.pack(side=tk.TOP, padx=10, pady=10)
-		def submit_callback():
-			# validate the text input using the "args" function
-			# if its good then invoke "setresult", if its bad then clear the text box and the 'args' func should print something
-			t = textbox.get()
-			if args(t):
-				setresult(t)
-			else:
-				textbox.delete(0, tk.END)
+		def submit_callback(event=None):
+			# validate the text input using the validity check function "args"
+			# if its good then invoke "setresult", if its bad then clear the text box
+			# the func should be defined to print something explaining why it failed whenever it fails
+			t = textbox.get().rstrip()
+			if args(t): setresult(t)
+			else: textbox.delete(0, tk.END)
 		submit = tk.Button(buttonframe, text="Submit", command=submit_callback)
 		submit.pack(side=tk.TOP, padx=10, pady=10)
-		pass
+		# "enter" key will be equivalent to clicking the submit button...
+		# (technically this will happen whenever focus is inside the popup window, not just when focus is in the text entry box, but oh well)
+		win.bind('<Return>', submit_callback)
+		# guarantee the textbox within the popup has focus so user can start typing immediately (requires overall popup to already have focus)
+		textbox.focus_set()
 	else:
 		# this is simplechoice (multichoice) mode, "args" is a list... create buttons for each option
 		# create buttons for each numbered option
@@ -203,15 +213,20 @@ class Application(tk.Frame):
 	def __init__(self, master):
 		tk.Frame.__init__(self, master)
 		
-		# from each script, get main() and helptext
+		###############################################
+		# first, set up non-ui class members
+		# this variable is used in this new print function, very important
+		self.last_print_was_progress = False
+		# payload is pointer to currently selected main() func, helptext is the currently selected help string
 		self.payload = None
 		self.helptext = ""
-		
 		# list of all possible displayed names in the OptionMenu, with assoc helptext and mainfunc
 		self.all_script_list = [
 			("pmx_overall_cleanup.py",           pmx_overall_cleanup.helptext,           pmx_overall_cleanup.main),
 			("texture_file_sort.py",             texture_file_sort.helptext,             texture_file_sort.main),
 			("morph_invert.py",                  morph_invert.helptext,                  morph_invert.main),
+			("morph_hide.py",                    morph_hide.helptext,                    morph_hide.main),
+			("morph_scale.py",                   morph_scale.helptext,                   morph_scale.main),
 			("vmd_model_compatability_check.py", vmd_model_compatability_check.helptext, vmd_model_compatability_check.main),
 			("vmd_armtwist_insert.py",           vmd_armtwist_insert.helptext,           vmd_armtwist_insert.main),
 			("vmd_convert_tool.py",              vmd_convert_tool.helptext,              vmd_convert_tool.main),
@@ -220,36 +235,31 @@ class Application(tk.Frame):
 			("pmx_list_bone_morph_names.py",     pmx_list_bone_morph_names.helptext,     pmx_list_bone_morph_names.main),
 		]
 		
-		# underlying variable tied to the dropdown menu
-		self.optionvar = tk.StringVar(master)
-		self.optionvar.trace("w", self.change_mode)
-		self.optionvar.set(self.all_script_list[0][0])
-		
+		###############################################
+		# second, build the dropdown menu
+		# frame that holds the dropdown + the label
 		self.which_script_frame = tk.Frame(master)
 		self.which_script_frame.pack(side=tk.TOP, padx=10, pady=5)
 		lab = tk.Label(self.which_script_frame, text="Active script:")
 		lab.pack(side=tk.LEFT)
-		
+
+		# underlying variable tied to the dropdown menu, needed to run self.change_mode when the selection changes
+		self.optionvar = tk.StringVar(master)
+		self.optionvar.trace("w", self.change_mode)
+		self.optionvar.set(self.all_script_list[0][0])
 		# build the acutal dropdown menu
 		self.which_script = tk.OptionMenu(self.which_script_frame, self.optionvar, *[x[0] for x in self.all_script_list])
 		self.which_script.pack(side=tk.LEFT, padx=10)
 		
-		
-		
 		###############################################
-		# second, set up other non-ui class members
-		# this variable is used in this new print function, very important
-		self.last_print_was_progress = False
-		
-		###############################################
-		# third, build the GUI buttons and etc
-		
+		# third, build the GUI control buttons
 		self.control_frame = tk.Frame(master, relief=tk.RAISED, borderwidth=1)
 		self.control_frame.pack(side=tk.TOP, fill='x', padx=10, pady=5)
 		
 		self.run_butt = tk.Button(self.control_frame, text="RUN", width=7, command=lambda: run_as_thread(self.do_the_thing))
 		self.defaultfont = self.run_butt.cget("font")
 		# print(self.defaultfont)
+		# RUN button has bigger font than the other buttons
 		self.run_butt.configure(font=(self.defaultfont, 18))
 		self.run_butt.pack(side=tk.LEFT, padx=10, pady=10)
 		
@@ -268,6 +278,7 @@ class Application(tk.Frame):
 		
 		###############################################
 		# fourth, build the "scrolledtext" object to serve as my output terminal
+		# doesn't need a frame, already has a frame built into it kinda
 		self.edit_space = tkst.ScrolledText(
 			master=master,
 			wrap='word',  # wrap text at full words only
@@ -278,6 +289,9 @@ class Application(tk.Frame):
 		self.edit_space.pack(fill='both', expand=True, padx=8, pady=8)
 		self.edit_space.configure(state='disabled')
 		
+		###############################################
+		# fifth, overwrite the core function pointers to use new GUI methods
+		
 		# VERY IMPORTANT: overwrite the default print function with one that goes to the GUI
 		core.MY_PRINT_FUNC = self.my_write
 		# VERY IMPORTANT: overwrite the default simple-choice function with one that makes a popup
@@ -287,10 +301,11 @@ class Application(tk.Frame):
 		# VERY IMPORTANT: overwrite the default fileprompt function with one that uses a popup filedialogue
 		core.MY_FILEPROMPT_FUNC = gui_fileprompt
 		
+		# print version & instructions
 		self.print_header()
-		
+		# start the popup loop
 		self.spin_to_handle_inputs()
-		
+		# load the initial script to populate payload & helptext
 		self.change_mode()
 		
 		# done with init
