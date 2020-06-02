@@ -46,23 +46,7 @@ def showprompt():
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=True)
 	return pmx, input_filename_pmx
 
-def prune_invalid_faces(pmx, moreinfo=False):
-	#############################
-	# ready for logic
-	
-	faces_to_remove = []
-	# identify faces which need removing
-	for i,face in enumerate(pmx[2]):
-		# valid faces are defined by 3 unique vertices, if the vertices are not unique then the face is invalid
-		if len(face) != len(set(face)):
-			faces_to_remove.append(i)
-	
-	numdeleted = len(faces_to_remove)
-	prevtotal = len(pmx[2])
-	if numdeleted == 0:
-		core.MY_PRINT_FUNC("No changes are required")
-		return pmx, False
-
+def delete_faces(pmx, faces_to_remove):
 	# each material has some number of faces associated with it, those values must be changed when faces are deleted!
 	# the question simply becomes, "how many faces within range [start, end] are being deleted"
 	# the list of faces being deleted is in known-sorted order
@@ -82,23 +66,94 @@ def prune_invalid_faces(pmx, moreinfo=False):
 		# therefore their difference is the number of faces to remove from the current material
 		faces_removed_per_material.append(end_del_face_idx - start_del_face_idx)
 		start_del_face_idx = end_del_face_idx
-		
+	
 	# now, apply the changes to the size of each material
 	newsum = 0
 	for mat, loss in zip(pmx[4], faces_removed_per_material):
 		mat[25] -= loss
 		newsum += mat[25]
-		
+	
 	# now, delete the acutal faces
-	faces_to_remove.reverse()
-	for f in faces_to_remove:
+	for f in reversed(faces_to_remove):
 		pmx[2].pop(f)
+
+
+def prune_invalid_faces(pmx, moreinfo=False):
+	#############################
+	# ready for logic
 	
-	assert(len(pmx[2]) == newsum)  # assert material face allocation matches the actual total number of faces
+	faces_to_remove = []
+	# identify faces which need removing
+	for i,face in enumerate(pmx[2]):
+		# valid faces are defined by 3 unique vertices, if the vertices are not unique then the face is invalid
+		if len(face) != len(set(face)):
+			faces_to_remove.append(i)
 	
-	core.MY_PRINT_FUNC("Identified and deleted {} / {} = {:.1%} faces for being invalid".format(
-		numdeleted, prevtotal, numdeleted/prevtotal))
+	numinvalid = len(faces_to_remove)
+	prevtotal = len(pmx[2])
 	
+	if faces_to_remove:
+		# do the actual face deletion
+		delete_faces(pmx, faces_to_remove)
+		
+	if numinvalid != 0:
+		core.MY_PRINT_FUNC("Found & deleted {} / {} = {:.1%} faces for being invalid".format(
+			numinvalid, prevtotal, numinvalid / prevtotal))
+	
+	#################
+	# NEW: delete duplicate faces within materials
+	# turn each face into a SORTED TUPLE then hash
+	
+	# first iter over all faces and create string versions
+	# for each item, sort then cast as tuple
+	hashfaces = [hash(tuple(sorted(f))) for f in pmx[2]]
+	# make into hashes: numbers compare faster than other types
+	# TODO: replace this with inverse zip thing
+	hashfaces_idx = [(t,d) for d,t in enumerate(hashfaces)]
+	# option b: for each material unit, sort & find dupes
+	startidx = 0
+	all_dupefaces = []
+	for d,mat in enumerate(pmx[4]):
+		numfaces = mat[25]
+		this_dupefaces = []
+		if numfaces >= 2:  # if there is 1 or 0 faces then there cannot be any dupes, so skip
+			# get the faces for this material & sort by hash so same faces are adjacent
+			matfaces = hashfaces_idx[startidx:startidx+numfaces]
+			matfaces.sort(key=core.get1st)
+			for i in range(1,numfaces):
+				# if face i is the same as face i-1,
+				if matfaces[i][0] == matfaces[i-1][0]:
+					# then save the index of this face
+					this_dupefaces.append(matfaces[i][1])
+		# always inc startidx after each material
+		startidx += numfaces
+		if this_dupefaces:
+			all_dupefaces += this_dupefaces
+			if moreinfo:
+				core.MY_PRINT_FUNC("mat #{}: JP='{}' / EN='{}', found {} duplicates".format(d, mat[0], mat[1], len(this_dupefaces)))
+	# this must be in ascending sorted order
+	all_dupefaces.sort()
+	numdupes = len(all_dupefaces)
+	if all_dupefaces:
+		# do the actual face deletion
+		delete_faces(pmx, all_dupefaces)
+	
+	if numdupes != 0:
+		core.MY_PRINT_FUNC("Found & deleted {} / {} = {:.1%} faces for being duplicates within material units".format(
+			numdupes, prevtotal, numdupes / prevtotal))
+		
+	# now find how many duplicates there are spanning material units
+	# first delete the dupes we know about
+	for f in reversed(all_dupefaces):
+		hashfaces.pop(f)
+	otherdupes = len(hashfaces) - len(set(hashfaces))
+	if otherdupes != 0:
+		core.MY_PRINT_FUNC("Warning: Found {} faces which are duplicates spanning material units, did not delete".format(otherdupes))
+	
+	if numinvalid == 0 and numdupes == 0:
+		core.MY_PRINT_FUNC("No changes are required")
+		return pmx, False
+		
 	return pmx, True
 
 def end(pmx, input_filename_pmx):
