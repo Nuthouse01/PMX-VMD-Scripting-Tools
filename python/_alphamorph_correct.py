@@ -61,7 +61,7 @@ def alphamorph_correct(pmx, moreinfo=False):
 	total_morphs_affected = 0
 	
 	# for each morph:
-	for morph in pmx[6]:
+	for d,morph in enumerate(pmx[6]):
 		# if not a material morph, skip it
 		if morph[3] != 8:
 			continue
@@ -90,8 +90,12 @@ def alphamorph_correct(pmx, moreinfo=False):
 			total_morphs_affected += 1
 			num_fixed += this_num_fixed
 			if moreinfo:
-				core.MY_PRINT_FUNC("morph JP: '%s'     EN: '%s'" % (morph[0], morph[1]))
+				core.MY_PRINT_FUNC("morph #{}: JP='{}' / EN='{}', fixed {} items".format(d, morph[0], morph[1], this_num_fixed))
 	
+	if num_fixed:
+		core.MY_PRINT_FUNC("Fixed %d 'hide' morphs" % total_morphs_affected)
+
+
 	# identify materials that start transparent but still have edging
 	mats_fixed = 0
 	for d,mat in enumerate(pmx[4]):
@@ -121,13 +125,15 @@ def alphamorph_correct(pmx, moreinfo=False):
 				num_fixed += this_num_edgefixed
 				mats_fixed += 1
 				if moreinfo:
-					core.MY_PRINT_FUNC("mat JP: '%s'     EN: '%s'" % (mat[0], mat[1]))
+					core.MY_PRINT_FUNC("mat #{}: JP='{}' / EN='{}', fixed {} appear morphs".format(d, mat[0], mat[1], this_num_edgefixed))
 	
-	if num_fixed == 0:
+	if mats_fixed:
+		core.MY_PRINT_FUNC("Removed edging from %d initially hidden materials" % mats_fixed)
+	
+	if num_fixed == 0 and mats_fixed == 0:
 		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
 	
-	core.MY_PRINT_FUNC("Fixed %d locations from among %d affected morphs and %d materials" % (num_fixed, total_morphs_affected, mats_fixed))
 	return pmx, True
 
 def end(pmx, input_filename_pmx):

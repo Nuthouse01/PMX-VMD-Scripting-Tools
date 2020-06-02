@@ -132,7 +132,7 @@ def morph_winnow(pmx, moreinfo=False):
 		# increment tracking variables
 		if this_vert_dropped != 0:
 			if moreinfo:
-				core.MY_PRINT_FUNC("JP: '%s'     EN: '%s'" % (morph[0], morph[1]))
+				core.MY_PRINT_FUNC("morph #{}: JP='{}' / EN='{}', removed {} vertices".format(d, morph[0], morph[1], this_vert_dropped))
 			total_morphs_affected += 1
 			total_vert_dropped += this_vert_dropped
 	
