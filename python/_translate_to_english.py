@@ -351,7 +351,8 @@ def translate_to_english(pmx, moreinfo=False):
 	# comment(jp=3,en=4)
 	comment_state = 0
 	comment_jp_clean = "" # the thing that is given to translate, if needed
-	new_en_name = fix_eng_name(pmx[0][3], pmx[0][4])
+	# new_en_name = fix_eng_name(pmx[0][3], pmx[0][4])
+	new_en_name = pmx[0][4] # this should disable translation of comments
 	if new_en_name is None:
 		# googletrans is required, store and translate in bulk later
 		comment_state = 1
