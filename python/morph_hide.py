@@ -102,6 +102,8 @@ def main(moreinfo=True):
 					frame[3].pop(i)
 				else:
 					i += 1
+			else:
+				i += 1
 	
 	# write out
 	output_filename_pmx = input_filename_pmx[0:-4] + "_morphhide.pmx"
