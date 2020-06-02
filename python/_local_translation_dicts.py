@@ -240,12 +240,16 @@ words_dict = {
 "パンツ": "panties",
 "ﾊﾟﾝﾂ": "panties",
 "ぱんつ": "panties",
+"ビキニ": "bikini",
+"もみあげ": "sideburn",
 "尻尾": "tail",
 "おっぱい": "boobs", # literally "oppai"
 "ヘッドセット": "headset",
 "センター": "center",
 "グルーブ": "groove",
 "タイツ": "tights",
+"あほ毛": "ahoge", # the cutesy little hair curl on top
+"アホ毛": "ahoge",
 "腰": "waist",
 "舌": "tongue",
 "胸": "breast",
@@ -254,13 +258,11 @@ words_dict = {
 "耳": "ear",
 "みみ": "ear",
 "ヘアー": "hair",
-"髪の毛": "hair",
+"髪の毛": "hair", # this literally means hair of hair??? odd
 "毛": "hair",
 "髪": "hair",
 "髮": "hair", # this is actually somehow different from the line above???
 "ヘア": "hair",
-"あほ毛": "ahoge", # the cutesy little hair curl on top
-"アホ毛": "ahoge",
 "新規": "new",
 "材質": "material",
 "なみだ": "tears",
@@ -320,7 +322,7 @@ words_dict = {
 "頭": "head",
 "帽子": "hat",
 "金属": "metal",
-"紐": "string",
+"紐": "string",  # or cord
 "ダミー": "dummy",
 "ﾀﾞﾐ": "dummy",
 "半": "half",
@@ -450,6 +452,7 @@ words_dict = {
 "困る": "sadness",
 "真面": "serious",
 "怒り": "anger",
+"怒": "anger",
 "にこり": "cheerful",
 "しいたけ": "star", # "shiitake"
 "ハート": "heart",
