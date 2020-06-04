@@ -1,4 +1,4 @@
-# Nuthouse01 - 04/17/2020 - v4.04
+# Nuthouse01 - 06/04/2020 - v4.06
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -132,7 +132,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 04/17/2020 - v4.04")
+	core.MY_PRINT_FUNC("Nuthouse01 - 06/04/2020 - v4.06")
 	if DEBUG:
 		main()
 	else:
