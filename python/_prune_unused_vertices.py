@@ -182,7 +182,8 @@ def prune_unused_vertices(pmx, moreinfo=False):
 	
 	delme_range = delme_list_to_rangemap(delme_verts)
 	
-	core.MY_PRINT_FUNC("Detected %d orphan vertices arranged in %d contiguous blocks" % (len(delme_verts), len(delme_range[0])))
+	if moreinfo:
+		core.MY_PRINT_FUNC("Detected %d orphan vertices arranged in %d contiguous blocks" % (len(delme_verts), len(delme_range[0])))
 	
 	# need to update places that reference vertices: faces, morphs, softbody
 	# first get the total # of iterations I need to do, for progress purposes: #faces + sum of len of all UV and vert morphs

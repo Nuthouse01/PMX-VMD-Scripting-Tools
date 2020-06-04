@@ -187,7 +187,7 @@ def main(moreinfo=False):
 	core.MY_PRINT_FUNC("\n>>>> Pruning imperceptible vertex morphs <<<<")
 	pmx, is_changed_t = _morph_winnow.morph_winnow(pmx, moreinfo)
 	is_changed |= is_changed_t
-	core.MY_PRINT_FUNC("\n>>>> Fixing alphamorphs that don't account for edging <<<<")
+	core.MY_PRINT_FUNC("\n>>>> Standardizing alphamorphs and accounting for edging <<<<")
 	pmx, is_changed_t = _alphamorph_correct.alphamorph_correct(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Display groups that contain duplicates, empty groups, or missing bones/morphs <<<<")

@@ -140,14 +140,16 @@ def bonedeform_fix(pmx, moreinfo=False):
 		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
 	
-	core.MY_PRINT_FUNC("Modified deform order for %d bones" % len(modified_bones))
-	
 	if moreinfo:
 		deforms_orig = [p[6] for p in pmx[5]]
 		for d, (o, n) in enumerate(zip(deforms_orig, deforms)):
 			if o != n:
-				core.MY_PRINT_FUNC("#: %d    deform: %d --> %d" % (d, o, n))
+				core.MY_PRINT_FUNC("bone #{}: JP='{}' / EN='{}', deform: {} --> {}".format(d, pmx[5][d][0], pmx[5][d][1], o, n))
+
 	
+	core.MY_PRINT_FUNC("Modified deform order for {} / {} = {:.1%} bones".format(
+		len(modified_bones), len(pmx[5]), len(modified_bones) / len(pmx[5])))
+
 	# now actually apply the changes stored in deforms
 	for d,v in enumerate(deforms):
 		pmx[5][d][6] = v

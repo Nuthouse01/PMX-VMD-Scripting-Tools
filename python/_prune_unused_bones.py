@@ -395,13 +395,14 @@ def prune_unused_bones(pmx, moreinfo=False):
 	
 	# convert the list of individual bones to remove into a list of ranges
 	delme_rangemap = delme_list_to_rangemap(unused_list)
-	core.MY_PRINT_FUNC("Detected %d unused bones arranged in %d contiguous blocks" % (len(unused_list), len(delme_rangemap[0])))
+	if moreinfo:
+		core.MY_PRINT_FUNC("Detected %d unused bones arranged in %d contiguous blocks" % (len(unused_list), len(delme_rangemap[0])))
 	
 	# another debug aid:
 	if moreinfo:
-		core.MY_PRINT_FUNC("The following bones are unused:")
-		for b in unused_list:
-			core.MY_PRINT_FUNC("#: %d    EN: %s    JP: %s" % (b, pmx[5][b][1], pmx[5][b][0]))
+		core.MY_PRINT_FUNC("The following values use indexes before deletion:")
+		for d in unused_list:
+			core.MY_PRINT_FUNC("bone #{}: JP='{}' / EN='{}', deleted".format(d, pmx[5][d][0], pmx[5][d][1]))
 	
 	num_bones_before = len(pmx[5])
 	pmx = apply_bone_remapping(pmx, unused_list, delme_rangemap)
