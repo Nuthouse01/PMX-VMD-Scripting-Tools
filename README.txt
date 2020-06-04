@@ -1,7 +1,7 @@
 # VMD-to-text-Conversion-Tool
 
 VMD Conversion Tool README
-Created by Nuthouse01 - 04/17/2020 - v4.04
+Created by Nuthouse01 - 06/04/2020 - v4.06
 
 ###### Legal:
 This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause. You are permitted to examine and modify the code as you see fit, but I make no guarantees about the safety or quality of the result.
@@ -21,6 +21,12 @@ Don't try to claim this work as yours. That would be a profoundly dick move.
 
 
 ### Purpose:
+##### pmx_overall_cleanup.py
+This will perform a series of first-pass cleanup operations to generally improve any PMX model. This includes: translating missing english names (via Google Translate!), correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, cleaning up display frames, and detecting issues that might cause MMD to crash. These operations will reduce file size (sometimes massively!) and improve overall model health & usability.
+
+##### texture_file_sort.py
+This script is for organizing the texture imports used in a PMX model, to eliminate "top-level" clutter and sort Tex/Toon/SPH files into folders based on how they are used. This script will also report any files it finds that are not used by the PMX, and it will also report any files the PMX tries to reference which do not exist in the file system.
+
 ##### vmd_model_compatability_check.py
 This script is to check if the model you are using is compatible with the VMD you wish to use. This will create a summary file that lists all important bones/morphs in the VMD dance file, and sorts them into two groups: ones that the model can support, and ones that it cannot support. If you are loading a motion designed for some different model (usually the case), and it seems to be playing wrong, it is very likely that there is a name mismatch.
 
@@ -28,14 +34,17 @@ This script is to check if the model you are using is compatible with the VMD yo
 
 This script will reveal what exactly is mismatched; but to fix the issue, you must either change the PMX to match the VMD (using PMXEditor or a similar tool) or you must change the VMD to match the PMX (convert the VMD to text form, replace all uses of "笑顔" with "笑い" to match the model, and then convert it back to VMD form).
 
+##### morph_hide.py
+This script simply sets the specified morphs within a model to group "0" so they do not show up in the eye/lip/brow/other menus. This is handy for components of group morphs that you don't want to be used independently.
+
+##### morph_invert.py
+This will "invert" a vertex or UV morph by permanently applying it to the model's mesh, then reversing the values inside that morph.
+
+##### morph_scale.py
+This will scale the strength/magnitude of a vertex, UV, or bone morph by a specified factor such as 2.9 or 0.75.
+
 ##### vmd_armtwist_insert.py
 Some models have "armtwist" and "wristtwist" bones, but almost no VMD dances actually use them. If you twist a model's arm bone around the axis of the arm (the local X-axis) it will cause ugly pinching/tearing at the joint, but if you do that same motion with the armtwist bone instead, the pinching/tearing will not happen. This script does some very clever math to extract the local X-axis rotation from the arm bones and elbow bones and transfer it to the armtwist bones instead, totally fixing the pinching/tearing problem! This operation must be done separately for each model/dance pair.
-
-##### pmx_overall_cleanup.py
-This will perform a series of first-pass cleanup operations to generally improve any PMX model. This includes: translating missing english names (via Google Translate!), correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, cleaning up display frames, and detecting issues that might cause MMD to crash. These operations will reduce file size (sometimes massively!) and improve overall model health & usability.
-
-##### texture_file_sort.py
-This script is for organizing the texture imports used in a PMX model, to eliminate "top-level" clutter and sort Tex/Toon/SPH files into folders based on how they are used. This script will also report any files it finds that are not used by the PMX, and it will also report any files the PMX tries to reference which do not exist in the file system.
 
 ##### vmd_convert_tool.py
 This tool is for converting VMD (Vocaloid Motion Data) files from their packed binary form to a human-readable and human-editable text form, and vice versa. This can allow 3rd-party scripts to perform procedural edits on the VMD data while it is in text format, such as (for example) constraining certain bones to a desired max range of motion, and then converting it back to VMD form for use in MikuMikuDance. Or it can be used to modify the names of the bones/morphs that the VMD is trying to control, to customize it to work better with a specific model.
@@ -181,7 +190,7 @@ Thank you to whoever made [this VMD documentation page](https://mikumikudance.fa
 
 Also thanks to [FelixJones on Github](https://gist.github.com/felixjones/f8a06bd48f9da9a4539f) for already exploring & documenting the PMX file structure!
 
-Thanks to the people who made PyInstaller for making a super easy way to build an .exe from a bunch of Python scripts, its a really neat tool you should check it out. The EXE files are so large because it contains the entire Python kernel + all needed libraries for that script. pyinstaller --onefile whatever.py
+Thanks to the people who made PyInstaller for making a super easy way to build an .exe from a bunch of Python scripts, its a really neat tool you should check it out. The EXE files are so large because it contains the entire Python kernel + all needed libraries for that script. pyinstaller --onefile --noconsole whatever.py
 
 ###### Files:
 The following files should be included with this README:
@@ -335,3 +344,12 @@ The following files should be included with this README:
     refine boneless rigidbody checks & warnings
     automatically fix edging on default hidden materials with "show" morphs
     weight cleanup: also normalize normals, including 0,0,0 "invalid" normals
+
+    v4.06:
+    new: morph_hide
+    new: morph_invert
+    new: morph_scale
+    modified "prune invalid faces" to also detect & remove duplicate faces within material units
+    more words in translation dictionary
+    disable translation of model comments since the model info popup in MMD can display JP characters just fine
+    slight changes to printouts in most scripts
