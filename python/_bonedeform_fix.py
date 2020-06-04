@@ -144,7 +144,7 @@ def bonedeform_fix(pmx, moreinfo=False):
 		deforms_orig = [p[6] for p in pmx[5]]
 		for d, (o, n) in enumerate(zip(deforms_orig, deforms)):
 			if o != n:
-				core.MY_PRINT_FUNC("bone #{}: JP='{}' / EN='{}', deform: {} --> {}".format(d, pmx[5][d][0], pmx[5][d][1], o, n))
+				core.MY_PRINT_FUNC("bone #{:<3} JP='{}' / EN='{}', deform: {} --> {}".format(d, pmx[5][d][0], pmx[5][d][1], o, n))
 
 	
 	core.MY_PRINT_FUNC("Modified deform order for {} / {} = {:.1%} bones".format(

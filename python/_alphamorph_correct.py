@@ -90,7 +90,7 @@ def alphamorph_correct(pmx, moreinfo=False):
 			total_morphs_affected += 1
 			num_fixed += this_num_fixed
 			if moreinfo:
-				core.MY_PRINT_FUNC("morph #{}: JP='{}' / EN='{}', fixed {} items".format(d, morph[0], morph[1], this_num_fixed))
+				core.MY_PRINT_FUNC("morph #{:<3} JP='{}' / EN='{}', fixed {} items".format(d, morph[0], morph[1], this_num_fixed))
 	
 	if num_fixed:
 		core.MY_PRINT_FUNC("Fixed %d 'hide' morphs" % total_morphs_affected)
@@ -125,7 +125,7 @@ def alphamorph_correct(pmx, moreinfo=False):
 				num_fixed += this_num_edgefixed
 				mats_fixed += 1
 				if moreinfo:
-					core.MY_PRINT_FUNC("mat #{}: JP='{}' / EN='{}', fixed {} appear morphs".format(d, mat[0], mat[1], this_num_edgefixed))
+					core.MY_PRINT_FUNC("mat #{:<3} JP='{}' / EN='{}', fixed {} appear morphs".format(d, mat[0], mat[1], this_num_edgefixed))
 	
 	if mats_fixed:
 		core.MY_PRINT_FUNC("Removed edging from %d initially hidden materials" % mats_fixed)

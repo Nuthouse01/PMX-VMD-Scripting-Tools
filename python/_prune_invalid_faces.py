@@ -130,7 +130,7 @@ def prune_invalid_faces(pmx, moreinfo=False):
 		if this_dupefaces:
 			all_dupefaces += this_dupefaces
 			if moreinfo:
-				core.MY_PRINT_FUNC("mat #{}: JP='{}' / EN='{}', found {} duplicates".format(d, mat[0], mat[1], len(this_dupefaces)))
+				core.MY_PRINT_FUNC("mat #{:<3} JP='{}' / EN='{}', found {} duplicates".format(d, mat[0], mat[1], len(this_dupefaces)))
 	# this must be in ascending sorted order
 	all_dupefaces.sort()
 	numdupes = len(all_dupefaces)

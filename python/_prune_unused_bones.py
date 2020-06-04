@@ -402,7 +402,7 @@ def prune_unused_bones(pmx, moreinfo=False):
 	if moreinfo:
 		core.MY_PRINT_FUNC("The following values use indexes before deletion:")
 		for d in unused_list:
-			core.MY_PRINT_FUNC("bone #{}: JP='{}' / EN='{}', deleted".format(d, pmx[5][d][0], pmx[5][d][1]))
+			core.MY_PRINT_FUNC("bone #{:<3} JP='{}' / EN='{}'".format(d, pmx[5][d][0], pmx[5][d][1]))
 	
 	num_bones_before = len(pmx[5])
 	pmx = apply_bone_remapping(pmx, unused_list, delme_rangemap)
