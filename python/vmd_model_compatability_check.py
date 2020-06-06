@@ -147,7 +147,6 @@ def main(moreinfo=True):
 		# write out
 		output_filename_morph = "%s_morph_compatability_with_%s.txt" % \
 							  (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx))
-		output_filename_morph = output_filename_morph.replace(" ", "_")
 		output_filename_morph = core.get_unused_file_name(output_filename_morph)
 		core.MY_PRINT_FUNC("...writing result to file '%s'..." % (core.get_clean_basename(output_filename_morph) + ".txt"))
 		core.write_rawlist_to_txt(output_filename_morph, rawlist_out, use_jis_encoding=False)
@@ -241,7 +240,6 @@ def main(moreinfo=True):
 		# write out
 		output_filename_bone = "%s_bone_compatability_with_%s.txt" % \
 							   (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx))
-		output_filename_bone = output_filename_bone.replace(" ", "_")
 		output_filename_bone = core.get_unused_file_name(output_filename_bone)
 		core.MY_PRINT_FUNC("...writing result to file '%s'..." % (core.get_clean_basename(output_filename_bone) + ".txt"))
 		core.write_rawlist_to_txt(output_filename_bone, rawlist_out, use_jis_encoding=False)

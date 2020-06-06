@@ -289,7 +289,6 @@ def main(moreinfo=True):
 	# write out the VMD
 	output_filename_vmd = "%s_twistbones_for_%s.vmd" % \
 						   (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx))
-	output_filename_vmd = output_filename_vmd.replace(" ", "_")
 	output_filename_vmd = core.get_unused_file_name(output_filename_vmd)
 	vmdlib.write_vmd(output_filename_vmd, nicelist_in, moreinfo=moreinfo)
 	
