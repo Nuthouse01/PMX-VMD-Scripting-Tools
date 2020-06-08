@@ -105,14 +105,14 @@ def alphamorph_correct(pmx, moreinfo=False):
 			edgeSize = mat[18]
 			this_num_edgefixed = 0
 			# THEN check for any material morphs that add opacity to this material
-			for morph in pmx[6]:
+			for d2,morph in enumerate(pmx[6]):
 				# if not a material morph, skip it
 				if morph[3] != 8:
 					continue
 				# for each material in this material morph:
 				for item in morph[4]:
-					# if it is adding, and opacity > 0
-					if item[1] == 1 and item[5] > 0:
+					# if it is operating on the right material, and adding, and opacity > 0:
+					if item[0] == d and item[1] == 1 and item[5] > 0:
 						# set it to add the edge amounts from the material
 						item[16] = edgeA
 						item[17] = edgeSize
