@@ -318,6 +318,7 @@ def get_persistient_storage_path(filename="") -> str:
 ########################################################################################################################
 
 def write_rawlist_to_txt(name, content, use_jis_encoding=False, quiet=False):
+	name = path.normpath(name)
 	if not quiet:
 		MY_PRINT_FUNC(path.abspath(name))
 	# note: when PMXE writes a CSV, it backslash-escapes backslashes and dots and spaces, but it doesn't need these to be escaped when reading
@@ -356,6 +357,9 @@ def write_rawlist_to_txt(name, content, use_jis_encoding=False, quiet=False):
 	
 	try:
 		# finally, actually write the whole file all at once, using the proper encoding
+		if not path.exists(path.dirname(name)):
+			MY_PRINT_FUNC("Err: unable to write TXT file '%s', the containing folder(s) does not exist!!" % name)
+			raise RuntimeError()
 		if use_jis_encoding:
 			with open(name, "w", encoding="shift_jis") as my_file:
 				my_file.write(writeme)
@@ -369,6 +373,7 @@ def write_rawlist_to_txt(name, content, use_jis_encoding=False, quiet=False):
 
 
 def read_txt_to_rawlist(input_filename, use_jis_encoding=False, quiet=False):
+	input_filename = path.normpath(input_filename)
 	if not quiet:
 		MY_PRINT_FUNC(path.abspath(input_filename))
 	# opposite of write_rawlist_to_txt()
@@ -436,11 +441,15 @@ def read_txt_to_rawlist(input_filename, use_jis_encoding=False, quiet=False):
 
 
 def write_bytes_to_binfile(name, content, quiet=False):
+	name = path.normpath(name)
 	if not quiet:
 		MY_PRINT_FUNC(path.abspath(name))
 	# opposite of read_binfile_to_bytes()
 	# write a binary file from a bytes object
 	try:
+		if not path.exists(path.dirname(name)):
+			MY_PRINT_FUNC("Err: unable to write TXT file '%s', the containing folder(s) does not exist!!" % name)
+			raise RuntimeError()
 		with open(name, "wb") as my_file:
 			my_file.write(content)
 	except IOError as e:
@@ -450,6 +459,7 @@ def write_bytes_to_binfile(name, content, quiet=False):
 
 
 def read_binfile_to_bytes(input_filename, quiet=False):
+	input_filename = path.normpath(input_filename)
 	if not quiet:
 		MY_PRINT_FUNC(path.abspath(input_filename))
 	# opposite of write_bytes_to_binfile()
