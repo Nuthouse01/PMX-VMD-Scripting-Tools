@@ -152,8 +152,7 @@ class existfile:
 helptext = '''=================================================
 texture_file_sort:
 This tool will sort the tex/spheremap/toon files used by a model into folders for each category.
-It also moves unused image files at top-level into an "unused" folder, to declutter things.
-Any unused files elsewhere will be listed but not renamed. You can move them or delete them however you want, it doesn't matter since they aren't actually used in the model.
+Unused image files can be moved into an "unused" folder, to declutter things.
 Any files referenced by the PMX that do not exist on disk will be listed.
 Before actually changing anything, it will list all proposed file renames and ask for final confirmation.
 It also creates a zipfile backup of the entire folder, just in case.
@@ -394,6 +393,28 @@ def main(moreinfo=False):
 	# all pmxfile usage mode is known
 	# all exist file used/unused is known
 	
+	global MOVE_TOPLEVEL_UNUSED_IMG
+	global MOVE_ALL_UNUSED_IMG
+	# only ask what files to move if there are files that could potentially be moved
+	if notused_img:
+		# count the number of toplevel vs not-toplevel in "notused_img"
+		num_toplevel = len([p for p in notused_img if p.istop])
+		num_nontoplevel = len(notused_img) - num_toplevel
+		# ask the user what "aggression" level they want
+		showinfo = ["Detected %d unused top-level files and %d unused files in directories." % (num_toplevel, num_nontoplevel),
+					"Which files do you want to move to 'unused' folder?",
+					"1 = Do not move any, 2 = Move only top-level unused, 3 = Move all unused"]
+		c = core.MY_SIMPLECHOICE_FUNC((1,2,3), showinfo)
+		if c == 1:
+			MOVE_TOPLEVEL_UNUSED_IMG = False
+			MOVE_ALL_UNUSED_IMG = False
+		if c == 2:
+			MOVE_TOPLEVEL_UNUSED_IMG = True
+			MOVE_ALL_UNUSED_IMG = False
+		if c == 3:
+			MOVE_TOPLEVEL_UNUSED_IMG = True
+			MOVE_ALL_UNUSED_IMG = True
+		
 	# =========================================================================================================
 	# =========================================================================================================
 	# =========================================================================================================
