@@ -19,6 +19,7 @@ Don't try to claim this work as yours. That would be a profoundly dick move.
 5. Read all information that is printed to the screen (such as whether it succeeded or failed), then leave the window open. You can click "RUN" again to run the same script (it will prompt you again for input file(s)) or you can switch to a different script with the dropdown menu and run something else instead. You can click "Clear" to clear the printout space if it gets too messy.
 6. Enjoy!  
 
+![Screenshot of console](https://i.imgur.com/PBahurC.png)
   
 ### Purpose:
 ##### pmx_overall_cleanup.py
