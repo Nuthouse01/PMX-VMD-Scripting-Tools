@@ -106,7 +106,7 @@ def bonedeform_fix(pmx, moreinfo=False):
 			if bone[5] != -1: # -1 is not a valid parent to check
 				is_good &= good_deform_relationship(d, bone[5])
 			# each bone must deform after its partial inherit source, if it uses it
-			if (bone[14] or bone[15]) and bone[16][1] != 0:
+			if (bone[14] or bone[15]) and bone[16][1] != 0 and bone[16][0] != -1:
 				is_good &= good_deform_relationship(d, bone[16][0])
 			# each ik bone must deform after its target and IK chain
 			if bone[23]:

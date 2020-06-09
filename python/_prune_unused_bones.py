@@ -159,9 +159,9 @@ def identify_unused_bones(pmx):
 			### if i am maybe useful, add my parent to used bones
 			used_bones_from_bones.add(bone[5])
 			
-			# has append and append value is not 0
+			# has append and append ratio is not 0
 			### if i am maybe useful, add my "append" source to used bones
-			if (bone[14] or bone[15]) and bone[16][1] != 0:
+			if (bone[14] or bone[15]) and bone[16][1] != 0 and bone[16][0] != -1:
 				used_bones_from_bones.add(bone[16][0])
 		
 		unused_bones = all_bones_set.difference(used_bones.union(used_bones_from_bones))
@@ -217,7 +217,7 @@ def identify_unused_bones(pmx):
 			
 			# has append and append value is not 0
 			### if i am maybe useful, add my "append" source to used bones
-			if (bone[14] or bone[15]) and bone[16][1] != 0:
+			if (bone[14] or bone[15]) and bone[16][1] != 0 and bone[16][0] != -1:
 				used_bones_from_bones.add(bone[16][0])
 		
 		unused_bones = all_bones_set.difference(used_bones.union(used_bones_from_bones))
