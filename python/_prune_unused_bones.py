@@ -397,10 +397,6 @@ def prune_unused_bones(pmx, moreinfo=False):
 	delme_rangemap = delme_list_to_rangemap(unused_list)
 	if moreinfo:
 		core.MY_PRINT_FUNC("Detected %d unused bones arranged in %d contiguous blocks" % (len(unused_list), len(delme_rangemap[0])))
-	
-	# another debug aid:
-	if moreinfo:
-		core.MY_PRINT_FUNC("The following values use indexes before deletion:")
 		for d in unused_list:
 			core.MY_PRINT_FUNC("bone #{:<3} JP='{}' / EN='{}'".format(d, pmx[5][d][0], pmx[5][d][1]))
 	
