@@ -51,8 +51,8 @@ morph_dict = {
 "ムッ": "upset",
 "照れ": "blush", # "little blush"
 "照れ２": "blush2", # "big blush"
-"青ざめ": "pale", # literally "aozame"
-"青ざめる": "pale",
+"青ざめ": "shock", # literally "aozame" translates to "pale"
+"青ざめる": "shock", # literally "aozomeru" translates to "pale"
 "丸目": "O.O",
 "はちゅ目": "O.O",
 "はちゅ目縦潰れ": "O.O height",
@@ -273,6 +273,7 @@ words_dict = {
 "水着": "swimsuit",
 "服": "clothes",
 "着": "clothes",
+"衣": "clothes",  # this one is chinese? maybe?
 "ケープ": "cape",
 "外套": "mantle",
 "物理": "phys",
@@ -403,6 +404,7 @@ words_dict = {
 "握": "grip",
 "拡散": "spread",
 "拡": "spread",
+"基部": "base",
 "基": "base", # either group or base
 
 # morphs
@@ -416,6 +418,7 @@ words_dict = {
 "食込無": "none",
 "無し": "none",
 "なし": "none",
+"无": "none",
 "消えて": "disappear", # as in whole model disappear
 "消える": "disappear", 
 "透明": "transparent",
@@ -457,7 +460,9 @@ words_dict = {
 "しいたけ": "star", # "shiitake"
 "ハート": "heart",
 "はぁと": "heart",
+"ぐる": "dizzy", # perhaps "spinny"
 "ぐるぐる": "dizzy", # perhaps "spinny"
+"グル": "dizzy", # perhaps "spinny"
 "グルグル": "dizzy", # perhaps "spinny"
 "カメラ": "camera", # for looking at the camera
 "はぅ": ">.<",
