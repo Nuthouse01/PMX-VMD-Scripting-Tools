@@ -358,3 +358,6 @@ The following files should be included with this README:
     bugfix: alphamorph feature "fix edging on default hidden materials" forgot to check that add-morphs were modifying the relevant material, oops
     bugfix: armtwist, model compat, others were failing file-write when file path contained spaces, oops
     add better err checking to separate "file doesn't exist" from other kinds of errors
+    translation shows error message if googletrans is not installed
+    tex file sort will ask for what unused files it should move
+
