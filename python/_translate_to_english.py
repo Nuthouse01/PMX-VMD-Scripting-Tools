@@ -59,11 +59,11 @@ TRANSLATE_BUDGET_TIMEFRAME = 1.2
 
 
 
+jp_to_en_google = None
 
 # set up the acutal translator libraries & objects
 try:
 	import googletrans
-	jp_to_en_google = googletrans.Translator()
 except ImportError as eee:
 	print(eee)
 	print("ERROR: failed to import primary translation provider library 'googletrans'")
@@ -275,14 +275,23 @@ def translate_to_english(pmx, moreinfo=False):
 	# check logfile thing to see if i am near my budget for translations
 	# actual translation: bulk translate
 	# 	if needed, individual-translate comment with newlines intact, get result with newlines intact
-	# print results to screen, also write to file
+	# print results to screen
 	# 	when printing comment, print "too_long_to_show"
-	# 	when writing comment, replace all newlines with SOMETHING
 	# then wait for user to approve the translations, or decline
 	# then read the translation file which might have been edited by user
 	# then apply the actual translations to the model
 	#	comment will need to have all SOMETHINGs returned back to newlines
 	# finally return
+	
+	# step zero: set up the translator thingy
+	global jp_to_en_google
+	if googletrans is None:
+		core.MY_PRINT_FUNC("ERROR: Python library 'googletrans' not installed, translation will be very limited!!")
+		core.MY_PRINT_FUNC("Please install this library with 'pip install googletrans' in Windows Command Prompt")
+		jp_to_en_google = None
+	else:
+		# everything is fine, just set up the normal way
+		jp_to_en_google = googletrans.Translator()
 	
 	
 	translate_maps = []
