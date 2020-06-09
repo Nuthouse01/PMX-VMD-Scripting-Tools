@@ -103,15 +103,33 @@ def prune_invalid_faces(pmx, moreinfo=False):
 	
 	#################
 	# NEW: delete duplicate faces within materials
-	# turn each face into a SORTED TUPLE then hash
 	
-	# first iter over all faces and create string versions
-	# for each item, sort then cast as tuple
-	hashfaces = [hash(tuple(sorted(f))) for f in pmx[2]]
-	# make into hashes: numbers compare faster than other types
-	# TODO: replace this with inverse zip thing
-	hashfaces_idx = [(t,d) for d,t in enumerate(hashfaces)]
-	# option b: for each material unit, sort & find dupes
+	# first iter over all faces and comparable hashes from each
+	# PROBLEM: faces from the same vertices but reversed are considered different faces, so sorting is not a valid way to differentiate
+	# the order of the vertices within the face are what matters, but they can start from any of the 3 points
+	# ABC === BCA === CAB
+	# therefore I will silently apply a "lowest index first" rule to all faces in the model, to make future runs of this script faster
+	# "rotating" the verts within a face shouldn't matter to any rendering mechanisms in any program
+	donothing = lambda x: x							# if i==0, don't change it
+	headtotail = lambda x: x.append(x.pop(0))		# if i==1, pop the head & move it to the tail
+	tailtohead = lambda x: x.insert(0, x.pop(2))	# if i==2, pop the tail & move it to the head
+	opdict = {0: donothing, 1: headtotail, 2: tailtohead}
+	for f in pmx[2]:
+		# for each face, find the index of the minimum vert within the face
+		i = f.index(min(f))
+		# this can be extremely slow, for maximum efficiency use dict-lambda trick instead of if-else chain.
+		# return value isn't used, the pop/append operate on the list reference
+		opdict[i](f)
+		# now the faces have been rotated in-place and will be saved to file
+	
+	# now the faces have been rotated so that dupes will align perfectly but mirrors will stay different!!
+	# turn each face into a sorted tuple and then hash it, numbers easier to store & compare
+	hashfaces = [hash(tuple(f)) for f in pmx[2]]
+	# now make a new list where this hashed value is attached to the index of the corresponding face
+	f_all_idx = []
+	f_all_idx.extend(range(len(pmx[2])))
+	hashfaces_idx = list(zip(hashfaces, f_all_idx))
+	# for each material unit, sort & find dupes
 	startidx = 0
 	all_dupefaces = []
 	for d,mat in enumerate(pmx[4]):
