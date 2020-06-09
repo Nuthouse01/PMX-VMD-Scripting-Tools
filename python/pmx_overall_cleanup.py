@@ -74,6 +74,7 @@ def find_boneless_bonebodies(pmx):
 def find_toolong_bonemorph(pmx):
 	# check for morphs with JP names that are too long and will not be successfully saved/loaded with VMD files
 	# for each morph, convert from string to bytes encoding to determine its length
+	# also checks that bone/morph names can be stored in shift_jis for VMD usage
 	core.set_encoding("shift_jis")
 	toolong_list_bone = []
 	failct = 0
@@ -160,47 +161,56 @@ def main(moreinfo=False):
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	
-	# verts after faces
-	# weights after verts, but before bones
-	# bones after verts
-	# translate after bones because it reduces the # of things to translate
-	# translate after display groups cuz it reduces the # of things to translate
-	# translate after morph winnow cuz it can delete morphs
-	# uniquify after translate
+	#### how should these operations be ordered?
+	# faces before verts, because faces define what verts are used
+	# verts before weights, so i operate on fewer vertices & run faster
+	# weights before bones, because weights determine what bones are used
+	# verts before morph winnow, so i operate on fewer vertices & run faster
+	# translate after bones/disp groups/morph winnow because they reduce the # of things to translate
+	# uniquify after translate, because translate can map multiple different JP to same EN names
+	# alphamorphs after translate, so it uses post-translate names for printing
+	# deform order after translate, so it uses post-translate names for printing
 	
+	# if ANY stage returns True then it has made changes
+	# final file-write is skipped only if NO stage has made changes
 	is_changed = False
-	core.MY_PRINT_FUNC("\n>>>> Deleting invalid faces <<<<")
+	core.MY_PRINT_FUNC("\n>>>> Deleting invalid & duplicate faces <<<<")
 	pmx, is_changed_t = _prune_invalid_faces.prune_invalid_faces(pmx, moreinfo)
-	is_changed |= is_changed_t
+	is_changed |= is_changed_t	# or-equals: if any component returns true, then ultimately this func returns true
 	core.MY_PRINT_FUNC("\n>>>> Deleting orphaned/unused vertices <<<<")
 	pmx, is_changed_t = _prune_unused_vertices.prune_unused_vertices(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Deleting unused bones <<<<")
 	pmx, is_changed_t = _prune_unused_bones.prune_unused_bones(pmx, moreinfo)
 	is_changed |= is_changed_t
-	core.MY_PRINT_FUNC("\n>>>> Fixing bone deform order <<<<")
-	pmx, is_changed_t = _bonedeform_fix.bonedeform_fix(pmx, moreinfo)
-	is_changed |= is_changed_t
-	core.MY_PRINT_FUNC("\n>>>> Normalizing weights <<<<")
+	core.MY_PRINT_FUNC("\n>>>> Normalizing vertex weights & normals <<<<")
 	pmx, is_changed_t = _weight_cleanup.weight_cleanup(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Pruning imperceptible vertex morphs <<<<")
 	pmx, is_changed_t = _morph_winnow.morph_winnow(pmx, moreinfo)
 	is_changed |= is_changed_t
-	core.MY_PRINT_FUNC("\n>>>> Standardizing alphamorphs and accounting for edging <<<<")
-	pmx, is_changed_t = _alphamorph_correct.alphamorph_correct(pmx, moreinfo)
-	is_changed |= is_changed_t
-	core.MY_PRINT_FUNC("\n>>>> Display groups that contain duplicates, empty groups, or missing bones/morphs <<<<")
+	core.MY_PRINT_FUNC("\n>>>> Fixing display groups: duplicates, empty groups, missing items <<<<")
 	pmx, is_changed_t = _dispframe_fix.dispframe_fix(pmx, moreinfo)
 	is_changed |= is_changed_t
-	core.MY_PRINT_FUNC("\n>>>> Fixing missing english names <<<<")
+	core.MY_PRINT_FUNC("\n>>>> Adding missing English names <<<<")
 	pmx, is_changed_t = _translate_to_english.translate_to_english(pmx, moreinfo)
-	is_changed |= is_changed_t	# or-equals: if any component returns true, then ultimately this func returns true
+	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Ensuring all names in the model are unique <<<<")
 	pmx, is_changed_t = _uniquify_names.uniquify_names(pmx, moreinfo)
 	is_changed |= is_changed_t
-	
+	core.MY_PRINT_FUNC("\n>>>> Fixing bone deform order <<<<")
+	pmx, is_changed_t = _bonedeform_fix.bonedeform_fix(pmx, moreinfo)
+	is_changed |= is_changed_t
+	core.MY_PRINT_FUNC("\n>>>> Standardizing alphamorphs and accounting for edging <<<<")
+	pmx, is_changed_t = _alphamorph_correct.alphamorph_correct(pmx, moreinfo)
+	is_changed |= is_changed_t
+
+	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+	core.MY_PRINT_FUNC("++++      Scanning for other potential issues      ++++")
+
 	longbone, longmorph = find_toolong_bonemorph(pmx)
+	# also checks that bone/morph names can be stored in shift_jis for VMD usage
 	if longmorph or longbone:
 		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("Minor warning: this model contains bones/morphs with JP names that are too long (>15 bytes)")
@@ -256,18 +266,20 @@ def main(moreinfo=False):
 		core.MY_PRINT_FUNC("These must be manually deleted or repaired using PMXE")
 		core.MY_PRINT_FUNC("These %d joints are invalid (index): %s" % (len(crashing_joints), crashing_joints))
 	
-	core.MY_PRINT_FUNC("\n>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<")
+	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 	if not is_changed:
-		core.MY_PRINT_FUNC(">>>> No writeback required <<<<")
+		core.MY_PRINT_FUNC("++++             No writeback required              ++++")
 		return
 	
-	core.MY_PRINT_FUNC(">>>> Done with cleanup, saving improvements to file <<<<")
+	core.MY_PRINT_FUNC("++++ Done with cleanup, saving improvements to file ++++")
 	
 	# write out
 	# output_filename_pmx = "%s_better.pmx" % core.get_clean_basename(input_filename_pmx)
 	output_filename_pmx = input_filename_pmx[0:-4] + "_better.pmx"
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx, moreinfo=moreinfo)
+	core.MY_PRINT_FUNC("Done!")
 	return None
 
 
