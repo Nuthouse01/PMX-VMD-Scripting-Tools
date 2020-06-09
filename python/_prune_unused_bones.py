@@ -88,97 +88,62 @@ def showprompt():
 	return pmx, input_filename_pmx
 	
 
-def identify_unused_bones(pmx):
+def identify_unused_bones(pmx, moreinfo=False):
 	#############################
-	# ready for logic
+	# THE PLAN:
+	# 1. get bones used by a rigidbody
+	# 2. get bones that have weight on at least 1 vertex
+	# 3. mark "exception" bones, done here so parents of exception bones are kept too
+	# 4. inheritance, aka "bones used by bones", recursively climb the tree & get all bones the "true" used bones depend on
+	# 5. tails
+	# 6. invert to get set of unused
 
 	# python set: no duplicates! .add(newbone), "in", .discard(delbone)
-	# used_bones is set of BONE INDEXES
-	used_bones = set()
-	unused_bones = set()
-	vertex_ct = {}
+	# true_used_bones is set of BONE INDEXES
+	true_used_bones = set()  # exception bones + rigidbody bones + vertex bones
+	vertex_ct = {}  # how many vertexes does each bone control? sometimes useful info
 
 	# first: bones used by a rigidbody
 	for body in pmx[8]:
-		used_bones.add(body[2])
+		true_used_bones.add(body[2])
 
 	# second: bones used by a vertex i.e. has nonzero weight
+	# any vertex that has nonzero weight for that bone
 	for vert in pmx[1]:
-		# 	any vertex that has nonzero weight for that bone
 		weighttype = vert[9]
 		weights = vert[10]
 		if weighttype==0:
-			used_bones.add(weights[0])
+			true_used_bones.add(weights[0])
 			core.increment_occurance_dict(vertex_ct,weights[0])
 		elif weighttype==1 or weighttype==3:
 			# b1, b2, b1w
 			# if b1w = 0, then skip b1
 			if weights[2] != 0:
-				used_bones.add(weights[0])
+				true_used_bones.add(weights[0])
 				core.increment_occurance_dict(vertex_ct,weights[0])
 			# if b1w = 1, then skip b2
 			if weights[2] != 1:
-				used_bones.add(weights[1])
+				true_used_bones.add(weights[1])
 				core.increment_occurance_dict(vertex_ct,weights[1])
 		elif weighttype==2 or weighttype==4:
 			for i in range(4):
 				if weights[i+4] != 0:
-					used_bones.add(weights[i])
+					true_used_bones.add(weights[i])
 					core.increment_occurance_dict(vertex_ct, weights[i])
 		
-	# NOTE: must remove null string from set of "used bones"
-	used_bones.discard(-1)
-
-	# set of all bones, for inverting purposes
-	all_bones_list = []
-	all_bones_list.extend(range(len(pmx[5])))
-	all_bones_set = set(all_bones_list)
+	# NOTE: some vertices/rigidbodies depend on "invalid" (-1) bones, clean that up here
+	true_used_bones.discard(-1)
 	
 	# third: mark the "exception" bones as "used" if they are in the model
-	for d,bone in enumerate(pmx[5]):
-		# look up the jp name of this bone
-		if bone[0] in BONES_TO_PROTECT:
-			used_bones.add(d)
+	for protect in BONES_TO_PROTECT:
+		# get index from JP name
+		i = core.my_sublist_find(pmx[5], 0, protect, getindex=True)
+		if i is not None:
+			true_used_bones.add(i)
 	
-	# fourth: inheritance chains
-	# this is the clever bit, i forget how it works tho lol
-	# this propagates through the parent-child relationships, a bone is used if anything that inherits from it is used
-	# completely ignore bone point-at links, for now. do that as the final stage.
-	# on first pass unused_bones is empty, it will only grow
-	# iterate over bones, growing the list of unused bones each pass
-	used_bones_from_bones_prev = set()
-	while True:
-		used_bones_from_bones = set()
-		for d, bone in enumerate(pmx[5]):
-			### if i am useless, then skip all the checks below
-			if d in unused_bones:
-				continue
-			# if this bone is not definitely unused, then assume it is useful
-			
-			# other bones use as parent, AKA has !useful! children [13]
-			### if i am maybe useful, add my parent to used bones
-			used_bones_from_bones.add(bone[5])
-			
-			# has append and append ratio is not 0
-			### if i am maybe useful, add my "append" source to used bones
-			if (bone[14] or bone[15]) and bone[16][1] != 0 and bone[16][0] != -1:
-				used_bones_from_bones.add(bone[16][0])
-		
-		unused_bones = all_bones_set.difference(used_bones.union(used_bones_from_bones))
-		# print("boneloop used from bones:", len(used_bones_from_bones))
-		
-		# repeat until "used from bones" used list no longer changes
-		if used_bones_from_bones == used_bones_from_bones_prev:
-			break
-		else:
-			used_bones_from_bones_prev = used_bones_from_bones
-	
-	# make the complement, unused -> used
-	used_bones = all_bones_set.difference(unused_bones)
-	
-	# fifth: ik groups
+	# build ik groups here
 	# IK + chain + target are treated as a group... if any 1 is used, all of them are used. build those groups now.
-	ik_groups = []
+	ik_groups = [] # list of sets
 	for d,bone in enumerate(pmx[5]):
 		if bone[23]:  # if ik enabled for this bone,
 			ik_set = set()
@@ -187,75 +152,71 @@ def identify_unused_bones(pmx):
 			for iklink in bone[24][3]:
 				ik_set.add(iklink[0])  # all this bone's IK links
 			ik_groups.append(ik_set)
-	# now identify ik groups which contain used bones
-	used_ik_groups = []
-	for d in used_bones:
+	
+	# fourth: NEW APPROACH FOR SOLVING INHERITANCE: RECURSION!
+	# for each bone that we know to be used, run UP the inheritance tree and collect everything that it depends on
+	# recursion inputs: pmx bonelist, ik groups, set of already-known-used, and the bone to start from
+	# bonelist is readonly, ik groups are readonly
+	# set of already-known-used overlaps with set-being-built, probably just use one global ref to save time merging sets
+	# standard way: input is set-of-already-known, return set-built-from-target, that requires merging results after each call tho
+	# BUT each function level adds exactly 1 or 0 bones to the set, therefore can just modify the set that is being passed around
+	
+	def recursive_climb_inherit_tree(target, set_being_built):
+		# implicitly inherits variables pmx, ik_groups from outer scope
+		if target in set_being_built or target == -1:
+			# stop condition: if this bone idx is already known to be used, i have already ran recursion from this node. don't do it again.
+			# also abort if the target is -1 which means invalid bone
+			return
+		# if not already in the set, but recursion is being called on this, then this bone is a "parent" of a used bone and should be added.
+		set_being_built.add(target)
+		# now the parents of THIS bone are also used, so recurse into those.
+		bb = pmx[5][target]
+		# acutal parent
+		recursive_climb_inherit_tree(bb[5], set_being_built)
+		# partial inherit: if partial rot or partial move, and ratio is nonzero
+		if (bb[14] or bb[15]) and bb[16][1] != 0:
+			recursive_climb_inherit_tree(bb[16][0], set_being_built)
+		# IK groups: if in an IK group, recurse to all members of that IK group
 		for group in ik_groups:
-			if d in group:
-				used_ik_groups.append(group)
-	# now add those groups to the set of known used bones
-	for group in used_ik_groups:
-		used_bones = used_bones.union(group)
+			if target in group:
+				for ik_member in group:
+					recursive_climb_inherit_tree(ik_member, set_being_built)
+					
+	parent_used_bones = set()  # true_used_bones + parents + point-at links
+	# now that the recursive function is defined, actually invoke the function from every truly-used bone
+	for tu in true_used_bones:
+		recursive_climb_inherit_tree(tu, parent_used_bones)
 	
-	# update the complement, used -> unused
-	unused_bones = all_bones_set.difference(used_bones)
+	# fifth: "tail" or point-at links
+	# propogate DOWN the inheritance tree exactly 1 level, no more.
+	# also get all bones these tails depend on, it shouldn't depend on anything new but it theoretically can.
+	final_used_bones = set()
+	for bidx in parent_used_bones:
+		b = pmx[5][bidx]
+		# if this bone has a tail, add it to the set
+		if b[12]:
+			recursive_climb_inherit_tree(b[13][0], final_used_bones)
+	# now add the actual parents
+	final_used_bones = final_used_bones.union(parent_used_bones)
 	
-	# sixth: inheritance chains, again
-	# don't forget to include parents of any IK bones
-	used_bones_from_bones_prev = set()
-	while True:
-		used_bones_from_bones = set()
-		for d, bone in enumerate(pmx[5]):
-			### if i am useless, then skip all the checks below
-			if d in unused_bones:
-				continue
-			# if this bone is not definitely unused, then assume it is useful
-			
-			# other bones use as parent, AKA has !useful! children [13]
-			### if i am maybe useful, add my parent to used bones
-			used_bones_from_bones.add(bone[5])
-			
-			# has append and append value is not 0
-			### if i am maybe useful, add my "append" source to used bones
-			if (bone[14] or bone[15]) and bone[16][1] != 0 and bone[16][0] != -1:
-				used_bones_from_bones.add(bone[16][0])
-		
-		unused_bones = all_bones_set.difference(used_bones.union(used_bones_from_bones))
-		# print("boneloop used from bones:", len(used_bones_from_bones))
-		
-		# repeat until "used from bones" used list no longer changes
-		if used_bones_from_bones == used_bones_from_bones_prev:
-			break
-		else:
-			used_bones_from_bones_prev = used_bones_from_bones
+	# sixth: assemble the final "unused" set by inverting
+	# set of all bones, for inverting purposes
+	all_bones_list = []
+	all_bones_list.extend(range(len(pmx[5])))
+	all_bones_set = set(all_bones_list)
 	
-	# seventh: point-at links
-	# after establishing what is truly actually used, THEN we care about point-at links
-	# anything used as a link for something used is, itself, weakly used
-	# only make 1 pass of this, that way the "used" doesn't propagate downward along the chain
-	used_bones_from_links = set(())
-	for d, bone in enumerate(pmx[5]):
-		
-		### if i am useless, then skip all the checks below
-		if d in unused_bones:
-			continue
-		
-		# a bone is used if other !useful! bones use as link point
-		### if i am useful, and i am using a point-at link, add my link target to used bones
-		if bone[12] and bone[13]:
-			used_bones_from_links.add(bone[13][0])
-	
-	# assemble the final "used" and "unused" sets
-	used_bones = (used_bones.union(used_bones_from_bones)).union(used_bones_from_links)
-	unused_bones = all_bones_set.difference(used_bones)
+	unused_bones = all_bones_set.difference(final_used_bones)
 	unused_bones_list = sorted(list(unused_bones))
 	
-	# debug aid
-	if PRINT_VERTICES_CONTROLLED_BY_EACH_BONE:
-		core.MY_PRINT_FUNC("Number of vertices controlled by each bone:")
-		for b in all_bones_list:
-			if b in vertex_ct:
-				core.MY_PRINT_FUNC("#: %d    ct: %d" % (b, vertex_ct[b]))
+	# print neat stuff
+	if moreinfo:
+		core.MY_PRINT_FUNC("Used: true = %d, true+parents = %d, true+parents+tails = %d" % (len(true_used_bones), len(parent_used_bones),len(final_used_bones)))
+		# debug aid
+		if PRINT_VERTICES_CONTROLLED_BY_EACH_BONE:
+			core.MY_PRINT_FUNC("Number of vertices controlled by each bone:")
+			for bp in all_bones_list:
+				if bp in vertex_ct:
+					core.MY_PRINT_FUNC("#: %d    ct: %d" % (bp, vertex_ct[bp]))
 	
 	return unused_bones_list
 	
@@ -387,7 +348,7 @@ def apply_bone_remapping(pmx, bone_dellist, bone_shiftmap):
 
 def prune_unused_bones(pmx, moreinfo=False):
 	# first build the list of bones to delete
-	unused_list = identify_unused_bones(pmx)
+	unused_list = identify_unused_bones(pmx, moreinfo)
 	
 	if not unused_list:
 		core.MY_PRINT_FUNC("Nothing to be done")
