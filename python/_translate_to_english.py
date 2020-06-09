@@ -34,6 +34,13 @@ DEBUG = False
 PREFER_LOCAL_TRANSLATE = False
 
 
+# MikuMikuDance can display JP characters just fine in the "model info" popup when you load a model
+# also I've seen one or two models that have the JP model info blank and all important info in the EN model info
+# so I decided to default to not translating the model info section, only copy JP->EN if EN is blank
+# if this is true it will try to translate the model info with exactly the same logic as all other fields
+TRANSLATE_MODEL_COMMENT = False
+
+
 # sometimes chinese translation gives better results than japanese translation
 # when false, force input to be interpreted as Japanese. When true, autodetect input language.
 GOOGLE_AUTODETECT_LANGUAGE = True
@@ -59,9 +66,9 @@ TRANSLATE_BUDGET_TIMEFRAME = 1.2
 
 
 
-jp_to_en_google = None
 
 # set up the acutal translator libraries & objects
+jp_to_en_google = None
 try:
 	import googletrans
 except ImportError as eee:
@@ -335,7 +342,7 @@ def translate_to_english(pmx, moreinfo=False):
 				# no change
 				pass
 	
-	# if model name is empty, give it something. same for comment
+	# if JP model name is empty, give it something. same for comment
 	if pmx[0][1] == "":
 		pmx[0][1] = "model"
 	if pmx[0][3] == "":
@@ -360,25 +367,24 @@ def translate_to_english(pmx, moreinfo=False):
 	# comment(jp=3,en=4)
 	comment_state = 0
 	comment_jp_clean = "" # the thing that is given to translate, if needed
-	# new_en_name = fix_eng_name(pmx[0][3], pmx[0][4]) # this should disable translation of comments
-	if not pmx[0][4] or pmx[0][4].isspace():
-		new_en_name = pmx[0][3]
+	if TRANSLATE_MODEL_COMMENT:
+		# translate model comment exactly the same as all other fields
+		new_en_name = fix_eng_name(pmx[0][3], pmx[0][4])
 	else:
-		new_en_name = pmx[0][4]
+		# if EN is empty, copy JP -> EN. otherwise leave as-is
+		if not pmx[0][4] or pmx[0][4].isspace():
+			new_en_name = pmx[0][3]
+		else:
+			new_en_name = pmx[0][4]
 	if new_en_name is None:
 		# googletrans is required, store and translate in bulk later
 		comment_state = 1
-		# DOES get printed (as too_long_to_print), DOES go to translation file (newlines replaced with something) AFTER going to internet
+		# how to cleanly print before/after when comment is many lines long? printed as "too_long_to_print"
 		#### SPECIAL HANDLING! replace newlines with something
-		# comment = pmx[0][3].replace("\n", NEWLINE_ESCAPE_CHAR)
-		comment_jp_clean = pmx[0][3].replace("\r", "")  # delete these linereturn chars
+		comment_jp_clean = pmx[0][3].replace("\r", "")  # delete these linereturn chars (note that comment requires /r/n in final result after translation)
 		comment_jp_clean = re.sub(r'\n\n+', r'\n\n', comment_jp_clean)  # collapse multiple newlines to just 2
 		commentline_print = [label_dict[0], "4", "google", "OLD EN:", "too_long", "NEW EN:", "too_long_to_print", "JP:","too_long"]
 		translate_maps.append(commentline_print)
-		# comment = comment.replace("\n", NEWLINE_ESCAPE_CHAR)
-		# new_en_name = actual_translate(comment)
-		# translate_queue.append(comment)
-		# translate_queue_idx.append([0, 4])
 	elif new_en_name != pmx[0][4]:
 		# translated without going to internet (copied from jp)
 		comment_state = 2
@@ -439,6 +445,7 @@ def translate_to_english(pmx, moreinfo=False):
 			if comment_state == 1:
 				# already removed linereturn and collapsed newlines, ready to go
 				newcomment = actual_translate(comment_jp_clean)
+				# put back the /r/n
 				newcomment = newcomment.replace('\n','\r\n')
 				pmx[0][4] = newcomment
 		except Exception as e:
