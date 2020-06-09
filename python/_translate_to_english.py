@@ -100,8 +100,8 @@ def check_translate_budget(num_proposed: int) -> bool:
 			i += 1
 	# then interpret the file: how many requests happened in the past <timeframe>
 	requests_in_timeframe = sum([entry[1] for entry in record])
-	core.MY_PRINT_FUNC("You have used %d / %d translation requests within the last %f hrs" %
-		  (requests_in_timeframe, TRANSLATE_BUDGET_MAX_REQUESTS, TRANSLATE_BUDGET_TIMEFRAME))
+	core.MY_PRINT_FUNC("You have used {} / {} translation requests within the last {:.4} hrs".format(
+		requests_in_timeframe, TRANSLATE_BUDGET_MAX_REQUESTS, TRANSLATE_BUDGET_TIMEFRAME))
 	# make the decision
 	if (requests_in_timeframe + num_proposed) <= TRANSLATE_BUDGET_MAX_REQUESTS:
 		# this many translations is OK! go ahead!
