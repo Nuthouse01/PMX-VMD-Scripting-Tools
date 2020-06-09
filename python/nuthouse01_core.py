@@ -104,7 +104,7 @@ def pause_and_quit(message):
 # >THIS LEVEL< decides when it's appropriate to print, not the calling level
 # track last % i did print to know when it's time to print again
 # track last curr, when "curr" decreases, then i reset my tracker
-PROGRESS_REFRESH_RATE = 0.04
+PROGRESS_REFRESH_RATE = 0.03
 PROGRESS_LAST_VALUE = 0.0  # last%
 def print_progress_oneline(newpercent):
 	global PROGRESS_LAST_VALUE

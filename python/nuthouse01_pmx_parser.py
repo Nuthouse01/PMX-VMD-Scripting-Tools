@@ -33,12 +33,12 @@ DEBUG = False
 # utf-8 might make files very slightly smaller but i haven't tested it
 ENCODE_WITH_UTF8 = False
 
-
-# for progress printouts, estimates of how long each section will take relative to the whole (when parsing/encoding)
-PARSE_PERCENT_VERT = 0.60
-PARSE_PERCENT_FACE = 0.15
-PARSE_PERCENT_VERTFACE = PARSE_PERCENT_FACE + PARSE_PERCENT_VERT
-PARSE_PERCENT_MORPH = 0.25
+# parsing progress printouts: depend on the actual number of bytes processed, very accurate & linear
+# encoding progress printouts: these vars estimate how long one item of each type will take to complete (relatively)
+ENCODE_FACTOR_VERT = 1
+ENCODE_FACTOR_FACE = .25
+ENCODE_FACTOR_MORPH = .5
+# dont touch these
 ENCODE_PERCENT_VERT = 0
 ENCODE_PERCENT_FACE = 0
 ENCODE_PERCENT_VERTFACE = 0
@@ -165,9 +165,9 @@ def parse_pmx_vertices(raw: bytearray) -> list:
 			core.MY_PRINT_FUNC("invalid weight type for vertex", weighttype)
 		# then there is one final float after the weight crap
 		edgescale = core.my_unpack("f", raw)
-		# display progress printouts
-		core.print_progress_oneline(PARSE_PERCENT_VERT * d / i)
 
+		# display progress printouts
+		core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
 		# assemble all the info into a list for returning
 		thisvert = [posX, posY, posZ, normX, normY, normZ, u, v, addl_vec4s, weighttype, weights, edgescale]
 		retme.append(thisvert)
@@ -185,7 +185,7 @@ def parse_pmx_surfaces(raw: bytearray) -> list:
 		# each entry is a group of 3 vertex indeces that make a face
 		thisface = core.my_unpack("3" + IDX_VERT, raw)
 		# display progress printouts
-		core.print_progress_oneline(PARSE_PERCENT_VERT + (PARSE_PERCENT_FACE * d / i))
+		core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
 		retme.append(thisface)
 	return retme
 
@@ -361,7 +361,7 @@ def parse_pmx_morphs(raw: bytearray) -> list:
 			these_items.append(this_item)
 		
 		# display progress printouts
-		core.print_progress_oneline(PARSE_PERCENT_VERTFACE + (PARSE_PERCENT_MORPH * d / i))
+		core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
 		# assemble the data into list for returning
 		thismorph = [name_jp, name_en, panel, morphtype, these_items]
 		retme.append(thismorph)
@@ -403,6 +403,8 @@ def parse_pmx_rigidbodies(raw: bytearray) -> list:
 		(mass, move_damp, rot_damp, repel, friction, physmode) = core.my_unpack("5f b", raw)
 		# physmode: 0=follow bone, 1=physics, 2=physics rotate only (pivot on bone)
 		
+		# display progress printouts
+		core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
 		# assemble the data into list for returning
 		thisbody = [name_jp, name_en, bone_idx, group, nocollide_mask, shape, sizeX, sizeY, sizeZ, posX, posY, posZ,
 					rotX, rotY, rotZ, mass, move_damp, rot_damp, repel, friction, physmode]
@@ -422,6 +424,8 @@ def parse_pmx_joints(raw: bytearray) -> list:
 		(rotminX, rotminY, rotminZ, rotmaxX, rotmaxY, rotmaxZ) = core.my_unpack("3f 3f", raw)
 		(springposX, springposY, springposZ, springrotX, springrotY, springrotZ) = core.my_unpack("3f 3f", raw)
 
+		# display progress printouts
+		core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
 		# assemble the data into list for returning
 		thisjoint = [name_jp, name_en, jointtype, rb1_idx, rb2_idx, posX, posY, posZ,
 					 rotX, rotY, rotZ, posminX, posminY, posminZ, posmaxX, posmaxY, posmaxZ,
@@ -818,6 +822,7 @@ def read_pmx(pmx_filename: str, moreinfo=False) -> list:
 	core.MY_PRINT_FUNC("...total size   = %sKB" % round(len(pmx_bytes) / 1024))
 	core.MY_PRINT_FUNC("Begin parsing PMX file '%s'" % pmx_filename_clean)
 	core.reset_unpack()
+	core.print_progress_oneline(0)
 	A = parse_pmx_header(pmx_bytes)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...PMX version  = v%s" % str(A[0]))
 	core.MY_PRINT_FUNC("...model name   = JP:'%s' / EN:'%s'" % (A[1], A[2]))
@@ -865,13 +870,17 @@ def write_pmx(pmx_filename: str, pmx: list, moreinfo=False) -> None:
 	global ENCODE_PERCENT_VERTFACE
 	global ENCODE_PERCENT_MORPH
 	
-	# total progress = verts + faces/3 + sum of morphs/3
-	ALLPROGRESSIZE = len(pmx[1]) + len(pmx[2])/4 + sum([len(m[4]) for m in pmx[6]])/2
-	ENCODE_PERCENT_VERT = len(pmx[1]) / ALLPROGRESSIZE
-	ENCODE_PERCENT_FACE = (len(pmx[2]) / 4) / ALLPROGRESSIZE
+	# total progress = verts + faces/4 + sum of morphs/2
+	total_vert = len(pmx[1]) * ENCODE_FACTOR_VERT
+	total_face = len(pmx[2]) * ENCODE_FACTOR_FACE
+	total_morph = sum([len(m[4]) for m in pmx[6]]) * ENCODE_FACTOR_MORPH
+	ALLPROGRESSIZE = total_vert + total_face + total_morph
+	ENCODE_PERCENT_VERT = total_vert / ALLPROGRESSIZE
+	ENCODE_PERCENT_FACE = total_face / ALLPROGRESSIZE
 	ENCODE_PERCENT_VERTFACE = ENCODE_PERCENT_VERT + ENCODE_PERCENT_FACE
-	ENCODE_PERCENT_MORPH = (sum([len(m[4]) for m in pmx[6]]) / 2) / ALLPROGRESSIZE
+	ENCODE_PERCENT_MORPH = total_morph / ALLPROGRESSIZE
 	
+	core.print_progress_oneline(0)
 	lookahead = encode_pmx_lookahead(pmx)
 	output_bytes += encode_pmx_header(pmx[0], lookahead)
 	output_bytes += encode_pmx_vertices(pmx[1])

@@ -87,9 +87,11 @@ GUARANTEE_FRAMES_SORTED = True
 APPEND_SIGNATURE = True
 SIGNATURE = "Nuthouse01"
 
-# for progress printouts, estimates of how long each section will take relative to the whole (when parsing/encoding)
-PARSE_PERCENT_BONE = 0.80
-PARSE_PERCENT_MORPH = 0.20
+# parsing progress printouts: depend on the actual number of bytes processed, very accurate & linear
+# encoding progress printouts: these vars estimate how long one item of each type will take to complete (relatively)
+ENCODE_FACTOR_BONE = 1
+ENCODE_FACTOR_MORPH = 0.25
+# dont touch these
 ENCODE_PERCENT_BONE = 0
 ENCODE_PERCENT_MORPH = 0
 
@@ -212,7 +214,7 @@ def parse_vmd_boneframe(raw) -> (list, dict):
 			if f != 0 or [xp, yp, zp] != [0, 0, 0] or [xrot_q, yrot_q, zrot_q, wrot_q] != [0, 0, 0, 1]:
 				core.increment_occurance_dict(bonedict, bname_str)
 			# display progress printouts
-			core.print_progress_oneline(PARSE_PERCENT_BONE * z / boneframe_ct)
+			core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("frame=", z)
@@ -255,7 +257,7 @@ def parse_vmd_morphframe(raw) -> (list, dict):
 			if f != 0 or v != 0:
 				core.increment_occurance_dict(morphdict, mname_str)
 			# display progress printouts
-			core.print_progress_oneline(PARSE_PERCENT_BONE + (PARSE_PERCENT_MORPH * z / morphframe_ct))
+			core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("frame=", z)
@@ -292,7 +294,7 @@ def parse_vmd_camframe(raw) -> list:
 							 dist_bx, dist_ay, dist_by, ang_ax, ang_bx, ang_ay, ang_by, fov, per]
 			camframe_list.append(this_camframe)
 			# display progress printouts
-			core.print_progress_oneline(z / camframe_ct)
+			core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("frame=", z)
@@ -594,6 +596,7 @@ def read_vmd(vmd_filename: str, getdict=False, moreinfo=False):
 	# (quaternion to euler, radians to degrees, floats to ints, etc)
 	# also generate the bonedict and morphdict
 	
+	core.print_progress_oneline(0)
 	A = parse_vmd_header(vmd_bytes)
 	B, bonedict = parse_vmd_boneframe(vmd_bytes)
 	C, morphdict = parse_vmd_morphframe(vmd_bytes)
@@ -642,6 +645,7 @@ def write_vmd(vmd_filename: str, vmd: list, moreinfo=False) -> None:
 	core.MY_PRINT_FUNC("Begin encoding VMD file '%s'" % vmd_filename_clean)
 	core.set_encoding("shift_jis")
 	
+	core.print_progress_oneline(0)
 	# this is where sorting happens, if it happens
 	if GUARANTEE_FRAMES_SORTED:
 		# bones & morphs: primarily sorted by NAME, with FRAME# as tiebreaker. the second sort is the primary one.
@@ -657,9 +661,12 @@ def write_vmd(vmd_filename: str, vmd: list, moreinfo=False) -> None:
 	
 	global ENCODE_PERCENT_BONE
 	global ENCODE_PERCENT_MORPH
-	ALLENCODE = len(vmd[1]) + len(vmd[2])/4
-	ENCODE_PERCENT_BONE = len(vmd[1]) / ALLENCODE
-	ENCODE_PERCENT_MORPH = (len(vmd[2])/4) / ALLENCODE
+	# cam is not included cuz a file contains only bone+morph OR cam
+	total_bone = len(vmd[1]) * ENCODE_FACTOR_BONE
+	total_morph = len(vmd[2]) * ENCODE_FACTOR_MORPH
+	ALLENCODE = total_bone + total_morph
+	ENCODE_PERCENT_BONE = total_bone / ALLENCODE
+	ENCODE_PERCENT_MORPH = total_morph / ALLENCODE
 	
 	# arg "vmd" is the same structure created by "parse_vmd()"
 	# assume the object is perfect, no sanity-checking needed, it will all be done when parsing the text input
