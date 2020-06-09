@@ -177,7 +177,7 @@ def prune_unused_vertices(pmx, moreinfo=False):
 	numdeleted = len(delme_verts)
 	prevtotal = len(pmx[1])
 	if numdeleted == 0:
-		core.MY_PRINT_FUNC("Nothing to be done")
+		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
 	
 	delme_range = delme_list_to_rangemap(delme_verts)

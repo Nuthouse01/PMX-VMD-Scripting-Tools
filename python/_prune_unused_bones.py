@@ -351,7 +351,7 @@ def prune_unused_bones(pmx, moreinfo=False):
 	unused_list = identify_unused_bones(pmx, moreinfo)
 	
 	if not unused_list:
-		core.MY_PRINT_FUNC("Nothing to be done")
+		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
 	
 	# convert the list of individual bones to remove into a list of ranges
