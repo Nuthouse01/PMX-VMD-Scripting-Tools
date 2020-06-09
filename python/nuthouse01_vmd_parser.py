@@ -1,4 +1,4 @@
-# Nuthouse01 - 06/04/2020 - v4.06
+# Nuthouse01 - 06/08/2020 - v4.07
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 # massive thanks and credit to "Isometric" for helping me discover the quaternion transformation method used in mmd!!!!
@@ -719,7 +719,7 @@ def main():
 ########################################################################################################################
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 06/04/2020 - v4.06")
+	core.MY_PRINT_FUNC("Nuthouse01 - 06/08/2020 - v4.07")
 	if DEBUG:
 		main()
 	else:
