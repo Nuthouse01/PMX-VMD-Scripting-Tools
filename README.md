@@ -1,7 +1,7 @@
 # VMD-to-text-Conversion-Tool
 
 VMD Conversion Tool README  
-Created by Nuthouse01 - 06/04/2020 - v4.06  
+Created by Nuthouse01 - 06/08/2020 - v4.07  
 
 ###### Legal:
 This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause. You are permitted to examine and modify the code as you see fit, but I make no guarantees about the safety or quality of the result.  
@@ -353,4 +353,9 @@ The following files should be included with this README:
     more words in translation dictionary
     disable translation of model comments since the model info popup in MMD can display JP characters just fine
     slight changes to printouts in most scripts
+    
+    v4.07:
+    bugfix: alphamorph feature "fix edging on default hidden materials" forgot to check that add-morphs were modifying the relevant material, oops
+    bugfix: armtwist, model compat, others were failing file-write when file path contained spaces, oops
+    add better err checking to separate "file doesn't exist" from other kinds of errors 
     
