@@ -28,6 +28,7 @@ helptext = '''====================
 prune_invalid_faces:
 This script will delete any invalid faces in the model, a simple operation.
 An invalid face is any face whose 3 defining vertices are not unique with respect to eachother.
+This also deletes any duplicate faces within material units (faces defined by the same 3 vertices) and warns about (but doesn not fix) duplicates spanning material units.
 '''
 
 iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_faceprune.pmx"
