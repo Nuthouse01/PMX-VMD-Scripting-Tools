@@ -1,7 +1,7 @@
 # VMD-to-text-Conversion-Tool
 
 VMD Conversion Tool README
-Created by Nuthouse01 - 06/08/2020 - v4.07
+Created by Nuthouse01 - 06/10/2020 - v4.08
 
 ###### Legal:
 This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause. You are permitted to examine and modify the code as you see fit, but I make no guarantees about the safety or quality of the result.
@@ -58,6 +58,8 @@ This script runs forward kinematics for a given VMD dance motion on the bone str
 This very basic script will parse a PMX file and print the JP names alongside the EN names for all bones and morphs. This way you can see the full list of morphs the model contains without needing to use PMXE.
 
 ### Notes:
+Note: when viewing textfile outputs with a text editor, if you see no Kanji and instead see lots of gibberish, you may need to change the language settings. For example in Notepad++, you should select Encoding > Character Sets > Japanese > Shift-JIS.
+
 Note: if you want to run the Python version rather than the EXE version, you will need have Python 3.4 or higher and need to install the "googletrans" library (pip install googletrans). This is the only non-standard library used in my codebase.
 
 Note: the EXE file is so much larger than all the Python scripts because it was bundled with PyInstaller, and contains an entire portable Python installation.
@@ -361,4 +363,11 @@ The following files should be included with this README:
     add better err checking to separate "file doesn't exist" from other kinds of errors
     translation shows error message if googletrans is not installed
     tex file sort will ask for what unused files it should move
+
+    v4.08:
+    bugfix: "delete duplicate faces" was conflating faces with opposite vertex order, now fixed
+    bugfix: bonedeform now handles bones with invalid partial inherit, though this should never be needed in a good model
+    re-order stages in pmx_overall_cleanup and improved printing
+    overhaul identify_unused_bones with new recursive strategy, cleaner & easier to understand & gives better results
+    more accurate progress estimate when reading PMX/VMD
 
