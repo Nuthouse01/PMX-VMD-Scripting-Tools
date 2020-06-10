@@ -206,47 +206,98 @@ The following files should be included with this README:
 
 #### Changelog: 
 
-    2.03:
-    vmd_convert_tool:
-        better functionalization
-        better support for old motions (early end)
-        moved when the sorting happens
+    v4.08:
+    bugfix: "delete duplicate faces" was conflating faces with opposite vertex order, now fixed
+    bugfix: bonedeform now handles bones with invalid partial inherit, though this should never be needed in a good model
+    re-order stages in pmx_overall_cleanup and improved printing
+    overhaul identify_unused_bones with new recursive strategy, cleaner & easier to understand & gives better results
+    more accurate progress estimate when reading PMX/VMD
     
-    2.04:
-    vmd_convert_tool:
-        quaternion transform fix
-        bonedict/morphdict sorting
-        added "choose from options" function
-        added selftest
+    v4.07:
+    bugfix: alphamorph feature "fix edging on default hidden materials" forgot to check that add-morphs were modifying the relevant material, oops
+    bugfix: armtwist, model compat, others were failing file-write when file path contained spaces, oops
+    add better err checking to separate "file doesn't exist" from other kinds of errors
+    translation shows error message if googletrans is not installed
+    tex file sort will ask for what unused files it should move
     
-    2.05:
-    moved some code to "nuthouse01_core"
-    decided to distribute all scripts as a bundle
-    added several simple scripts
-    enforced standard templating for all scripts
+    v4.06:
+    new: morph_hide
+    new: morph_invert
+    new: morph_scale
+    modified "prune invalid faces" to also detect & remove duplicate faces within material units
+    more words in translation dictionary
+    disable translation of model comments since the model info popup in MMD can display JP characters just fine
+    slight changes to printouts in most scripts
     
-    2.06:
-    created new script "vmd_model_compatability_check"
-    in "vmd_convert_tool", disabled the writing of bonedict/morphdict because vmd_model_compatability_check overshadows that feature
+    4.05:
+    bone deform check: bugfixes, better IK understanding
+    more translation words
+    warn about bone/morph names that can't be stored in SHIFT-JIS
+    prune unused bones: actually check that IK bones are used instead of just assuming
+    refine boneless rigidbody checks & warnings
+    automatically fix edging on default hidden materials with "show" morphs
+    weight cleanup: also normalize normals, including 0,0,0 "invalid" normals
     
-    2.07:
-    fixed a bug in "weight_cleanup" due to not actually testing my code
+    4.04:
+    bugfix: weight_cleanup was incorrectly counting the number of changes it made (was actually operating correctly tho)
+    new: pmx_overall_cleanup finds "shadowy materials" i.e. hidden materials with visible edging
+    new: pmx_overall_cleanup finds physics bodies that aren't constrained by any joints
+    new: pmx_overall_cleanup fixes bone deform order issues, or causes a warning if it finds a circular relationship
     
-    2.08:
-    fixed a bug in "identify_unused_bones" due to not actually testing my code
-    changed encoding from "shift_jisx0213" to "shift_jis" to properly handle backslashes, in core and in VMD
-    New scripts:
-    +bone_geometry_isolate
-    +vmd_armtwist_convert
-    +bone_endpoint_create_remove
-    +texture_file_sort
-    moved more functions into the 'core' file
+    4.03:
+    bugfix: did imports wrong oops
+    new script: "pmx_arm_ik_addremove" for adding arm IK rigs
     
-    v2.09:
-    fixed a logical bug in "bone_endpoint_create_remove"
-    stopped using default, built custom csv writer to preserve leading spaces of things
-    bugfix in "vmd_convert_tool" to handle strings exactly 15 bytes long that end with a multibyte char
-    speculative bugfix to handle multibyte chars that get cut off by 15-byte limit (is that even possible?)
+    4.02:
+    bugfix: texture_file_sort wasn't overwriting the original files as I had intended
+    limit # of longbones/longmorphs/noboneRBs that can be printed by pmx_overall_cleanup to 20
+    texture_file_sort: if all the files in a folder are unused, display that folder name with *** instead of each individual file
+    changed progress_print_oneline approach
+    fixed imports to work whether imported or standalone
+    "more info" checkbox now controls whether VMD/PMX breakdown is shown or not
+    
+    4.01:
+    learned that VMD does not handle long bone/morphs, changed model-compatability to only use exact match checking
+    moved "graphic_user_interface" up a level to make it more important
+    
+    4.00:
+    add "texture_file_sort" script to organize file references within a PMX file
+    rebuilt GUI and combined all scripts into one package, The Perfect Unified GUI
+    removed "load" button, removed ability to load once and run multiple times
+    added "clear" button to GUI
+    bugfix PMX parser because online file spec was incorrect
+    MASSIVE upgrades to local translation ability
+    modify how # of unique bones/morphs is printed when parsing VMD
+    create more overrideable function pointers MY_FILEPROMPT_FUNC, MY_SIMPLECHOICE_FUNC just the same as MY_PRINT_FUNC
+    
+    3.61:
+    added threading module to GUI to allow moving/resizing/scrolling while the script is running
+    added a few more name maps to the local translation file
+    
+    v3.6:
+    various bugfixes and improvements to the "pmx overall cleanup" pipeline
+    added a GUI frontend that better displays JP chars and includes a file selection dialoge
+    made "morph winnow" just use hardcoded 0.0003 threshold instead of prompting
+    revised error reporting method across all scripts to rely more on raising/catching errors instead of "pause and quit" thing
+    from translate script, removed MyMemory provider and pretty-printing to reduce final executable size
+    from translate script, removed confirmation of translations to make gui integration cleaner
+    for all(?) scripts, made a "moreinfo" argument to control what used to be debug print statements
+    
+    v3.51:
+    added prune_unused_bones, dispframe_fix, find_crashing_joints into the "pmx_overall_cleanup" pipeline
+    
+    v3.5:
+    added "pmx_overall_cleanup.py" which runs through all scripts whose names start with underscores
+        good for first-pass cleanup of models
+    
+    v3.02:
+    added PMX WRITE ability
+        various restructuring and improvment of my custom pack/unpack functions, now both use the same recursive approach
+    print statement changes: binary/text file read/write print full absolute file path, read/write pmx/vmd print only basename
+    
+    v3.01:
+    "prompt_user_filename" now prints the full file path when given a non-existant file
+    added .exe versions of all 5 scripts, generated with PyInstaller
     
     v3.00:
     removed scripts for PMX editing, left only scripts for VMD manipulation and tools to help with that
@@ -278,96 +329,45 @@ The following files should be included with this README:
     add new script "pmx_list_bone_morph_names.py" so EN users can discover the JP names of a model without using PMXE
     decided to release this script under the name Nuthouse01, changed all uses accordingly
     
-    v3.01:
-    "prompt_user_filename" now prints the full file path when given a non-existant file
-    added .exe versions of all 5 scripts, generated with PyInstaller
-
-    v3.02:
-    added PMX WRITE ability
-        various restructuring and improvment of my custom pack/unpack functions, now both use the same recursive approach
-    print statement changes: binary/text file read/write print full absolute file path, read/write pmx/vmd print only basename
-
-    v3.5:
-    added "pmx_overall_cleanup.py" which runs through all scripts whose names start with underscores
-        good for first-pass cleanup of models
-        
-    v3.51:
-    added prune_unused_bones, dispframe_fix, find_crashing_joints into the "pmx_overall_cleanup" pipeline
+    v2.09:
+    fixed a logical bug in "bone_endpoint_create_remove"
+    stopped using default, built custom csv writer to preserve leading spaces of things
+    bugfix in "vmd_convert_tool" to handle strings exactly 15 bytes long that end with a multibyte char
+    speculative bugfix to handle multibyte chars that get cut off by 15-byte limit (is that even possible?)
     
-    v3.6:
-    various bugfixes and improvements to the "pmx overall cleanup" pipeline
-    added a GUI frontend that better displays JP chars and includes a file selection dialoge
-    made "morph winnow" just use hardcoded 0.0003 threshold instead of prompting
-    revised error reporting method across all scripts to rely more on raising/catching errors instead of "pause and quit" thing
-    from translate script, removed MyMemory provider and pretty-printing to reduce final executable size
-    from translate script, removed confirmation of translations to make gui integration cleaner
-    for all(?) scripts, made a "moreinfo" argument to control what used to be debug print statements
+    2.08:
+    fixed a bug in "identify_unused_bones" due to not actually testing my code
+    changed encoding from "shift_jisx0213" to "shift_jis" to properly handle backslashes, in core and in VMD
+    New scripts:
+    +bone_geometry_isolate
+    +vmd_armtwist_convert
+    +bone_endpoint_create_remove
+    +texture_file_sort
+    moved more functions into the 'core' file
     
-    3.61:
-    added threading module to GUI to allow moving/resizing/scrolling while the script is running
-    added a few more name maps to the local translation file
-
-    4.00:
-    add "texture_file_sort" script to organize file references within a PMX file
-    rebuilt GUI and combined all scripts into one package, The Perfect Unified GUI
-    removed "load" button, removed ability to load once and run multiple times
-    added "clear" button to GUI
-    bugfix PMX parser because online file spec was incorrect
-    MASSIVE upgrades to local translation ability
-    modify how # of unique bones/morphs is printed when parsing VMD
-    create more overrideable function pointers MY_FILEPROMPT_FUNC, MY_SIMPLECHOICE_FUNC just the same as MY_PRINT_FUNC
+    2.07:
+    fixed a bug in "weight_cleanup" due to not actually testing my code
     
-    4.01:
-    learned that VMD does not handle long bone/morphs, changed model-compatability to only use exact match checking
-    moved "graphic_user_interface" up a level to make it more important
+    2.06:
+    created new script "vmd_model_compatability_check"
+    in "vmd_convert_tool", disabled the writing of bonedict/morphdict because vmd_model_compatability_check overshadows that feature
     
-    4.02:
-    bugfix: texture_file_sort wasn't overwriting the original files as I had intended
-    limit # of longbones/longmorphs/noboneRBs that can be printed by pmx_overall_cleanup to 20
-    texture_file_sort: if all the files in a folder are unused, display that folder name with *** instead of each individual file
-    changed progress_print_oneline approach
-    fixed imports to work whether imported or standalone
-    "more info" checkbox now controls whether VMD/PMX breakdown is shown or not
+    2.05:
+    moved some code to "nuthouse01_core"
+    decided to distribute all scripts as a bundle
+    added several simple scripts
+    enforced standard templating for all scripts
     
-    4.03:
-    bugfix: did imports wrong oops
-    new script: "pmx_arm_ik_addremove" for adding arm IK rigs
+    2.04:
+    vmd_convert_tool:
+        quaternion transform fix
+        bonedict/morphdict sorting
+        added "choose from options" function
+        added selftest
     
-    4.04:
-    bugfix: weight_cleanup was incorrectly counting the number of changes it made (was actually operating correctly tho)
-    new: pmx_overall_cleanup finds "shadowy materials" i.e. hidden materials with visible edging
-    new: pmx_overall_cleanup finds physics bodies that aren't constrained by any joints
-    new: pmx_overall_cleanup fixes bone deform order issues, or causes a warning if it finds a circular relationship
-    
-    4.05:
-    bone deform check: bugfixes, better IK understanding
-    more translation words
-    warn about bone/morph names that can't be stored in SHIFT-JIS
-    prune unused bones: actually check that IK bones are used instead of just assuming
-    refine boneless rigidbody checks & warnings
-    automatically fix edging on default hidden materials with "show" morphs
-    weight cleanup: also normalize normals, including 0,0,0 "invalid" normals
-    
-    v4.06:
-    new: morph_hide
-    new: morph_invert
-    new: morph_scale
-    modified "prune invalid faces" to also detect & remove duplicate faces within material units
-    more words in translation dictionary
-    disable translation of model comments since the model info popup in MMD can display JP characters just fine
-    slight changes to printouts in most scripts
-    
-    v4.07:
-    bugfix: alphamorph feature "fix edging on default hidden materials" forgot to check that add-morphs were modifying the relevant material, oops
-    bugfix: armtwist, model compat, others were failing file-write when file path contained spaces, oops
-    add better err checking to separate "file doesn't exist" from other kinds of errors 
-    translation shows error message if googletrans is not installed
-    tex file sort will ask for what unused files it should move
-    
-    v4.08:
-    bugfix: "delete duplicate faces" was conflating faces with opposite vertex order, now fixed
-    bugfix: bonedeform now handles bones with invalid partial inherit, though this should never be needed in a good model
-    re-order stages in pmx_overall_cleanup and improved printing
-    overhaul identify_unused_bones with new recursive strategy, cleaner & easier to understand & gives better results
-    more accurate progress estimate when reading PMX/VMD
+    2.03:
+    vmd_convert_tool:
+        better functionalization
+        better support for old motions (early end)
+        moved when the sorting happens
     
