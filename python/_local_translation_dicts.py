@@ -27,6 +27,7 @@ morph_dict = {
 "ウィンク２": "wink2",
 "ｳｨﾝｸ２右": "wink2_R",
 "ウィンク２右": "wink2_R",
+"ウィンク右２": "wink2_R",
 "ジト目": "doubt",
 "じと目": "doubt",
 "なごみ": "=.=", # "calm"
@@ -257,11 +258,14 @@ words_dict = {
 "ブラ": "bra",
 "耳": "ear",
 "みみ": "ear",
-"ヘアー": "hair",
+"開く": "open",
+"開け": "open",
+"開き": "open",
 "髪の毛": "hair", # this literally means hair of hair??? odd
 "毛": "hair",
 "髪": "hair",
 "髮": "hair", # this is actually somehow different from the line above???
+"ヘアー": "hair",
 "ヘア": "hair",
 "新規": "new",
 "材質": "material",
@@ -332,7 +336,7 @@ words_dict = {
 "ボディ": "body",
 "肌": "skin",
 "裙": "skirt",
-"輪": "round",
+"輪": "ring",  # was "round", better translation is ring/loop/circle maybe?
 "武器": "weapon",
 "釦": "button",
 "連動": "interlock",
@@ -395,7 +399,7 @@ words_dict = {
 "内": "inner",
 "外": "outer",
 "角": "corner",
-"法線": "normal",
+"法線": "normals",  # normals as in vertex normals not normal as in ordinary, i think?
 "調整": "adjust",
 "出し": "out", # out as in takeout???
 "全": "all",
@@ -408,6 +412,8 @@ words_dict = {
 "基": "base", # either group or base
 
 # morphs
+"ぺろっ": "tongue out",  # phonetically "perrow"
+"持ち": "hold",  # perhaps grab? holding? 手持ち = handheld
 "ずらし": "shift",
 "短": "short",
 "長": "long",
@@ -438,8 +444,6 @@ words_dict = {
 "を隠す": "hide",
 "非表示": "hide",
 "追従": "follow",
-"開く": "open",
-"開け": "open",
 "まばたき": "blink",
 "笑い": "happy",
 "ウィンク": "wink",
@@ -460,10 +464,10 @@ words_dict = {
 "しいたけ": "star", # "shiitake"
 "ハート": "heart",
 "はぁと": "heart",
-"ぐる": "dizzy", # perhaps "spinny"
 "ぐるぐる": "dizzy", # perhaps "spinny"
-"グル": "dizzy", # perhaps "spinny"
+"ぐる": "dizzy", # perhaps "spinny"
 "グルグル": "dizzy", # perhaps "spinny"
+"グル": "dizzy", # perhaps "spinny"
 "カメラ": "camera", # for looking at the camera
 "はぅ": ">.<",
 "にやり": "grin",
@@ -505,7 +509,9 @@ words_dict = {
 "▲": "^ open",
 "△": "^ open2",
 "∧": "^",
+"～": "~",  # there are some issues with the tilde and fullwidth tilde, mabye I should find something else?...
 "の": "of", # technically "A の B" translates more closely to "B of A" but I can't do that switcheroo without major changes
+"用": "for",  # the grammar/word order for this is also wonky
 "ー": "--", # not sure what to do with this, often used to mean continuation of a sound/syllable...
 "┗": "  ", # indentation for structure
 "└": "  ",
