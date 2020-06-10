@@ -1,4 +1,4 @@
-# Nuthouse01 - 06/08/2020 - v4.07
+# Nuthouse01 - 06/10/2020 - v4.08
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -1030,5 +1030,5 @@ def pack_text(fmt: str, args: list) -> bytearray:
 		raise newerr
 
 if __name__ == '__main__':
-	MY_PRINT_FUNC("Nuthouse01 - 06/08/2020 - v4.07")
+	MY_PRINT_FUNC("Nuthouse01 - 06/10/2020 - v4.08")
 	pause_and_quit("you are not supposed to directly run this file haha")
