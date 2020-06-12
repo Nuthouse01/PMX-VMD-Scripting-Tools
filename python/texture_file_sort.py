@@ -62,7 +62,8 @@ FOLDER_TOON =   "toon"
 FOLDER_MULTI =  "multi"
 FOLDER_UNUSED = "unused"
 
-IMG_EXT = (".jpg", ".jpeg", ".png", ".bmp", ".spa", ".sph", ".tga", ".xcf", ".dds", ".gif", ".psd")
+IMG_EXT = (".jpg", ".jpeg", ".png", ".bmp", ".spa", ".sph", ".gif", ".tga", ".dds",
+		   ".xcf", ".psd", ".sai")
 KEEP_FOLDERS_TEX = ("cloth", "outfit", "uniform", "wear", "body", "tex", "weapon", "acc", "face", "tx")
 KEEP_FOLDERS_TOON = ("tn", "toon")
 KEEP_FOLDERS_SPH = ("sph", "spa", "sp")
