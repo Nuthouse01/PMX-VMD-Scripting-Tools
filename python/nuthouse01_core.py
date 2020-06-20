@@ -486,10 +486,16 @@ def linear_map(x1, y1, x2, y2, x_in_val):
 	b = y2 - (m * x2)
 	return x_in_val * m + b
 
+# basic clamp
+def clamp(value, lower, upper):
+	return lower if value < lower else upper if value > upper else value
+# clamp where you dont know the relative order of a and b
+def bidirectional_clamp(val, a, b):
+	return clamp(val, a, b) if a < b else clamp(val, b, a)
 
 BEZIER_RESOLUTION = 50
-
-def my_bezier(t, point1, point2):
+def _my_bezier(t, point1, point2):
+	# this should not be directly called by a user!
 	# this function does bezier curve calculation as a function of "t"
 	# ideally i want a function of X but this will have to be good enough
 	# point0 is always (0,0), point3 is always (1,1)
@@ -502,27 +508,29 @@ def my_bezier(t, point1, point2):
 	return x, y
 
 def my_bezier_characterize(point1, point2):
+	# point1 and point2 are each a pair of ints 0-128 that give XY coordinates of control points
 	# return a list of points along the bezier curve, evenly spaced in "t"
 	# this will be used for linear mapping approximations
-	point1 = [p / 128 for p in point1]
-	point2 = [p / 128 for p in point2]
-	retlist = [(0, 0)]
+	point1 = [clamp(p / 128, 0.0, 1.0) for p in point1]
+	point2 = [clamp(p / 128, 0.0, 1.0) for p in point2]
+	retlist = [(0, 0)] # curve always starts at 0,0
 	for i in range(1, BEZIER_RESOLUTION):
-		retlist.append(my_bezier(i / BEZIER_RESOLUTION, point1, point2))
-	retlist.append((1, 1))
+		retlist.append(_my_bezier(i / BEZIER_RESOLUTION, point1, point2))
+	retlist.append((1, 1)) # curve always ends at 1,1
 	return retlist
 
 def my_bezier_approximation(x, characterization):
 	# use a previously-created bezier characterization with an input X value to create an output Y value
+	x = clamp(x, 0.0, 1.0)
 	for i in range(BEZIER_RESOLUTION):
-		if characterization[i][0] <= x < characterization[i+1][0]:
+		if characterization[i][0] <= x <= characterization[i+1][0]:
 			return linear_map(characterization[i][0],   characterization[i][1],
 							  characterization[i+1][0], characterization[i+1][1],
 							  x)
 	MY_PRINT_FUNC("ERR: not supposed to hit here! bad bezier characterization given!")
 	MY_PRINT_FUNC(x)
 	MY_PRINT_FUNC(characterization)
-	return -1
+	return 0
 
 def my_dot(v0, v1):
 	dot = 0.0
@@ -730,10 +738,8 @@ def rotate2d(origin, angle, point):
 	"""
 	ox, oy = origin
 	px, py = point
-	# angle2 = math.radians(angle)
-	angle2 = angle
-	qx = ox + math.cos(angle2) * (px - ox) - math.sin(angle2) * (py - oy)
-	qy = oy + math.sin(angle2) * (px - ox) + math.cos(angle2) * (py - oy)
+	qx = ox + math.cos(angle) * (px - ox) - math.sin(angle) * (py - oy)
+	qy = oy + math.sin(angle) * (px - ox) + math.cos(angle) * (py - oy)
 	return qx, qy
 
 
