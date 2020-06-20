@@ -125,7 +125,6 @@ def normalize_weights(pmx):
 				weights = [t / s for t in weights]
 				is_modified = True
 				
-			if weighttype == 2:  # BDEF4 ONLY: check if it can be reduced to lower weight type
 				try:
 					# where is the first 0 in the weight list? i know it is sorted descending
 					i = weights.index(0)
@@ -134,12 +133,13 @@ def normalize_weights(pmx):
 						vert[9] = 0  # set to BDEF1
 						vert[10] = [bones[0]]
 						continue
-					elif i == 2:  # first zero at 2, therefore has 2 nonzero entries, therefore force to be BDEF2!
-						weight_fix += 1
-						vert[9] = 1  # set to BDEF2
-						vert[10] = [bones[0], bones[1], weights[0]]
-						continue
-					# if i == 3, fall thru
+					if weighttype == 2:  # BDEF4 ONLY: check if it can be reduced to BDEF2
+						if i == 2:  # first zero at 2, therefore has 2 nonzero entries, therefore force to be BDEF2!
+							weight_fix += 1
+							vert[9] = 1  # set to BDEF2
+							vert[10] = [bones[0], bones[1], weights[0]]
+							continue
+						# if i == 3, fall thru
 				except ValueError:
 					pass  # if '0' not found in list, it is using all 4, fall thru
 			
@@ -150,8 +150,16 @@ def normalize_weights(pmx):
 				w[4:8] = weights
 				weight_fix += 1
 		elif weighttype == 3:  # SDEF
-			# dont understand, don't touch
-			# the order of the bones makes a very very slight difference, so may as well just not touch it
+			# the order of the bones makes a very very slight difference, so dont try to reorder them
+			# do try to compress to BDEF1 if the bones are the same or if one has 100 or 0 weight
+			if w[0] == w[1] or w[2] == 1:  # same bones handled the same way as firstbone with weight 1
+				weight_fix += 1
+				vert[9] = 0  # set to BDEF1
+				vert[10] = [w[0]]
+			elif w[2] == 0:  # firstbone has weight 0
+				weight_fix += 1
+				vert[9] = 0  # set to BDEF1
+				vert[10] = [w[1]]
 			continue
 		else:
 			core.MY_PRINT_FUNC("ERROR: invalid weight type for vertex %d" % d)
