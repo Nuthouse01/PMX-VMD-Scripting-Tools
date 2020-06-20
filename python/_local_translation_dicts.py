@@ -34,10 +34,13 @@ morph_dict = {
 "びっくり": "surprise",
 "驚き": "surprise",
 "悲しい": "sad low",
-"困る": "sadness",
-"真面目": "serious",
+"困る": "sadness",  # google translates to "troubled", but PMXE translates to "sadness"... maybe "worried" is best?
+"困った": "sadness",  # same as above
+"動揺": "upset",
+"真面目": "serious",  # has the symbol for "eye" but is actually a brow morph, odd
 "怒り": "anger",
 "にこり": "cheerful",
+"ｷﾘｯ": "serious eyes", # not totally confident with this translation, literally "kiri-tsu", might informally mean "confident"? kinda a meme phrase
 "星目": "star eyes",
 "しいたけ": "star eyes", # "shiitake"
 "ハート目": "heart eyes",
@@ -45,6 +48,7 @@ morph_dict = {
 "ぐるぐる": "spinny eyes",
 "笑い目": "happy eyes",
 "カメラ目": "camera eyes", # for looking at the camera
+"ｺｯﾁﾐﾝﾅ": "camera eyes",  # phonetically "Kotchimin'na", might informally translate to "this guy" or "everyone" i guess? functionally same as "camera eyes" tho
 "はぅ": ">.<",
 "にやり": "grin",
 "ニヤリ": "grin",  # these 2 are phonetically the same, "niyari"
@@ -370,6 +374,7 @@ words_dict = {
 "表情": "expression",
 "襟": "collar",
 "頂点": "vertex",
+"骨": "bone",
 "式": "model",
 "甲": "armor",
 "鎧": "armor",
@@ -449,7 +454,7 @@ words_dict = {
 "ウィンク": "wink",
 "ｳｨﾝｸ": "wink",
 "睨み": "glare",
-"ｷﾘｯ": "kiri", # not sure what this means
+"ｷﾘｯ": "kiri", # not sure what this means, perhaps "confident"? kinda an informal meme phrase
 "ジト": "doubt", # jito
 "じと": "doubt", # jito
 "なごみ": "=.=", # "calm"
