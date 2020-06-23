@@ -20,6 +20,8 @@ morph_dict = {
 "∧": "^",
 "ω": "w", # "omega"
 "ω□": "w open",
+"～": "~",  # there are some issues with the tilde and fullwidth tilde, mabye I should find something else?...
+"○": "o",
 "まばたき": "blink",
 "笑い": "happy", # "smile"
 "ウィンク": "wink",
@@ -48,7 +50,8 @@ morph_dict = {
 "ぐるぐる": "spinny eyes",
 "笑い目": "happy eyes",
 "カメラ目": "camera eyes", # for looking at the camera
-"ｺｯﾁﾐﾝﾅ": "camera eyes",  # phonetically "Kotchimin'na", might informally translate to "this guy" or "everyone" i guess? functionally same as "camera eyes" tho
+"ｺｯﾁﾐﾝﾅ": "camera eyes",  # phonetically "Kotchiminna", might informally translate to "this guy" or "everyone" i guess? functionally same as "camera eyes" tho
+"こっちみんな": "camera eyes", # phonetically "Kotchiminna", google translates to "don't look at me" maybe like "not my fault"?
 "はぅ": ">.<",
 "にやり": "grin",
 "ニヤリ": "grin",  # these 2 are phonetically the same, "niyari"
@@ -65,6 +68,8 @@ morph_dict = {
 "ハイライト消し": "highlight off",
 "瞳小": "pupil small", # "pupil"
 "恐ろしい子！": "white eye", # literally "scary child!" who the hell thought that was a good name?
+"ぺろっ": "tongue out",  # phonetically "perrow"
+"べー": "beeeeh", # another way of doing "tongue out"
 "あ": "a",
 "い": "i",
 "う": "u",
@@ -204,6 +209,7 @@ bone_dict =  {
 "右乳": "breast_R",
 }
 
+# these should be nicely capitalized
 frame_dict = {
 "センター": "Center",
 "ＩＫ": "IK",
@@ -219,6 +225,7 @@ frame_dict = {
 "ケープ": "Cape",
 "外套": "Mantle",
 "握り・拡散": "Grip / Spread",
+"握り-拡散": "Grip / Spread",
 }
 
 
@@ -247,6 +254,8 @@ words_dict = {
 "ぱんつ": "panties",
 "ビキニ": "bikini",
 "もみあげ": "sideburn",
+"ｺｯﾁﾐﾝﾅ": "camera eyes",  # phonetically "Kotchiminna", might informally translate to "this guy" or "everyone" i guess? functionally same as "camera eyes" tho
+"こっちみんな": "camera eyes", # phonetically "Kotchiminna", google translates to "don't look at me" maybe like "not my fault"?
 "尻尾": "tail",
 "おっぱい": "boobs", # literally "oppai"
 "ヘッドセット": "headset",
@@ -418,6 +427,7 @@ words_dict = {
 
 # morphs
 "ぺろっ": "tongue out",  # phonetically "perrow"
+"べー": "beeeeh", # another way of doing "tongue out"
 "持ち": "hold",  # perhaps grab? holding? 手持ち = handheld
 "ずらし": "shift",
 "短": "short",
@@ -476,6 +486,7 @@ words_dict = {
 "カメラ": "camera", # for looking at the camera
 "はぅ": ">.<",
 "にやり": "grin",
+"ニヤリ": "grin",  # these 2 are phonetically the same, "niyari"
 "にっこり": "smile",
 "ムッ": "upset",
 "照れ": "blush",
@@ -506,29 +517,70 @@ words_dict = {
 "お": "o",
 "ワ": "wa",
 "わ": "wa",
-"□": "box",
 "涙": "tears",
 "ん": "hmm",
 "ω": "w", # "omega"
-"○": "o",
-"▲": "^ open",
-"△": "^ open2",
-"∧": "^",
+"□": "box",  #x25a1
+"■": "box2",  #x25a0   less common than above
+"▲": "^ open",  #x25b2
+"△": "^ open2",  #x25b3   less common than above
+"∧": "^",  #x2227 "logical and"
+"∨": "v",  #x2228 "logical or"
+"○": "o",  #x25cb
+"◯": "O",  #x25ef
 "～": "~",  # there are some issues with the tilde and fullwidth tilde, mabye I should find something else?...
-"の": "of", # technically "A の B" translates more closely to "B of A" but I can't do that switcheroo without major changes
-"用": "for",  # the grammar/word order for this is also wonky
+"の": "of", # backwards yoda-style grammar: technically "A の B" translates to "B of A" but I can't do that switcheroo without major changes
+"用": "for",  # backwards yoda-style grammar: same
 "ー": "--", # not sure what to do with this, often used to mean continuation of a sound/syllable...
-"┗": "  ", # indentation for structure
-"└": "  ",
 }
+
+# after defining its contents, ensure that it is sorted with longest keys first. for tying items relative order is unchanged.
+# fixes the "undershadowing" problem
+words_dict = dict(sorted(list(words_dict.items()), reverse=True, key=lambda x: len(x[0])))
 
 
 # these get appended to the end instead of being replaced in order
 prefix_dict = {
-"中": "_M",
+"中": "_M",  # this one isn't truly standard but i like the left/right/middle symmetry
 "右": "_R",
 "左": "_L",
 }
+
+# these get appended to the end instead of being replaced in order
+suffix_dict = {
+"中": "_M",  # this one isn't truly standard but i like the left/right/middle symmetry
+"右": "_R",
+"左": "_L",
+"先": " end",
+"親": " parent",
+}
+
+
+strip_chars = " _-.\n\t\r"
+
+
+odd_punctuation_dict = {
+"　": " ",  # x3000, just a fullwidth space aka "ideographic space"
+"╱": "/",  # x2571 "box drawing" section. these have to be here so they aren't caught by the other box-drawing character check.
+"╲": "\\",  # x2572 "box drawing" section. NOTE backslash isn't MMD supported, find something better!
+"╳": "X",  # x2573 "box drawing" section
+"〇": "O",  # x3007
+"〈": "<",  # x3008
+"〉": ">",  # x3009
+"《": "<",  # x300a
+"》": ">",  # x300b
+"「": '"',  # x300c
+"」": '"',  # x300d
+"｢": '"',  # xff62
+"｣": '"',  # xff63
+"『": '"', # x300e
+"』": '"', # x300f
+"【": "[",  # x3010
+"】": "]",  # x3011
+"・": "-",  # x30fb, could map to 00B7 but i don't think MMD would display that either
+"〜": "~",  # x301C wave dash, not supported in shift_jis so it shouldn't be used often i hope. NOTE tilde isn't mmd supported, find something better!
+}
+# note: "ー" = "katakana/hiragana prolonged sound mark" = 0x30fc should !!!NOT!!! be treated as punctuation cuz it shows up in several "words"
 
 
 ########################################################################################################################
@@ -540,85 +592,261 @@ prefix_dict = {
 
 TRANSLATE_JOINCHAR = ' '
 
+STANDARD_INDENT = "  "
+
 DEBUG = False
+
+
+# not 100% confident this is right, there are probably other characters that can display just fine in MMD like accents
+def is_latin(text:str) -> bool:
+	for c in text:
+		o = ord(c)
+		if o >= 0x7f:
+			return False
+	return True
+
+
+def pre_translate(in_list):
+	"""
+	handle common translation things like prefixes, suffixes, fullwidth alphanumeric characters, etc.
+	TODO: do i want to return with them joined? or leave the indent-suffix-rejoining for later?
+	"""
+	input_is_str = isinstance(in_list, str)
+	if input_is_str: in_list = [in_list]  # force it to be a list anyway so I don't have to change my structure
+	outlist = []  # list to build & return
+	for s in in_list:
+		indent_prefix = ""
+		out = ""
+		for c in s:  # now walk whole str and translate one char at a time
+			# 1: subst JP/fullwidth alphanumeric chars -> standard EN alphanumeric chars
+			# https://en.wikipedia.org/wiki/Halfwidth_and_Fullwidth_Forms_(Unicode_block)
+			# fullwidth chars like ０１２３ＩＫ are in range FF01–FF5E  and correspond to  21-7E, difference=(FEE0/‭65248‬)
+			# to handle them, str[1] > ord() > ascii# > -0xfee0 > ascii# > chr() > str[1]
+			o = ord(c)					# get ascii value
+			if 0xff01 <= o <= 0xff5e:	# if this is a fullwidth char,
+				c = chr(o - 0xfee0)		# map it down to the normal version.
+			# 2: subst JP odd punctuation stuff for EN equivalents (brackets, dots, dashes, corners, etc)
+			# no good pattern, just gotta do it piecewise
+			elif c in odd_punctuation_dict:
+				c = odd_punctuation_dict[c]
+			# these 'box drawing chars' sometimes used for indentation, get them outta here. convert to indent later.
+			# TODO: consider whether boxes not at the start are worth worrying about?
+			elif 0x2500 <= o <= 0x257f:
+				c = ""
+				indent_prefix = STANDARD_INDENT
+			out += c  # append the char
+			
+		# TODO PROBLEM: how to preserve leading underscore??? separate strip-list for left and right?
+		
+		# TODO PROBLEM: cannot extract 'end' suffix because it is a part of 'toe'
+		# 3: remove actual whitespace indent, if there is one
+		startidx = 0
+		for startidx in range(len(out)):
+			if not out[startidx].isspace(): break
+		if startidx != 0:  # there is an actual whitespace indent here!
+			out = out[startidx:]  # for now, trim the indent.
+			indent_prefix = STANDARD_INDENT  # will add an indent later.
+		
+		# 4: remove known JP prefix/suffix, assemble EN suffix to be reattached later
+		# prefixes: walk 0+ checking each char until finding a char that is NOT a prefix
+		startidx = 0  # will be left pointing at a char that isn't a prefix
+		en_suffix_pre = ""
+		for startidx in range(len(out)):
+			# append
+			if out[startidx] in prefix_dict:	en_suffix_pre += prefix_dict[out[startidx]]
+			else:								break
+		# suffixes: walk end- checking each char until finding a char that is NOT a suffix
+		endidx = len(out)-1  # will be left pointing at a char that isn't a suffix and is valid
+		en_suffix_suff = ""
+		for endidx in range(len(out)-1, -1, -1):
+			# prepend since i'm walking backwards but i want order to stay the same
+			if out[endidx] in suffix_dict:	en_suffix_suff = suffix_dict[out[endidx]] + en_suffix_suff
+			else:							break
+		out = out[startidx:(endidx+1)]
+		en_suffix = en_suffix_pre + en_suffix_suff
+		
+		# 5: strip leading/ending spaces or whatever that might have been insulated by the prefix/suffix
+		out = out.strip(strip_chars)
+		
+		# 6: re-add the indent if I removed a box char or true indent
+		out = indent_prefix + out
+		
+		# reattach EN suffix & append to return list
+		outlist.append(out + en_suffix)
+		# TODO: possibly return suffix separate from the rest?
+		# outlist.append((out, en_suffix))
+	if input_is_str:	return outlist[0]	# if original input was a single string, then de-listify
+	else:				return outlist		# otherwise return as a list
+
+
+def piecewise_translate(in_list, in_dict):
+	"""
+	apply piecewise translation to inputs when given a mapping dict.
+	mapping dict should usually be the comprehensive 'words dict' or some results found from Google Translate.
+	for each position in the string(ordered), check each map entry(ordered).
+	returns what it produces, even if not a complete translation.
+	outer layers must check if the translation is complete before using it.
+	"""
+	input_is_str = isinstance(in_list, str)
+	if input_is_str: in_list = [in_list]  # force it to be a list anyway so I don't have to change my structure
+	outlist = []  # list to build & return
+	
+	dictitems = list(in_dict.items())
+	
+	for out in in_list:
+		if (not out) or out.isspace():  # support bad/missing data
+			outlist.append("JP_NULL")
+			continue
+		# goal: substrings that match keys of "words_dict" get replaced
+		# no JOINCHAR between replacement and english text
+		
+		# NEW ARCHITECTURE: starting from each char, try to match against the contents of the dict. longest items are first!
+		i = 0
+		while i < len(out):  # starting from each char of the string,
+			found_match = False
+			for (key, val) in dictitems:  # try to find anything in the dict to match against,
+				if out.startswith(key, i):  # and if something is found starting from 'i',
+					found_match = True
+					# i am going to replace it key->val, but first maybe insert space before or after or both.
+					# note: letter/number are the ONLY things that use joinchar. all punctuation and all JP stuff do not use joinchar.
+					# if 'begin-1' is a valid index and the char at that index is letter/number, then PREPEND a space
+					before_space = " " if i != 0 and out[i-1].isalnum() else ""
+					# if "begin+len(key)" is a valid index and the char at that index is letter/number, then APPEND a space
+					after_space = " " if i+len(key) < len(out) and out[i+len(key)].isalnum() else ""
+					# now JOINCHAR is added, so now i substitute it
+					out = out[0:i] + before_space + val + after_space + out[i+len(key):]
+					# i don't need to examine or try to replace on any of these chars, so skip ahead a bit
+					i += len(val) + int(bool(before_space)) + int(bool(after_space))
+					# nothing else will match here, since I just replaced the thing, so break out of iterating on dict keys
+					break
+			if found_match is False:
+				i += 1
+		# # goal: substrings that match keys of "words_dict" get replaced
+		# # no JOINCHAR between replacement and english text
+		# for (key, val) in in_dict.items():
+		# 	begin = 0
+		# 	# while-loop is here to apply all instances of this translation. keep replacing until no longer found.
+		# 	while begin != -1:
+		# 		begin = out.find(key)
+		# 		if begin != -1:  # if it finds a match,
+		# 			# i am going to replace it key->val, but first maybe insert space before or after or both
+		# 			# note: letter/number are the ONLY things that use joinchar. all punctuation and all JP stuff do not use joinchar.
+		# 			# if 'begin-1' is a valid index and the char at that index is letter/number, then PREPEND a space
+		# 			before_space = " " if begin != 0 and out[begin-1].isalnum() else ""
+		# 			# if "begin+len(key)" is a valid index and the char at that index is letter/number, then APPEND a space
+		# 			after_space = " " if begin+len(key) < len(out) and out[begin+len(key)].isalnum() else ""
+		# 			# now JOINCHAR is added, so now i substitute
+		# 			out[begin:begin+len(key)] = before_space + val + after_space
+		# once all uses of all keys have been replaced, then append the result
+		outlist.append(out)
+	
+	if input_is_str:	return outlist[0]	# if original input was a single string, then de-listify
+	else:				return outlist		# otherwise return as a list
+
+
+def local_translate(in_list):
+	""" attempt to use the hardcoded translation dict to translate as many of the words as I can.
+	supports list(str)->list(str) or just str->str.
+	results are best-effort translations, even if incomplete.
+	with DEBUG=True, it prints successful/before/after.
+	"""
+	input_is_str = isinstance(in_list, str)
+	if input_is_str: in_list = [in_list]  # force it to be a list anyway so I don't have to change my structure
+	
+	# first, run pretranslate: take care of the standard stuff
+	# things like prefixes, suffixes, fullwidth alphanumeric characters, etc
+	pretrans = pre_translate(in_list)
+	
+	# second, run piecewise translation with the hardcoded "words dict"
+	outlist = piecewise_translate(pretrans, words_dict)
+	
+	# pretty much done!
+	if DEBUG:
+		for s,o in zip(in_list, outlist):
+			# did i translate the whole thing? check whether results are all "normal" characters
+			print("%d :: %s :: %s" % (is_latin(o), s, o))
+	
+	if input_is_str:	return outlist[0]	# if original input was a single string, then de-listify
+	else:				return outlist		# otherwise return as a list
+
 
 # use the local dicts defined here to attempt intelligent translation without going to Google
 # returns its best translation attempt, even if unsuccessful/incomplete
 # takes JP string as input, assumes I have already checked for the case where JP name is already only english (copyable)
-def translate_local(s: str) -> (None, str):
-	if (not s) or s.isspace():
-		return "NULL"
-	# stage 1: look for exact matches
-	for (key, val) in morph_dict.items():
-		if s == key:
-			if DEBUG:
-				print("_ :: %s :: %s" % (s, val))
-			return val
-	for (key, val) in bone_dict.items():
-		if s == key:
-			if DEBUG:
-				print("_ :: %s :: %s" % (s, val))
-			return val
-	for (key, val) in frame_dict.items():
-		if s == key:
-			if DEBUG:
-				print("_ :: %s :: %s" % (s, val))
-			return val
-	
-	# stage 2: fullwidth replacement, result might be unchanged
-	# fullwidth chars like ０１２３ＩＫ are in range FF01–FF5E  and correspond to  21-7E, diff=(FEE0/‭65248‬)
-	# to handle them, str[1] > ord() > ascii# > -0xfee0 > ascii# > chr() > str[1]
-	out = ""
-	for c in s:  # for each char c in string s,
-		o = ord(c)  # get ascii value
-		if 0xff01 <= o <= 0xff5e:  # if this is a fullwidth char,
-			out += chr(o - 0xfee0)  # map it down to the normal version & append
-		elif o == 0x3000: # if this is an "ideographic space" aka fullwidth space
-			out += " "
-		else:  # otherwise,
-			out += c  # append the unmodified char
-	
-	# stage 3: left/right/mid replacement
-	# turn the JP prefix into an EN suffix
-	for (key, val) in prefix_dict.items():
-		if out[0] == key:
-			# rebuild the string minus the prefix plus the suffix
-			out = out[1:] + val
-			# only one prefix, don't check more
-			break
-	
-	# stage 4: word replacement
-	# goal: substrings that match keys of "words_dict" get replaced
-	# BUT, ONLY adjacent substring replacements are separated by JOINCHAR
-	# no JOINCHAR between replacement and english text
-	for (key, val) in words_dict.items():
-		begin = 0
-		# while-loop is here to apply all instances of this translation
-		while begin != -1:
-			begin = out.find(key)
-			if begin != -1:  # if it finds a match,
-				newtrans = val
-				# i am going to replace it, but first see if i need to put JOINCHAR before or after
-				# the char after is begin+len(key) and the char before is begin-1
-				# add JOINCHAR if the index exists and is not already a  "separator" text char: space,._-/
-				if begin != 0 and out[begin-1] not in " ,._-/":  # can i put JOINCHAR at the start of the string
-					newtrans = TRANSLATE_JOINCHAR + newtrans
-				if begin+len(key) != len(out) and out[begin+len(key)] not in " ,._-/":  # can i put JOINCHAR at the end of the string
-					newtrans = newtrans + TRANSLATE_JOINCHAR
-				# now JOINCHAR is added, so now i substitute
-				out = out[:begin] + newtrans + out[begin+len(key):]
-	
-	# pretty much done!
-	if DEBUG:
-		# did i translate the whole thing? check whether results are all "normal" characters
-		complete = True
-		for c in out:
-			if ord(c) > 0x7f:
-				complete = False
-				break
-		print("%d :: %s :: %s" % (complete, s, out))
-	# return what it produced, even if not completely successful
-	return out
+# def translate_local(s: str) -> str:
+# 	if (not s) or s.isspace():
+# 		return "NULL"
+# 	# stage 1: look for exact matches
+# 	for (key, val) in morph_dict.items():
+# 		if s == key:
+# 			if DEBUG:
+# 				print("_ :: %s :: %s" % (s, val))
+# 			return val
+# 	for (key, val) in bone_dict.items():
+# 		if s == key:
+# 			if DEBUG:
+# 				print("_ :: %s :: %s" % (s, val))
+# 			return val
+# 	for (key, val) in frame_dict.items():
+# 		if s == key:
+# 			if DEBUG:
+# 				print("_ :: %s :: %s" % (s, val))
+# 			return val
+#
+# 	# stage 2: fullwidth replacement, result might be unchanged
+# 	# fullwidth chars like ０１２３ＩＫ are in range FF01–FF5E  and correspond to  21-7E, diff=(FEE0/‭65248‬)
+# 	# to handle them, str[1] > ord() > ascii# > -0xfee0 > ascii# > chr() > str[1]
+# 	out = ""
+# 	for c in s:  # for each char c in string s,
+# 		o = ord(c)  # get ascii value
+# 		if 0xff01 <= o <= 0xff5e:  # if this is a fullwidth char,
+# 			out += chr(o - 0xfee0)  # map it down to the normal version & append
+# 		elif o == 0x3000: # if this is an "ideographic space" aka fullwidth space
+# 			out += " "
+# 		else:  # otherwise,
+# 			out += c  # append the unmodified char
+#
+# 	# stage 3: left/right/mid replacement
+# 	# turn the JP prefix into an EN suffix
+# 	for (key, val) in prefix_dict.items():
+# 		if out[0] == key:
+# 			# rebuild the string minus the prefix plus the suffix
+# 			out = out[1:] + val
+# 			# only one prefix, don't check more
+# 			break
+#
+# 	# stage 4: word replacement
+# 	# goal: substrings that match keys of "words_dict" get replaced
+# 	# BUT, ONLY adjacent substring replacements are separated by JOINCHAR
+# 	# no JOINCHAR between replacement and english text
+# 	for (key, val) in words_dict.items():
+# 		begin = 0
+# 		# while-loop is here to apply all instances of this translation
+# 		while begin != -1:
+# 			begin = out.find(key)
+# 			if begin != -1:  # if it finds a match,
+# 				newtrans = val
+# 				# i am going to replace it, but first see if i need to put JOINCHAR before or after
+# 				# the char after is begin+len(key) and the char before is begin-1
+# 				# add JOINCHAR if the index exists and is not already a  "separator" text char: space,._-/
+# 				if begin != 0 and out[begin-1] not in " ,._-/":  # can i put JOINCHAR at the start of the string
+# 					newtrans = TRANSLATE_JOINCHAR + newtrans
+# 				if begin+len(key) != len(out) and out[begin+len(key)] not in " ,._-/":  # can i put JOINCHAR at the end of the string
+# 					newtrans = newtrans + TRANSLATE_JOINCHAR
+# 				# now JOINCHAR is added, so now i substitute
+# 				out = out[:begin] + newtrans + out[begin+len(key):]
+#
+# 	# pretty much done!
+# 	if DEBUG:
+# 		# did i translate the whole thing? check whether results are all "normal" characters
+# 		complete = True
+# 		for c in out:
+# 			if ord(c) > 0x7f:
+# 				complete = False
+# 				break
+# 		print("%d :: %s :: %s" % (complete, s, out))
+# 	# return what it produced, even if not completely successful
+# 	return out
 
 # import nuthouse01_core as core
 # import nuthouse01_pmx_parser as pmxlib
