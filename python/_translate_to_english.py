@@ -68,7 +68,8 @@ TRANSLATE_BUDGET_TIMEFRAME = 1.2
 
 
 
-
+# don't touch this
+_DISABLE_INTERNET_TRANSLATE = False
 # set up the acutal translator libraries & objects
 jp_to_en_google = None
 try:
@@ -124,6 +125,35 @@ TODO: am i still allowing "ANTIPREFER EXISTING EN NAME" option?
 TODO: what levels accept str/list/both?
 """
 
+# DONE: my_list_partition
+# DONE: chunk localtrans pass
+# DONE: 2nd level of "disable internet"
+# DONE: arg for chunks vs perline vs auto
+# TODO: embellish pretrans
+# TODO: pretrans before exactmatch
+# TODO: revise exactmatch dicts & words dict
+
+# TODO: put exact match BEFORE copy?
+# TODO: pretrans returns tuple?
+
+
+
+def my_list_partition(l, condition):
+	"""
+	Split one list into two NEW lists based on a condition. Kinda like a list comprehension but it produces 2 results.
+	:param l: the list to be split in two
+	:param condition: lambda function that returns true or false
+	:return: tuple of lists, (list_lambda_true, list_lambda_false)
+	"""
+	list_where_true = []
+	list_where_false = []
+	for iiiii in l:
+		if condition(iiiii):
+			list_where_true.append(iiiii)
+		else:
+			list_where_false.append(iiiii)
+	return list_where_true, list_where_false
+
 
 def easy_translate(jp, en, specific_dict=None):
 	"""
@@ -152,14 +182,22 @@ def easy_translate(jp, en, specific_dict=None):
 	return "", -1
 
 
-def google_translate(in_list):
+def google_translate(in_list, strategy=1):
 	"""
-	take a list of strings & get them all translated by asking Google.
-	Doesn't literally send the strings to google, I get a bit cleverer to reduce the number of remote transactions I need.
-	Pre-translate, break into islands of JP text, translate those, and substitute those into the input strings.
+	Take a list of strings & get them all translated by asking Google. Can use per-line strategy or new 'chunkwise' strategy.
+	:param in_list: list of JP or partially JP strings
+	:param strategy: 0=old per-line strategy, 1=new chunkwise strategy, 2=auto choose whichever needs less Google traffic
+	:return: list of strings almost guaranteed to be pure EN, but sometimes CN chars sneak in and confuse the translator
 	"""
 	input_is_str = isinstance(in_list, str)
 	if input_is_str: in_list = [in_list]  # force it to be a list anyway so I don't have to change my structure
+	
+	use_chunk_strat = True if strategy==1 else False
+	
+	# in_list -> pretrans
+	# in_list -> jp_chunks -> jp_chunks_combined -> results_combined -> results
+	# jp_chunks + results -> google_dict
+	# pretrans + google_dict -> outlist
 	
 	# 1. pre-translate to take care of common tasks
 	pretrans = local_translation_dicts.pre_translate(in_list)
@@ -185,41 +223,63 @@ def google_translate(in_list):
 			jp_chunks.add(s[rstart:len(s)])
 	
 	# 3. organize/collect chunks
-	# convert set to list and sort the longest chunks first, VERY CRITICAL so things don't get overshadowed
-	jp_chunks = sorted(list(jp_chunks), reverse=True, key=len)
-	# TODO chunks are guaranteed to NOT be part of compound words, probably. so any exact matches with my words-dict should be valid!
+	jp_chunks = list(jp_chunks)
+	localtrans_dict = dict()
+	if 1:
+		# remove the chunks that can already be translated
+		# chunks are guaranteed to NOT be part of compound words, probably. so any exact matches with my words-dict should be valid!
+		jp_chunks_localtrans = local_translation_dicts.piecewise_translate(jp_chunks, local_translation_dicts.words_dict)
+		# results are chunk+trans: split into (where trans passed) (where trans failed)
+		trans_fail, trans_pass = my_list_partition(zip(jp_chunks, jp_chunks_localtrans), lambda x: contains_jap_chars(x[1]))
+		for chunk, trans in trans_pass:  # add dict entries for the ones that passed
+			localtrans_dict[chunk] = trans
+		jp_chunks = [j[0] for j in trans_fail]  # rebuild the jp_chunks list for the ones that failed
+	
 	
 	# 4. combine them into fewer requests
 	jp_chunks_combined = combine_translate_requests(jp_chunks)
+	pretrans_combined = combine_translate_requests(pretrans)
+	if strategy == 2:	use_chunk_strat = (len(jp_chunks_combined) < len(pretrans_combined))
 	
 	# 5. check the translate budget to see if I can afford this
-	num_calls = len(jp_chunks_combined)
-	global DISABLE_INTERNET_TRANSLATE
-	if check_translate_budget(num_calls) and not DISABLE_INTERNET_TRANSLATE:
+	num_calls = len(jp_chunks_combined) if use_chunk_strat else len(pretrans_combined)
+	global _DISABLE_INTERNET_TRANSLATE
+	if check_translate_budget(num_calls) and not _DISABLE_INTERNET_TRANSLATE:
 		core.MY_PRINT_FUNC("Making %d requests to Google Translate web API..." % num_calls)
 	else:
 		# no need to print failing statement, the function already does
 		core.MY_PRINT_FUNC("Just copying JP -> EN while Google Translate is disabled")
-		DISABLE_INTERNET_TRANSLATE = True
+		_DISABLE_INTERNET_TRANSLATE = True
 		# don't quit early, run thru the same full structure & eventually return a copy of the JP names
 	
 	# 6. send chunks to Google
 	results_combined = []
-	for d,combined in enumerate(jp_chunks_combined):
-		core.print_progress_oneline(d / len(jp_chunks_combined))
-		r = _single_google_translate(combined)
-		results_combined.append(r)
-	
-	# 7. assemble Google responses & re-associate with the chunks
-	results = unpack_translate_requests(results_combined)
-	google_dict = dict(zip(jp_chunks, results))
-	
-	print("#items=", len(in_list), "#chunks=", len(jp_chunks), "#requests=", len(jp_chunks_combined))
-	print(google_dict)
-	
-	# 8. piecewise translate
-	outlist = local_translation_dicts.piecewise_translate(pretrans, google_dict)
-	
+	if use_chunk_strat:
+		for d,combined in enumerate(jp_chunks_combined):
+			core.print_progress_oneline(d / len(jp_chunks_combined))
+			r = _single_google_translate(combined)
+			results_combined.append(r)
+			
+		# 7. assemble Google responses & re-associate with the chunks
+		results = unpack_translate_requests(results_combined)  # unpack so they align once more
+		google_dict = dict(zip(jp_chunks, results))  # build dict
+		google_dict.update(localtrans_dict)  # add dict entries from things that succeeded localtrans
+		# dict->list->sort->dict: sort the longest chunks first, VERY CRITICAL so things don't get undershadowed!!!
+		google_dict = dict(sorted(list(google_dict.items()), reverse=True, key=lambda x: len(x[0])))
+		
+		print("#items=", len(in_list), "#chunks=", len(jp_chunks), "#requests=", len(jp_chunks_combined))
+		print(google_dict)
+		
+		# 8. piecewise translate using newly created dict
+		outlist = local_translation_dicts.piecewise_translate(pretrans, google_dict)
+	else:
+		# old style: just translate the strings directly and return their results
+		for d,combined in enumerate(pretrans_combined):
+			core.print_progress_oneline(d / len(pretrans_combined))
+			r = _single_google_translate(combined)
+			results_combined.append(r)
+		outlist = unpack_translate_requests(results_combined)
+
 	# return
 	if input_is_str:	return outlist[0]	# if original input was a single string, then de-listify
 	else:				return outlist		# otherwise return as a list
@@ -228,11 +288,14 @@ def google_translate(in_list):
 
 ################################################################################################################
 def check_translate_budget(num_proposed: int) -> bool:
-	"""goal: block translations that would trigger the lockout.
-	approach: create a persistient file that contains timestamps and # of requests sent then, to know if my proposed requests will exceed the budget.
-	input number of translation requests i want to send, output yes/no.
-	if yes/goahead, then automatically writes this request into the log.
+	"""
+	Goal: block translations that would trigger the lockout.
+	Create & maintain a persistient file that contains timestamps and # of requests, to know if my proposed number will
+	exceed the budget. If it would still be under budget, then update the log assuming that the proposed requests will
+	happen.
 	options: TRANSLATE_BUDGET_MAX_REQUESTS, TRANSLATE_BUDGET_TIMEFRAME
+	:param num_proposed: number of times I want to contact the google API
+	:return: bool True = go ahead, False = stop
 	"""
 	
 	# first, get path to persistient storage file, also creates an empty file if it doesn't exist
@@ -319,9 +382,8 @@ def contains_jap_chars(text) -> bool:
 
 def combine_translate_requests(jp_list: list) -> list:
 	"""
-	split/join a massive list of items to translate into fewer requests which each contain many separated by newlines.
-	list in, list out. doesn't do the actual translation, just rearranges list contents.
-	options are TRANSLATE_MAX_LINES_PER_REQUEST.
+	Split/join a massive list of items to translate into fewer requests which each contain many separated by newlines.
+	options: TRANSLATE_MAX_LINES_PER_REQUEST.
 	"""
 	retme = []
 	start_idx = 0
@@ -334,7 +396,7 @@ def combine_translate_requests(jp_list: list) -> list:
 
 def unpack_translate_requests(list_after: list) -> list:
 	"""
-	opposite of combine_translate_requests().
+	Opposite of combine_translate_requests().
 	"""
 	retme = []
 	for after in list_after:
@@ -365,11 +427,13 @@ def unpack_translate_requests(list_after: list) -> list:
 #
 
 def _single_google_translate(jp_str: str) -> str:
-	"""acutally send a single string to Google for translation.
-	string in, string out.
-	options are DISABLE_INTERNET_TRANSLATE and GOOGLE_AUTODETECT_LANGUAGE.
 	"""
-	if DISABLE_INTERNET_TRANSLATE:
+	Actually send a single string to Google API for translation, unless internet trans is disabled.
+	Options: _DISABLE_INTERNET_TRANSLATE and GOOGLE_AUTODETECT_LANGUAGE.
+	:param jp_str: JP string to be translated
+	:return: usually english-translated result
+	"""
+	if _DISABLE_INTERNET_TRANSLATE:
 		return jp_str
 	try:
 		# acutally send a single string to Google for translation
@@ -494,12 +558,12 @@ def translate_to_english(pmx, moreinfo=False):
 	
 	# step zero: set up the translator thingy
 	global jp_to_en_google
-	global DISABLE_INTERNET_TRANSLATE
+	global _DISABLE_INTERNET_TRANSLATE
+	_DISABLE_INTERNET_TRANSLATE = DISABLE_INTERNET_TRANSLATE  # create a second global var so I can reset this one to default each time it runs
 	if googletrans is None:
 		core.MY_PRINT_FUNC("ERROR: Python library 'googletrans' not installed, translation will be very limited!!")
 		core.MY_PRINT_FUNC("Please install this library with 'pip install googletrans' in Windows Command Prompt")
 		jp_to_en_google = None
-		DISABLE_INTERNET_TRANSLATE = True
 	else:
 		# everything is fine, just set up the normal way
 		jp_to_en_google = googletrans.Translator()
@@ -574,18 +638,8 @@ def translate_to_english(pmx, moreinfo=False):
 	# then do apply
 	# then done!
 	
-	def separate_notdone(l):
-		done = []
-		notdone = []
-		for iiiii in l:
-			if iiiii.trans_type == -1:
-				notdone.append(iiiii)
-			else:
-				done.append(iiiii)
-		return done, notdone
-	
 	# partition the list into done and notdone
-	translate_maps, translate_notdone = separate_notdone(translate_maps)
+	translate_maps, translate_notdone = my_list_partition(translate_maps, lambda x: x.trans_type != -1)
 	########
 	# actually do local translate
 	local_results = local_translation_dicts.local_translate([item.jp_old for item in translate_notdone])
@@ -595,7 +649,7 @@ def translate_to_english(pmx, moreinfo=False):
 			item.en_new = result
 			item.trans_type = 3
 	# grab the newly-done items and move them to the done list
-	translate_done2, translate_notdone = separate_notdone(translate_notdone)
+	translate_done2, translate_notdone = my_list_partition(translate_notdone, lambda x: x.trans_type != -1)
 	translate_maps.extend(translate_done2)
 	########
 	if PREFER_EXISTING_ENGLISH_NAME is not True:
@@ -606,7 +660,7 @@ def translate_to_english(pmx, moreinfo=False):
 				item.en_new = item.en_old
 				item.trans_type = 0
 		# transfer the newly-done things over to the translate_maps list
-		translate_done2, translate_notdone = separate_notdone(translate_notdone)
+		translate_done2, translate_notdone = my_list_partition(translate_notdone, lambda x: x.trans_type != -1)
 		translate_maps.extend(translate_done2)
 	
 	########
@@ -649,12 +703,17 @@ def translate_to_english(pmx, moreinfo=False):
 	
 	
 	# now, determine if i actually changed anything at all before bothering to try applying stuff
-	type_fail = 		[item for item in translate_maps if item.trans_type == -1]
-	type_good = 		[item for item in translate_maps if item.trans_type == 0]
-	type_copy = 		[item for item in translate_maps if item.trans_type == 1]
-	type_specific = 	[item for item in translate_maps if item.trans_type == 2]
-	type_local = 		[item for item in translate_maps if item.trans_type == 3]
-	type_google = 		[item for item in translate_maps if item.trans_type == 4]
+	type_fail, temp = 		my_list_partition(translate_maps, lambda x: x.trans_type == -1)
+	type_good, temp = 		my_list_partition(temp, lambda x: x.trans_type == 0)
+	type_copy, temp = 		my_list_partition(temp, lambda x: x.trans_type == 1)
+	type_specific, temp = 	my_list_partition(temp, lambda x: x.trans_type == 2)
+	type_local, temp = 		my_list_partition(temp, lambda x: x.trans_type == 3)
+	type_google = 			temp
+	# type_good = 		[item for item in translate_maps if item.trans_type == 0]
+	# type_copy = 		[item for item in translate_maps if item.trans_type == 1]
+	# type_specific = 	[item for item in translate_maps if item.trans_type == 2]
+	# type_local = 		[item for item in translate_maps if item.trans_type == 3]
+	# type_google = 		[item for item in translate_maps if item.trans_type == 4]
 	total_changed = int(newcommentsource != 0) + len(type_copy) + len(type_specific) + len(type_local) + len(type_google)
 	total_fields = len(translate_maps)
 	if type_fail:

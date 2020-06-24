@@ -6,8 +6,6 @@
 
 # NOTE: as of python 3.6, the order of dictionary items IS GUARANTEED. but before that it is not guaranteed.
 
-# NEW: attempt piece-wise translation of the jp names!! (at bottom)
-
 ########################################################################################################################
 ########################################################################################################################
 ########################################################################################################################
@@ -23,11 +21,12 @@ morph_dict = {
 "～": "~",  # there are some issues with the tilde and fullwidth tilde, mabye I should find something else?...
 "○": "o",
 "まばたき": "blink",
-"笑い": "happy", # "smile"
+"笑い": "happy", # pmxe translates to "smile" but this is an eye morph
 "ウィンク": "wink",
 "ウィンク右": "wink_R",
 "ウィンク２": "wink2",
 "ｳｨﾝｸ２右": "wink2_R",
+"ｳｨﾝｸ右２": "wink2_R",
 "ウィンク２右": "wink2_R",
 "ウィンク右２": "wink2_R",
 "ジト目": "doubt",
@@ -47,7 +46,10 @@ morph_dict = {
 "しいたけ": "star eyes", # "shiitake"
 "ハート目": "heart eyes",
 "ハート": "heart eyes",
-"ぐるぐる": "spinny eyes",
+"ぐるぐる": "dizzy eyes", # perhaps "spinny"
+"ぐる": "dizzy eyes", # perhaps "spinny"
+"グルグル": "dizzy eyes", # perhaps "spinny"
+"グル": "dizzy eyes", # perhaps "spinny"
 "笑い目": "happy eyes",
 "カメラ目": "camera eyes", # for looking at the camera
 "ｺｯﾁﾐﾝﾅ": "camera eyes",  # phonetically "Kotchiminna", might informally translate to "this guy" or "everyone" i guess? functionally same as "camera eyes" tho
@@ -57,10 +59,10 @@ morph_dict = {
 "ニヤリ": "grin",  # these 2 are phonetically the same, "niyari"
 "にっこり": "smile",
 "ムッ": "upset",
-"照れ": "blush", # "little blush"
 "照れ２": "blush2", # "big blush"
-"青ざめ": "shock", # literally "aozame" translates to "pale"
+"照れ": "blush", # "little blush"
 "青ざめる": "shock", # literally "aozomeru" translates to "pale"
+"青ざめ": "shock", # literally "aozame" translates to "pale"
 "丸目": "O.O",
 "はちゅ目": "O.O",
 "はちゅ目縦潰れ": "O.O height",
@@ -69,7 +71,7 @@ morph_dict = {
 "瞳小": "pupil small", # "pupil"
 "恐ろしい子！": "white eye", # literally "scary child!" who the hell thought that was a good name?
 "ぺろっ": "tongue out",  # phonetically "perrow"
-"べー": "beeeeh", # another way of doing "tongue out"
+"べー": "beeeeh", # another way of doing "tongue out" but google likes to turn this into 'base'
 "あ": "a",
 "い": "i",
 "う": "u",
@@ -83,6 +85,7 @@ morph_dict = {
 "前": "brow fwd",
 "涙": "tears",
 "ん": "hmm", # wtf is this translation
+"ー": "--", # not sure what to do with this, often used to mean continuation of a sound/syllable...
 }
 
 bone_dict =  {
