@@ -43,6 +43,11 @@ PREFER_EXISTING_ENGLISH_NAME = True
 TRANSLATE_MODEL_COMMENT = False
 
 
+# if this is true, accept whatever Google trans returns, even if it has bad chars still in it
+# if this is false, and Google trans returns something with bad chars in it, retain the previous EN value
+ACCEPT_INCOMPLETE_RESULT = True
+
+
 # sometimes chinese translation gives better results than japanese translation
 # when false, force input to be interpreted as Japanese. When true, autodetect input language.
 GOOGLE_AUTODETECT_LANGUAGE = True
@@ -83,7 +88,7 @@ except ImportError as eee:
 
 
 category_dict = {0: "header", 4: "mat", 5: "bone", 6: "morph", 7: "disp"}
-type_dict = {-1: "fail", 0: "good", 1: "copyJP", 2: "piece", 3: "local", 4: "google"}
+type_dict = {-1: "FAIL", 0: "good", 1: "copyJP", 2: "piece", 3: "local", 4: "google"}
 specificdict_dict = {0:None, 4:None,
 					 5:local_translation_dicts.bone_dict,
 					 6:local_translation_dicts.morph_dict,
@@ -129,12 +134,12 @@ TODO: what levels accept str/list/both?
 # DONE: chunk localtrans pass
 # DONE: 2nd level of "disable internet"
 # DONE: arg for chunks vs perline vs auto
-# TODO: embellish pretrans
-# TODO: pretrans before exactmatch
+# DONE: embellish pretrans
+# DONE: pretrans before exactmatch
 # TODO: revise exactmatch dicts & words dict
 
-# TODO: put exact match BEFORE copy?
-# TODO: pretrans returns tuple?
+# TODO: put exact match BEFORE copy? why did i think this was a good idea?
+# DONE: pretrans returns tuple?
 
 
 
@@ -165,18 +170,20 @@ def easy_translate(jp, en, specific_dict=None):
 	options: PREFER_EXISTING_ENGLISH_NAME will cause mode 0 to be checked here.
 	"""
 	# first, if en name is already good (not blank and not JP), just keep it
-	if PREFER_EXISTING_ENGLISH_NAME and en and not en.isspace() and not contains_jap_chars(en):
+	if PREFER_EXISTING_ENGLISH_NAME and en and not en.isspace() and not local_translation_dicts.needs_translate(en):
 		return en, 0
 	
 	# TODO: do pretranslate here? no? maybe? this is for things that violate the rules of pretranslate & piecewise local
+	# TODO: save the pretranslate results so I don't need to do it twice more?
+	indent, body, suffix = local_translation_dicts.pre_translate(jp)
 	
 	# second, jp name is already good english, copy jp name -> en name
-	if jp and not jp.isspace() and not contains_jap_chars(jp):
-		return jp, 1
+	if body and not body.isspace() and not local_translation_dicts.needs_translate(body):
+		return (indent + body + suffix), 1
 	
 	# third, see if this name is an exact match in the specific dict for this specific type
-	if specific_dict is not None and jp in specific_dict:
-		return specific_dict[jp], 2
+	if specific_dict is not None and body in specific_dict:
+		return (indent + specific_dict[body] + suffix), 2
 	
 	# if none of these pass, return nothing & type -1 to signfiy it is still in progress
 	return "", -1
@@ -201,16 +208,19 @@ def google_translate(in_list, strategy=1):
 	
 	# 1. pre-translate to take care of common tasks
 	pretrans = local_translation_dicts.pre_translate(in_list)
+	indents, bodies, suffixes = list(zip(*pretrans))
+
 	
 	# 2. identify chunks
 	jp_chunks = set()
 	# idea: walk & look for transition from en to jp?
-	for s in pretrans:  # for every string to translate,
+	for s in bodies:  # for every string to translate,
 		rstart = 0
 		prev_islatin = True
 		is_latin = True
 		for i in range(len(s)):  # walk along its length one char at a time,
-			is_latin = local_translation_dicts.is_latin(s[i])
+			# use "is_jp" here and not "is_latin" so chunks are defined to be only actual JP stuff and not unicode whatevers
+			is_latin = not local_translation_dicts.is_jp(s[i])
 			# if char WAS latin but now is NOT latin, then this is the start of a range.
 			if prev_islatin and not is_latin:
 				rstart = i
@@ -229,8 +239,9 @@ def google_translate(in_list, strategy=1):
 		# remove the chunks that can already be translated
 		# chunks are guaranteed to NOT be part of compound words, probably. so any exact matches with my words-dict should be valid!
 		jp_chunks_localtrans = local_translation_dicts.piecewise_translate(jp_chunks, local_translation_dicts.words_dict)
-		# results are chunk+trans: split into (where trans passed) (where trans failed)
-		trans_fail, trans_pass = my_list_partition(zip(jp_chunks, jp_chunks_localtrans), lambda x: contains_jap_chars(x[1]))
+		# results are chunk+trans: split into (where trans failed) (where trans passed)
+		# use "is_jp"->fail and not "needs_translate" so I am only sending actual JP stuff to Google and not unicode arrows or whatever
+		trans_fail, trans_pass = my_list_partition(zip(jp_chunks, jp_chunks_localtrans), lambda x: local_translation_dicts.is_jp(x[1]))
 		for chunk, trans in trans_pass:  # add dict entries for the ones that passed
 			localtrans_dict[chunk] = trans
 		jp_chunks = [j[0] for j in trans_fail]  # rebuild the jp_chunks list for the ones that failed
@@ -238,7 +249,7 @@ def google_translate(in_list, strategy=1):
 	
 	# 4. combine them into fewer requests
 	jp_chunks_combined = combine_translate_requests(jp_chunks)
-	pretrans_combined = combine_translate_requests(pretrans)
+	pretrans_combined = combine_translate_requests(bodies)
 	if strategy == 2:	use_chunk_strat = (len(jp_chunks_combined) < len(pretrans_combined))
 	
 	# 5. check the translate budget to see if I can afford this
@@ -271,7 +282,7 @@ def google_translate(in_list, strategy=1):
 		print(google_dict)
 		
 		# 8. piecewise translate using newly created dict
-		outlist = local_translation_dicts.piecewise_translate(pretrans, google_dict)
+		outlist = local_translation_dicts.piecewise_translate(bodies, google_dict)
 	else:
 		# old style: just translate the strings directly and return their results
 		for d,combined in enumerate(pretrans_combined):
@@ -279,7 +290,10 @@ def google_translate(in_list, strategy=1):
 			r = _single_google_translate(combined)
 			results_combined.append(r)
 		outlist = unpack_translate_requests(results_combined)
-
+		
+	# last, reattach the indents and suffixes
+	outlist = [i + b + s for i, b, s in zip(indents, outlist, suffixes)]
+	
 	# return
 	if input_is_str:	return outlist[0]	# if original input was a single string, then de-listify
 	else:				return outlist		# otherwise return as a list
@@ -345,26 +359,15 @@ def check_translate_budget(num_proposed: int) -> bool:
 
 ################################################################################################################
 
-def contains_jap_chars(text) -> bool:
-	# /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff66-\uff9f]/
-	"""
-	3040 - 30ff
-	3400 - 4dbf
-	4e00 - 9fff
-	f900 - faff
-	ff01 - ff5e  # fullwidth chars like ０１２３ＩＫ...   FF01–FF5E(5D/93)  -->  21-7E(5D/93), diff=(FEE0/‭65248‬) that i can map
-	ff5f - ffee  # halfwidth katakana and other things
-	# ▲=25b2, ω=03c9, ∧=2227, □=25a1
-	"""
-	# TODO: replace with if-else chain using "ord" to get unicode idx of each char? less efficient but easier to understand
-	# TODO: maybe instead of finding unusal jap chars, i should just find anything not basic ASCII alphanumeric characters?
-	# TODO: detect box chars & consider those to be "jp" chars
-	match = re.search("[▲△∧ω□\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff01-\uffee]", str(text))
-	if match:
-		# print("True;", str(text))
-		return True
-	# print("False;", str(text))
-	return False
+# def contains_jap_chars(text) -> bool:
+# 	# TODO: maybe instead of finding unusal jap chars, i should just find anything not basic ASCII alphanumeric characters?
+# 	# TODO: detect box chars & consider those to be "jp" chars
+# 	match = re.search("[▲△∧ω□\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff01-\uffee]", str(text))
+# 	if match:
+# 		# print("True;", str(text))
+# 		return True
+# 	# print("False;", str(text))
+# 	return False
 
 
 # def my_string_pad(string: str, width: int) -> str:
@@ -645,7 +648,7 @@ def translate_to_english(pmx, moreinfo=False):
 	local_results = local_translation_dicts.local_translate([item.jp_old for item in translate_notdone])
 	# determine if each item passed or not, update the en_new and trans_type fields
 	for item, result in zip(translate_notdone, local_results):
-		if not contains_jap_chars(result):
+		if not local_translation_dicts.needs_translatev(result):
 			item.en_new = result
 			item.trans_type = 3
 	# grab the newly-done items and move them to the done list
@@ -656,7 +659,7 @@ def translate_to_english(pmx, moreinfo=False):
 		# if i chose to anti-prefer the existing EN name, then it is still preferred over google and should be checked here
 		for item in translate_notdone:
 			# first, if en name is already good (not blank and not JP), just keep it
-			if item.en_old and not item.en_old.isspace() and not contains_jap_chars(item.en_old):
+			if item.en_old and not item.en_old.isspace() and not local_translation_dicts.needs_translate(item.en_old):
 				item.en_new = item.en_old
 				item.trans_type = 0
 		# transfer the newly-done things over to the translate_maps list
@@ -672,7 +675,9 @@ def translate_to_english(pmx, moreinfo=False):
 			google_results = google_translate([item.jp_old for item in translate_notdone])
 			# determine if each item passed or not, update the en_new and trans_type fields
 			for item, result in zip(translate_notdone, google_results):
-				if not contains_jap_chars(result):
+				# save the result regardless of pass/fail, it's the best I've got
+				item.en_new = result
+				if not local_translation_dicts.needs_translate(result):
 					item.en_new = result
 					item.trans_type = 4
 			# grab the newly-done items and move them to the done list
@@ -709,31 +714,27 @@ def translate_to_english(pmx, moreinfo=False):
 	type_specific, temp = 	my_list_partition(temp, lambda x: x.trans_type == 2)
 	type_local, temp = 		my_list_partition(temp, lambda x: x.trans_type == 3)
 	type_google = 			temp
-	# type_good = 		[item for item in translate_maps if item.trans_type == 0]
-	# type_copy = 		[item for item in translate_maps if item.trans_type == 1]
-	# type_specific = 	[item for item in translate_maps if item.trans_type == 2]
-	# type_local = 		[item for item in translate_maps if item.trans_type == 3]
-	# type_google = 		[item for item in translate_maps if item.trans_type == 4]
 	total_changed = int(newcommentsource != 0) + len(type_copy) + len(type_specific) + len(type_local) + len(type_google)
 	total_fields = len(translate_maps)
-	if type_fail:
-		# TODO: test this & think about this more
-		core.MY_PRINT_FUNC("Warning: %d items were unable to be translated by Google, try running translation again" % len(type_fail))
 	if total_changed == 0:
 		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
-	
+	if type_fail:
+		# TODO: test this & think about this more
+		core.MY_PRINT_FUNC("Warning: %d items were unable to be translated by Google, try running translation again" % len(type_fail))
+		
 	###########################################
 	# next, apply!
 	# comment
 	if TRANSLATE_MODEL_COMMENT and newcommentsource != 0:
 		pmx[0][4] = newcomment
-	# everything else: iterate over all entries, write when anything has type != 0 != -1
+	# everything else: iterate over all entries, write when anything has type != 0
+	# even write when type=-1=fail, because it's the best I've got
 	for item in translate_maps:
-		if item.trans_type > 0:
+		if item.trans_type > 0 or (ACCEPT_INCOMPLETE_RESULT and item.trans_type == -1):
 			if item.cat_id == 0:  # this is header-type
 				pmx[item.cat_id][item.idx] = item.en_new
-			else:
+			else:  # this is anything else
 				pmx[item.cat_id][item.idx][1] = item.en_new
 	
 	###########################################
@@ -749,7 +750,7 @@ def translate_to_english(pmx, moreinfo=False):
 		# columns: category, idx, trans_type, en_old, en_new, jp_old = 6 types
 		# bone  15  google || EN: 'asdf' --> 'foobar' || JP: 'fffFFFff'
 		# find max width of each column: this doesn't properly handle JP chars but w/e good enough for now
-		maps_printme = [item for item in translate_maps if item.trans_type != 0]
+		maps_printme = [item for item in translate_maps if item.trans_type > 0 or (ACCEPT_INCOMPLETE_RESULT and item.trans_type == -1)]
 		
 		width = []
 		width.append(max([len(category_dict[vv.cat_id]) for vv in maps_printme]))
@@ -763,23 +764,21 @@ def translate_to_english(pmx, moreinfo=False):
 		maps_printme.sort(key=lambda x: x.idx)
 		maps_printme.sort(key=lambda x: x.cat_id)
 		
-		
 		# now pretty-print the list of translations:
 		for tmap in maps_printme:
-			# print a line for each item that wasn't already good
-			if tmap.trans_type != 0:
-				core.MY_PRINT_FUNC("{:{widtha}} {:>{widthb}} {:{widthc}} || EN: {:{widthd}} --> {:{widthe}} || JP: {}".format(
-					category_dict[tmap.cat_id],
-					tmap.idx,
-					type_dict[tmap.trans_type],
-					"'" + tmap.en_old + "'",
-					"'" + tmap.en_new + "'",
-					"'" + tmap.jp_old + "'",
-					widtha=width[0],
-					widthb=width[1],
-					widthc=width[2],
-					widthd=width[3],
-					widthe=width[4]))
+			# print a line for each item
+			core.MY_PRINT_FUNC("{:{widtha}} {:>{widthb}} {:{widthc}} || EN: {:{widthd}} --> {:{widthe}} || JP: {}".format(
+				category_dict[tmap.cat_id],
+				tmap.idx,
+				type_dict[tmap.trans_type],
+				"'" + tmap.en_old + "'",
+				"'" + tmap.en_new + "'",
+				"'" + tmap.jp_old + "'",
+				widtha=width[0],
+				widthb=width[1],
+				widthc=width[2],
+				widthd=width[3],
+				widthe=width[4]))
 		
 		# for tmap in translate_maps:
 		# 	args = []

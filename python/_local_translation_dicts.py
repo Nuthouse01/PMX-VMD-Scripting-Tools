@@ -10,25 +10,43 @@
 ########################################################################################################################
 ########################################################################################################################
 ########################################################################################################################
-# exact match dicts for semistandard or common bones
 
-morph_dict = {
-"▲": "^ open",
-"△": "^ open2",
-"∧": "^",
+import re
+
+# this dict is added to both "words" and "morphs"... just in one place so I can keep thing straight
+symbols_dict = {
+"╱": "/",  # x2571 "box drawing" section.
+"╲": "\\",  # x2572 "box drawing" section. NOTE backslash isn't MMD supported, find something better!
+"╳": "X",  # x2573 "box drawing" section.
+"↑": "^", # x2191, NOTE: backslashes work poorly so /\ doesn't work right
+"↓": "v", # x2193, NOTE: backslashes work poorly so \/ doesn't work right
+"→": "->", # x2192
+"←": "<-", # x2190
 "ω": "w", # "omega"
-"ω□": "w open",
-"～": "~",  # there are some issues with the tilde and fullwidth tilde, mabye I should find something else?...
-"○": "o",
+"□": "box",  #x25a1
+"■": "box",  #x25a0   less common than above
+"▲": "^ open",  #x25b2
+"△": "^ open",  #x25b3   less common than above
+"∧": "^",  #x2227 "logical and"
+"∨": "V",  #x2228 "logical or"
+"〜": "~",  # x301C wave dash, not supported in shift_jis so it shouldn't be used often i hope. NOTE tilde isn't mmd supported, find something better!
+"○": "o",  #x25cb
+"◯": "O",  #x25ef
+"〇": "O",  # x3007
+}
+
+
+# searched for exact matches because many of these names break translation rules
+morph_dict = {
+"ω□": "w open",  # without this entry it translates to "w box", and i dont like that
 "まばたき": "blink",
 "笑い": "happy", # pmxe translates to "smile" but this is an eye morph
 "ウィンク": "wink",
-"ウィンク右": "wink_R",
-"ウィンク２": "wink2",
-"ｳｨﾝｸ２右": "wink2_R",
-"ｳｨﾝｸ右２": "wink2_R",
-"ウィンク２右": "wink2_R",
-"ウィンク右２": "wink2_R",
+"ウィンク2": "wink2",
+"ウィンク右2": "wink2_R",
+"ｳｨﾝｸ": "wink",
+"ｳｨﾝｸ2": "wink2",
+"ｳｨﾝｸ右2": "wink2_R",
 "ジト目": "doubt",
 "じと目": "doubt",
 "なごみ": "=.=", # "calm"
@@ -41,7 +59,7 @@ morph_dict = {
 "真面目": "serious",  # has the symbol for "eye" but is actually a brow morph, odd
 "怒り": "anger",
 "にこり": "cheerful",
-"ｷﾘｯ": "serious eyes", # not totally confident with this translation, literally "kiri-tsu", might informally mean "confident"? kinda a meme phrase
+"ｷﾘｯ": "serious eyes", # phonetically "kiri-tsu", might informally mean "confident"? kinda a meme phrase, a professional model translated this to 'serious' tho so idk
 "星目": "star eyes",
 "しいたけ": "star eyes", # "shiitake"
 "ハート目": "heart eyes",
@@ -59,8 +77,10 @@ morph_dict = {
 "ニヤリ": "grin",  # these 2 are phonetically the same, "niyari"
 "にっこり": "smile",
 "ムッ": "upset",
-"照れ２": "blush2", # "big blush"
-"照れ": "blush", # "little blush"
+"照れ": "blush",  # "little blush"
+"照れ2": "blush2",  # "big blush"
+"照れ屋": "blush",  # another blush
+"赤面": "blush",  # literally "red face" but its just another blush
 "青ざめる": "shock", # literally "aozomeru" translates to "pale"
 "青ざめ": "shock", # literally "aozame" translates to "pale"
 "丸目": "O.O",
@@ -69,7 +89,7 @@ morph_dict = {
 "はちゅ目横潰れ": "O.O width",
 "ハイライト消し": "highlight off",
 "瞳小": "pupil small", # "pupil"
-"恐ろしい子！": "white eye", # literally "scary child!" who the hell thought that was a good name?
+"恐ろしい子!": "white eye", # literally "scary child!" who the hell thought that was a good name?
 "ぺろっ": "tongue out",  # phonetically "perrow"
 "べー": "beeeeh", # another way of doing "tongue out" but google likes to turn this into 'base'
 "あ": "a",
@@ -79,7 +99,6 @@ morph_dict = {
 "お": "o",
 "ワ": "wa",
 "わ": "wa",
-"□": "box",
 "上": "brow up", # "go up"
 "下": "brow down", # "go down"
 "前": "brow fwd",
@@ -88,142 +107,98 @@ morph_dict = {
 "ー": "--", # not sure what to do with this, often used to mean continuation of a sound/syllable...
 }
 
+# add the symbols into the morph dict
+morph_dict.update(symbols_dict)
+
+
+# searched for exact matches because many of these break piecewise translation rules
 bone_dict =  {
 "操作中心": "view cnt",
 "全ての親": "motherbone",
 "センター": "center",
 "グルーブ": "groove",
 "腰": "waist",
-"右足IK親": "leg IKP_R",
-"右足ＩＫ": "leg IK_R",
-"右つま先ＩＫ": "toe IK_R",
-"左足IK親": "leg IKP_L",
-"左足ＩＫ": "leg IK_L",
-"左つま先ＩＫ": "toe IK_L",
+"足IK親": "leg IKP",
+"足ＩＫ": "leg IK",
+"つま先ＩＫ": "toe IK",
 "上半身": "upper body",
 "上半身2": "upper body2",
 "下半身": "lower body",
 "首": "neck",
 "頭": "head",
-"右肩P": "shoulder_raise_R", # "raise shoulder_R"
-"右肩": "shoulder_R",
-"右肩C": "shoulder_hidden_R",
-"右腕": "arm_R",
-"右腕ＩＫ": "armIK_R",
-"右腕捩": "arm twist_R",
-"右腕捩1": "arm twist1_R", # "right arm rig1"
-"右腕捩2": "arm twist2_R", # "right arm rig2"
-"右腕捩3": "arm twist3_R", # "right arm rig3"
-"右ひじ": "elbow_R",
-"右手捩": "wrist twist_R",
-"右手捩1": "wrist twist1_R", # "right elbow rig1"
-"右手捩2": "wrist twist2_R", # "right elbow rig2"
-"右手捩3": "wrist twist3_R", # "right elbow rig3"
-"右手首": "wrist_R",
-"右手先": "wrist_end_R",
-"右ダミー": "dummy_R",
-"右親指０": "thumb0_R",
-"右親指１": "thumb1_R",
-"右親指２": "thumb2_R",
-"右親指先": "thumb_end_R",
-"右小指１": "little1_R",
-"右小指２": "little2_R",
-"右小指３": "little3_R",
-"右小指先": "little_end_R",
-"右薬指１": "third1_R",
-"右薬指２": "third2_R",
-"右薬指３": "third3_R",
-"右薬指先": "third_end_R",
-"右中指１": "middle1_R",
-"右中指２": "middle2_R",
-"右中指３": "middle3_R",
-"右中指先": "middle_end_R",
-"右人指１": "fore1_R",
-"右人指２": "fore2_R",
-"右人指３": "fore3_R",
-"右人指先": "fore_end_R",
-"左肩P": "shoulder_raise_L", # "raise shoulder_L"
-"左肩": "shoulder_L",
-"左肩C": "shoulder_hidden_L",
-"左腕": "arm_L",
-"左腕ＩＫ": "armIK_L",
-"左腕捩": "arm twist_L",
-"左腕捩1": "arm twist1_L", # "left arm rig1"
-"左腕捩2": "arm twist2_L", # "left arm rig2"
-"左腕捩3": "arm twist3_L", # "left arm rig3"
-"左ひじ": "elbow_L",
-"左手捩": "wrist twist_L",
-"左手捩1": "wrist twist1_L", # "left elbow rig1"
-"左手捩2": "wrist twist2_L", # "left elbow rig2"
-"左手捩3": "wrist twist3_L", # "left elbow rig3"
-"左手首": "wrist_L",
-"左手先": "wrist_end_L",
-"左ダミー": "dummy_L",
-"左親指０": "thumb0_L",
-"左親指１": "thumb1_L",
-"左親指２": "thumb2_L",
-"左親指先": "thumb_end_L",
-"左小指１": "little1_L",
-"左小指２": "little2_L",
-"左小指３": "little3_L",
-"左小指先": "little_end_L",
-"左薬指１": "third1_L",
-"左薬指２": "third2_L",
-"左薬指３": "third3_L",
-"左薬指先": "third_end_L",
-"左中指１": "middle1_L",
-"左中指２": "middle2_L",
-"左中指３": "middle3_L",
-"左中指先": "middle_end_L",
-"左人指１": "fore1_L",
-"左人指２": "fore2_L",
-"左人指３": "fore3_L",
-"左人指先": "fore_end_L",
-"右目": "eye_R",
-"左目": "eye_L",
-"両目": "eyes",
+"肩P": "shoulder_raise",  # "raise shoulder"
+"肩": "shoulder",
+"肩C": "shoulder_cancel",  # alternately "shoulder hidden"
+"腕": "arm",
+"腕ＩＫ": "armIK",
+"腕捩": "arm twist",
+"腕捩1": "arm twist1",  # "left arm rig1"
+"腕捩2": "arm twist2",  # "left arm rig2"
+"腕捩3": "arm twist3",  # "left arm rig3"
+"ひじ": "elbow",
+"手捩": "wrist twist",
+"手捩1": "wrist twist1",  # "left elbow rig1"
+"手捩2": "wrist twist2",  # "left elbow rig2"
+"手捩3": "wrist twist3",  # "left elbow rig3"
+"手首": "wrist",
+"手先": "wrist_end",
+"ダミー": "dummy",
+"親指０": "thumb0",
+"親指１": "thumb1",
+"親指２": "thumb2",
+"親指先": "thumb_end",
+"小指１": "little1",
+"小指２": "little2",
+"小指３": "little3",
+"小指先": "little_end",
+"薬指１": "third1",
+"薬指２": "third2",
+"薬指３": "third3",
+"薬指先": "third_end",
+"中指１": "middle1",
+"中指２": "middle2",
+"中指３": "middle3",
+"中指先": "middle_end",
+"人指１": "fore1",
+"人指２": "fore2",
+"人指３": "fore3",
+"人指先": "fore_end",
+"目": "eye",
+"両目": "eyes",  # literally "both eyes"
 "メガネ": "glasses",
 "眼鏡": "glasses",
-"腰キャンセル右": "waist_cancel_R",
-"腰キャンセル左": "waist_cancel_L",
-"右足": "leg_R",  # standard leg-bones
-"右ひざ": "knee_R",
-"右足首": "foot_R",
-"右つま先": "toe_R",
-"左足": "leg_L",
-"左ひざ": "knee_L",
-"左足首": "foot_L",
-"左つま先": "toe_L",
-"右足D": "leg_RD",      # "right thigh_D"
-"右ひざD": "knee_RD",   # "right knee_D"
-"右足首D": "foot_RD",   # "right foot_D"
-"右足先EX": "toe_R EX", # "right toes_EX"
-"左足D": "leg_LD",      # "left thigh_D"
-"左ひざD": "knee_LD",   # "left knee_D"
-"左足首D": "foot_LD",   # "left foot_D"
-"左足先EX": "toe_L EX", # "left toes_EX"
+"腰キャンセル": "waist_cancel",
+"足": "leg",  # standard leg-bones
+"ひざ": "knee",
+"足首": "foot",
+"つま先": "toe",
+"足D": "leg_D",      # "left/right thigh_D"
+"ひざD": "knee_D",   # "left/right knee_D"
+"足首D": "foot_D",   # "left/right foot_D"
+"足先EX": "toe_EX", # "left/right toes_EX"
 "胸": "breast",
 "胸親": "breast_ctrl",
-"おっぱい調整": "breast_adjust",
-"左胸": "breast_L",
-"右胸": "breast_R",
 "乳": "breast",  # chinese symbol for breast, sometimes used
-"左乳": "breast_L",
-"右乳": "breast_R",
+"乳親": "breast_ctrl",
 }
 
 # these should be nicely capitalized
 frame_dict = {
 "センター": "Center",
 "ＩＫ": "IK",
+"IK": "IK",
 "体(上)": "Upper Body",
 "髪": "Hair",
 "腕": "Arms",
 "指": "Fingers",
 "体(下)": "Lower Body",
 "足": "Legs",
+"つま先": "Toes",
 "スカート": "Skirt",
 "その他": "Other",
+"物理": "Physics",
+"物理-その他": "Physics - Other",
+"その他-物理": "Other - Physics",
 "服": "Clothes",
 "ケープ": "Cape",
 "外套": "Mantle",
@@ -270,6 +245,8 @@ words_dict = {
 "腰": "waist",
 "舌": "tongue",
 "胸": "breast",
+"乳首": "nipple",
+"乳輪": "areola",
 "乳": "breast",
 "ブラ": "bra",
 "耳": "ear",
@@ -420,7 +397,6 @@ words_dict = {
 "調整": "adjust",
 "出し": "out", # out as in takeout???
 "全": "all",
-"・": "-",
 "握り": "grip",
 "握": "grip",
 "拡散": "spread",
@@ -467,7 +443,7 @@ words_dict = {
 "ウィンク": "wink",
 "ｳｨﾝｸ": "wink",
 "睨み": "glare",
-"ｷﾘｯ": "kiri", # not sure what this means, perhaps "confident"? kinda an informal meme phrase
+"ｷﾘｯ": "serious", # phonetically "kiri-tsu", might informally mean "confident"? kinda a meme phrase, a professional model translated this to 'serious' tho so idk
 "ジト": "doubt", # jito
 "じと": "doubt", # jito
 "なごみ": "=.=", # "calm"
@@ -522,21 +498,13 @@ words_dict = {
 "わ": "wa",
 "涙": "tears",
 "ん": "hmm",
-"ω": "w", # "omega"
-"□": "box",  #x25a1
-"■": "box2",  #x25a0   less common than above
-"▲": "^ open",  #x25b2
-"△": "^ open2",  #x25b3   less common than above
-"∧": "^",  #x2227 "logical and"
-"∨": "v",  #x2228 "logical or"
-"○": "o",  #x25cb
-"◯": "O",  #x25ef
-"～": "~",  # there are some issues with the tilde and fullwidth tilde, mabye I should find something else?...
 "の": "of", # backwards yoda-style grammar: technically "A の B" translates to "B of A" but I can't do that switcheroo without major changes
 "用": "for",  # backwards yoda-style grammar: same
 "ー": "--", # not sure what to do with this, often used to mean continuation of a sound/syllable...
 }
 
+# add the special symbols
+words_dict.update(symbols_dict)
 # after defining its contents, ensure that it is sorted with longest keys first. for tying items relative order is unchanged.
 # fixes the "undershadowing" problem
 words_dict = dict(sorted(list(words_dict.items()), reverse=True, key=lambda x: len(x[0])))
@@ -548,26 +516,12 @@ prefix_dict = {
 "右": "_R",
 "左": "_L",
 }
+prefix_dict_ord = dict({(ord(k), v) for k, v in prefix_dict.items()})
 
-# these get appended to the end instead of being replaced in order
-suffix_dict = {
-"中": "_M",  # this one isn't truly standard but i like the left/right/middle symmetry
-"右": "_R",
-"左": "_L",
-"先": " end",
-"親": " parent",
-}
-
-
-strip_chars = " _-.\n\t\r"
 
 
 odd_punctuation_dict = {
 "　": " ",  # x3000, just a fullwidth space aka "ideographic space"
-"╱": "/",  # x2571 "box drawing" section. these have to be here so they aren't caught by the other box-drawing character check.
-"╲": "\\",  # x2572 "box drawing" section. NOTE backslash isn't MMD supported, find something better!
-"╳": "X",  # x2573 "box drawing" section
-"〇": "O",  # x3007
 "〈": "<",  # x3008
 "〉": ">",  # x3009
 "《": "<",  # x300a
@@ -585,6 +539,47 @@ odd_punctuation_dict = {
 }
 # note: "ー" = "katakana/hiragana prolonged sound mark" = 0x30fc should !!!NOT!!! be treated as punctuation cuz it shows up in several "words"
 
+# for use with 'translate' function, convert the keys to the unicode values instead of strings:
+fullwidth_dict_ord = dict({(ord(k), v) for k, v in odd_punctuation_dict.items()})
+# then add the fullwidth latin symbols:
+# https://en.wikipedia.org/wiki/Halfwidth_and_Fullwidth_Forms_(Unicode_block)
+# fullwidth chars like ０１２３ＩＫ are in range FF01–FF5E  and correspond to  21-7E, difference=(FEE0/‭65248‬)
+for uni in range(0xff01, 0xff5f):
+	fullwidth_dict_ord[uni] = uni - 0xfee0
+
+
+########################################################################################################################
+########################################################################################################################
+# regular expression stuff
+# indent: whitespace _ box, 2571/2572/2573 are exceptions!
+indent_pattern = "^[\\s_\u2500-\u2570\u2574-\u257f]+"
+indent_re = re.compile(indent_pattern)
+prefix_pattern = "^[%s]+" % ("".join(prefix_dict.keys()))
+prefix_re = re.compile(prefix_pattern)
+suffix_pattern = "[%s]+$" % ("".join(prefix_dict.keys()))
+suffix_re = re.compile(suffix_pattern)
+# strip: whitespace _ . -
+strip_pattern = "(^[\\s_.-]+)|([\\s_.-]+$)"
+strip_re = re.compile(strip_pattern)
+
+# TODO: maybe instead of finding unusal jap chars, i should just find anything not basic ASCII alphanumeric characters?
+jp_pattern = "\u3040-\u30ff"  # "hiragana" block + "katakana" block
+jp_pattern += "\u3000-\u303f"  # "cjk symbols and punctuation" block, fullwidth space, brackets, etc etc
+jp_pattern += "\u3400-\u4dbf"  # "cjk unified ideographs extension A"
+jp_pattern += "\u4e00-\u9fff"  # "cjk unified ideographs"
+jp_pattern += "\uf900-\ufaff"  # "cjk compatability ideographs"
+jp_pattern += "\uff01-\uffee"  # "halfwidth and fullwidth forms" AKA ０１２３ＩＫ followed by halfwidth katakana and other stuff
+needstranslate_pattern = jp_pattern  # copy this stuff, "needstranslate" is a superset of "is_jp"
+jp_pattern = "[" + jp_pattern + "]"
+jp_re = re.compile(jp_pattern)
+
+needstranslate_pattern += "\u2190-\u21ff"  # "arrows" block
+needstranslate_pattern += "\u2500-\u257f"  # "box drawing" block, used as indentation sometimes
+needstranslate_pattern += "\u25a0-\u25ff"  # "geometric shapes", common morphs ▲ △ □ ■ come from here
+needstranslate_pattern += "".join(symbols_dict.keys())  # add "symbol dict" just in case there are some outlyers... some overlap with ranges but w/e
+needstranslate_pattern = "[" + needstranslate_pattern + "]"
+needstranslate_re = re.compile(needstranslate_pattern)
+
 
 ########################################################################################################################
 ########################################################################################################################
@@ -593,14 +588,13 @@ odd_punctuation_dict = {
 # functions
 
 
-TRANSLATE_JOINCHAR = ' '
-
 STANDARD_INDENT = "  "
 
 DEBUG = False
 
 
 # not 100% confident this is right, there are probably other characters that can display just fine in MMD like accents
+# TODO: check for other chars that can display in MMD just fine, try accents maybe
 def is_latin(text:str) -> bool:
 	for c in text:
 		o = ord(c)
@@ -608,76 +602,92 @@ def is_latin(text:str) -> bool:
 			return False
 	return True
 
+def is_jp(text:str) -> bool:
+	""" is jp/cn and needs translation and can be plausibly translated """
+	m = jp_re.search(text)
+	# print(bool(m), str(text))
+	return bool(m)
+
+def needs_translate(text:str) -> bool:
+	""" won't display right in MMD, either is jp/cn or is wierd unicode symbols """
+	m = needstranslate_re.search(text)
+	# print(bool(m), str(text))
+	return bool(m)
+
 
 def pre_translate(in_list):
 	"""
-	handle common translation things like prefixes, suffixes, fullwidth alphanumeric characters, etc.
+	Handle common translation things like prefixes, suffixes, fullwidth alphanumeric characters, etc.
 	TODO: do i want to return with them joined? or leave the indent-suffix-rejoining for later?
 	"""
+	# input str breakdown: (indent) (L/R prefix) (padding) (((body))) (padding) (L/R suffix)
+	
 	input_is_str = isinstance(in_list, str)
 	if input_is_str: in_list = [in_list]  # force it to be a list anyway so I don't have to change my structure
 	outlist = []  # list to build & return
 	for s in in_list:
+		# 1: subst JP/fullwidth alphanumeric chars -> standard EN alphanumeric chars
+		# https://en.wikipedia.org/wiki/Halfwidth_and_Fullwidth_Forms_(Unicode_block)
+		# fullwidth chars like ０１２３ＩＫ are in range FF01–FF5E  and correspond to  21-7E, difference=(FEE0/‭65248‬)
+		# to handle them, use nifty str.translate() method, dict must have keys be ordinal unicode values tho
+		out = s.translate(fullwidth_dict_ord)
+		
+		# 2. check for indent
 		indent_prefix = ""
-		out = ""
-		for c in s:  # now walk whole str and translate one char at a time
-			# 1: subst JP/fullwidth alphanumeric chars -> standard EN alphanumeric chars
-			# https://en.wikipedia.org/wiki/Halfwidth_and_Fullwidth_Forms_(Unicode_block)
-			# fullwidth chars like ０１２３ＩＫ are in range FF01–FF5E  and correspond to  21-7E, difference=(FEE0/‭65248‬)
-			# to handle them, str[1] > ord() > ascii# > -0xfee0 > ascii# > chr() > str[1]
-			o = ord(c)					# get ascii value
-			if 0xff01 <= o <= 0xff5e:	# if this is a fullwidth char,
-				c = chr(o - 0xfee0)		# map it down to the normal version.
-			# 2: subst JP odd punctuation stuff for EN equivalents (brackets, dots, dashes, corners, etc)
-			# no good pattern, just gotta do it piecewise
-			elif c in odd_punctuation_dict:
-				c = odd_punctuation_dict[c]
-			# these 'box drawing chars' sometimes used for indentation, get them outta here. convert to indent later.
-			# TODO: consider whether boxes not at the start are worth worrying about?
-			elif 0x2500 <= o <= 0x257f:
-				c = ""
-				indent_prefix = STANDARD_INDENT
-			out += c  # append the char
-			
-		# TODO PROBLEM: how to preserve leading underscore??? separate strip-list for left and right?
+		# get the entire indent, regardless of what it is made of
+		# re.search
+		indent_match = indent_re.search(out)
+		if indent_match is not None:
+			# found a matching indent!
+			if indent_match.end() == len(out):
+				# the indent consumed the entire string... skip this stage, do nothing, leave as is
+				pass
+			else:
+				# remove the indent from the orig str
+				out = out[indent_match.end():]
+				# decide what to replace it with
+				# if it contains an underscore, use under prefix... otherwise use 2-space indent
+				indent_prefix = "_" if "_" in indent_match.group() else STANDARD_INDENT
 		
-		# TODO PROBLEM: cannot extract 'end' suffix because it is a part of 'toe'
-		# 3: remove actual whitespace indent, if there is one
-		startidx = 0
-		for startidx in range(len(out)):
-			if not out[startidx].isspace(): break
-		if startidx != 0:  # there is an actual whitespace indent here!
-			out = out[startidx:]  # for now, trim the indent.
-			indent_prefix = STANDARD_INDENT  # will add an indent later.
+		# 3: remove known JP prefix/suffix, assemble EN suffix to be reattached later
+		en_suffix = ""
+		# get the prefix
+		prefix_match = prefix_re.search(out)
+		if prefix_match is not None:
+			if prefix_match.end() == len(out):
+				# if the prefix consumed the entire string, skip this stage
+				pass
+			else:
+				# remove the prefix from the orig str
+				out = out[prefix_match.end():]
+				# generate a new EN suffix from the prefix I removed
+				en_suffix += prefix_match.group().translate(prefix_dict_ord)
+		# get the suffix
+		suffix_match = suffix_re.search(out)
+		if suffix_match is not None:
+			if suffix_match.start() == 0:
+				# if the suffix consumed the entire string, skip this stage
+				pass
+			else:
+				# remove the suffix from the orig str
+				out = out[:suffix_match.start()]
+				# generate a new EN suffix from the suffix I removed
+				en_suffix += suffix_match.group().translate(prefix_dict_ord)
+				
+		# 4: strip leading/ending spaces or whatever that might have been insulated by the prefix/suffix
+		out_strip = strip_re.sub("", out)
+		if out_strip == "":
+			# if stripping whitespace removes the entire string, then skip/undo this step
+			pass
+		else:
+			out = out_strip
 		
-		# 4: remove known JP prefix/suffix, assemble EN suffix to be reattached later
-		# prefixes: walk 0+ checking each char until finding a char that is NOT a prefix
-		startidx = 0  # will be left pointing at a char that isn't a prefix
-		en_suffix_pre = ""
-		for startidx in range(len(out)):
-			# append
-			if out[startidx] in prefix_dict:	en_suffix_pre += prefix_dict[out[startidx]]
-			else:								break
-		# suffixes: walk end- checking each char until finding a char that is NOT a suffix
-		endidx = len(out)-1  # will be left pointing at a char that isn't a suffix and is valid
-		en_suffix_suff = ""
-		for endidx in range(len(out)-1, -1, -1):
-			# prepend since i'm walking backwards but i want order to stay the same
-			if out[endidx] in suffix_dict:	en_suffix_suff = suffix_dict[out[endidx]] + en_suffix_suff
-			else:							break
-		out = out[startidx:(endidx+1)]
-		en_suffix = en_suffix_pre + en_suffix_suff
-		
-		# 5: strip leading/ending spaces or whatever that might have been insulated by the prefix/suffix
-		out = out.strip(strip_chars)
-		
-		# 6: re-add the indent if I removed a box char or true indent
-		out = indent_prefix + out
-		
+		# 5: re-add the indent if I removed a box char or true indent
 		# reattach EN suffix & append to return list
-		outlist.append(out + en_suffix)
-		# TODO: possibly return suffix separate from the rest?
-		# outlist.append((out, en_suffix))
+		# out = indent_prefix + out + en_suffix
+		# outlist.append(out)
+		# TODO: return indent/suffix separate from the rest?
+		outlist.append((indent_prefix, out, en_suffix))
 	if input_is_str:	return outlist[0]	# if original input was a single string, then de-listify
 	else:				return outlist		# otherwise return as a list
 
@@ -759,11 +769,15 @@ def local_translate(in_list):
 	# first, run pretranslate: take care of the standard stuff
 	# things like prefixes, suffixes, fullwidth alphanumeric characters, etc
 	pretrans = pre_translate(in_list)
+	indents, bodies, suffixes = list(zip(*pretrans))
 	
 	# second, run piecewise translation with the hardcoded "words dict"
-	outlist = piecewise_translate(pretrans, words_dict)
+	outbodies = piecewise_translate(bodies, words_dict)
 	
-	# pretty much done!
+	# third, reattach the indents and suffixes
+	outlist = [i + b + s for i,b,s in zip(indents, outbodies, suffixes)]
+	
+	# pretty much done! check whether it passed/failed outside this func
 	if DEBUG:
 		for s,o in zip(in_list, outlist):
 			# did i translate the whole thing? check whether results are all "normal" characters
