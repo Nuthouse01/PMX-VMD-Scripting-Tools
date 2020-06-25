@@ -725,8 +725,6 @@ def piecewise_translate(in_list, in_dict):
 			outlist.append("JP_NULL")
 			continue
 		# goal: substrings that match keys of "words_dict" get replaced
-		# no JOINCHAR between replacement and english text
-		
 		# NEW ARCHITECTURE: starting from each char, try to match against the contents of the dict. longest items are first!
 		i = 0
 		while i < len(out):  # starting from each char of the string,
@@ -748,22 +746,6 @@ def piecewise_translate(in_list, in_dict):
 					break
 			if found_match is False:
 				i += 1
-		# # goal: substrings that match keys of "words_dict" get replaced
-		# # no JOINCHAR between replacement and english text
-		# for (key, val) in in_dict.items():
-		# 	begin = 0
-		# 	# while-loop is here to apply all instances of this translation. keep replacing until no longer found.
-		# 	while begin != -1:
-		# 		begin = out.find(key)
-		# 		if begin != -1:  # if it finds a match,
-		# 			# i am going to replace it key->val, but first maybe insert space before or after or both
-		# 			# note: letter/number are the ONLY things that use joinchar. all punctuation and all JP stuff do not use joinchar.
-		# 			# if 'begin-1' is a valid index and the char at that index is letter/number, then PREPEND a space
-		# 			before_space = " " if begin != 0 and out[begin-1].isalnum() else ""
-		# 			# if "begin+len(key)" is a valid index and the char at that index is letter/number, then APPEND a space
-		# 			after_space = " " if begin+len(key) < len(out) and out[begin+len(key)].isalnum() else ""
-		# 			# now JOINCHAR is added, so now i substitute
-		# 			out[begin:begin+len(key)] = before_space + val + after_space
 		# once all uses of all keys have been replaced, then append the result
 		outlist.append(out)
 	
@@ -772,8 +754,8 @@ def piecewise_translate(in_list, in_dict):
 
 
 def local_translate(in_list):
-	""" attempt to use the hardcoded translation dict to translate as many of the words as I can.
-	supports list(str)->list(str) or just str->str.
+	"""
+	attempt to use the hardcoded translation dict to translate as many of the words as I can.
 	results are best-effort translations, even if incomplete.
 	with DEBUG=True, it prints successful/before/after.
 	"""
@@ -800,84 +782,6 @@ def local_translate(in_list):
 	if input_is_str:	return outlist[0]	# if original input was a single string, then de-listify
 	else:				return outlist		# otherwise return as a list
 
-
-# use the local dicts defined here to attempt intelligent translation without going to Google
-# returns its best translation attempt, even if unsuccessful/incomplete
-# takes JP string as input, assumes I have already checked for the case where JP name is already only english (copyable)
-# def translate_local(s: str) -> str:
-# 	if (not s) or s.isspace():
-# 		return "NULL"
-# 	# stage 1: look for exact matches
-# 	for (key, val) in morph_dict.items():
-# 		if s == key:
-# 			if DEBUG:
-# 				print("_ :: %s :: %s" % (s, val))
-# 			return val
-# 	for (key, val) in bone_dict.items():
-# 		if s == key:
-# 			if DEBUG:
-# 				print("_ :: %s :: %s" % (s, val))
-# 			return val
-# 	for (key, val) in frame_dict.items():
-# 		if s == key:
-# 			if DEBUG:
-# 				print("_ :: %s :: %s" % (s, val))
-# 			return val
-#
-# 	# stage 2: fullwidth replacement, result might be unchanged
-# 	# fullwidth chars like ０１２３ＩＫ are in range FF01–FF5E  and correspond to  21-7E, diff=(FEE0/‭65248‬)
-# 	# to handle them, str[1] > ord() > ascii# > -0xfee0 > ascii# > chr() > str[1]
-# 	out = ""
-# 	for c in s:  # for each char c in string s,
-# 		o = ord(c)  # get ascii value
-# 		if 0xff01 <= o <= 0xff5e:  # if this is a fullwidth char,
-# 			out += chr(o - 0xfee0)  # map it down to the normal version & append
-# 		elif o == 0x3000: # if this is an "ideographic space" aka fullwidth space
-# 			out += " "
-# 		else:  # otherwise,
-# 			out += c  # append the unmodified char
-#
-# 	# stage 3: left/right/mid replacement
-# 	# turn the JP prefix into an EN suffix
-# 	for (key, val) in prefix_dict.items():
-# 		if out[0] == key:
-# 			# rebuild the string minus the prefix plus the suffix
-# 			out = out[1:] + val
-# 			# only one prefix, don't check more
-# 			break
-#
-# 	# stage 4: word replacement
-# 	# goal: substrings that match keys of "words_dict" get replaced
-# 	# BUT, ONLY adjacent substring replacements are separated by JOINCHAR
-# 	# no JOINCHAR between replacement and english text
-# 	for (key, val) in words_dict.items():
-# 		begin = 0
-# 		# while-loop is here to apply all instances of this translation
-# 		while begin != -1:
-# 			begin = out.find(key)
-# 			if begin != -1:  # if it finds a match,
-# 				newtrans = val
-# 				# i am going to replace it, but first see if i need to put JOINCHAR before or after
-# 				# the char after is begin+len(key) and the char before is begin-1
-# 				# add JOINCHAR if the index exists and is not already a  "separator" text char: space,._-/
-# 				if begin != 0 and out[begin-1] not in " ,._-/":  # can i put JOINCHAR at the start of the string
-# 					newtrans = TRANSLATE_JOINCHAR + newtrans
-# 				if begin+len(key) != len(out) and out[begin+len(key)] not in " ,._-/":  # can i put JOINCHAR at the end of the string
-# 					newtrans = newtrans + TRANSLATE_JOINCHAR
-# 				# now JOINCHAR is added, so now i substitute
-# 				out = out[:begin] + newtrans + out[begin+len(key):]
-#
-# 	# pretty much done!
-# 	if DEBUG:
-# 		# did i translate the whole thing? check whether results are all "normal" characters
-# 		complete = True
-# 		for c in out:
-# 			if ord(c) > 0x7f:
-# 				complete = False
-# 				break
-# 		print("%d :: %s :: %s" % (complete, s, out))
-# 	# return what it produced, even if not completely successful
-# 	return out
 
 # import nuthouse01_core as core
 # import nuthouse01_pmx_parser as pmxlib

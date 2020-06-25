@@ -2,7 +2,6 @@
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-import re
 from time import time
 
 # second, wrap custom imports with a try-except to catch it if files are missing
@@ -102,44 +101,8 @@ goal: translate everything accurately & efficiently, but also record what layer 
 user can tolerate ~1sec delay: code efficiency/speed is far less important than code cleanliness, compactness, readability
 want to efficiently minimize # of Google Translate API calls, to avoid hitting the lockout
 0 input already good > 1 copy JP > 2 category-specific exact match > 3 local picewise trans > 4 google piecewise trans > -1 fail
-
-for each category,
-	for each name,
-		check for type 0/1/2
-		create translate_entry regardless what happens
-do same thing for model name
-then for all that didn't get successfully translated,
-do bulk local piecewise translate: list(str) -> list(str)
-then for all that didn't get successfully translated,
-do bulk google piecewise translate: list(str) -> list(str)
-then sort the results
-then format & print the results
-
-
-
-easy_translate: DONE
-pre_translate: DONE
-piecewise_translate: DONE
-local_translate: DONE
-google_translate: DONE
-bulk/single google translate: DONE
-
-
-TODO: when does model comment get handled?
-TODO: am i still allowing "ANTIPREFER EXISTING EN NAME" option?
-TODO: what levels accept str/list/both?
 """
 
-# DONE: my_list_partition
-# DONE: chunk localtrans pass
-# DONE: 2nd level of "disable internet"
-# DONE: arg for chunks vs perline vs auto
-# DONE: embellish pretrans
-# DONE: pretrans before exactmatch
-# TODO: revise exactmatch dicts & words dict
-
-# TODO: put exact match BEFORE copy? why did i think this was a good idea?
-# DONE: pretrans returns tuple?
 
 
 
@@ -174,7 +137,7 @@ def easy_translate(jp, en, specific_dict=None):
 		return en, 0
 	
 	# do pretranslate here: better for exact matching against morphs that have sad/sad_L/sad_R etc
-	# TODO: save the pretranslate results so I don't need to do it twice more? nah, it runs just fine
+	# TODO: save the pretranslate results so I don't need to do it twice more? meh, it runs just fine
 	indent, body, suffix = local_translation_dicts.pre_translate(jp)
 	
 	# second, jp name is already good english, copy jp name -> en name
@@ -235,16 +198,15 @@ def google_translate(in_list, strategy=1):
 	# 3. organize/collect chunks
 	jp_chunks = list(jp_chunks)
 	localtrans_dict = dict()
-	if 1:
-		# remove the chunks that can already be translated
-		# chunks are guaranteed to NOT be part of compound words, probably. so any exact matches with my words-dict should be valid!
-		jp_chunks_localtrans = local_translation_dicts.piecewise_translate(jp_chunks, local_translation_dicts.words_dict)
-		# results are chunk+trans: split into (where trans failed) (where trans passed)
-		# use "is_jp"->fail and not "needs_translate" so I am only sending actual JP stuff to Google and not unicode arrows or whatever
-		trans_fail, trans_pass = my_list_partition(zip(jp_chunks, jp_chunks_localtrans), lambda x: local_translation_dicts.is_jp(x[1]))
-		for chunk, trans in trans_pass:  # add dict entries for the ones that passed
-			localtrans_dict[chunk] = trans
-		jp_chunks = [j[0] for j in trans_fail]  # rebuild the jp_chunks list for the ones that failed
+	# remove the chunks that can already be translated
+	# chunks are guaranteed to NOT be part of compound words, probably. so any exact matches with my words-dict should be valid!
+	jp_chunks_localtrans = local_translation_dicts.piecewise_translate(jp_chunks, local_translation_dicts.words_dict)
+	# results are chunk+trans: split into (where trans failed) (where trans passed)
+	# use "is_jp"->fail and not "needs_translate" so I am only sending actual JP stuff to Google and not unicode arrows or whatever
+	trans_fail, trans_pass = my_list_partition(zip(jp_chunks, jp_chunks_localtrans), lambda x: local_translation_dicts.is_jp(x[1]))
+	for chunk, trans in trans_pass:  # add dict entries for the ones that passed
+		localtrans_dict[chunk] = trans
+	jp_chunks = [j[0] for j in trans_fail]  # rebuild the jp_chunks list for the ones that failed
 	
 	
 	# 4. combine them into fewer requests
@@ -361,28 +323,6 @@ def check_translate_budget(num_proposed: int) -> bool:
 
 ################################################################################################################
 
-# def contains_jap_chars(text) -> bool:
-# 	# TODO: maybe instead of finding unusal jap chars, i should just find anything not basic ASCII alphanumeric characters?
-# 	# TODO: detect box chars & consider those to be "jp" chars
-# 	match = re.search("[▲△∧ω□\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff01-\uffee]", str(text))
-# 	if match:
-# 		# print("True;", str(text))
-# 		return True
-# 	# print("False;", str(text))
-# 	return False
-
-
-# def my_string_pad(string: str, width: int) -> str:
-# 	# how big does it already print as?
-# 	currsize = len(string)
-# 	# therefore I need to append this many spaces
-# 	padnum = width - currsize
-# 	if padnum <= 0:
-# 		return string
-# 	else:
-# 		return string + (" " * padnum)
-
-
 
 
 def combine_translate_requests(jp_list: list) -> list:
@@ -408,28 +348,6 @@ def unpack_translate_requests(list_after: list) -> list:
 		results = after.split("\n")
 		retme.extend(results)
 	return retme
-#
-# def _bulk_google_translate(jp_list: list) -> list:
-# 	"""split/join a massive list of items to translate into fewer requests which each contain many separated by newlines.
-# 	list in, list out.
-# 	options are TRANSLATE_MAX_LINES_PER_REQUEST.
-# 	"""
-# 	retme = []
-# 	start_idx = 0
-# 	while start_idx < len(jp_list):
-# 		core.print_progress_oneline(start_idx / len(jp_list))
-# 		input_list = jp_list[start_idx:start_idx + TRANSLATE_MAX_LINES_PER_REQUEST]
-# 		bigstr = "\n".join(input_list)
-# 		bigresult = _single_google_translate(bigstr)
-# 		result_list = bigresult.split("\n")
-# 		if len(result_list) != len(input_list):
-# 			core.MY_PRINT_FUNC("Warning: translation messed up and merged some lines, please manually fix the bad outputs")
-# 			core.MY_PRINT_FUNC(len(result_list), len(input_list), result_list)
-# 			result_list = ["error"] * len(input_list)
-# 		retme += result_list
-# 		start_idx += TRANSLATE_MAX_LINES_PER_REQUEST
-# 	return retme
-#
 
 def _single_google_translate(jp_str: str) -> str:
 	"""
@@ -463,46 +381,6 @@ def _single_google_translate(jp_str: str) -> str:
 		core.MY_PRINT_FUNC("Get a VPN or try again in about 1 day (TODO: CONFIRM LOCKOUT TIME)")
 		raise RuntimeError()
 
-#
-# def fix_eng_name(name_jp: str, name_en: str) -> (str, None):
-# 	# returns a new english name, might be the same as the existing english name
-# 	# or returns None if tranlsation is needed
-#
-# 	# mode 1 priorities: without "prefer local translate"
-# 	# first, return EN name if EN name already good english
-# 	# second, return JP name if JP name already good english
-# 	# third, return local translate JP -> EN if it succeeds
-# 	# fourth, give up and go to google
-#
-# 	# mode 2 priorities: with "prefer local translate"
-# 	# first, return JP name if JP name already good english
-# 	# second, return local translate JP -> EN if it succeeds
-# 	# third, return EN name if EN name already good english
-# 	# fourth, give up and go to google
-#
-# 	# if en name is already good (not blank and not JP), just keep it
-# 	if not PREFER_LOCAL_TRANSLATE and name_en and not name_en.isspace() and not contains_jap_chars(name_en):
-# 		return name_en
-#
-# 	# jp name is already good english, copy jp name -> en name
-# 	if name_jp and not name_jp.isspace() and not contains_jap_chars(name_jp):
-# 		return name_jp
-#
-# 	# !!!! NEW LOCAL TRANSLATE FUNCTION !!!!
-# 	local_result = translate_local(name_jp)
-# 	# if local-translate succeeds, use it! (return None on fail)
-# 	if not contains_jap_chars(local_result):
-# 		return local_result
-#
-# 	# if en name is already good (not blank and not JP), just keep it
-# 	if PREFER_LOCAL_TRANSLATE and name_en and not name_en.isspace() and not contains_jap_chars(name_en):
-# 		return name_en
-#
-# 	# i can't translate it myself, then
-# 	# translate jp name -> en name via google
-# 	# return None so the translations can be done in bulk
-# 	return None
-#
 
 helptext = '''====================
 translate_to_english:
@@ -547,19 +425,18 @@ class translate_entry:
 
 
 def translate_to_english(pmx, moreinfo=False):
-	# run thru all groups, find what can be locally translated, queue up what needs to be googled
-	# do the same for model name
-	# decide what to do for model comment, but store separately (compress newlines here!)
-	# check logfile thing to see if i am near my budget for translations
-	# actual translation: bulk translate
-	# 	if needed, individual-translate comment with newlines intact, get result with newlines intact
-	# print results to screen
-	# 	when printing comment, print "too_long_to_show"
-	# then wait for user to approve the translations, or decline
-	# then read the translation file which might have been edited by user
-	# then apply the actual translations to the model
-	#	comment will need to have all SOMETHINGs returned back to newlines
-	# finally return
+	# for each category,
+	# 	for each name,
+	# 		check for type 0/1/2 (already good, copy JP, exact match in special dict)
+	# 		create translate_entry regardless what happens
+	# do same thing for model name
+	# then for all that didn't get successfully translated,
+	# do bulk local piecewise translate: list(str) -> list(str)
+	# then for all that didn't get successfully translated,
+	# do bulk google piecewise translate: list(str) -> list(str)
+	# then sort the results
+	# then format & print the results
+
 	
 	# step zero: set up the translator thingy
 	global jp_to_en_google
@@ -580,23 +457,7 @@ def translate_to_english(pmx, moreinfo=False):
 		pmx[0][3] = "comment"
 	
 	translate_maps = []
-	# each entry looks like this:
-	# source, sourceid, (local / google / unique), "OLD EN:", old_en, "NEW EN:", new_en, "JP:", jp
 	
-	# translate_queue = []  # just list of strings
-	# translate_queue_idx = []  # list of corresponding category ID + index within that category
-	#
-	# for each category,
-	# 	for each name,
-	# 		check for type 0/1/2
-	# 		create translate_entry regardless what happens
-	# do same thing for model name
-	# then for all that didn't get successfully translated,
-	# do bulk local piecewise translate: list(str) -> list(str)
-	# then for all that didn't get successfully translated,
-	# do bulk google piecewise translate: list(str) -> list(str)
-	# then sort the results
-	# then format & print the results
 	
 	# repeat the following for each category of visible names:
 	# materials=4, bones=5, morphs=6, dispframe=7
@@ -634,14 +495,7 @@ def translate_to_english(pmx, moreinfo=False):
 		newcomment = pmx[0][4]
 		newcommentsource = 0  # 0 means kept good aka nochange
 		
-	########
 	# now I have all the translateable items (except for model comment) collected in one list
-	# some names are already good
-	# then do model comment all the way thru
-	# then do display & confirm
-	# then do apply
-	# then done!
-	
 	# partition the list into done and notdone
 	translate_maps, translate_notdone = my_list_partition(translate_maps, lambda x: x.trans_type != -1)
 	########
@@ -656,7 +510,7 @@ def translate_to_english(pmx, moreinfo=False):
 	translate_done2, translate_notdone = my_list_partition(translate_notdone, lambda x: x.trans_type != -1)
 	translate_maps.extend(translate_done2)
 	########
-	if PREFER_EXISTING_ENGLISH_NAME is not True:
+	if not PREFER_EXISTING_ENGLISH_NAME:
 		# if i chose to anti-prefer the existing EN name, then it is still preferred over google and should be checked here
 		for item in translate_notdone:
 			# first, if en name is already good (not blank and not JP), just keep it
@@ -685,9 +539,9 @@ def translate_to_english(pmx, moreinfo=False):
 			# translate_done2, translate_notdone = separate_notdone(translate_notdone)
 			translate_maps.extend(translate_notdone)
 			if TRANSLATE_MODEL_COMMENT and newcommentsource == -1:  # -1 = pending, 0 = did nothing, 4 = did something
+				# if i am going to translate the comment, but was unable to do it earlier, then do it now
 				core.MY_PRINT_FUNC("Now translating model comment")
 				comment_clean = pmx[0][3].replace("\r", "")  # delete these \r chars, google doesnt want them
-				# comment_jp_clean = re.sub(r'\n\n+', r'\n\n', comment_jp_clean)  # collapse multiple newlines to just 2
 				comment_clean = comment_clean.strip()
 				########
 				# actually do google translate
@@ -705,8 +559,6 @@ def translate_to_english(pmx, moreinfo=False):
 	###########################################
 	# done translating!!!!!
 	###########################################
-	
-	
 	
 	# now, determine if i actually changed anything at all before bothering to try applying stuff
 	type_fail, temp = 		my_list_partition(translate_maps, lambda x: x.trans_type == -1)
@@ -730,7 +582,7 @@ def translate_to_english(pmx, moreinfo=False):
 	if TRANSLATE_MODEL_COMMENT and newcommentsource != 0:
 		pmx[0][4] = newcomment
 	# everything else: iterate over all entries, write when anything has type != 0
-	# even write when type=-1=fail, because it's the best I've got
+	# even write when type=-1=fail (if enabled), because it's the best I've got
 	for item in translate_maps:
 		if item.trans_type > 0 or (ACCEPT_INCOMPLETE_RESULT and item.trans_type == -1):
 			if item.cat_id == 0:  # this is header-type
@@ -781,199 +633,11 @@ def translate_to_english(pmx, moreinfo=False):
 				widthc=width[2],
 				widthd=width[3],
 				widthe=width[4]))
-		
-		# for tmap in translate_maps:
-		# 	args = []
-		# 	# python's formatting tool doesn't play nice with odd-width chars so I'll do it manually
-		# 	for i in range(9):
-		# 		if i==5 or i==3:
-		# 			continue
-		# 		if i in (4,6,8):
-		# 			args.append(my_string_pad("'" + tmap[i] + "'", width[i]+2))
-		# 		else:
-		# 			args.append(my_string_pad(tmap[i], width[i]))
-		# 	core.MY_PRINT_FUNC("{}{} {} | EN: {} --> {} | {} {}".format(*args))
-
 	
 	###########################################
 	# next, return!
 	return pmx, True
-
 	
-	
-	
-	# then, do apply stuff
-	# # also do apply the results
-	# for new_en_name, queue_idx in zip(results, translate_queue_idx):
-	# 	(cat_id, i) = queue_idx
-	# 	# special case for the header things
-	# 	if cat_id == 0:
-	# 		if i == 2:  # modelname
-	# 			newlist = [label_dict[cat_id], str(i), "google", "OLD EN:", pmx[0][2], "NEW EN:", new_en_name,
-	# 					   "JP:", pmx[0][1]]
-	# 			translate_maps.append(newlist)
-	# 			pmx[cat_id][i] = new_en_name
-	# 	else:
-	# 		newlist = [label_dict[cat_id], str(i), "google", "OLD EN:", pmx[cat_id][i][1], "NEW EN:", new_en_name,
-	# 				   "JP:", pmx[cat_id][i][0]]
-	# 		translate_maps.append(newlist)
-	# 		pmx[cat_id][i][1] = new_en_name
-	# # repeat the following for each category of visible names:
-	# # materials=4, bones=5, morphs=6, dispframe=7
-	# for cat_id in range(4, 8):
-	# 	category = pmx[cat_id]
-	# 	# for each entry:
-	# 	for i, item in enumerate(category):
-	# 		if cat_id == 7 and item[2]:
-	# 			continue  # skip "special" display frames
-	# 		# jp=0,en=1
-	# 		# strip away newline and return just in case, i saw a few examples where they showed up
-	# 		item[0] = item[0].replace('\r','').replace('\n','')
-	# 		item[1] = item[1].replace('\r','').replace('\n','')
-	# 		jp_name = item[0]
-	# 		en_name = item[1]
-	# 		# second, translate en name
-	# 		new_en_name = fix_eng_name(jp_name, en_name)
-	# 		if new_en_name is None:
-	# 			# googletrans is required, store and translate in bulk later
-	# 			translate_queue.append(jp_name)
-	# 			translate_queue_idx.append([cat_id, i])
-	# 		elif new_en_name != en_name:
-	# 			# translated without going to internet
-	# 			# apply change & store in list for future printing
-	# 			item[1] = new_en_name
-	# 			# newlist = [label_dict[cat_id] + str(i), "local", en_name, new_en_name]
-	# 			# source, sourceid, (local / google), "OLD EN:", old_en, "NEW EN:", new_en, "JP:", jp
-	# 			newlist = [label_dict[cat_id], str(i), "local", "OLD EN:", en_name, "NEW EN:", new_en_name, "JP:", jp_name]
-	# 			translate_maps.append(newlist)
-	# 		else:
-	# 			# no change
-	# 			pass
-	# # header=0 is special cuz its not iterable:
-	# # translate name(jp=1,en=2)
-	# new_en_name = fix_eng_name(pmx[0][1], pmx[0][2])
-	# if new_en_name is None:
-	# 	# googletrans is required, store and translate in bulk later
-	# 	translate_queue.append(pmx[0][1])
-	# 	translate_queue_idx.append([0, 2])
-	# elif new_en_name != pmx[0][2]:
-	# 	# translated without going to internet
-	# 	# apply change & store in list for future printing
-	# 	newlist = [label_dict[0], "2", "local", "OLD EN:", pmx[0][2], "NEW EN:", new_en_name, "JP:", pmx[0][1]]
-	# 	translate_maps.append(newlist)
-	# 	pmx[0][2] = new_en_name
-	# translate_local_count = len(translate_maps)
-	# comment(jp=3,en=4)
-	# comment_state = 0
-	# comment_jp_clean = "" # the thing that is given to translate, if needed
-	# if TRANSLATE_MODEL_COMMENT:
-	# 	# translate model comment exactly the same as all other fields
-	# 	new_en_name = fix_eng_name(pmx[0][3], pmx[0][4])
-	# else:
-	# 	# if EN is empty, copy JP -> EN. otherwise leave as-is
-	# 	if not pmx[0][4] or pmx[0][4].isspace():
-	# 		new_en_name = pmx[0][3]
-	# 	else:
-	# 		new_en_name = pmx[0][4]
-	# if new_en_name is None:
-	# 	# googletrans is required, store and translate in bulk later
-	# 	comment_state = 1
-	# 	# how to cleanly print before/after when comment is many lines long? printed as "too_long_to_print"
-	# 	#### SPECIAL HANDLING! replace newlines with something
-	# 	comment_jp_clean = pmx[0][3].replace("\r", "")  # delete these linereturn chars (note that comment requires /r/n in final result after translation)
-	# 	comment_jp_clean = re.sub(r'\n\n+', r'\n\n', comment_jp_clean)  # collapse multiple newlines to just 2
-	# 	commentline_print = [label_dict[0], "4", "google", "OLD EN:", "too_long", "NEW EN:", "too_long_to_print", "JP:","too_long"]
-	# 	translate_maps.append(commentline_print)
-	# elif new_en_name != pmx[0][4]:
-	# 	# translated without going to internet (copied from jp)
-	# 	comment_state = 2
-	# 	# DOES get printed (as too_long_to_print), DOES go to translation file (newlines replaced with something) as it is now
-	# 	# apply change & store in list for future printing
-	# 	commentline_print = [label_dict[0], "4", "local", "OLD EN:", "too_long", "NEW EN:", "too_long_to_print", "JP:", "too_long"]
-	# 	translate_maps.append(commentline_print)
-	# 	pmx[0][4] = new_en_name
-	# return having changed nothing IF translate_queue is empty, translate_budget fails
-	# if (not translate_queue) and (not translate_maps) and (comment_state == 0):
-	# 	core.MY_PRINT_FUNC("No changes are required")
-	# 	return pmx, False
-	# translate_local_count += (comment_state == 2)
-	# num + 1 + 1(if translating comment)
-	# num_items = len(translate_queue) + (comment_state == 1)
-	# core.MY_PRINT_FUNC("Identified %d items that need Internet translation" % num_items)
-	# if num_items:
-		# v = len(translate_queue) / TRANSLATE_MAX_LINES_PER_REQUEST
-		# if v != int(v): # "rounding up" in a hacky way cuz I dont want to import "math" library just for one ceil() call
-		# 	v = int(v) + 1
-		# num_calls = v + (comment_state == 1)
-		# core.MY_PRINT_FUNC("Making %d requests to Google Translate web API..." % num_calls)
-		
-		# global DISABLE_INTERNET_TRANSLATE
-		
-		# if not check_translate_budget(num_calls):
-		# 	# no need to print failing statement, the function already does
-		# 	core.MY_PRINT_FUNC("Just copying JP onto EN while Google Translate is disabled")
-		# 	DISABLE_INTERNET_TRANSLATE = False
-		
-		# try:
-			# now bulk-translate all the strings that are queued
-			# results = _bulk_google_translate(translate_queue)
-			# then assemble these results into the translate_map entries
-			# also do apply the results
-			# for new_en_name, queue_idx in zip(results, translate_queue_idx):
-			# 	(cat_id, i) = queue_idx
-			# 	# special case for the header things
-			# 	if cat_id == 0:
-			# 		if i == 2:  # modelname
-			# 			newlist = [label_dict[cat_id], str(i), "google", "OLD EN:", pmx[0][2], "NEW EN:", new_en_name, "JP:", pmx[0][1]]
-			# 			translate_maps.append(newlist)
-			# 			pmx[cat_id][i] = new_en_name
-			# 	else:
-			# 		newlist = [label_dict[cat_id], str(i), "google", "OLD EN:", pmx[cat_id][i][1], "NEW EN:", new_en_name, "JP:", pmx[cat_id][i][0]]
-			# 		translate_maps.append(newlist)
-			# 		pmx[cat_id][i][1] = new_en_name
-			# translate_maps is used for both printing and writing
-			
-			# if comment needs translated, do that separately
-		# 	if comment_state == 1:
-		# 		# already removed linereturn and collapsed newlines, ready to go
-		# 		newcomment = _single_google_translate(comment_jp_clean)
-		# 		# put back the /r/n
-		# 		newcomment = newcomment.replace('\n','\r\n')
-		# 		pmx[0][4] = newcomment
-		# except Exception as e:
-		# 	core.MY_PRINT_FUNC(e.__class__.__name__, e)
-		# 	core.MY_PRINT_FUNC("Internet translate unexpectedly failed, attempting to continue...")
-	# done translating!!
-	
-	# now i use comment_state to know how to handle the comment
-	
-	#######################################
-	# next stage is writing and printing
-	# printing requires formatting so things display in nice columns
-	# core.MY_PRINT_FUNC("Fixed %d instances where translation was needed (%d local + %d Google)" %
-	# 				   (len(translate_maps), translate_local_count, len(translate_maps) - translate_local_count))
-	
-	# if moreinfo:
-	# 	# find max width of each column:
-	# 	width = [0] * 9
-	# 	for tmap in translate_maps:
-	# 		for i in range(9):
-	# 			width[i] = max(width[i], len(tmap[i]))
-	# 	# now pretty-print the proposed list of translations:
-	# 	for tmap in translate_maps:
-	# 		args = []
-	# 		# python's formatting tool doesn't play nice with odd-width chars so I'll do it manually
-	# 		for i in range(9):
-	# 			if i==5 or i==3:
-	# 				continue
-	# 			if i in (4,6,8):
-	# 				args.append(my_string_pad("'" + tmap[i] + "'", width[i]+2))
-	# 			else:
-	# 				args.append(my_string_pad(tmap[i], width[i]))
-	# 		core.MY_PRINT_FUNC("{}{} {} | EN: {} --> {} | {} {}".format(*args))
-	
-	
-	# return pmx, True
 	
 def end(pmx, input_filename_pmx):
 	# write out
