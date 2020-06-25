@@ -5,6 +5,8 @@
 # comments are what PMXE builtin translate actually translates them to, but i don't like those names
 
 # NOTE: as of python 3.6, the order of dictionary items IS GUARANTEED. but before that it is not guaranteed.
+# and it is very, very important to how the translator functions.
+# NOTE: filtering stage means that all exact-match dicts should NOT contain fullwidth latin letters/numbers.
 
 ########################################################################################################################
 ########################################################################################################################
@@ -75,14 +77,15 @@ morph_dict = {
 "はぅ": ">.<",
 "にやり": "grin",
 "ニヤリ": "grin",  # these 2 are phonetically the same, "niyari"
-"にっこり": "smile",
+"にっこり": "smile",  # phonetically "nikkori"
+"スマイル": "smile",  # phonetically "sumairu" aka engrish for "smile"
 "ムッ": "upset",
-"照れ": "blush",  # "little blush"
-"照れ2": "blush2",  # "big blush"
-"照れ屋": "blush",  # another blush
+"照れ": "blush",  # "little blush", literally "shy"
+"照れ2": "blush2",  # "big blush", literally "shy"
+"照れ屋": "blush",  # another blush, literally "shy"
 "赤面": "blush",  # literally "red face" but its just another blush
-"青ざめる": "shock", # literally "aozomeru" translates to "pale"
-"青ざめ": "shock", # literally "aozame" translates to "pale"
+"青ざめる": "shock", # literally "aozomeru", translates to "pale", but the expression it represents is shock/horror
+"青ざめ": "shock", # literally "aozame" translates to "pale", but the expression it represents is shock/horror
 "丸目": "O.O",
 "はちゅ目": "O.O",
 "はちゅ目縦潰れ": "O.O height",
@@ -118,9 +121,8 @@ bone_dict =  {
 "センター": "center",
 "グルーブ": "groove",
 "腰": "waist",
-"足IK親": "leg IKP",
-"足ＩＫ": "leg IK",
-"つま先ＩＫ": "toe IK",
+"足IK": "leg IK",
+"つま先IK": "toe IK",
 "上半身": "upper body",
 "上半身2": "upper body2",
 "下半身": "lower body",
@@ -130,7 +132,7 @@ bone_dict =  {
 "肩": "shoulder",
 "肩C": "shoulder_cancel",  # alternately "shoulder hidden"
 "腕": "arm",
-"腕ＩＫ": "armIK",
+"腕IK": "armIK",
 "腕捩": "arm twist",
 "腕捩1": "arm twist1",  # "left arm rig1"
 "腕捩2": "arm twist2",  # "left arm rig2"
@@ -141,28 +143,22 @@ bone_dict =  {
 "手捩2": "wrist twist2",  # "left elbow rig2"
 "手捩3": "wrist twist3",  # "left elbow rig3"
 "手首": "wrist",
-"手先": "wrist_end",
 "ダミー": "dummy",
-"親指０": "thumb0",
-"親指１": "thumb1",
-"親指２": "thumb2",
-"親指先": "thumb_end",
-"小指１": "little1",
-"小指２": "little2",
-"小指３": "little3",
-"小指先": "little_end",
-"薬指１": "third1",
-"薬指２": "third2",
-"薬指３": "third3",
-"薬指先": "third_end",
-"中指１": "middle1",
-"中指２": "middle2",
-"中指３": "middle3",
-"中指先": "middle_end",
-"人指１": "fore1",
-"人指２": "fore2",
-"人指３": "fore3",
-"人指先": "fore_end",
+"親指0": "thumb0",
+"親指1": "thumb1",
+"親指2": "thumb2",
+"小指1": "little1",
+"小指2": "little2",
+"小指3": "little3",
+"薬指1": "third1",
+"薬指2": "third2",
+"薬指3": "third3",
+"中指1": "middle1",
+"中指2": "middle2",
+"中指3": "middle3",
+"人指1": "fore1",
+"人指2": "fore2",
+"人指3": "fore3",
 "目": "eye",
 "両目": "eyes",  # literally "both eyes"
 "メガネ": "glasses",
@@ -177,9 +173,7 @@ bone_dict =  {
 "足首D": "foot_D",   # "left/right foot_D"
 "足先EX": "toe_EX", # "left/right toes_EX"
 "胸": "breast",
-"胸親": "breast_ctrl",
 "乳": "breast",  # chinese symbol for breast, sometimes used
-"乳親": "breast_ctrl",
 }
 
 # these should be nicely capitalized
@@ -200,6 +194,9 @@ frame_dict = {
 "物理-その他": "Physics - Other",
 "その他-物理": "Other - Physics",
 "服": "Clothes",
+"猫耳": "Nekomimi",
+"ねこ耳": "Nekomimi",
+"獣耳": "Kemonomimi",
 "ケープ": "Cape",
 "外套": "Mantle",
 "握り・拡散": "Grip / Spread",
@@ -215,9 +212,12 @@ frame_dict = {
 
 words_dict = {
 # words
+"操作中心": "view cnt",
+"全ての親": "motherbone",
 "モーフ": "morph",
 "ネクタイ": "necktie",
 "スカーフ": "scarf",
+"マフラー": "scarf",  # litteraly "muffler"
 "スカート": "skirt",
 "ｽｶｰﾄ": "skirt",
 "ﾄﾞﾚｽ": "dress",
@@ -239,6 +239,8 @@ words_dict = {
 "ヘッドセット": "headset",
 "センター": "center",
 "グルーブ": "groove",
+"上半身": "upper body",
+"下半身": "lower body",
 "タイツ": "tights",
 "あほ毛": "ahoge", # the cutesy little hair curl on top
 "アホ毛": "ahoge",
@@ -289,6 +291,8 @@ words_dict = {
 "靴": "shoe",
 "くつ": "shoe",
 "顔": "face",
+"あご": "chin",
+"顎": "chin",
 "足首": "foot",  # this must be high priority, otherwise its components will be individually (wrongly) translated
 "手首": "wrist",  # this must be high priority, otherwise its components will be individually (wrongly) translated
 "足": "leg",
@@ -345,6 +349,7 @@ words_dict = {
 "袖": "sleeve",
 "歯": "teeth",
 "牙": "fang",
+"爪": "nail",
 "犬": "dog",
 "猫": "cat",
 "ねこ": "cat",
@@ -352,9 +357,11 @@ words_dict = {
 "口": "mouth",
 "まぶた": "eyelid",
 "瞼": "eyelid",
+"まつげ": "eyelash",
 "睫毛": "eyelash",
 "睫": "eyelash",
 "よだれ": "drool",
+"まゆ": "brow",
 "眉毛": "brow",
 "眉": "brow",
 "光": "light",
@@ -376,18 +383,18 @@ words_dict = {
 "中": "mid",
 "右": "right",
 "左": "left",
-"上げ": "raise", # motion
-"下げ": "lower", # motion
-"上": "upper", # relative position
-"下": "lower", # relative position
+"上げ": "raise",  # motion
+"下げ": "lower",  # motion
+"上": "upper",  # relative position
+"下": "lower",  # relative position
 "前": "front",
 "フロント": "front",
-"後ろ": "back", # not sure about this one
+"後ろ": "back",  # not sure about this one
 "背": "back",
 "裏": "back",
 "後": "rear",
 "后": "rear",
-"横": "side", # or horizontal
+"横": "side",  # or horizontal
 "縦": "vert",
 "両": "both",
 "内": "inner",
@@ -395,18 +402,19 @@ words_dict = {
 "角": "corner",
 "法線": "normals",  # normals as in vertex normals not normal as in ordinary, i think?
 "調整": "adjust",
-"出し": "out", # out as in takeout???
+"出し": "out",  # out as in takeout???
 "全": "all",
 "握り": "grip",
 "握": "grip",
 "拡散": "spread",
 "拡": "spread",
 "基部": "base",
-"基": "base", # either group or base
+"基": "base",  # either group or base
+"錘": "weight",
 
 # morphs
 "ぺろっ": "tongue out",  # phonetically "perrow"
-"べー": "beeeeh", # another way of doing "tongue out"
+"べー": "beeeeh",  # another way of doing "tongue out"
 "持ち": "hold",  # perhaps grab? holding? 手持ち = handheld
 "ずらし": "shift",
 "短": "short",
@@ -415,6 +423,7 @@ words_dict = {
 "螺旋": "spiral",
 "回転": "rotate",
 "移動": "move",
+"動": "motion",
 "食込無": "none",
 "無し": "none",
 "なし": "none",
@@ -427,13 +436,17 @@ words_dict = {
 "広": "wide",
 "潰れ": "shrink",  # literally "collapse"
 "狭": "narrow",
+"細い": "thin",
 "細": "thin",  # literally "fine"
+"太": "thick",
 "粗": "coarse",
+"逆": "reverse",
 "大": "big",
 "巨": "big",
 "暗い": "dark",
 "黒": "black",
-"青ざめ": "pale",
+"青ざめる": "shock", # literally "aozomeru", translates to "pale", but the expression it represents is shock/horror
+"青ざめ": "shock", # literally "aozame" translates to "pale", but the expression it represents is shock/horror
 "白": "white",
 "を隠す": "hide",
 "非表示": "hide",
@@ -479,6 +492,7 @@ words_dict = {
 "円": "circle",
 "表": "front", # not sure about this one, front as in outward-facing geometry, opposite of backward-facing geometry. literally means "table" tho lol
 "縁": "edge",
+"エッジ": "edge",
 "丸": "round",
 "はちゅ": "round",
 "縮小": "small",
@@ -515,6 +529,8 @@ prefix_dict = {
 "中": "_M",  # this one isn't truly standard but i like the left/right/middle symmetry
 "右": "_R",
 "左": "_L",
+"親": " parent",
+"先": " end",
 }
 prefix_dict_ord = dict({(ord(k), v) for k, v in prefix_dict.items()})
 
@@ -554,9 +570,11 @@ for uni in range(0xff01, 0xff5f):
 # indent: whitespace _ box, 2571/2572/2573 are exceptions!
 indent_pattern = "^[\\s_\u2500-\u2570\u2574-\u257f]+"
 indent_re = re.compile(indent_pattern)
-prefix_pattern = "^[%s]+" % ("".join(prefix_dict.keys()))
+# prefix: match 右|左|中 but not 中指
+prefix_pattern = "^([右左]|中(?!指))+"
 prefix_re = re.compile(prefix_pattern)
-suffix_pattern = "[%s]+$" % ("".join(prefix_dict.keys()))
+# suffix: match LRM and parent (but not motherbone) and end (but not toe)
+suffix_pattern = "([右左中]|(?<!全ての)親|(?<!つま)先)+$"
 suffix_re = re.compile(suffix_pattern)
 # strip: whitespace _ . -
 strip_pattern = "(^[\\s_.-]+)|([\\s_.-]+$)"
@@ -618,7 +636,6 @@ def needs_translate(text:str) -> bool:
 def pre_translate(in_list):
 	"""
 	Handle common translation things like prefixes, suffixes, fullwidth alphanumeric characters, etc.
-	TODO: do i want to return with them joined? or leave the indent-suffix-rejoining for later?
 	"""
 	# input str breakdown: (indent) (L/R prefix) (padding) (((body))) (padding) (L/R suffix)
 	
@@ -682,12 +699,9 @@ def pre_translate(in_list):
 		else:
 			out = out_strip
 		
-		# 5: re-add the indent if I removed a box char or true indent
-		# reattach EN suffix & append to return list
-		# out = indent_prefix + out + en_suffix
-		# outlist.append(out)
-		# TODO: return indent/suffix separate from the rest?
+		# 5: append all 3 to the list: return indent/suffix separate from the body
 		outlist.append((indent_prefix, out, en_suffix))
+		
 	if input_is_str:	return outlist[0]	# if original input was a single string, then de-listify
 	else:				return outlist		# otherwise return as a list
 

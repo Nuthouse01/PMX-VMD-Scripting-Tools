@@ -88,7 +88,7 @@ except ImportError as eee:
 
 
 category_dict = {0: "header", 4: "mat", 5: "bone", 6: "morph", 7: "disp"}
-type_dict = {-1: "FAIL", 0: "good", 1: "copyJP", 2: "piece", 3: "local", 4: "google"}
+type_dict = {-1: "FAIL", 0: "good", 1: "copyJP", 2: "exact", 3: "piece", 4: "google"}
 specificdict_dict = {0:None, 4:None,
 					 5:local_translation_dicts.bone_dict,
 					 6:local_translation_dicts.morph_dict,
@@ -173,8 +173,8 @@ def easy_translate(jp, en, specific_dict=None):
 	if PREFER_EXISTING_ENGLISH_NAME and en and not en.isspace() and not local_translation_dicts.needs_translate(en):
 		return en, 0
 	
-	# TODO: do pretranslate here? no? maybe? this is for things that violate the rules of pretranslate & piecewise local
-	# TODO: save the pretranslate results so I don't need to do it twice more?
+	# do pretranslate here: better for exact matching against morphs that have sad/sad_L/sad_R etc
+	# TODO: save the pretranslate results so I don't need to do it twice more? nah, it runs just fine
 	indent, body, suffix = local_translation_dicts.pre_translate(jp)
 	
 	# second, jp name is already good english, copy jp name -> en name
@@ -274,12 +274,14 @@ def google_translate(in_list, strategy=1):
 		# 7. assemble Google responses & re-associate with the chunks
 		results = unpack_translate_requests(results_combined)  # unpack so they align once more
 		google_dict = dict(zip(jp_chunks, results))  # build dict
+		
+		print("#items=", len(in_list), "#chunks=", len(jp_chunks), "#requests=", len(jp_chunks_combined))
+		print(google_dict)
+		
 		google_dict.update(localtrans_dict)  # add dict entries from things that succeeded localtrans
 		# dict->list->sort->dict: sort the longest chunks first, VERY CRITICAL so things don't get undershadowed!!!
 		google_dict = dict(sorted(list(google_dict.items()), reverse=True, key=lambda x: len(x[0])))
 		
-		print("#items=", len(in_list), "#chunks=", len(jp_chunks), "#requests=", len(jp_chunks_combined))
-		print(google_dict)
 		
 		# 8. piecewise translate using newly created dict
 		outlist = local_translation_dicts.piecewise_translate(bodies, google_dict)
@@ -602,8 +604,7 @@ def translate_to_english(pmx, moreinfo=False):
 		category = pmx[cat_id]
 		# for each entry:
 		for d, item in enumerate(category):
-			if cat_id == 7 and item[2]:
-				continue  # skip "special" display frames
+			if cat_id == 7 and item[2]: continue  # skip "special" display frames
 			# jp=0,en=1
 			# strip away newline and return just in case, i saw a few examples where they showed up
 			item[0] = item[0].replace('\r','').replace('\n','')
@@ -648,7 +649,7 @@ def translate_to_english(pmx, moreinfo=False):
 	local_results = local_translation_dicts.local_translate([item.jp_old for item in translate_notdone])
 	# determine if each item passed or not, update the en_new and trans_type fields
 	for item, result in zip(translate_notdone, local_results):
-		if not local_translation_dicts.needs_translatev(result):
+		if not local_translation_dicts.needs_translate(result):
 			item.en_new = result
 			item.trans_type = 3
 	# grab the newly-done items and move them to the done list
@@ -711,10 +712,10 @@ def translate_to_english(pmx, moreinfo=False):
 	type_fail, temp = 		my_list_partition(translate_maps, lambda x: x.trans_type == -1)
 	type_good, temp = 		my_list_partition(temp, lambda x: x.trans_type == 0)
 	type_copy, temp = 		my_list_partition(temp, lambda x: x.trans_type == 1)
-	type_specific, temp = 	my_list_partition(temp, lambda x: x.trans_type == 2)
+	type_exact, temp = 		my_list_partition(temp, lambda x: x.trans_type == 2)
 	type_local, temp = 		my_list_partition(temp, lambda x: x.trans_type == 3)
 	type_google = 			temp
-	total_changed = int(newcommentsource != 0) + len(type_copy) + len(type_specific) + len(type_local) + len(type_google)
+	total_changed = int(newcommentsource != 0) + len(type_copy) + len(type_exact) + len(type_local) + len(type_google)
 	total_fields = len(translate_maps)
 	if total_changed == 0:
 		core.MY_PRINT_FUNC("No changes are required")
@@ -743,16 +744,17 @@ def translate_to_english(pmx, moreinfo=False):
 		total_changed, total_fields, total_changed / total_fields))
 	if moreinfo:
 		# give full breakdown of each source
-		core.MY_PRINT_FUNC("Total fields = {}, nochange = {}, copy = {}, exactmatch = {}, piecewise = {}, Google = {}, fail = {}".format(
-			total_fields, len(type_good), len(type_copy), len(type_specific), len(type_local), len(type_google), len(type_fail)))
+		core.MY_PRINT_FUNC("Total fields={}, nochange={}, copy={}, exactmatch={}, piecewise={}, Google={}, fail={}".format(
+			total_fields, len(type_good), len(type_copy), len(type_exact), len(type_local), len(type_google), len(type_fail)))
 		#########
 		# now print the table of before/after/etc
+		# hide good/copyJP/exactmatch cuz those are uninteresting and guaranteed to be safe
+		maps_printme = [item for item in translate_maps if item.trans_type > 2 or (ACCEPT_INCOMPLETE_RESULT and item.trans_type == -1)]
+		
+		width = []
 		# columns: category, idx, trans_type, en_old, en_new, jp_old = 6 types
 		# bone  15  google || EN: 'asdf' --> 'foobar' || JP: 'fffFFFff'
 		# find max width of each column: this doesn't properly handle JP chars but w/e good enough for now
-		maps_printme = [item for item in translate_maps if item.trans_type > 0 or (ACCEPT_INCOMPLETE_RESULT and item.trans_type == -1)]
-		
-		width = []
 		width.append(max([len(category_dict[vv.cat_id]) for vv in maps_printme]))
 		width.append(max([len(str(vv.idx)) for vv in maps_printme]))
 		width.append(max([len(type_dict[vv.trans_type]) for vv in maps_printme]))
