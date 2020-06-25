@@ -13,7 +13,7 @@ except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
-		import _local_translation_dicts as translation_tools
+		import _translation_tools as translation_tools
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
@@ -282,8 +282,7 @@ def google_translate(in_list, strategy=1):
 	# pretrans + google_dict -> outlist
 	
 	# 1. pre-translate to take care of common tasks
-	pretrans = translation_tools.pre_translate(in_list)
-	indents, bodies, suffixes = list(zip(*pretrans))
+	indents, bodies, suffixes = translation_tools.pre_translate(in_list)
 	
 	# 2. identify chunks
 	jp_chunks = set()
@@ -594,37 +593,37 @@ def translate_to_english(pmx, moreinfo=False):
 		# now print the table of before/after/etc
 		# hide good/copyJP/exactmatch cuz those are uninteresting and guaranteed to be safe
 		maps_printme = [item for item in translate_maps if item.trans_type > 2 or (ACCEPT_INCOMPLETE_RESULT and item.trans_type == -1)]
-		
-		width = []
-		# columns: category, idx, trans_type, en_old, en_new, jp_old = 6 types
-		# bone  15  google || EN: 'asdf' --> 'foobar' || JP: 'fffFFFff'
-		# find max width of each column: this doesn't properly handle JP chars but w/e good enough for now
-		width.append(max([len(category_dict[vv.cat_id]) for vv in maps_printme]))
-		width.append(max([len(str(vv.idx)) for vv in maps_printme]))
-		width.append(max([len(type_dict[vv.trans_type]) for vv in maps_printme]))
-		width.append(2 + max([len(vv.en_old) for vv in maps_printme]))
-		width.append(2 + max([len(vv.en_new) for vv in maps_printme]))
-		# width.append(2 + max([len(vv.jp_old) for vv in maps_printme]))
-		
-		# SORT THE LIST!
-		maps_printme.sort(key=lambda x: x.idx)
-		maps_printme.sort(key=lambda x: x.cat_id)
-		
-		# now pretty-print the list of translations:
-		for tmap in maps_printme:
-			# print a line for each item
-			core.MY_PRINT_FUNC("{:{widtha}} {:>{widthb}} {:{widthc}} || EN: {:{widthd}} --> {:{widthe}} || JP: {}".format(
-				category_dict[tmap.cat_id],
-				tmap.idx,
-				type_dict[tmap.trans_type],
-				"'" + tmap.en_old + "'",
-				"'" + tmap.en_new + "'",
-				"'" + tmap.jp_old + "'",
-				widtha=width[0],
-				widthb=width[1],
-				widthc=width[2],
-				widthd=width[3],
-				widthe=width[4]))
+		if maps_printme:
+			width = []
+			# columns: category, idx, trans_type, en_old, en_new, jp_old = 6 types
+			# bone  15  google || EN: 'asdf' --> 'foobar' || JP: 'fffFFFff'
+			# find max width of each column: this doesn't properly handle JP chars but w/e good enough for now
+			width.append(max([len(category_dict[vv.cat_id]) for vv in maps_printme]))
+			width.append(max([len(str(vv.idx)) for vv in maps_printme]))
+			width.append(max([len(type_dict[vv.trans_type]) for vv in maps_printme]))
+			width.append(2 + max([len(vv.en_old) for vv in maps_printme]))
+			width.append(2 + max([len(vv.en_new) for vv in maps_printme]))
+			# width.append(2 + max([len(vv.jp_old) for vv in maps_printme]))
+			
+			# SORT THE LIST!
+			maps_printme.sort(key=lambda x: x.idx)
+			maps_printme.sort(key=lambda x: x.cat_id)
+			
+			# now pretty-print the list of translations:
+			for tmap in maps_printme:
+				# print a line for each item
+				core.MY_PRINT_FUNC("{:{widtha}} {:>{widthb}} {:{widthc}} || EN: {:{widthd}} --> {:{widthe}} || JP: {}".format(
+					category_dict[tmap.cat_id],
+					tmap.idx,
+					type_dict[tmap.trans_type],
+					"'" + tmap.en_old + "'",
+					"'" + tmap.en_new + "'",
+					"'" + tmap.jp_old + "'",
+					widtha=width[0],
+					widthb=width[1],
+					widthc=width[2],
+					widthd=width[3],
+					widthe=width[4]))
 	
 	###########################################
 	# next, return!

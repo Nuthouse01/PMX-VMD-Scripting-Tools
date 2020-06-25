@@ -641,7 +641,9 @@ def pre_translate(in_list):
 	
 	input_is_str = isinstance(in_list, str)
 	if input_is_str: in_list = [in_list]  # force it to be a list anyway so I don't have to change my structure
-	outlist = []  # list to build & return
+	indent_list = []  # list to build & return
+	body_list = []  # list to build & return
+	suffix_list = []  # list to build & return
 	for s in in_list:
 		# 1: subst JP/fullwidth alphanumeric chars -> standard EN alphanumeric chars
 		# https://en.wikipedia.org/wiki/Halfwidth_and_Fullwidth_Forms_(Unicode_block)
@@ -700,10 +702,12 @@ def pre_translate(in_list):
 			out = out_strip
 		
 		# 5: append all 3 to the list: return indent/suffix separate from the body
-		outlist.append((indent_prefix, out, en_suffix))
+		indent_list.append(indent_prefix)
+		body_list.append(out)
+		suffix_list.append(en_suffix)
 		
-	if input_is_str:	return outlist[0]	# if original input was a single string, then de-listify
-	else:				return outlist		# otherwise return as a list
+	if input_is_str:return indent_list[0], body_list[0], suffix_list[0]	 # if original input was a single string, then de-listify
+	else:			return indent_list, body_list, suffix_list	# otherwise return as a list
 
 
 def piecewise_translate(in_list, in_dict):
@@ -764,8 +768,7 @@ def local_translate(in_list):
 	
 	# first, run pretranslate: take care of the standard stuff
 	# things like prefixes, suffixes, fullwidth alphanumeric characters, etc
-	pretrans = pre_translate(in_list)
-	indents, bodies, suffixes = list(zip(*pretrans))
+	indents, bodies, suffixes = pre_translate(in_list)
 	
 	# second, run piecewise translation with the hardcoded "words dict"
 	outbodies = piecewise_translate(bodies, words_dict)
