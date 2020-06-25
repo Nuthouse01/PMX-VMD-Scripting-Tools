@@ -12,7 +12,7 @@ try:
 	from ._weight_cleanup import normalize_weights
 	from .bone_merge_helpers import transfer_bone_weights
 	from ._prune_unused_vertices import bisect_left, bisect_right
-	from ._local_translation_dicts import translate_local
+	from ._translation_tools import local_translate
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
@@ -20,14 +20,14 @@ except ImportError as eee:
 		from _weight_cleanup import normalize_weights
 		from bone_merge_helpers import transfer_bone_weights
 		from _prune_unused_vertices import bisect_left, bisect_right
-		from _local_translation_dicts import translate_local
+		from _local_translation_dicts import local_translate
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = normalize_weights = transfer_bone_weights = bisect_left = bisect_right = translate_local = None
+		core = pmxlib = normalize_weights = transfer_bone_weights = bisect_left = bisect_right = local_translate = None
 
 
 
@@ -421,7 +421,7 @@ def main(moreinfo=True):
 			# 	armYZ gets pos = start pos & parent = start parent
 			basename_jp = pmx[5][start_idx][0]
 			armYZ_new_idx = len(pmx[5])
-			armYZ = [basename_jp + yz_suffix, translate_local(basename_jp + yz_suffix)]  # name_jp,en
+			armYZ = [basename_jp + yz_suffix, local_translate(basename_jp + yz_suffix)]  # name_jp,en
 			armYZ += pmx[5][start_idx][2:]					# copy the whole rest of the bone
 			armYZ[10:12] = [False, False]					# visible=false, enabled=false
 			armYZ[12:14] = [True, [armYZ_new_idx + 1]]		# tail type = tail, tail pointat = armYZend
@@ -430,7 +430,7 @@ def main(moreinfo=True):
 			armYZ[21:25] = [False, [], False, []]			# disable ext parent + ik
 			
 			# 	armYZend gets pos = end pos & parent = armYZ
-			armYZend = [basename_jp + yz_suffix + "先", translate_local(basename_jp + yz_suffix + "先")]  # name_jp,en
+			armYZend = [basename_jp + yz_suffix + "先", local_translate(basename_jp + yz_suffix + "先")]  # name_jp,en
 			armYZend += pmx[5][end_idx][2:]					# copy the whole rest of the bone
 			armYZend[5] = armYZ_new_idx						# parent = armYZ
 			armYZend[10:12] = [False, False]				# visible=false, enabled=false
@@ -440,7 +440,7 @@ def main(moreinfo=True):
 			armYZend[21:25] = [False, [], False, []]		# disable ext parent + ik
 
 			# 	elbowIK gets pos = end pos & parent = end parent
-			armYZIK = [basename_jp + yz_suffix + "IK", translate_local(basename_jp + yz_suffix + "IK")]  # name_jp,en
+			armYZIK = [basename_jp + yz_suffix + "IK", local_translate(basename_jp + yz_suffix + "IK")]  # name_jp,en
 			armYZIK += pmx[5][end_idx][2:]					# copy the whole rest of the bone
 			armYZIK[10:12] = [False, False]					# visible=false, enabled=false
 			armYZIK[12:14] = [True, [-1]]					# tail type = tail, tail pointat = none

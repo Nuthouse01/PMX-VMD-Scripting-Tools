@@ -8,19 +8,19 @@ from time import time
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
-	from . import _local_translation_dicts as local_translation_dicts
+	from . import _translation_tools as translation_tools
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
-		import _local_translation_dicts as local_translation_dicts
+		import _local_translation_dicts as translation_tools
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = local_translation_dicts = None
+		core = pmxlib = translation_tools = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -87,9 +87,9 @@ except ImportError as eee:
 category_dict = {0: "header", 4: "mat", 5: "bone", 6: "morph", 7: "disp"}
 type_dict = {-1: "FAIL", 0: "good", 1: "copyJP", 2: "exact", 3: "piece", 4: "google"}
 specificdict_dict = {0:None, 4:None,
-					 5:local_translation_dicts.bone_dict,
-					 6:local_translation_dicts.morph_dict,
-					 7:local_translation_dicts.frame_dict}
+					 5:translation_tools.bone_dict,
+					 6:translation_tools.morph_dict,
+					 7:translation_tools.frame_dict}
 
 
 """
@@ -246,15 +246,15 @@ def easy_translate(jp, en, specific_dict=None):
 	options: PREFER_EXISTING_ENGLISH_NAME will cause mode 0 to be checked here.
 	"""
 	# first, if en name is already good (not blank and not JP), just keep it
-	if PREFER_EXISTING_ENGLISH_NAME and en and not en.isspace() and not local_translation_dicts.needs_translate(en):
+	if PREFER_EXISTING_ENGLISH_NAME and en and not en.isspace() and not translation_tools.needs_translate(en):
 		return en, 0
 	
 	# do pretranslate here: better for exact matching against morphs that have sad/sad_L/sad_R etc
 	# TODO: save the pretranslate results so I don't need to do it twice more? meh, it runs just fine
-	indent, body, suffix = local_translation_dicts.pre_translate(jp)
+	indent, body, suffix = translation_tools.pre_translate(jp)
 	
 	# second, jp name is already good english, copy jp name -> en name
-	if body and not body.isspace() and not local_translation_dicts.needs_translate(body):
+	if body and not body.isspace() and not translation_tools.needs_translate(body):
 		return (indent + body + suffix), 1
 	
 	# third, see if this name is an exact match in the specific dict for this specific type
@@ -282,7 +282,7 @@ def google_translate(in_list, strategy=1):
 	# pretrans + google_dict -> outlist
 	
 	# 1. pre-translate to take care of common tasks
-	pretrans = local_translation_dicts.pre_translate(in_list)
+	pretrans = translation_tools.pre_translate(in_list)
 	indents, bodies, suffixes = list(zip(*pretrans))
 	
 	# 2. identify chunks
@@ -294,7 +294,7 @@ def google_translate(in_list, strategy=1):
 		is_latin = True
 		for i in range(len(s)):  # walk along its length one char at a time,
 			# use "is_jp" here and not "is_latin" so chunks are defined to be only actual JP stuff and not unicode whatevers
-			is_latin = not local_translation_dicts.is_jp(s[i])
+			is_latin = not translation_tools.is_jp(s[i])
 			# if char WAS latin but now is NOT latin, then this is the start of a range.
 			if prev_islatin and not is_latin:
 				rstart = i
@@ -311,10 +311,10 @@ def google_translate(in_list, strategy=1):
 	localtrans_dict = dict()
 	# remove the chunks that can already be translated
 	# chunks are guaranteed to NOT be part of compound words, probably. so any exact matches with my words-dict should be valid!
-	jp_chunks_localtrans = local_translation_dicts.piecewise_translate(jp_chunks, local_translation_dicts.words_dict)
+	jp_chunks_localtrans = translation_tools.piecewise_translate(jp_chunks, translation_tools.words_dict)
 	# results are chunk+trans: split into (where trans failed) (where trans passed)
 	# use "is_jp"->fail and not "needs_translate" so I am only sending actual JP stuff to Google and not unicode arrows or whatever
-	trans_fail, trans_pass = my_list_partition(zip(jp_chunks, jp_chunks_localtrans), lambda x: local_translation_dicts.is_jp(x[1]))
+	trans_fail, trans_pass = my_list_partition(zip(jp_chunks, jp_chunks_localtrans), lambda x: translation_tools.is_jp(x[1]))
 	for chunk, trans in trans_pass:  # add dict entries for the ones that passed
 		localtrans_dict[chunk] = trans
 	jp_chunks = [j[0] for j in trans_fail]  # rebuild the jp_chunks list for the ones that failed
@@ -355,7 +355,7 @@ def google_translate(in_list, strategy=1):
 		google_dict = dict(sorted(list(google_dict.items()), reverse=True, key=lambda x: len(x[0])))
 		
 		# 8. piecewise translate using newly created dict
-		outlist = local_translation_dicts.piecewise_translate(bodies, google_dict)
+		outlist = translation_tools.piecewise_translate(bodies, google_dict)
 	else:
 		# old style: just translate the strings directly and return their results
 		for d, combined in enumerate(pretrans_combined):
@@ -492,10 +492,10 @@ def translate_to_english(pmx, moreinfo=False):
 	translate_maps, translate_notdone = my_list_partition(translate_maps, lambda x: x.trans_type != -1)
 	########
 	# actually do local translate
-	local_results = local_translation_dicts.local_translate([item.jp_old for item in translate_notdone])
+	local_results = translation_tools.local_translate([item.jp_old for item in translate_notdone])
 	# determine if each item passed or not, update the en_new and trans_type fields
 	for item, result in zip(translate_notdone, local_results):
-		if not local_translation_dicts.needs_translate(result):
+		if not translation_tools.needs_translate(result):
 			item.en_new = result
 			item.trans_type = 3
 	# grab the newly-done items and move them to the done list
@@ -506,7 +506,7 @@ def translate_to_english(pmx, moreinfo=False):
 		# if i chose to anti-prefer the existing EN name, then it is still preferred over google and should be checked here
 		for item in translate_notdone:
 			# first, if en name is already good (not blank and not JP), just keep it
-			if item.en_old and not item.en_old.isspace() and not local_translation_dicts.needs_translate(item.en_old):
+			if item.en_old and not item.en_old.isspace() and not translation_tools.needs_translate(item.en_old):
 				item.en_new = item.en_old
 				item.trans_type = 0
 		# transfer the newly-done things over to the translate_maps list
@@ -524,7 +524,7 @@ def translate_to_english(pmx, moreinfo=False):
 			for item, result in zip(translate_notdone, google_results):
 				# save the result regardless of pass/fail, it's the best I've got
 				item.en_new = result
-				if not local_translation_dicts.needs_translate(result):
+				if not translation_tools.needs_translate(result):
 					item.en_new = result
 					item.trans_type = 4
 			# grab the newly-done items and move them to the done list
