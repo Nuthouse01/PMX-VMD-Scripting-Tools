@@ -94,6 +94,15 @@ class filerecord:
 		return p
 
 
+def walk_filetree_from_root(startpath: str) -> list:
+	absolute_all_exist_files = []
+	# os.walk: returns (path to the folder i'm in),(list of folders in this folder),(list of files in this folder)
+	for where, subfolders, files in os.walk(startpath):
+		absolute_all_exist_files += [os.path.join(where, f) for f in files]
+	relative_all_exist_files = [os.path.relpath(f, startpath) for f in absolute_all_exist_files]
+	return relative_all_exist_files
+
+
 def match_folder_anylevel(s: str, matchlist: tuple, toponly=False) -> bool:
 	# break apart each folder level
 	broken = s.split(os.path.sep)
@@ -244,7 +253,7 @@ def combine_tex_reference(pmx, dupe_to_master_map):
 	return None
 
 
-def categorize_files(pmx_dict, exist_files):
+def categorize_files(pmx_dict: dict, exist_files: list, moreinfo: bool):
 	"""
 	Categorize file usage and normalize cases and separators within PMX files and across PMX files.
 	First, normalize file uses within each PMX to match the exact case/separators used on disk.
@@ -253,13 +262,16 @@ def categorize_files(pmx_dict, exist_files):
 	Finally, unify filerecord objects across all PMX files.
 	:param pmx_dict: dict of PMX objects, key is path relative to startpath, value is actual PMX obj
 	:param exist_files: list of strings which are relative filepaths for files I located on disk
+	:param moreinfo: bool moreinfo from main layer
 	:return: list of filerecord obj which are completely filled out except for destination names.
 	"""
 	
 	recordlist = []
+	num_unify_within_pmx = 0
+	num_nullify = 0
 	
 	for pmxpath, pmx in pmx_dict.items():
-		print(pmxpath)
+		if DEBUG: print(pmxpath)
 		null_texture_dict = dict()
 		# for each texture,
 		for d, tex in enumerate(pmx[3]):
@@ -273,7 +285,8 @@ def categorize_files(pmx_dict, exist_files):
 					pmx[3][d] = ef
 					break
 		if null_texture_dict:
-			print("nullifying", null_texture_dict)
+			num_nullify += len(null_texture_dict)
+			if DEBUG: print("nullifying", null_texture_dict)
 			combine_tex_reference(pmx, null_texture_dict)
 		
 		# remove theoretical duplicates from the PMX... not likely but possible. cases can be different.
@@ -293,7 +306,8 @@ def categorize_files(pmx_dict, exist_files):
 				dupe_to_master_map[dk] = dj
 		# now all within-pmx dupes have been found & marked with their master... so combine them!
 		if dupe_to_master_map:
-			print("unifying", dupe_to_master_map)
+			num_unify_within_pmx += len(dupe_to_master_map)
+			if DEBUG: print("unifying", dupe_to_master_map)
 			combine_tex_reference(pmx, dupe_to_master_map)
 		
 		thispmx_recordlist = []
@@ -329,12 +343,18 @@ def categorize_files(pmx_dict, exist_files):
 		# finally, add these new records onto the 'everything' list
 		recordlist.extend(thispmx_recordlist)
 		pass
-	# next, append all the files I know exist, will cause many dupes
+	# stats
+	if moreinfo:
+		if num_nullify: core.MY_PRINT_FUNC("Nullified %d tex references that were just blank" % num_nullify)
+		if num_unify_within_pmx: core.MY_PRINT_FUNC("Unified %d tex references within PMXes" % num_unify_within_pmx)
+		
+	# next, append all the files I know exist, will cause many dupes but this is how i get "exist but not used" files in there
 	recordlist.extend([filerecord(f, True) for f in exist_files])
 	
 	# finally, unify all tex among all pmx that reference the same file: basically the same approach as unifying tex within a pmx file
 	# there is only one actual file on disk, even if each PMX references it. therefore there should only be one entry.
 	dj = 0
+	num_unify_across_pmx = 0
 	while dj < len(recordlist):
 		tjn = os.path.normpath(recordlist[dj].name.lower())
 		dk = dj + 1
@@ -350,11 +370,15 @@ def categorize_files(pmx_dict, exist_files):
 				recordlist[dj].usage.update(recordlist[dk].exists)  # usage is a set, unison
 				recordlist[dj].numused += recordlist[dk].numused  # numused is a number, sum
 				# lastly, change the PMX entry of the one being deleted to exactly match the one i'm keeping
-				for pmxpath, idx in recordlist[dj].used_pmx.items():
-					pmx_dict[pmxpath][3][idx] = recordlist[dj].name
+				if recordlist[dj].name != recordlist[dk].name:
+					num_unify_across_pmx += 1
+					for pmxpath, idx in recordlist[dj].used_pmx.items():
+						pmx_dict[pmxpath][3][idx] = recordlist[dj].name
 				recordlist.pop(dk)
 		# always inc dj
 		dj += 1
+	if moreinfo:
+		if num_unify_across_pmx: core.MY_PRINT_FUNC("Unified %d tex references across PMXes" % num_unify_across_pmx)
 	
 	return recordlist
 
@@ -411,13 +435,8 @@ def main(moreinfo=False):
 	# =========================================================================================================
 	# =========================================================================================================
 	# first, build the list of ALL files that actually exist, then filter it down to neighbor PMXs and relevant files
-	
-	absolute_all_exist_files = []
-	# os.walk: returns (path to the folder i'm in),(list of folders in this folder),(list of files in this folder)
-	for where, subfolders, files in os.walk(startpath):
-		absolute_all_exist_files += [os.path.join(where, f) for f in files]
-	core.MY_PRINT_FUNC("ALL EXISTING FILES:", len(absolute_all_exist_files))
-	relative_all_exist_files = [os.path.relpath(f, startpath) for f in absolute_all_exist_files]
+	relative_all_exist_files = walk_filetree_from_root(startpath)
+	core.MY_PRINT_FUNC("ALL EXISTING FILES:", len(relative_all_exist_files))
 	# now fill "neighbor_pmx" by finding files without path separator that end in PMX
 	# these are relative paths tho
 	neighbor_pmx = [f for f in relative_all_exist_files if 
@@ -469,18 +488,10 @@ def main(moreinfo=False):
 	# =========================================================================================================
 	# =========================================================================================================
 	# =========================================================================================================
-	# "categorize files & normalize usages within PMX", NEW FUNC!!!
-	# 	inputs: list of PMX obj, list of known existing files
-	# 	outputs: list of structs that bundle all relevant info about the file (replace 2 structs currently used)
 	# 	for each pmx, for each file on disk, match against files used in textures (case-insensitive) and replace with canonical name-on-disk
 	#	also fill out how much and how each file is used, and unify dupes between files, all that good stuff
 	
-	filerecord_list = categorize_files(all_pmx_obj, relevant_exist_files)
-	
-	core.MY_PRINT_FUNC("PMX SOURCE FILES:", len(filerecord_list))
-	if moreinfo:
-		for x in filerecord_list:
-			core.MY_PRINT_FUNC("  " + str(x))
+	filerecord_list = categorize_files(all_pmx_obj, relevant_exist_files, moreinfo)
 	
 	# =========================================================================================================
 	# =========================================================================================================
@@ -492,6 +503,11 @@ def main(moreinfo=False):
 	notexist =       [q for q in filerecord_list if q.numused != 0 and not q.exists]
 	notused_img =    [q for q in filerecord_list if q.numused == 0 and q.name.lower().endswith(IMG_EXT)]
 	notused_notimg = [q for q in filerecord_list if q.numused == 0 and not q.name.lower().endswith(IMG_EXT)]
+	
+	core.MY_PRINT_FUNC("PMX TEXTURE SOURCES:", len(used))
+	if moreinfo:
+		for x in used:
+			core.MY_PRINT_FUNC("  " + str(x))
 	
 	# now:
 	# all duplicates have been resolved within PMX, including modifying the PMX
@@ -742,7 +758,7 @@ def main(moreinfo=False):
 	for this_pmx_name, this_pmx_obj in all_pmx_obj.items():
 		# NOTE: this is OVERWRITING THE PREVIOUS PMX FILE, NOT CREATING A NEW ONE
 		# because I make a zipfile backup I don't need to feel worried about preserving the old version
-		output_filename_pmx = startpath + this_pmx_name
+		output_filename_pmx = os.path.join(startpath, this_pmx_name)
 		# output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 		pmxlib.write_pmx(output_filename_pmx, this_pmx_obj, moreinfo=moreinfo)
 	
