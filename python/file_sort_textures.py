@@ -5,6 +5,7 @@
 # os.path, os.walk, os.renames
 import os
 # shutil.make_archive
+import re
 import shutil
 
 # second, wrap custom imports with a try-except to catch it if files are missing
@@ -67,6 +68,9 @@ KEEP_FOLDERS_SPH = ("sph", "spa", "sp")
 IGNORE_FILETYPES = (".pmx", ".x", ".txt", ".vmd", ".vpd", ".csv")
 # all folders I expect to find alongside a PMX and don't want to touch/move any of their contents
 IGNORE_FOLDERS = ("fx", "effect", "readme")
+
+remove_pattern = r" ?\(Instance\)_?(\([-0-9]*\))?"
+remove_re = re.compile(remove_pattern)
 
 
 # a struct to bundle all the relevant info about a file that is on disk or used by PMX
@@ -134,24 +138,9 @@ def sortbydirdepth(s: str) -> str:
 
 
 def remove_pattern(s: str) -> str:
-	# TODO: replace this with regex trickery?
 	# remove a specific pattern in filenames that were ported by a specific tool
-	# return the version
-	v = s.find("(Instance)")
-	if v == -1:
-		return s
-	slice_start = v
-	slice_end = v + 10
-	if v != 0 and s[v-1] == " ":
-		slice_start += -1
-	v = s.find("(", slice_end)
-	if v == -1:
-		return s[:slice_start] + s[slice_end+1:]
-	slice_end = v
-	v = s.find(")", slice_end)
-	if v == -1:
-		return s[:slice_start] + s[slice_end+1:]
-	return s[:slice_start] + s[v+1:]
+	# ex: "acs_m_meka_c (Instance)_(-412844).png"
+	return remove_re.sub("", s)
 
 
 def make_zipfile_backup(startpath, backup_suffix) -> bool:
@@ -366,8 +355,8 @@ def categorize_files(pmx_dict: dict, exist_files: list, moreinfo: bool):
 			else:
 				# if they match, unify & eventually pop dk
 				recordlist[dj].exists |= recordlist[dk].exists  # exists is true if either is true
-				recordlist[dj].used_pmx.update(recordlist[dk].exists)  # used_pmx is a set, unison
-				recordlist[dj].usage.update(recordlist[dk].exists)  # usage is a set, unison
+				recordlist[dj].used_pmx.update(recordlist[dk].used_pmx)  # used_pmx is a set, unison
+				recordlist[dj].usage.update(recordlist[dk].usage)  # usage is a set, unison
 				recordlist[dj].numused += recordlist[dk].numused  # numused is a number, sum
 				# lastly, change the PMX entry of the one being deleted to exactly match the one i'm keeping
 				if recordlist[dj].name != recordlist[dk].name:
@@ -440,7 +429,7 @@ def main(moreinfo=False):
 	# now fill "neighbor_pmx" by finding files without path separator that end in PMX
 	# these are relative paths tho
 	neighbor_pmx = [f for f in relative_all_exist_files if 
-					(not f.lower().endswith(".pmx")) and 
+					(f.lower().endswith(".pmx")) and
 					(os.path.sep not in f) and
 					f != input_filename_pmx_rel]
 	
