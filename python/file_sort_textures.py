@@ -482,145 +482,10 @@ def main(moreinfo=False):
 	# "categorize files & normalize usages within PMX", NEW FUNC!!!
 	# 	inputs: list of PMX obj, list of known existing files
 	# 	outputs: list of structs that bundle all relevant info about the file (replace 2 structs currently used)
-	# 	> exists/not, used/not (overall), used/not (per pmx), index-in-pmx? (per pmx), usage-dict (per pmx), name-on-disk, blank field for future name
 	# 	for each pmx, for each file on disk, match against files used in textures (case-insensitive) and replace with canonical name-on-disk
-	# 	also create NEW FUNC for "merge this tex with this other tex"
+	#	also fill out how much and how each file is used, and unify dupes between files, all that good stuff
 	
 	filerecord_list = categorize_files(all_pmx_obj, relevant_exist_files)
-	
-	
-	
-	
-	# ===================== begin for-each-pmx section
-	# dictionary where keys are filename and values are resulting pmx objects
-	# all_pmx_obj = {}
-	# holds all textures that are referenced by all PMX files
-	# files_in_pmx = []
-	# for this_pmx_name in pmx_filenames:
-	# 	this_pmx_obj = pmxlib.read_pmx(this_pmx_name, moreinfo=moreinfo)
-	# 	all_pmx_obj[this_pmx_name] = this_pmx_obj
-	# 	# pmx[3] is list of all filepaths used in the model
-	#
-	# 	files_in_this_pmx = []
-	# 	for d,orig in enumerate(this_pmx_obj[3]):
-	# 		# orig, norm, norm-lower, index, exists, dupeidx, usage-modes, mapto...
-	# 		files_in_this_pmx.append(pmxfile(orig, d, this_pmx_name))
-	#
-	# 	# doing usage-check BEFORE dupe-check? so i can unify usages of the dupes?
-	#
-	# 	# used files get sorted by HOW they are used... so go find that info
-	# 	# files are only used in materials pmx[4], and only tex=19/sph=20/toon=23 (only if 22==0)
-	# 	# material > index > files_in_pmx
-	# 	for mat in this_pmx_obj[4]:
-	# 		texid = mat[19]
-	# 		# filter out -1 which means "no file reference"
-	# 		if texid != -1:
-	# 			files_in_this_pmx[texid].usage.add(FOLDER_TEX)
-	# 			files_in_this_pmx[texid].numused += 1
-	# 		sphid = mat[20]
-	# 		if sphid != -1:
-	# 			files_in_this_pmx[sphid].usage.add(FOLDER_SPH)
-	# 			files_in_this_pmx[sphid].numused += 1
-	# 		if mat[22] == 0:
-	# 			toonid = mat[23]
-	# 			if toonid != -1:
-	# 				files_in_this_pmx[toonid].usage.add(FOLDER_TOON)
-	# 				files_in_this_pmx[toonid].numused += 1
-	#
-	# 	# now remove theoretical duplicates from the PMX... not likely but possible. cases can be different.
-	# 	for pj in files_in_this_pmx:
-	# 		for pk in files_in_this_pmx:
-	# 			if pj is pk:
-	# 				# skip, don't compare self with self
-	# 				continue
-	# 			if pj.norm_lower != pk.norm_lower:  # compare lower with lower
-	# 				# no match, skip
-	# 				continue
-	# 			# matched!
-	# 			if pj.dupe is None and pk.dupe is None:
-	# 				# if neither acknowledges the dupe, then mark one as such
-	# 				# this is rather rare, might as well print something for it
-	# 				if moreinfo:
-	# 					core.MY_PRINT_FUNC("unify dupe within pmx: idx%d='%s', idx%d='%s'" % (pj.index_per_file[this_pmx_name], pj.orig,
-	# 																			 pk.index_per_file[this_pmx_name], pk.orig))
-	# 				# the greater-index one has dupe set to reference the lower-index one
-	# 				pk.dupe = pj.index_per_file[this_pmx_name]
-	# 				# combine their "usage" sets
-	# 				pj.usage = pj.usage.union(pk.usage)
-	# 				# combine their "numused" counts, not actually used anywhere but w/e
-	# 				pj.numused += pk.numused
-	# 	# now all within-pmx dupes have been found & marked with their master
-	# 	# first build a dict of each dupe ID and what master ID it maps to
-	# 	dupe_to_master_map = {}
-	# 	for p in files_in_this_pmx:
-	# 		if p.dupe is not None:
-	# 			dupe_to_master_map[p.index_per_file[this_pmx_name]] = p.dupe
-	# 	if dupe_to_master_map:
-	# 		# now modify this PMX to resolve/consolidate/unify the duplicates:
-	# 		# first: make dellist & idx_shift_map
-	# 		dellist = list(dupe_to_master_map.keys())
-	# 		# make the idx_shift_map
-	# 		idx_shift_map = delme_list_to_rangemap(dellist)
-	# 		# second: delete the acutal textures from the actual texture list and my files_in_this_pmx list
-	# 		# at this point they guaranteed correspond 1-to-1
-	# 		for i in reversed(dellist):
-	# 			this_pmx_obj[3].pop(i)
-	# 			files_in_this_pmx.pop(i)
-	# 		# third: iter over materials, use dupe_to_master_map to replace dupe with master and newval_from_range_map to account for dupe deletion
-	# 		for mat in this_pmx_obj[4]:
-	# 			# no need to filter for -1s, because -1 isn't in the dupe_to_master_map and wont be changed by idx_shift_map
-	# 			if mat[19] in dupe_to_master_map: # tex id
-	# 				mat[19] = dupe_to_master_map[mat[19]]
-	# 			# remap regardless of whether it is replaced with master or not
-	# 			mat[19] = newval_from_range_map(mat[19], idx_shift_map)
-	# 			if mat[20] in dupe_to_master_map: # sph id
-	# 				mat[20] = dupe_to_master_map[mat[20]]
-	# 			mat[20] = newval_from_range_map(mat[20], idx_shift_map)
-	# 			if mat[22] == 0:
-	# 				if mat[23] in dupe_to_master_map: # toon id
-	# 					mat[23] = dupe_to_master_map[mat[23]]
-	# 				mat[23] = newval_from_range_map(mat[23], idx_shift_map)
-	# 		# fourth: remap indices in the files_in_this_pmx list too
-	# 		for p in files_in_this_pmx:
-	# 			p.index_per_file[this_pmx_name] = newval_from_range_map(p.index_per_file[this_pmx_name], idx_shift_map)
-	#
-	# 	# while I'm here I should modify thier path separators too, make them all consistient
-	# 	# not worth notifying user about this
-	# 	# NOTE: this step is technically optional and can be disabled if I have some reason to do so
-	# 	for p in files_in_this_pmx:
-	# 		this_pmx_obj[3][p.index_per_file[this_pmx_name]] = p.norm
-	# 		p.orig = p.norm
-	#
-	# 	# now each tex in this PMX has been uniquified within this PMX, and this PMX has been modified accordingly
-	# 	# the index_per_file dict has length of exactly 1 guaranteed
-	# 	# "dupe" field no longer has any meaning
-	#
-	# 	# add all the tex in this pmx file to the list of textures in all pmx files
-	# 	files_in_pmx += files_in_this_pmx
-	# # ===================== end for-each-pmx section
-	#
-	# # next, unify all tex among all pmx that reference the same file: basically the same approach as unifying tex within a pmx file
-	# # there is only one actual file on disk, even if each PMX references it. therefore there should only be one entry.
-	# j = 0
-	# while j < len(files_in_pmx):
-	# 	pj = files_in_pmx[j]
-	# 	k = 0
-	# 	while k < len(files_in_pmx):
-	# 		pk = files_in_pmx[k]
-	# 		if j != k and pj.norm_lower == pk.norm_lower:
-	# 			# matched! unify & pop
-	# 			# combine index_per_file dicts
-	# 			pj.index_per_file = dict(list(pj.index_per_file.items()) + list(pk.index_per_file.items()))
-	# 			# combine their "usage" sets, could be used as a tex in one file and used as a sph in another
-	# 			pj.usage = pj.usage.union(pk.usage)
-	# 			# combine their "numused" counts, not actually used anywhere but w/e
-	# 			pj.numused += pk.numused
-	# 			# delete it
-	# 			files_in_pmx.pop(k)
-	# 		else:
-	# 			# different, keep counting
-	# 			k += 1
-	# 	j += 1
 	
 	core.MY_PRINT_FUNC("PMX SOURCE FILES:", len(filerecord_list))
 	if moreinfo:
@@ -632,18 +497,7 @@ def main(moreinfo=False):
 	# =========================================================================================================
 	# now check which files are used/unused/dont exist
 	
-	# for t in files_in_pmx:
-	# 	# try to match it against an existing file
-	# 	for ex in files_that_exist:
-	# 		if t.norm_lower == ex.norm_lower:
-	# 			# file exists! flag it in files_in_pmx
-	# 			t.exists = True
-	# 			# file is used! count it in files_that_exist
-	# 			ex.numused += 1
-	# 			break
-
-	# now break this into used/notused/notexist lists for simplicity sake
-	
+	# break this into used/notused/notexist lists for simplicity sake
 	used =           [q for q in filerecord_list if q.numused != 0 and q.exists]
 	notexist =       [q for q in filerecord_list if q.numused != 0 and not q.exists]
 	notused_img =    [q for q in filerecord_list if q.numused == 0 and q.name.lower().endswith(IMG_EXT)]
@@ -652,9 +506,9 @@ def main(moreinfo=False):
 	# now:
 	# all duplicates have been resolved within PMX, including modifying the PMX
 	# all duplicates have been resolved across PMXes
-	# all pmxfile exist/notexist status is known
-	# all pmxfile usage mode is known
-	# all exist file used/unused is known
+	# all file exist/notexist status is known
+	# all file used/notused status is known (via numused), or used_pmx
+	# all ways a file is used is known
 	
 	global MOVE_TOPLEVEL_UNUSED_IMG
 	global MOVE_ALL_UNUSED_IMG
@@ -898,7 +752,7 @@ def main(moreinfo=False):
 	for this_pmx_name, this_pmx_obj in all_pmx_obj.items():
 		# NOTE: this is OVERWRITING THE PREVIOUS PMX FILE, NOT CREATING A NEW ONE
 		# because I make a zipfile backup I don't need to feel worried about preserving the old version
-		output_filename_pmx = this_pmx_name
+		output_filename_pmx = startpath + this_pmx_name
 		# output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 		pmxlib.write_pmx(output_filename_pmx, this_pmx_obj, moreinfo=moreinfo)
 	
