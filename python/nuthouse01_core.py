@@ -134,6 +134,22 @@ def my_sublist_find(searchme, sublist_idx, matchme, getindex=False):
 				return row
 	return None
 
+def my_list_partition(l, condition):
+	"""
+	Split one list into two NEW lists based on a condition. Kinda like a list comprehension but it produces 2 results.
+	:param l: the list to be split in two
+	:param condition: lambda function that returns true or false
+	:return: tuple of lists, (list_lambda_true, list_lambda_false)
+	"""
+	list_where_true = []
+	list_where_false = []
+	for iiiii in l:
+		if condition(iiiii):
+			list_where_true.append(iiiii)
+		else:
+			list_where_false.append(iiiii)
+	return list_where_true, list_where_false
+
 MAXDIFFERENCE = 0
 # recursively check for equality, using a loose comparison for floatingpoints
 # operating on test file, the greatest difference introduced by quaternion transform is 0.000257

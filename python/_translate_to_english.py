@@ -162,22 +162,6 @@ def check_translate_budget(num_proposed: int) -> bool:
 	
 ################################################################################################################
 
-def my_list_partition(l, condition):
-	"""
-	Split one list into two NEW lists based on a condition. Kinda like a list comprehension but it produces 2 results.
-	:param l: the list to be split in two
-	:param condition: lambda function that returns true or false
-	:return: tuple of lists, (list_lambda_true, list_lambda_false)
-	"""
-	list_where_true = []
-	list_where_false = []
-	for iiiii in l:
-		if condition(iiiii):
-			list_where_true.append(iiiii)
-		else:
-			list_where_false.append(iiiii)
-	return list_where_true, list_where_false
-
 def combine_translate_requests(jp_list: list) -> list:
 	"""
 	Split/join a massive list of items to translate into fewer requests which each contain many separated by newlines.
@@ -313,7 +297,7 @@ def google_translate(in_list, strategy=1):
 	jp_chunks_localtrans = translation_tools.piecewise_translate(jp_chunks, translation_tools.words_dict)
 	# results are chunk+trans: split into (where trans failed) (where trans passed)
 	# use "is_jp"->fail and not "needs_translate" so I am only sending actual JP stuff to Google and not unicode arrows or whatever
-	trans_fail, trans_pass = my_list_partition(zip(jp_chunks, jp_chunks_localtrans), lambda x: translation_tools.is_jp(x[1]))
+	trans_fail, trans_pass = core.my_list_partition(zip(jp_chunks, jp_chunks_localtrans), lambda x: translation_tools.is_jp(x[1]))
 	for chunk, trans in trans_pass:  # add dict entries for the ones that passed
 		localtrans_dict[chunk] = trans
 	jp_chunks = [j[0] for j in trans_fail]  # rebuild the jp_chunks list for the ones that failed
@@ -488,7 +472,7 @@ def translate_to_english(pmx, moreinfo=False):
 		
 	# now I have all the translateable items (except for model comment) collected in one list
 	# partition the list into done and notdone
-	translate_maps, translate_notdone = my_list_partition(translate_maps, lambda x: x.trans_type != -1)
+	translate_maps, translate_notdone = core.my_list_partition(translate_maps, lambda x: x.trans_type != -1)
 	########
 	# actually do local translate
 	local_results = translation_tools.local_translate([item.jp_old for item in translate_notdone])
@@ -498,7 +482,7 @@ def translate_to_english(pmx, moreinfo=False):
 			item.en_new = result
 			item.trans_type = 3
 	# grab the newly-done items and move them to the done list
-	translate_done2, translate_notdone = my_list_partition(translate_notdone, lambda x: x.trans_type != -1)
+	translate_done2, translate_notdone = core.my_list_partition(translate_notdone, lambda x: x.trans_type != -1)
 	translate_maps.extend(translate_done2)
 	########
 	if not PREFER_EXISTING_ENGLISH_NAME:
@@ -509,7 +493,7 @@ def translate_to_english(pmx, moreinfo=False):
 				item.en_new = item.en_old
 				item.trans_type = 0
 		# transfer the newly-done things over to the translate_maps list
-		translate_done2, translate_notdone = my_list_partition(translate_notdone, lambda x: x.trans_type != -1)
+		translate_done2, translate_notdone = core.my_list_partition(translate_notdone, lambda x: x.trans_type != -1)
 		translate_maps.extend(translate_done2)
 	
 	########
@@ -552,11 +536,11 @@ def translate_to_english(pmx, moreinfo=False):
 	###########################################
 	
 	# now, determine if i actually changed anything at all before bothering to try applying stuff
-	type_fail, temp = 		my_list_partition(translate_maps, lambda x: x.trans_type == -1)
-	type_good, temp = 		my_list_partition(temp, lambda x: x.trans_type == 0)
-	type_copy, temp = 		my_list_partition(temp, lambda x: x.trans_type == 1)
-	type_exact, temp = 		my_list_partition(temp, lambda x: x.trans_type == 2)
-	type_local, temp = 		my_list_partition(temp, lambda x: x.trans_type == 3)
+	type_fail, temp = 		core.my_list_partition(translate_maps, lambda x: x.trans_type == -1)
+	type_good, temp = 		core.my_list_partition(temp, lambda x: x.trans_type == 0)
+	type_copy, temp = 		core.my_list_partition(temp, lambda x: x.trans_type == 1)
+	type_exact, temp = 		core.my_list_partition(temp, lambda x: x.trans_type == 2)
+	type_local, temp = 		core.my_list_partition(temp, lambda x: x.trans_type == 3)
 	type_google = 			temp
 	total_changed = int(newcommentsource != 0) + len(type_copy) + len(type_exact) + len(type_local) + len(type_google)
 	total_fields = len(translate_maps)

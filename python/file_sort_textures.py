@@ -488,10 +488,12 @@ def main(moreinfo=False):
 	# now check which files are used/unused/dont exist
 	
 	# break this into used/notused/notexist lists for simplicity sake
-	used =           [q for q in filerecord_list if q.numused != 0 and q.exists]
-	notexist =       [q for q in filerecord_list if q.numused != 0 and not q.exists]
-	notused_img =    [q for q in filerecord_list if q.numused == 0 and q.name.lower().endswith(IMG_EXT)]
-	notused_notimg = [q for q in filerecord_list if q.numused == 0 and not q.name.lower().endswith(IMG_EXT)]
+	# all -> used + notused
+	# used -> used_exist + used_notexist
+	# notused -> notused_img + notused_notimg
+	used, notused =               core.my_list_partition(filerecord_list, lambda q: q.numused != 0)
+	used_exist, used_notexist =   core.my_list_partition(used, lambda q: q.exists)
+	notused_img, notused_notimg = core.my_list_partition(notused, lambda q: q.name.lower().endswith(IMG_EXT))
 	
 	core.MY_PRINT_FUNC("PMX TEXTURE SOURCES:", len(used))
 	if moreinfo:
@@ -565,7 +567,7 @@ def main(moreinfo=False):
 	
 	# used files get sorted into tex/toon/sph/multi (unless tex and already in a folder that says clothes, etc)
 	# all SPH/SPA get renamed to BMP, used or unused
-	for p in used:
+	for p in used_exist:
 		newname = remove_pattern(p.name)
 		usage_list = list(p.usage)
 		if len(p.usage) != 1:
@@ -611,7 +613,7 @@ def main(moreinfo=False):
 	# NOW PRINT MY PROPOSED RENAMINGS and other findings
 	
 	# isolate the ones with proposed renaming
-	used_rename =          [u for u in used if u.newname is not None]
+	used_rename =          [u for u in used_exist if u.newname is not None]
 	notused_img_rename =   [u for u in notused_img if u.newname is not None]
 	notused_img_norename = [u for u in notused_img if u.newname is None]
 	
@@ -652,10 +654,10 @@ def main(moreinfo=False):
 	
 	# for each section, if it exists, print its names sorted first by directory depth then alphabetically (case insensitive)
 	
-	if notexist:
+	if used_notexist:
 		core.MY_PRINT_FUNC("="*60)
-		core.MY_PRINT_FUNC("Found %d references to images that don't exist (no proposed changes)" % len(notexist))
-		for p in sorted(notexist, key=lambda y: sortbydirdepth(y.name)):
+		core.MY_PRINT_FUNC("Found %d references to images that don't exist (no proposed changes)" % len(used_notexist))
+		for p in sorted(used_notexist, key=lambda y: sortbydirdepth(y.name)):
 			# print orig name, usage modes, # used, and # files that use it
 			core.MY_PRINT_FUNC("   " + str(p))
 	if notused_img_norename:
