@@ -283,7 +283,7 @@ def get_unused_file_name(initial_name: str, namelist=None) -> str:
 		if namelist is None and not path.isfile(test_name):
 			# if test_name doesn't exist, then its a good name
 			return test_name
-		elif namelist is not None and test_name.lower() not in namelist:
+		elif namelist is not None and test_name.lower() not in [n.lower() for n in namelist]:
 			# if test_name isn't in the list (case-insensitive matching), then its a good name
 			return test_name
 		else:
