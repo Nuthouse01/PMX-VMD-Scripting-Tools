@@ -26,10 +26,6 @@ except ImportError as eee:
 		core = pmxlib = None
 		newval_from_range_map = delme_list_to_rangemap = None
 
-# in "memo" section, spaces are backslash-escaped, how does this affect printing? what about spaces in file path?
-# just dont touch memo, its read back just fine
-# for file paths, use doublebackslash, they are read just fine too
-
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
@@ -51,7 +47,7 @@ MOVE_ALL_UNUSED_IMG = False
 # this is recommended true, for obvious reasons
 MAKE_BACKUP_BEFORE_RENAMES = True
 # note: zipper automatically appends .zip onto whatever output name i give it, so dont give it a .zip suffix here
-BACKUP_SUFFIX = ".renamebackup"
+BACKUP_SUFFIX = "beforesort"
 
 
 # these are the names of the folders that the files will be sorted into, these can be changed to whatever you want
@@ -72,8 +68,30 @@ IGNORE_FILETYPES = (".pmx", ".x", ".txt", ".vmd", ".vpd", ".csv")
 # all folders I expect to find alongside a PMX and don't want to touch/move any of their contents
 IGNORE_FOLDERS = ("fx", "effect", "readme")
 
-# # DONT TOUCH THIS, automatically adds the path separator to IGNORE_FOLDERS items
-# IGNORE_FOLDERS = tuple([foobar + os.path.sep for foobar in IGNORE_FOLDERS])
+
+# a struct to bundle all the relevant info about a file that is on disk or used by PMX
+class filerecord:
+	def __init__(self, name, exists):
+		# the "clean" name this file uses on disk: relative to startpath and separator-normalized
+		# or, if it does not exist on disk, whatever name shows up in the PMX entry
+		self.name = name
+		# true if this is a real file that exists on disk
+		self.exists = exists
+		# dict of all PMX that reference this file at least once:
+		# keys are strings which are filepath relative to startpath and separator-normalized
+		# values are index it appears at, saves searching time
+		self.used_pmx = dict()
+		# set of all ways this file is used within PMXes
+		self.usage = set()
+		# total number of times this file is used... not required for the script, just interesting stats
+		self.numused = 0
+		# the name this file will be renamed to
+		self.newname = None
+
+	def __str__(self) -> str:
+		p = "'%s': used as %s, %d times among %d files" % (
+			self.name, self.usage, self.numused, len(self.used_pmx))
+		return p
 
 
 def match_folder_anylevel(s: str, matchlist: tuple, toponly=False) -> bool:
@@ -100,6 +118,7 @@ def match_folder_anylevel(s: str, matchlist: tuple, toponly=False) -> bool:
 
 
 def sortbydirdepth(s: str) -> str:
+	# TODO: rethink/improve this
 	# pipe gets sorted last, so prepend end-of-unicode char to make something get sorted lower
 	# more slashes in name = more subdirectories = lower on the tree
 	return (chr(0x10FFFF) * s.count("\\")) + s.lower()
@@ -126,7 +145,6 @@ def remove_pattern(s: str) -> str:
 	return s[:slice_start] + s[v+1:]
 
 
-
 def make_zipfile_backup(startpath, backup_suffix) -> bool:
 	"""
 	Make a .zip backup of the folder 'startpath' and all its contents. Returns True if all goes well, False if it should abort.
@@ -136,7 +154,7 @@ def make_zipfile_backup(startpath, backup_suffix) -> bool:
 	:return: true if things are good, False if i should abort
 	"""
 	# need to add .zip for checking against already-exising files and for printing
-	zipname = startpath + backup_suffix + ".zip"
+	zipname = startpath + "." + backup_suffix + ".zip"
 	zipname = core.get_unused_file_name(zipname)
 	core.MY_PRINT_FUNC("...making backup archive:")
 	core.MY_PRINT_FUNC(zipname)
@@ -153,46 +171,17 @@ def make_zipfile_backup(startpath, backup_suffix) -> bool:
 		r = core.MY_SIMPLECHOICE_FUNC((1, 2), info)
 		if r == 2: return False
 	return True
-	
-
-def combine_tex_reference(pmx, dupe_to_master_map):
-	"""
-	Update a PMX object by merging several of its texture entries
-	:param pmx: pmx obj to update
-	:param dupe_to_master_map: dict where keys are dupes to remove, values are what to replace with
-	"""
-	# now modify this PMX to resolve/consolidate/unify the duplicates:
-	# first: make dellist & idx_shift_map
-	dellist = list(dupe_to_master_map.keys())
-	# make the idx_shift_map
-	idx_shift_map = delme_list_to_rangemap(dellist)
-	# second: delete the acutal textures from the actual texture list
-	for i in reversed(dellist):
-		pmx[3].pop(i)
-	# third: iter over materials, use dupe_to_master_map to replace dupe with master and newval_from_range_map to account for dupe deletion
-	for mat in pmx[4]:
-		# no need to filter for -1s, because -1 isn't in the dupe_to_master_map and wont be changed by idx_shift_map
-		if mat[19] in dupe_to_master_map:  # tex id
-			mat[19] = dupe_to_master_map[mat[19]]
-		# remap regardless of whether it is replaced with master or not
-		mat[19] = newval_from_range_map(mat[19], idx_shift_map)
-		if mat[20] in dupe_to_master_map:  # sph id
-			mat[20] = dupe_to_master_map[mat[20]]
-		mat[20] = newval_from_range_map(mat[20], idx_shift_map)
-		if mat[22] == 0:
-			if mat[23] in dupe_to_master_map:  # toon id
-				mat[23] = dupe_to_master_map[mat[23]]
-			mat[23] = newval_from_range_map(mat[23], idx_shift_map)
-	return None
-
 
 
 def apply_file_renaming(pmx_dict: dict, filerecord_list: list, startpath: str):
-	# 	inputs: list of pmx obj, list of file before/after obj
-	# 	first try to rename all files
-	# 		could plausibly fail, if so, set to-name to None/blank
-	# 	then, in the PMXs, rename all files that didn't fail
-	
+	"""
+	Apply all the renaming operations to files on the disk and in any PMX objects where they are used.
+	First, try to rename all files on disk. If any raise exceptions, those files will not be changed in PMXes.
+	Then, change the file references in the PMX to match the new locations on disk for all files that succeeded.
+	:param pmx_dict: dict of PMX objects, key is path relative to startpath, value is actual PMX obj
+	:param filerecord_list: list of filerecord obj, all completely processed & filled out
+	:param startpath: absolute path that all filepaths are relative to
+	"""
 	# first, rename files on disk:
 	core.MY_PRINT_FUNC("...renaming files on disk...")
 	for i, p in enumerate(filerecord_list):
@@ -223,97 +212,57 @@ def apply_file_renaming(pmx_dict: dict, filerecord_list: list, startpath: str):
 	return None
 
 
-class filerecord:
-	# when and how is this initialized?
-	def __init__(self, name, exists):
-		# the "clean" name this file uses on disk: relative to startpath and separator-normalized
-		# or, if it does not exist on disk, whatever name shows up in the PMX entry
-		self.name = name
-		# true if this is a real file that exists on disk
-		self.exists = exists
-		# dict of all PMX that reference this file at least once:
-		# keys are strings which are filepath relative to startpath and separator-normalized
-		# values are index it appears at, saves searching time
-		self.used_pmx = dict()
-		# set of all ways this file is used within PMXes
-		self.usage = set()
-		# total number of times this file is used... not required for the script, just interesting stats
-		self.numused = 0
-		# the name this file will be renamed to
-		self.newname = None
-
-	def __str__(self) -> str:
-		p = "'%s': used as %s, %d times, among %d files" % (
-			self.name, self.usage, self.numused, len(self.used_pmx))
-		return p
-
-
-helptext = '''=================================================
-texture_file_sort:
-This tool will sort the tex/spheremap/toon files used by a model into folders for each category.
-Unused image files can be moved into an "unused" folder, to declutter things.
-Any files referenced by the PMX that do not exist on disk will be listed.
-Before actually changing anything, it will list all proposed file renames and ask for final confirmation.
-It also creates a zipfile backup of the entire folder, just in case.
-Bonus: this can process all "neighbor" pmx files in addition to the target, this highly recommended because neighbors usually reference similar sets of files.
-
-Note: *** means "all files within this folder"
-Note: unfortunately, any "preview" images that exist cannot be distinguished from clutter, and will be moved into the "unused" folder. Remember to move them back!
-Note: unlike my other scripts, this overwrites the original input PMX file(s) instead of creating a new file with a suffix. This is because I already create a zipfile that contains the original input PMX, so that serves as a good backup.
-'''
-
-
-"""
-texture sorting plan:
-
-1. get startpath = basepath of input PMX
-2. get lists of relevant files
-	2a. get list of ALL files within the tree, relative to startpath
-	2b. extract top-level 'neighbor' pmx files from all-set
-	2c. remove files i intend to ignore (filter by file ext or containing folder)
-3. ask about modifying neighbor PMX
-4. read PMX: either target or target+all neighbor
-5. "categorize files & normalize usages within PMX", NEW FUNC!!!
-	inputs: list of PMX obj, list of relevant files
-	outputs: list of structs that bundle all relevant info about the file (replace 2 structs currently used)
-	> exists/not, used/not (overall), used/not (per pmx), index-in-pmx? (per pmx), usage-dict (per pmx), name-on-disk, blank field for future name
-	for each pmx, for each file on disk, match against files used in textures (case-insensitive) and replace with canonical name-on-disk
-	also create NEW FUNC for "merge this tex with this other tex"
-now have all files, know their states!
-6. ask for "aggression level" to control how files will be moved
-7. determine new names for files
-	this is the big one, slightly different logic for different categories
-8. print proposed names & other findings
-	for unused files under a folder, combine & replace with ***
-9. ask for confirmation
-10. zip backup (NEW FUNC!)
-11. apply renaming, NEW FUNC!
-	inputs: list of pmx obj, list of file before/after obj
-	first try to rename all files
-		could plausibly fail, if so, set to-name to None/blank
-	then, in the PMXs, rename all files that didn't fail
-	don't need to bother with indexes if they are guaranteed to be case-correct, just look for exact matches
-
-"""
-
-
+def combine_tex_reference(pmx, dupe_to_master_map):
+	"""
+	Update a PMX object by merging several of its texture entries.
+	Deciding which textures to merge is done outside this level.
+	:param pmx: pmx obj to update
+	:param dupe_to_master_map: dict where keys are dupes to remove, values are what to replace with
+	"""
+	# now modify this PMX to resolve/consolidate/unify the duplicates:
+	# first: make dellist & idx_shift_map
+	dellist = list(dupe_to_master_map.keys())
+	# make the idx_shift_map
+	idx_shift_map = delme_list_to_rangemap(dellist)
+	# second: delete the acutal textures from the actual texture list
+	for i in reversed(dellist):
+		pmx[3].pop(i)
+	# third: iter over materials, use dupe_to_master_map to replace dupe with master and newval_from_range_map to account for dupe deletion
+	for mat in pmx[4]:
+		# no need to filter for -1s, because -1 isn't in the dupe_to_master_map and wont be changed by idx_shift_map
+		if mat[19] in dupe_to_master_map:  # tex id
+			mat[19] = dupe_to_master_map[mat[19]]
+		# remap regardless of whether it is replaced with master or not
+		mat[19] = newval_from_range_map(mat[19], idx_shift_map)
+		if mat[20] in dupe_to_master_map:  # sph id
+			mat[20] = dupe_to_master_map[mat[20]]
+		mat[20] = newval_from_range_map(mat[20], idx_shift_map)
+		if mat[22] == 0:
+			if mat[23] in dupe_to_master_map:  # toon id
+				mat[23] = dupe_to_master_map[mat[23]]
+			mat[23] = newval_from_range_map(mat[23], idx_shift_map)
+	return None
 
 
 def categorize_files(pmx_dict, exist_files):
-	# "categorize files & normalize usages within PMX", NEW FUNC!!!
-	# 	inputs: dict of PMX obj, list of known existing files
-	# 	outputs: list of structs that bundle all relevant info about the file (replace 2 structs currently used)
-	# 	> exists/not, used/not (overall), used/not (per pmx), index-in-pmx? (per pmx), usage-dict (per pmx), name-on-disk, blank field for future name
-	# 	for each pmx, for each file on disk, match against files used in textures (case-insensitive) and replace with canonical name-on-disk
-	# 	also create NEW FUNC for "merge this tex with this other tex"
-
+	"""
+	Categorize file usage and normalize cases and separators within PMX files and across PMX files.
+	First, normalize file uses within each PMX to match the exact case/separators used on disk.
+	Second, unify duplicate texture references within each PMX.
+	Then, build the filerecord obj for each tex reference and count how many times & how it is used in the PMX.
+	Finally, unify filerecord objects across all PMX files.
+	:param pmx_dict: dict of PMX objects, key is path relative to startpath, value is actual PMX obj
+	:param exist_files: list of strings which are relative filepaths for files I located on disk
+	:return: list of filerecord obj which are completely filled out except for destination names.
+	"""
+	
 	recordlist = []
-
+	
 	for pmxpath, pmx in pmx_dict.items():
 		print(pmxpath)
 		null_texture_dict = dict()
 		# for each texture,
-		for d,tex in enumerate(pmx[3]):
+		for d, tex in enumerate(pmx[3]):
 			# if it is just whitepace or empty, then queue it up to be nullified (mapped to -1 and deleted)
 			if tex == "" or tex.isspace():
 				null_texture_dict[d] = -1
@@ -326,13 +275,13 @@ def categorize_files(pmx_dict, exist_files):
 		if null_texture_dict:
 			print("nullifying", null_texture_dict)
 			combine_tex_reference(pmx, null_texture_dict)
-			
+		
 		# remove theoretical duplicates from the PMX... not likely but possible. cases can be different.
 		# compare each tex against each other tex to find which ones match
 		dupe_to_master_map = dict()
 		for dj, tj in enumerate(pmx[3]):
 			tjn = os.path.normpath(tj.lower())
-			for dk in range(dj+1, len(pmx[3])):
+			for dk in range(dj + 1, len(pmx[3])):
 				tk = pmx[3][dk]
 				# skip if no match
 				if os.path.normpath(tk.lower()) != tjn: continue
@@ -356,7 +305,7 @@ def categorize_files(pmx_dict, exist_files):
 			record.used_pmx[pmxpath] = d
 			# add it to the list for this specific pmx
 			thispmx_recordlist.append(record)
-			
+		
 		# used files get sorted by HOW they are used... so go find that info now
 		# files are only used in materials pmx[4], and only tex=19/sph=20/toon=23 (only if 22==0)
 		# material > index > thispmx_recordlist
@@ -409,9 +358,50 @@ def categorize_files(pmx_dict, exist_files):
 	
 	return recordlist
 
+
+helptext = '''=================================================
+texture_file_sort:
+This tool will sort the tex/spheremap/toon files used by a model into folders for each category.
+Unused image files can be moved into an "unused" folder, to declutter things.
+Any files referenced by the PMX that do not exist on disk will be listed.
+Before actually changing anything, it will list all proposed file renames and ask for final confirmation.
+It also creates a zipfile backup of the entire folder, just in case.
+Bonus: this can process all "neighbor" pmx files in addition to the target, this highly recommended because neighbors usually reference similar sets of files.
+
+Note: *** means "all files within this folder"
+Note: unfortunately, any "preview" images that exist cannot be distinguished from clutter, and will be moved into the "unused" folder. Remember to move them back!
+Note: unlike my other scripts, this overwrites the original input PMX file(s) instead of creating a new file with a suffix. This is because I already create a zipfile that contains the original input PMX, so that serves as a good backup.
+'''
+
 def main(moreinfo=False):
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
+	
+	# texture sorting plan:
+	# 1. get startpath = basepath of input PMX
+	# 2. get lists of relevant files
+	# 	2a. get list of ALL files within the tree, relative to startpath
+	# 	2b. extract top-level 'neighbor' pmx files from all-set
+	# 	2c. remove files i intend to ignore (filter by file ext or containing folder)
+	# 3. ask about modifying neighbor PMX
+	# 4. read PMX: either target or target+all neighbor
+	# 5. "categorize files & normalize usages within PMX", NEW FUNC!!!
+	# 	inputs: list of PMX obj, list of relevant files
+	# 	outputs: list of structs that bundle all relevant info about the file (replace 2 structs currently used)
+	# 	for each pmx, for each file on disk, match against files used in textures (case-insensitive) and replace with canonical name-on-disk
+	# now have all files, know their states!
+	# 6. ask for "aggression level" to control how files will be moved
+	# 7. determine new names for files
+	# 	this is the big one, slightly different logic for different categories
+	# 8. print proposed names & other findings
+	# 	for unused files under a folder, combine & replace with ***
+	# 9. ask for confirmation
+	# 10. zip backup (NEW FUNC!)
+	# 11. apply renaming, NEW FUNC!
+	# 	first try to rename all files
+	# 		could plausibly fail, if so, set to-name to None/blank
+	# 	then, in the PMXs, rename all files that didn't fail
+
 	
 	# absolute path to directory holding the pmx
 	input_filename_pmx_abs = os.path.normpath(os.path.abspath(input_filename_pmx))
