@@ -54,6 +54,7 @@ morph_dict = {
 "なごみ": "=.=", # "calm"
 "びっくり": "surprise",
 "驚き": "surprise",
+"見開き": "wide eye",
 "悲しい": "sad low",
 "困る": "sadness",  # google translates to "troubled", but PMXE translates to "sadness"... maybe "worried" is best?
 "困った": "sadness",  # same as above
@@ -463,6 +464,7 @@ words_dict = {
 "なごみ": "=.=", # "calm"
 "びっくり": "surprise",
 "驚き": "surprise",
+"見開き": "spread",  # something closer to "wide eyes" but google says it's "spread" so idk
 "悲しい": "sad low",
 "困る": "sadness",
 "真面": "serious",
