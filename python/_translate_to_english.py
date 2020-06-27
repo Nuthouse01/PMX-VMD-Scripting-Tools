@@ -103,6 +103,20 @@ want to efficiently minimize # of Google Translate API calls, to avoid hitting t
 
 
 
+def init_googletrans():
+	# this should be a function called in main so if it fails, then it gets printed in console
+	global jp_to_en_google
+	global _DISABLE_INTERNET_TRANSLATE
+	_DISABLE_INTERNET_TRANSLATE = DISABLE_INTERNET_TRANSLATE  # create a second global var so I can reset this one to default each time it runs
+	if googletrans is None:
+		core.MY_PRINT_FUNC("ERROR: Python library 'googletrans' not installed, translation will be very limited!!")
+		core.MY_PRINT_FUNC("Please install this library with 'pip install googletrans' in Windows Command Prompt")
+		jp_to_en_google = None
+	else:
+		# everything is fine, just set up the normal way
+		jp_to_en_google = googletrans.Translator()
+
+
 ################################################################################################################
 
 def check_translate_budget(num_proposed: int) -> bool:
@@ -414,16 +428,7 @@ def translate_to_english(pmx, moreinfo=False):
 
 	
 	# step zero: set up the translator thingy
-	global jp_to_en_google
-	global _DISABLE_INTERNET_TRANSLATE
-	_DISABLE_INTERNET_TRANSLATE = DISABLE_INTERNET_TRANSLATE  # create a second global var so I can reset this one to default each time it runs
-	if googletrans is None:
-		core.MY_PRINT_FUNC("ERROR: Python library 'googletrans' not installed, translation will be very limited!!")
-		core.MY_PRINT_FUNC("Please install this library with 'pip install googletrans' in Windows Command Prompt")
-		jp_to_en_google = None
-	else:
-		# everything is fine, just set up the normal way
-		jp_to_en_google = googletrans.Translator()
+	init_googletrans()
 	
 	# if JP model name is empty, give it something. same for comment
 	if pmx[0][1] == "":

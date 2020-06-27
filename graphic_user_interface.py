@@ -13,6 +13,7 @@ import threading
 import tkinter as tk
 import tkinter.filedialog as fdg
 import tkinter.scrolledtext as tkst
+import tkinter.font as tkfont
 from os import path
 
 # second, wrap custom imports with a try-except to catch it if files are missing
@@ -259,10 +260,10 @@ class Application(tk.Frame):
 		self.control_frame.pack(side=tk.TOP, fill='x', padx=10, pady=5)
 		
 		self.run_butt = tk.Button(self.control_frame, text="RUN", width=7, command=lambda: run_as_thread(self.do_the_thing))
-		self.defaultfont = self.run_butt.cget("font")
-		# print(self.defaultfont)
+		button_default_font = self.run_butt.cget("font")
+		# print(button_default_font)
 		# RUN button has bigger font than the other buttons
-		self.run_butt.configure(font=(self.defaultfont, 18))
+		self.run_butt.configure(font=(button_default_font, 18))
 		self.run_butt.pack(side=tk.LEFT, padx=10, pady=10)
 		
 		# help
@@ -290,7 +291,10 @@ class Application(tk.Frame):
 		)
 		self.edit_space.pack(fill='both', expand=True, padx=8, pady=8)
 		self.edit_space.configure(state='disabled')
-		
+		# get the default font & measure size of a space char in this font
+		self.edit_space_font = tkfont.nametofont(self.edit_space.cget("font"))
+		self.edit_space_unit = self.edit_space_font.measure(" ")
+
 		###############################################
 		# fifth, overwrite the core function pointers to use new GUI methods
 		
@@ -302,6 +306,8 @@ class Application(tk.Frame):
 		core.MY_GENERAL_INPUT_FUNC = gui_inputpopup_trigger
 		# VERY IMPORTANT: overwrite the default fileprompt function with one that uses a popup filedialogue
 		core.MY_FILEPROMPT_FUNC = gui_fileprompt
+		# also this
+		core.MY_JUSTIFY_STRINGLIST = self.gui_justify_stringlist
 		
 		# print version & instructions
 		self.print_header()
@@ -405,7 +411,24 @@ class Application(tk.Frame):
 		self.print_header()
 		return
 	
-	
+	def gui_justify_stringlist(self, j: list, right=False) -> list:
+		# receive a list of strings and add padding such that they are all the same length
+		# first, look for an excuse to give up early
+		# if list is empty, nothing to do. if list has only 1 item, also nothing to do.
+		if len(j) == 0 or len(j) == 1: return j
+		# second, find the length of the longest string in the list (using literal size if printed on screen)
+		lengths = [self.edit_space_font.measure(p) for p in j]
+		longest_name_len = max(lengths)
+		# third, make a new list of strings that have been padded to be that length
+		if right:
+			# right-justify, force strings to right by padding on left
+			retlist = [(" " * (int((longest_name_len - l) / self.edit_space_unit))) + p for p,l in zip(j,lengths)]
+		else:
+			# left-justify, force strings to left by padding on right
+			retlist = [p + (" " * (int((longest_name_len - l) / self.edit_space_unit))) for p,l in zip(j,lengths)]
+		return retlist
+
+
 def launch_gui(title):
 	root = tk.Tk()
 	root.title(title)

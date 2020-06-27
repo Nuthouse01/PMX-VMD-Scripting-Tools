@@ -53,6 +53,9 @@ def main(moreinfo=False):
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	
+	# step zero: set up the translator thingy
+	translate_to_english.init_googletrans()
+	
 	# texture sorting plan:
 	# 1. get startpath = basepath of input PMX
 	# 2. get lists of relevant files
@@ -166,10 +169,13 @@ def main(moreinfo=False):
 	if translated_file:
 		core.MY_PRINT_FUNC("="*60)
 		core.MY_PRINT_FUNC("Found %d JP filenames to be translated:" % len(translated_file))
-		longest_name_len = max([len(p.name) for p in translated_file])
-		for p in sorted(translated_file, key=lambda y: file_sort_textures.sortbydirdepth(y.name)):
+		oldname_list = core.MY_JUSTIFY_STRINGLIST([p.name for p in translated_file])
+		newname_list = [p.newname for p in translated_file]
+		zipped = list(zip(oldname_list, newname_list))
+		zipped_and_sorted = sorted(zipped, key=lambda y: file_sort_textures.sortbydirdepth(y[0]))
+		for o,n in zipped_and_sorted:
 			# print 'from' with the case/separator it uses in the PMX
-			core.MY_PRINT_FUNC("   {0:<{size}} --> {1:s}".format(p.name, p.newname, size=longest_name_len))
+			core.MY_PRINT_FUNC("   {:s} --> {:s}".format(o, n))
 		core.MY_PRINT_FUNC("="*60)
 	else:
 		core.MY_PRINT_FUNC("No proposed file changes")

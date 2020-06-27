@@ -94,12 +94,6 @@ def pause_and_quit(message):
 	input()
 	exit()
 
-# def print_progress_oneline(curr, outof):
-# 	# print progress updates on one line, continually overwriting itself
-# 	# cursor gets left at the beginning of line, so the next print will overwrite this one
-# 	p = "...working: {:06.2%}".format(curr / outof)
-# 	MY_PRINT_FUNC(p, is_progress=True)
-
 # new version:
 # >THIS LEVEL< decides when it's appropriate to print, not the calling level
 # track last % i did print to know when it's time to print again
@@ -198,6 +192,25 @@ def increment_occurance_dict(d: dict, k):
 		d[k] = 1
 	return None
 
+def justify_stringlist(j: list, right=False) -> list:
+	# receive a list of strings and add padding such that they are all the same length
+	# this doesn't work properly for JP/CN strings but it mostly works so w/e
+	# first, look for an excuse to give up early
+	# if list is empty, nothing to do. if list has only 1 item, also nothing to do.
+	if len(j) == 0 or len(j) == 1: return j
+	# second, find the length of the longest string in the list
+	longest_name_len = max([len(p) for p in j])
+	# third, make a new list of strings that have been padded to be that length
+	if right:
+		# right-justify, force strings to right by padding on left
+		retlist = [(" " * (longest_name_len - len(p))) + p for p in j]
+	else:
+		# left-justify, force strings to left by padding on right
+		retlist = [p + (" " * (longest_name_len - len(p))) for p in j]
+	return retlist
+# global variable holding a function pointer that i can overwrite with a different function pointer when in GUI mode
+MY_JUSTIFY_STRINGLIST = justify_stringlist
+
 def prompt_user_choice(options, explain_info=None):
 	# loop until the user chooses one of the specified options, returns as int
 	# options is a list of ints
@@ -285,18 +298,17 @@ def prompt_user_filename(extensions_in: str) -> str:
 MY_FILEPROMPT_FUNC = prompt_user_filename
 
 def get_clean_basename(initial_name: str) -> str:
+	# remove extension and all folders from a file name
 	return path.splitext(path.basename(initial_name))[0]
 
 def get_unused_file_name(initial_name: str, namelist=None) -> str:
 	# if namelist is given, check against namelist instead of what's on the disk... assume namelist contains all lowercase names
 	# return a name that is unused, might be the same one passed in.
 	# given an initial name, see if it is valid to use. if not, keep appending numbers until you find a name that is unused.
-	sep = initial_name.rfind(".")
-	basename = initial_name[:sep]
-	extension = initial_name[sep:]
+	basename, extension = path.splitext(initial_name)
 	test_name = basename + extension
 	for append_num in range(2, 1000):
-		if namelist is None and not path.isfile(test_name):
+		if namelist is None and not path.exists(test_name):
 			# if test_name doesn't exist, then its a good name
 			return test_name
 		elif namelist is not None and test_name.lower() not in [n.lower() for n in namelist]:
