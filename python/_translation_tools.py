@@ -431,6 +431,7 @@ words_dict = {
 "消えて": "disappear", # as in whole model disappear
 "消える": "disappear", 
 "透明": "transparent",
+"透過": "transparent",
 "広げ": "wide", # literally "spread"
 "広い": "wide",
 "広": "wide",
