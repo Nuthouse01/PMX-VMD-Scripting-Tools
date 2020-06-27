@@ -37,43 +37,15 @@ MAKE_BACKUP_BEFORE_RENAMES = True
 BACKUP_SUFFIX = "beforetranslate"
 
 
-# a struct to bundle all the relevant info about a file that is on disk or used by PMX
-class filerecord:
-	def __init__(self, name, exists):
-		# the "clean" name this file uses on disk: relative to startpath and separator-normalized
-		# or, if it does not exist on disk, whatever name shows up in the PMX entry
-		self.name = name
-		# true if this is a real file that exists on disk
-		self.exists = exists
-		# dict of all PMX that reference this file at least once:
-		# keys are strings which are filepath relative to startpath and separator-normalized
-		# values are index it appears at, saves searching time
-		self.used_pmx = dict()
-		# set of all ways this file is used within PMXes
-		self.usage = set()
-		# total number of times this file is used... not required for the script, just interesting stats
-		self.numused = 0
-		# the name this file will be renamed to
-		self.newname = None
-
-	def __str__(self) -> str:
-		p = "'%s': used as %s, %d times among %d files" % (
-			self.name, self.usage, self.numused, len(self.used_pmx))
-		return p
-
-
-
 helptext = '''=================================================
-texture_file_sort:
-This tool will sort the tex/spheremap/toon files used by a model into folders for each category.
-Unused image files can be moved into an "unused" folder, to declutter things.
-Any files referenced by the PMX that do not exist on disk will be listed.
+file_translate_names:
+This tool will translate any JP components of file/folder names to EN names.
+This requires a PMX file to use as a root so it knows where to start reading files from.
+This DOES NOT translate the name of the folder that the target PMX is sitting inside.
 Before actually changing anything, it will list all proposed file renames and ask for final confirmation.
 It also creates a zipfile backup of the entire folder, just in case.
 Bonus: this can process all "neighbor" pmx files in addition to the target, this highly recommended because neighbors usually reference similar sets of files.
 
-Note: *** means "all files within this folder"
-Note: unfortunately, any "preview" images that exist cannot be distinguished from clutter, and will be moved into the "unused" folder. Remember to move them back!
 Note: unlike my other scripts, this overwrites the original input PMX file(s) instead of creating a new file with a suffix. This is because I already create a zipfile that contains the original input PMX, so that serves as a good backup.
 '''
 
@@ -226,7 +198,6 @@ def main(moreinfo=False):
 	
 	# do all renaming on disk and in PMXes, and also handle the print statements
 	file_sort_textures.apply_file_renaming(all_pmx_obj, filerecord_list, startpath)
-	
 	
 	# write out
 	for this_pmx_name, this_pmx_obj in all_pmx_obj.items():

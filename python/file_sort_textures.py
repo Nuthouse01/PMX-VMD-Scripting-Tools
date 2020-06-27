@@ -368,7 +368,7 @@ def categorize_files(pmx_dict: dict, exist_files: list, moreinfo: bool):
 
 
 helptext = '''=================================================
-texture_file_sort:
+file_sort_textures:
 This tool will sort the tex/spheremap/toon files used by a model into folders for each category.
 Unused image files can be moved into an "unused" folder, to declutter things.
 Any files referenced by the PMX that do not exist on disk will be listed.
