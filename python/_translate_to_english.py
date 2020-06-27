@@ -581,38 +581,27 @@ def translate_to_english(pmx, moreinfo=False):
 		#########
 		# now print the table of before/after/etc
 		# hide good/copyJP/exactmatch cuz those are uninteresting and guaranteed to be safe
+		# only show piecewise and google translations
+		# include 'fails' if the flag is true
 		maps_printme = [item for item in translate_maps if item.trans_type > 2 or (ACCEPT_INCOMPLETE_RESULT and item.trans_type == -1)]
 		if maps_printme:
-			width = []
-			# columns: category, idx, trans_type, en_old, en_new, jp_old = 6 types
-			# bone  15  google || EN: 'asdf' --> 'foobar' || JP: 'fffFFFff'
-			# find max width of each column: this doesn't properly handle JP chars but w/e good enough for now
-			width.append(max([len(category_dict[vv.cat_id]) for vv in maps_printme]))
-			width.append(max([len(str(vv.idx)) for vv in maps_printme]))
-			width.append(max([len(type_dict[vv.trans_type]) for vv in maps_printme]))
-			width.append(2 + max([len(vv.en_old) for vv in maps_printme]))
-			width.append(2 + max([len(vv.en_new) for vv in maps_printme]))
-			# width.append(2 + max([len(vv.jp_old) for vv in maps_printme]))
-			
-			# SORT THE LIST!
+			# first, SORT THE LIST!
 			maps_printme.sort(key=lambda x: x.idx)
 			maps_printme.sort(key=lambda x: x.cat_id)
+			# then, justify each column
+			# columns: category, idx, trans_type, en_old, en_new, jp_old = 6 types
+			# bone  15  google || EN: 'asdf' --> 'foobar' || JP: 'fffFFFff'
+			just_cat = core.MY_JUSTIFY_STRINGLIST([category_dict[vv.cat_id] for vv in maps_printme])
+			just_idx = core.MY_JUSTIFY_STRINGLIST([str(vv.idx) for vv in maps_printme], right=True)  # this is right-justify, all others are left
+			just_source = core.MY_JUSTIFY_STRINGLIST([type_dict[vv.trans_type] for vv in maps_printme])
+			just_enold = core.MY_JUSTIFY_STRINGLIST(["'%s'" % vv.en_old for vv in maps_printme])
+			just_ennew = core.MY_JUSTIFY_STRINGLIST(["'%s'" % vv.en_new for vv in maps_printme])
+			just_jpold = ["'%s'" % vv.jp_old for vv in maps_printme]  # no justify needed for final item
 			
 			# now pretty-print the list of translations:
-			for tmap in maps_printme:
-				# print a line for each item
-				core.MY_PRINT_FUNC("{:{widtha}} {:>{widthb}} {:{widthc}} || EN: {:{widthd}} --> {:{widthe}} || JP: {}".format(
-					category_dict[tmap.cat_id],
-					tmap.idx,
-					type_dict[tmap.trans_type],
-					"'" + tmap.en_old + "'",
-					"'" + tmap.en_new + "'",
-					"'" + tmap.jp_old + "'",
-					widtha=width[0],
-					widthb=width[1],
-					widthc=width[2],
-					widthd=width[3],
-					widthe=width[4]))
+			for args in zip(just_cat, just_idx, just_source, just_enold, just_ennew, just_jpold):
+				core.MY_PRINT_FUNC("{} {} {} || EN: {} --> {} || JP: {}".format(*args))
+				
 	
 	###########################################
 	# next, return!

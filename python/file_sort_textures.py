@@ -702,14 +702,23 @@ def main(moreinfo=False):
 	if used_rename:
 		core.MY_PRINT_FUNC("="*60)
 		core.MY_PRINT_FUNC("Found %d used files to be moved/renamed:" % len(used_rename))
-		for p in sorted(used_rename, key=lambda y: sortbydirdepth(y.name)):
+		oldname_list = core.MY_JUSTIFY_STRINGLIST([p.name for p in used_rename])
+		newname_list = [p.newname for p in used_rename]
+		zipped = list(zip(oldname_list, newname_list))
+		zipped_and_sorted = sorted(zipped, key=lambda y: sortbydirdepth(y[0]))
+		for o,n in zipped_and_sorted:
 			# print 'from' with the case/separator it uses in the PMX
-			core.MY_PRINT_FUNC("   {0:<{size}} --> {1:s}".format(p.name, p.newname, size=longest_name_len))
+			core.MY_PRINT_FUNC("   {:s} --> {:s}".format(o, n))
 	if notused_img_rename:
 		core.MY_PRINT_FUNC("="*60)
 		core.MY_PRINT_FUNC("Found %d not-used images to be moved/renamed:" % len(notused_img_rename))
-		for p in sorted(notused_img_rename, key=lambda y: sortbydirdepth(y.name)):
-			core.MY_PRINT_FUNC("   {0:<{size}} --> {1:s}".format(p.name, p.newname, size=longest_name_len))
+		oldname_list = core.MY_JUSTIFY_STRINGLIST([p.name for p in notused_img_rename])
+		newname_list = [p.newname for p in notused_img_rename]
+		zipped = list(zip(oldname_list, newname_list))
+		zipped_and_sorted = sorted(zipped, key=lambda y: sortbydirdepth(y[0]))
+		for o,n in zipped_and_sorted:
+			# print 'from' with the case/separator it uses in the PMX
+			core.MY_PRINT_FUNC("   {:s} --> {:s}".format(o, n))
 	core.MY_PRINT_FUNC("="*60)
 	
 	if not (used_rename or notused_img_rename):
