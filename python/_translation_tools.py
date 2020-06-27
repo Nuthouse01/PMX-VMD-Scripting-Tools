@@ -459,6 +459,7 @@ words_dict = {
 "ｷﾘｯ": "serious", # phonetically "kiri-tsu", might informally mean "confident"? kinda a meme phrase, a professional model translated this to 'serious' tho so idk
 "ジト": "doubt", # jito
 "じと": "doubt", # jito
+"じど": "doubt", # jido but close enough that it probably means jito
 "なごみ": "=.=", # "calm"
 "びっくり": "surprise",
 "驚き": "surprise",
@@ -517,6 +518,7 @@ words_dict = {
 "わ": "wa",
 "涙": "tears",
 "ん": "hmm",
+"へ": "eeeh",
 "の": "of", # backwards yoda-style grammar: technically "A の B" translates to "B of A" but I can't do that switcheroo without major changes
 "用": "for",  # backwards yoda-style grammar: same
 "ー": "--", # not sure what to do with this, often used to mean continuation of a sound/syllable...
