@@ -845,6 +845,6 @@ def local_translate(in_list):
 # 		numpass, numtotal, numpass / numtotal))
 #
 # if __name__ == '__main__':
-# 	core.MY_PRINT_FUNC("Nuthouse01 - 06/10/2020 - v4.08")
+# 	core.MY_PRINT_FUNC("Nuthouse01 - 06/27/2020 - v4.50")
 # 	main()
 #
