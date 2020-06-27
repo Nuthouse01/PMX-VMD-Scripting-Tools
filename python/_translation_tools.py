@@ -445,16 +445,15 @@ words_dict = {
 "大": "big",
 "巨": "big",
 "暗い": "dark",
-"黒": "black",
 "青ざめる": "shock", # literally "aozomeru", translates to "pale", but the expression it represents is shock/horror
 "青ざめ": "shock", # literally "aozame" translates to "pale", but the expression it represents is shock/horror
-"白": "white",
 "を隠す": "hide",
 "非表示": "hide",
 "追従": "follow",
 "まばたき": "blink",
 "笑い": "happy",
 "ウィンク": "wink",
+"ウインク": "wink",  # this is somehow different than above?
 "ｳｨﾝｸ": "wink",
 "睨み": "glare",
 "ｷﾘｯ": "serious", # phonetically "kiri-tsu", might informally mean "confident"? kinda a meme phrase, a professional model translated this to 'serious' tho so idk
@@ -484,7 +483,12 @@ words_dict = {
 "ムッ": "upset",
 "照れ": "blush",
 "赤面": "blush",
+"黒": "black",
+"白": "white",
+"緑": "green",
+"ピンク": "pink",
 "黄": "yellow",
+"紫": "purple",
 "赤": "red",
 "蒼": "blue",
 "金": "gold",
