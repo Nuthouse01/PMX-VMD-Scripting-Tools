@@ -40,11 +40,6 @@ DEBUG = True
 CONVERT_SPA_SPH_TO_BMP = True
 
 
-# this is recommended true, for decluttering
-MOVE_TOPLEVEL_UNUSED_IMG = True
-# this is recommended false, to make only the minimum necessary changes
-MOVE_ALL_UNUSED_IMG = False
-
 # this is recommended true, for obvious reasons
 MAKE_BACKUP_BEFORE_RENAMES = True
 # note: zipper automatically appends .zip onto whatever output name i give it, so dont give it a .zip suffix here
@@ -507,8 +502,8 @@ def main(moreinfo=False):
 	# all file used/notused status is known (via numused), or used_pmx
 	# all ways a file is used is known
 	
-	global MOVE_TOPLEVEL_UNUSED_IMG
-	global MOVE_ALL_UNUSED_IMG
+	move_toplevel_unused_img = True
+	move_all_unused_img = False
 	# only ask what files to move if there are files that could potentially be moved
 	if notused_img:
 		# count the number of toplevel vs not-toplevel in "notused_img"
@@ -519,16 +514,16 @@ def main(moreinfo=False):
 					"Which files do you want to move to 'unused' folder?",
 					"1 = Do not move any, 2 = Move only top-level unused, 3 = Move all unused"]
 		c = core.MY_SIMPLECHOICE_FUNC((1,2,3), showinfo)
-		if c == 1:
-			MOVE_TOPLEVEL_UNUSED_IMG = False
-			MOVE_ALL_UNUSED_IMG = False
 		if c == 2:
-			MOVE_TOPLEVEL_UNUSED_IMG = True
-			MOVE_ALL_UNUSED_IMG = False
-		if c == 3:
-			MOVE_TOPLEVEL_UNUSED_IMG = True
-			MOVE_ALL_UNUSED_IMG = True
-		
+			move_toplevel_unused_img = True
+			move_all_unused_img = False
+		elif c == 3:
+			move_toplevel_unused_img = True
+			move_all_unused_img = True
+		else: # c == 1:
+			move_toplevel_unused_img = False
+			move_all_unused_img = False
+
 	# =========================================================================================================
 	# =========================================================================================================
 	# =========================================================================================================
@@ -543,7 +538,7 @@ def main(moreinfo=False):
 	# also all spa/sph get renamed to .bmp (but remember these are all unused so i don't need to update them in the pmx)
 	for p in notused_img:
 		newname = remove_pattern(p.name)
-		if ((os.path.sep not in p.name) and MOVE_TOPLEVEL_UNUSED_IMG) or MOVE_ALL_UNUSED_IMG:
+		if ((os.path.sep not in p.name) and move_toplevel_unused_img) or move_all_unused_img:
 			# this deserves to be moved to 'unused' folder!
 			newname = os.path.join(FOLDER_UNUSED, os.path.basename(newname))
 		
