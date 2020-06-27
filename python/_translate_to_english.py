@@ -553,7 +553,7 @@ def translate_to_english(pmx, moreinfo=False):
 		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
 	if type_fail:
-		# TODO: test this & think about this more
+		# warn about any strings that failed translation
 		core.MY_PRINT_FUNC("Warning: %d items were unable to be translated by Google, try running translation again" % len(type_fail))
 		
 	###########################################

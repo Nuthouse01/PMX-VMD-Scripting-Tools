@@ -126,10 +126,16 @@ def match_folder_anylevel(s: str, matchlist: tuple, toponly=False) -> bool:
 
 
 def sortbydirdepth(s: str) -> str:
-	# TODO: rethink/improve this
-	# pipe gets sorted last, so prepend end-of-unicode char to make something get sorted lower
-	# more slashes in name = more subdirectories = lower on the tree
-	return (chr(0x10FFFF) * s.count("\\")) + s.lower()
+	# how I want things to be sorted:
+	# folders are sorted alphabetically at all levels, but files at a level are listed before folders that go deeper
+	# also case-insensitive
+	# z.
+	# a/f.
+	# a/bbb/e.
+	# a/bbb/f.
+	# a/bbb/d/f.
+	# a/c/e/g.
+	return os.path.join(os.path.dirname(s), chr(1) + os.path.basename(s)).lower()
 
 
 def remove_pattern(s: str) -> str:
@@ -643,7 +649,7 @@ def main(moreinfo=False):
 				k += 1
 		j += 1
 	# make sure unused_dirnames has the deepest directories first
-	unused_dirnames = sorted(unused_dirnames, key=sortbydirdepth, reverse=True)
+	unused_dirnames = sorted(unused_dirnames, key=lambda y: y.count(os.path.sep), reverse=True)
 	# print("unqundir", unused_dirnames)
 	# then as I go to print notused_img_norename or notused_notimg, collapse them?
 	
