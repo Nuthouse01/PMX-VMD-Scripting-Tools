@@ -1,7 +1,7 @@
 # VMD-to-text-Conversion-Tool
 
 VMD Conversion Tool README  
-Created by Nuthouse01 - 06/10/2020 - v4.08  
+Created by Nuthouse01 - 06/27/2020 - v4.50  
 
 ###### Legal:
 This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause. You are permitted to examine and modify the code as you see fit, but I make no guarantees about the safety or quality of the result.  
@@ -25,8 +25,11 @@ Don't try to claim this work as yours. That would be a profoundly dick move.
 ##### pmx_overall_cleanup.py
 This will perform a series of first-pass cleanup operations to generally improve any PMX model. This includes: translating missing english names (via Google Translate!), correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, cleaning up display frames, and detecting issues that might cause MMD to crash. These operations will reduce file size (sometimes massively!) and improve overall model health & usability.  
 
-##### texture_file_sort.py
+##### file_sort_textures.py
 This script is for organizing the texture imports used in a PMX model, to eliminate "top-level" clutter and sort Tex/Toon/SPH files into folders based on how they are used. This script will also report any files it finds that are not used by the PMX, and it will also report any files the PMX tries to reference which do not exist in the file system.  
+
+##### file_translate_names.py
+This is for translating JP names of files to English. Unlike the "file_sort_textures" script, this will attempt to rename ALL files within the tree, it will not restrict itself to only certain filetypes.  
 
 ##### vmd_model_compatability_check.py   
 This script is to check if the model you are using is compatible with the VMD you wish to use. This will create a summary file that lists all important bones/morphs in the VMD dance file, and sorts them into two groups: ones that the model can support, and ones that it cannot support. If you are loading a motion designed for some different model (usually the case), and it seems to be playing wrong, it is very likely that there is a name mismatch.  
@@ -206,6 +209,22 @@ The following files should be included with this README:
 
 #### Changelog: 
 
+    v4.50:
+    rename "texture_file_sort" to "file_sort_textures"
+    NEW! "file_translate_names" halfway between "translate-to-english" and "file-sort-textures"
+    restructure file_sort_textures for better functionalization and overall cleanliness/clarity
+    massive overhaul structure of translate_to_english for better functionalization and overall cleanliness/clarity
+        use regular expressions to handle common grammar stuff like L/R/parent/end prefix/suffix, indents, padding, etc
+        new stage to look for exact matches in special dicts before trying to do piecewise local translation with general dict
+        new approach to google translation: identify translateable islands/chunks and only translate those, assuming they will be used many times
+            this should reduce google traffic in extreme cases and guarantee consistient translations
+        force "words dict" to be sorted by size to prevent future "undershadowing" problems
+        add new struct for holding the translation data as I am running, for better organization than just a list-of-lists
+        fewer printouts when using "moreinfo": skip the exact-match and copy-JP entries cuz they're uninteresting
+    restructure "weight_cleanup" slightly, now compresses weight vect to lowest possible version
+    added WIP scripts "pmx_magic_armtwist" and "bone_merge_helpers", they're not ready yet please don't use them :) i just needed them out of the way
+    added smart gui-wise justifying to make things line up more nicely
+    
     v4.08:
     bugfix: "delete duplicate faces" was conflating faces with opposite vertex order, now fixed
     bugfix: bonedeform now handles bones with invalid partial inherit, though this should never be needed in a good model
