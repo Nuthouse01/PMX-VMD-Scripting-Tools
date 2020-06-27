@@ -9,19 +9,21 @@ import os
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import _translate_to_english as translate_to_english
 	from . import file_sort_textures
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
 		import file_sort_textures
+		import _translate_to_english as translate_to_english
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = file_sort_textures = None
+		core = pmxlib = file_sort_textures = translate_to_english = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -82,27 +84,19 @@ def main(moreinfo=False):
 	# texture sorting plan:
 	# 1. get startpath = basepath of input PMX
 	# 2. get lists of relevant files
-	# 	2a. get list of ALL files within the tree, relative to startpath
-	# 	2b. extract top-level 'neighbor' pmx files from all-set
-	# 	2c. remove files i intend to ignore (filter by file ext or containing folder)
+	# 	2a. extract top-level 'neighbor' pmx files from all-set
 	# 3. ask about modifying neighbor PMX
 	# 4. read PMX: either target or target+all neighbor
 	# 5. "categorize files & normalize usages within PMX", NEW FUNC!!!
-	# 	inputs: list of PMX obj, list of relevant files
-	# 	outputs: list of structs that bundle all relevant info about the file (replace 2 structs currently used)
-	# 	for each pmx, for each file on disk, match against files used in textures (case-insensitive) and replace with canonical name-on-disk
-	# now have all files, know their states!
-	# 6. ask for "aggression level" to control how files will be moved
-	# 7. determine new names for files
-	# 	this is the big one, slightly different logic for different categories
+	# 6. translate all names via Google Trans, don't even bother with local dict
+	# 7. mask out invalid windows filepath chars just to be safe
 	# 8. print proposed names & other findings
 	# 	for unused files under a folder, combine & replace with ***
 	# 9. ask for confirmation
 	# 10. zip backup (NEW FUNC!)
-	# 11. apply renaming, NEW FUNC!
-	# 	first try to rename all files
-	# 		could plausibly fail, if so, set to-name to None/blank
-	# 	then, in the PMXs, rename all files that didn't fail
+	# 11. apply renaming, NEW FUNC! rename all including old PMXes on disk
+	# 12. get new names for PMXes, write PMX from mem to disk if any of its contents changed
+	#	i.e. of all filerecord with a new name, create a set of all the PMX that use them
 
 	
 	# absolute path to directory holding the pmx
@@ -113,7 +107,7 @@ def main(moreinfo=False):
 	# =========================================================================================================
 	# =========================================================================================================
 	# first, build the list of ALL files that actually exist, then filter it down to neighbor PMXs and relevant files
-	relative_all_exist_files = walk_filetree_from_root(startpath)
+	relative_all_exist_files = file_sort_textures.walk_filetree_from_root(startpath)
 	core.MY_PRINT_FUNC("ALL EXISTING FILES:", len(relative_all_exist_files))
 	# now fill "neighbor_pmx" by finding files without path separator that end in PMX
 	# these are relative paths tho
@@ -122,16 +116,8 @@ def main(moreinfo=False):
 					(os.path.sep not in f) and
 					f != input_filename_pmx_rel]
 	
-	relevant_exist_files = []
-	for f in relative_all_exist_files:
-		# ignore all files I expect to find alongside a PMX and don't want to touch or move
-		if f.lower().endswith(IGNORE_FILETYPES): continue
-		# ignore any files living below/inside 'special' folders like "fx/"
-		if match_folder_anylevel(f, IGNORE_FOLDERS, toponly=False): continue
-		# create the list of files we know exist and we know we care about
-		relevant_exist_files.append(f)
-
-	core.MY_PRINT_FUNC("RELEVANT EXISTING FILES:", len(relevant_exist_files))
+	# no filtering, all files are relevant
+	relevant_exist_files = relative_all_exist_files
 	
 	core.MY_PRINT_FUNC("NEIGHBOR PMX FILES:", len(neighbor_pmx))
 	
@@ -169,55 +155,8 @@ def main(moreinfo=False):
 	# 	for each pmx, for each file on disk, match against files used in textures (case-insensitive) and replace with canonical name-on-disk
 	#	also fill out how much and how each file is used, and unify dupes between files, all that good stuff
 	
-	filerecord_list = categorize_files(all_pmx_obj, relevant_exist_files, moreinfo)
+	filerecord_list = file_sort_textures.categorize_files(all_pmx_obj, relevant_exist_files, moreinfo)
 	
-	# =========================================================================================================
-	# =========================================================================================================
-	# =========================================================================================================
-	# now check which files are used/unused/dont exist
-	
-	# break this into used/notused/notexist lists for simplicity sake
-	# all -> used + notused
-	# used -> used_exist + used_notexist
-	# notused -> notused_img + notused_notimg
-	used, notused =               core.my_list_partition(filerecord_list, lambda q: q.numused != 0)
-	used_exist, used_notexist =   core.my_list_partition(used, lambda q: q.exists)
-	notused_img, notused_notimg = core.my_list_partition(notused, lambda q: q.name.lower().endswith(IMG_EXT))
-	
-	core.MY_PRINT_FUNC("PMX TEXTURE SOURCES:", len(used))
-	if moreinfo:
-		for x in used:
-			core.MY_PRINT_FUNC("  " + str(x))
-	
-	# now:
-	# all duplicates have been resolved within PMX, including modifying the PMX
-	# all duplicates have been resolved across PMXes
-	# all file exist/notexist status is known
-	# all file used/notused status is known (via numused), or used_pmx
-	# all ways a file is used is known
-	
-	global MOVE_TOPLEVEL_UNUSED_IMG
-	global MOVE_ALL_UNUSED_IMG
-	# only ask what files to move if there are files that could potentially be moved
-	if notused_img:
-		# count the number of toplevel vs not-toplevel in "notused_img"
-		num_toplevel = len([p for p in notused_img if (os.path.sep not in p.name)])
-		num_nontoplevel = len(notused_img) - num_toplevel
-		# ask the user what "aggression" level they want
-		showinfo = ["Detected %d unused top-level files and %d unused files in directories." % (num_toplevel, num_nontoplevel),
-					"Which files do you want to move to 'unused' folder?",
-					"1 = Do not move any, 2 = Move only top-level unused, 3 = Move all unused"]
-		c = core.MY_SIMPLECHOICE_FUNC((1,2,3), showinfo)
-		if c == 1:
-			MOVE_TOPLEVEL_UNUSED_IMG = False
-			MOVE_ALL_UNUSED_IMG = False
-		if c == 2:
-			MOVE_TOPLEVEL_UNUSED_IMG = True
-			MOVE_ALL_UNUSED_IMG = False
-		if c == 3:
-			MOVE_TOPLEVEL_UNUSED_IMG = True
-			MOVE_ALL_UNUSED_IMG = True
-		
 	# =========================================================================================================
 	# =========================================================================================================
 	# =========================================================================================================
@@ -226,64 +165,12 @@ def main(moreinfo=False):
 	# how to remap: build a list of all destinations (lowercase) to see if any proposed change would lead to collision
 	all_new_names = set()
 	
-	# don't touch the unused_notimg files at all, unless some flag is set
+	# get new names via google
+	# force it to use chunk-wise translate
+	newname_list = translate_to_english.google_translate([p.name for p in filerecord_list], strategy=1)
 	
-	# not-used top-level image files get moved to 'unused' folder
-	# also all spa/sph get renamed to .bmp (but remember these are all unused so i don't need to update them in the pmx)
-	for p in notused_img:
-		newname = remove_pattern(p.name)
-		if ((os.path.sep not in p.name) and MOVE_TOPLEVEL_UNUSED_IMG) or MOVE_ALL_UNUSED_IMG:
-			# this deserves to be moved to 'unused' folder!
-			newname = os.path.join(FOLDER_UNUSED, os.path.basename(newname))
-		
-		# ensure the extension is lowercase, for cleanliness
-		dot = newname.rfind(".")
-		newname = newname[:dot] + newname[dot:].lower()
-		if CONVERT_SPA_SPH_TO_BMP and newname.endswith((".spa",".sph")):
-			newname = newname[:-4] + ".bmp"
-		# if the name I build is not the name it already has, queue it for actual rename
-		if newname != p.name:
-			# resolve potential collisions by adding numbers suffix to file names
-			# first, check against whats on disk. need to make path absolute so get_unused_file_name can check the disk.
-			newname = core.get_unused_file_name(os.path.join(startpath, newname))
-			# make the path no longer absolute: undo adding "startpath" above
-			newname = os.path.relpath(newname, startpath)
-			# second, check against other proposed rename targets
-			newname = core.get_unused_file_name(newname, all_new_names)
-			# now dest path is guaranteed unique against other existing files & other proposed name changes
-			all_new_names.add(newname.lower())
-			p.newname = newname
-	
-	# used files get sorted into tex/toon/sph/multi (unless tex and already in a folder that says clothes, etc)
-	# all SPH/SPA get renamed to BMP, used or unused
-	for p in used_exist:
-		newname = remove_pattern(p.name)
-		usage_list = list(p.usage)
-		if len(p.usage) != 1:
-			# this is a rare multiple-use file
-			newname = os.path.join(FOLDER_MULTI, os.path.basename(newname))
-		elif usage_list[0] == FOLDER_SPH:
-			# this is an sph, duh
-			if not match_folder_anylevel(p.name, KEEP_FOLDERS_SPH, toponly=True):
-				# if its name isn't already good, then move it to my new location
-				newname = os.path.join(FOLDER_SPH, os.path.basename(newname))
-		elif usage_list[0] == FOLDER_TOON:
-			# this is a toon, duh
-			if not match_folder_anylevel(p.name, KEEP_FOLDERS_TOON, toponly=True):
-				# if its name isn't already good, then move it to my new location
-				newname = os.path.join(FOLDER_TOON, os.path.basename(newname))
-		elif usage_list[0] == FOLDER_TEX:
-			# if a tex AND already in a folder like body, clothes, wear, tex, etc then keep that folder
-			if not match_folder_anylevel(p.name, KEEP_FOLDERS_TEX, toponly=True):
-				# if its name isn't already good, then move it to my new location
-				newname = os.path.join(FOLDER_TEX, os.path.basename(newname))
-		
-		# ensure the extension is lowercase, for cleanliness
-		dot = newname.rfind(".")
-		newname = newname[:dot] + newname[dot:].lower()
-		if CONVERT_SPA_SPH_TO_BMP and newname.lower().endswith((".spa", ".sph")):
-			newname = newname[:-4] + ".bmp"
-		# if the name I build is not the name it already has, queue it for actual rename
+	# iterate over the results in parallel with the filerecord items
+	for p, newname in zip(filerecord_list, newname_list):
 		if newname != p.name:
 			# resolve potential collisions by adding numbers suffix to file names
 			# first, check against whats on disk. need to make path absolute so get_unused_file_name can check the disk.
@@ -302,111 +189,17 @@ def main(moreinfo=False):
 	# NOW PRINT MY PROPOSED RENAMINGS and other findings
 	
 	# isolate the ones with proposed renaming
-	used_rename =          [u for u in used_exist if u.newname is not None]
-	notused_img_rename =   [u for u in notused_img if u.newname is not None]
-	notused_img_norename = [u for u in notused_img if u.newname is None]
+	translated_file = [u for u in filerecord_list if u.newname is not None]
 	
-	# bonus goal: if ALL files under a folder are unused, replace its name with a star
-	# first build dict of each dirs to each file any depth below that dir
-	all_dirnames = {}
-	for f in relative_all_exist_files:
-		d = os.path.dirname(f)
-		while d != "":
-			try:				all_dirnames[d].append(f)
-			except KeyError:	all_dirnames[d] = [f]
-			d = os.path.dirname(d)
-	unused_dirnames = []
-	all_notused_searchable = [x.name for x in notused_img_norename] + [x.name for x in notused_notimg]
-	for d,files_under_d in all_dirnames.items():
-		# if all files beginning with d are notused (either type), this dir can be replaced with *
-		# note: min crashes if input list is empty, but this is guaranteed to not be empty
-		dir_notused = min([(f in all_notused_searchable) for f in files_under_d])
-		if dir_notused:
-			unused_dirnames.append(d)
-	# print("allundir", unused_dirnames)
-	# now, remove all dirnames that are encompassed by another dirname
-	j = 0
-	while j < len(unused_dirnames):
-		dj = unused_dirnames[j]
-		k = 0
-		while k < len(unused_dirnames):
-			dk = unused_dirnames[k]
-			if dj != dk and dk.startswith(dj):
-				unused_dirnames.pop(k)
-			else:
-				k += 1
-		j += 1
-	# make sure unused_dirnames has the deepest directories first
-	unused_dirnames = sorted(unused_dirnames, key=sortbydirdepth, reverse=True)
-	# print("unqundir", unused_dirnames)
-	# then as I go to print notused_img_norename or notused_notimg, collapse them?
-	
-	# for each section, if it exists, print its names sorted first by directory depth then alphabetically (case insensitive)
-	
-	if used_notexist:
+	if translated_file:
 		core.MY_PRINT_FUNC("="*60)
-		core.MY_PRINT_FUNC("Found %d references to images that don't exist (no proposed changes)" % len(used_notexist))
-		for p in sorted(used_notexist, key=lambda y: sortbydirdepth(y.name)):
-			# print orig name, usage modes, # used, and # files that use it
-			core.MY_PRINT_FUNC("   " + str(p))
-	if notused_img_norename:
-		core.MY_PRINT_FUNC("="*60)
-		core.MY_PRINT_FUNC("Found %d not-used images in the file tree (no proposed changes)" % len(notused_img_norename))
-		printme = set()
-		for p in notused_img_norename:
-			# is this notused-file anywhere below any unused dir?
-			t = False
-			for d in unused_dirnames:
-				if p.name.startswith(d):
-					# add this dir, not this file, to the print set
-					printme.add(os.path.join(d, "***"))
-					t = True
-			if not t:
-				# if not encompassed by an unused dir, add the filename
-				printme.add(p.name)
-		# convert set back to sorted list
-		printme = sorted(list(printme), key=sortbydirdepth)
-		for s in printme:
-			core.MY_PRINT_FUNC("   " + s)
-	if notused_notimg:
-		core.MY_PRINT_FUNC("="*60)
-		core.MY_PRINT_FUNC("Found %d not-used not-images in the file tree (no proposed changes)" % len(notused_notimg))
-		printme = set()
-		for p in notused_notimg:
-			# is this notused-file anywhere below any unused dir?
-			t = False
-			for d in unused_dirnames:
-				if p.name.startswith(d):
-					# add this dir, not this file, to the print set
-					printme.add(os.path.join(d, "***"))
-					t = True
-			if not t:
-				# if not encompassed by an unused dir, add the filename
-				printme.add(p.name)
-		# convert set back to sorted list
-		printme = sorted(list(printme), key=sortbydirdepth)
-		for s in printme:
-			core.MY_PRINT_FUNC("   " + s)
-	# print with all "from" file names left-justified so all the arrows are nicely lined up (unless they use jp characters)
-	longest_name_len = 0
-	for p in used_rename:
-		longest_name_len = max(longest_name_len, len(p.name))
-	for p in notused_img_rename:
-		longest_name_len = max(longest_name_len, len(p.name))
-	if used_rename:
-		core.MY_PRINT_FUNC("="*60)
-		core.MY_PRINT_FUNC("Found %d used files to be moved/renamed:" % len(used_rename))
-		for p in sorted(used_rename, key=lambda y: sortbydirdepth(y.name)):
+		core.MY_PRINT_FUNC("Found %d JP filenames to be translated:" % len(translated_file))
+		longest_name_len = max([len(p.name) for p in translated_file])
+		for p in sorted(translated_file, key=lambda y: file_sort_textures.sortbydirdepth(y.name)):
 			# print 'from' with the case/separator it uses in the PMX
 			core.MY_PRINT_FUNC("   {0:<{size}} --> {1:s}".format(p.name, p.newname, size=longest_name_len))
-	if notused_img_rename:
 		core.MY_PRINT_FUNC("="*60)
-		core.MY_PRINT_FUNC("Found %d not-used images to be moved/renamed:" % len(notused_img_rename))
-		for p in sorted(notused_img_rename, key=lambda y: sortbydirdepth(y.name)):
-			core.MY_PRINT_FUNC("   {0:<{size}} --> {1:s}".format(p.name, p.newname, size=longest_name_len))
-	core.MY_PRINT_FUNC("="*60)
-	
-	if not (used_rename or notused_img_rename):
+	else:
 		core.MY_PRINT_FUNC("No proposed file changes")
 		core.MY_PRINT_FUNC("Aborting: no files were changed")
 		return None
@@ -425,21 +218,34 @@ def main(moreinfo=False):
 	
 	# first, create a backup of the folder
 	if MAKE_BACKUP_BEFORE_RENAMES:
-		r = make_zipfile_backup(startpath, BACKUP_SUFFIX)
+		r = file_sort_textures.make_zipfile_backup(startpath, BACKUP_SUFFIX)
 		if not r:
 			# this happens if the backup failed somehow AND the user decided to quit
 			core.MY_PRINT_FUNC("Aborting: no files were changed")
 			return None
 	
 	# do all renaming on disk and in PMXes, and also handle the print statements
-	apply_file_renaming(all_pmx_obj, filerecord_list, startpath)
+	file_sort_textures.apply_file_renaming(all_pmx_obj, filerecord_list, startpath)
+	
 	
 	# write out
 	for this_pmx_name, this_pmx_obj in all_pmx_obj.items():
-		# NOTE: this is OVERWRITING THE PREVIOUS PMX FILE, NOT CREATING A NEW ONE
-		# because I make a zipfile backup I don't need to feel worried about preserving the old version
-		output_filename_pmx = os.path.join(startpath, this_pmx_name)
-		# output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
+		# what name do i write this pmx to? it may be different now! find it in the filerecord!
+		# this script does not filter filerecord_list so it is guaranteed to hae a record
+		rec = None
+		for r in filerecord_list:
+			if r.name == this_pmx_name:
+				rec = r
+				break
+		if rec.newname is None:
+			# if there is no new name, write back to the name it had previously
+			new_pmx_name = rec.name
+		else:
+			# if there is a new name, write to the new name
+			new_pmx_name = rec.newname
+		# make the name absolute
+		output_filename_pmx = os.path.join(startpath, new_pmx_name)
+		# write it, overwriting the existing file at that name
 		pmxlib.write_pmx(output_filename_pmx, this_pmx_obj, moreinfo=moreinfo)
 	
 	return None
