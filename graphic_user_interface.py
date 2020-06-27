@@ -26,6 +26,7 @@ try:
 	from python import morph_scale
 	from python import pmx_overall_cleanup
 	from python import file_sort_textures
+	from python import file_translate_names
 	from python import vmd_armtwist_insert
 	from python import vmd_convert_tool
 	from python import vmd_model_compatability_check
@@ -37,7 +38,7 @@ except ImportError as eee:
 	exit()
 	vmd_convert_tool = pmx_overall_cleanup = file_sort_textures = vmd_model_compatability_check = None
 	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = pmx_arm_ik_addremove = None
-	core = morph_invert = morph_hide = morph_scale = None
+	core = morph_invert = morph_hide = morph_scale = file_translate_names = None
 
 
 FILE_EXTENSION_MAP = {
@@ -224,6 +225,7 @@ class Application(tk.Frame):
 		self.all_script_list = [
 			("pmx_overall_cleanup.py",           pmx_overall_cleanup.helptext,           pmx_overall_cleanup.main),
 			("file_sort_textures.py",            file_sort_textures.helptext,            file_sort_textures.main),
+			("file_translate_names.py",          file_translate_names.helptext,          file_translate_names.main),
 			("morph_invert.py",                  morph_invert.helptext,                  morph_invert.main),
 			("morph_hide.py",                    morph_hide.helptext,                    morph_hide.main),
 			("morph_scale.py",                   morph_scale.helptext,                   morph_scale.main),
