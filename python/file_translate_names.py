@@ -36,6 +36,13 @@ MAKE_BACKUP_BEFORE_RENAMES = True
 # note: zipper automatically appends .zip onto whatever output name i give it, so dont give it a .zip suffix here
 BACKUP_SUFFIX = "beforetranslate"
 
+# build a dict that will fix windows-forbidden characters in file names
+invalid_windows_chars_ord = dict()
+for c in ':*?"<>|':  # specific invalid characters
+	invalid_windows_chars_ord[ord(c)] = "_"
+for cc in range(32):  # non-printing control characters
+	invalid_windows_chars_ord[cc] = ""
+
 
 helptext = '''=================================================
 file_translate_names:
@@ -143,6 +150,9 @@ def main(moreinfo=False):
 	# get new names via google
 	# force it to use chunk-wise translate
 	newname_list = translate_to_english.google_translate([p.name for p in filerecord_list], strategy=1)
+	
+	# now repair any windows-forbidden symbols that might have shown up after translation
+	newname_list = [n.translate(invalid_windows_chars_ord) for n in newname_list]
 	
 	# iterate over the results in parallel with the filerecord items
 	for p, newname in zip(filerecord_list, newname_list):
