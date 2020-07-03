@@ -163,17 +163,13 @@ def parse_vmd_header(raw) -> list:
 	
 	return [version, modelname]
 
-def parse_vmd_boneframe(raw) -> (list, dict):
+def parse_vmd_boneframe(raw) -> list:
 	# get all the bone-frames, store in a list of lists
 	boneframe_list = []
-	# all bones will be stored in this set (prevents duplicates)
-	allboneset = set()
-	# all bones usages will be counted in this dictionary
-	bonedict = {}
 	# verify that there is enough file left to read a single number
 	if (len(raw) - core.get_readfrom_byte()) < struct.calcsize(fmt_number):
 		core.MY_PRINT_FUNC("Warning: expected boneframe_ct field but file ended unexpectedly! Assuming 0 boneframes and continuing...")
-		return boneframe_list, bonedict
+		return boneframe_list
 
 	############################
 	# get the number of bone-frames
@@ -208,11 +204,6 @@ def parse_vmd_boneframe(raw) -> (list, dict):
 			this_boneframe = [bname_str, f, xp, yp, zp, xrot, yrot, zrot, phys_off, x_ax, y_ax, z_ax, r_ax, x_ay, y_ay,
 							  z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by]
 			boneframe_list.append(this_boneframe)
-			# update the bonedict
-			allboneset.add(bname_str)
-			# new idea: mask out the boilerplate unused frames! if time=0 and value=0, then its not "used" so dont count it
-			if f != 0 or [xp, yp, zp] != [0, 0, 0] or [xrot_q, yrot_q, zrot_q, wrot_q] != [0, 0, 0, 1]:
-				core.increment_occurance_dict(bonedict, bname_str)
 			# display progress printouts
 			core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
 		except Exception as e:
@@ -222,24 +213,16 @@ def parse_vmd_boneframe(raw) -> (list, dict):
 			core.MY_PRINT_FUNC("section=boneframe")
 			core.MY_PRINT_FUNC("Err: something went wrong while parsing, file is probably corrupt/malformed")
 			raise RuntimeError()
-
 	
-	if len(bonedict) > 0:
-		if VMD_MOREINFO: core.MY_PRINT_FUNC("...unique bones, used/total = %d / %d" % (len(bonedict), len(allboneset)))
-	
-	return boneframe_list, bonedict
+	return boneframe_list
 
-def parse_vmd_morphframe(raw) -> (list, dict):
+def parse_vmd_morphframe(raw) -> list:
 	# get all the morph-frames, store in a list of lists
 	morphframe_list = []
-	# all morphs will be stored in this set (prevents duplicates)
-	allmorphset = set()
-	# morphs that are actually used will have usages counted here
-	morphdict = {}
 	# is there enough file left to read a single number?
 	if (len(raw) - core.get_readfrom_byte()) < struct.calcsize(fmt_number):
 		core.MY_PRINT_FUNC("Warning: expected morphframe_ct field but file ended unexpectedly! Assuming 0 morphframes and continuing...")
-		return morphframe_list, morphdict
+		return morphframe_list
 	
 	############################
 	# get the number of morph frames
@@ -251,11 +234,6 @@ def parse_vmd_morphframe(raw) -> (list, dict):
 			(mname_str, f, v) = core.my_unpack(fmt_morphframe, raw)
 			morphframe_list.append([mname_str, f, v])
 			
-			# update the morphdict
-			# new idea: mask out the boilerplate unused frames! if time=0 and value=0, then its not "used" so dont count it
-			allmorphset.add(mname_str)
-			if f != 0 or v != 0:
-				core.increment_occurance_dict(morphdict, mname_str)
 			# display progress printouts
 			core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
 		except Exception as e:
@@ -265,11 +243,8 @@ def parse_vmd_morphframe(raw) -> (list, dict):
 			core.MY_PRINT_FUNC("section=morphframe")
 			core.MY_PRINT_FUNC("Err: something went wrong while parsing, file is probably corrupt/malformed")
 			raise RuntimeError()
-
-	if len(morphdict) > 0:
-		if VMD_MOREINFO: core.MY_PRINT_FUNC("...unique morphs, used/total= %d / %d" % (len(morphdict), len(allmorphset)))
 	
-	return morphframe_list, morphdict
+	return morphframe_list
 
 def parse_vmd_camframe(raw) -> list:
 	camframe_list = []
@@ -573,6 +548,41 @@ def encode_vmd_ikdispframe(nice) -> bytearray:
 
 	return output
 
+
+def parse_vmd_bonemorphdicts(boneframes: list, morphframes: list) -> (dict, dict):
+	# input is boneframe section and morphframe section
+	# output is bonedict and morphdict
+	bonedict = {}
+	boneset = set()
+	morphdict = {}
+	morphset = set()
+	# first, find all the "used" bones:
+	for bone in boneframes:
+		# bname_str = bone[0]
+		# f = bone[1]
+		# xp, yp, zp = bone[2:5]
+		# xrot, yrot, zrot = bone[5:8]
+		boneset.add(bone[0])
+		# new idea: mask out the boilerplate unused frames! if time=0 and value=0, then its not "used" so dont count it
+		if bone[1] != 0 or bone[2:5] != [0, 0, 0] or bone[5:8] != [0.0, 0.0, 0.0]:
+			core.increment_occurance_dict(bonedict, bone[0])
+	# if there are any "used" bones then print a statement saying so
+	if len(bonedict) > 0:
+		if VMD_MOREINFO: core.MY_PRINT_FUNC("...unique bones, used/total = %d / %d" % (len(bonedict), len(boneset)))
+	
+	# second, find all the "used" morphs:
+	for morph in morphframes:
+		# new idea: mask out the boilerplate unused frames! if time=0 and value=0, then its not "used" so dont count it
+		morphset.add(morph[0])
+		if morph[1] != 0 or morph[2] != 0:
+			core.increment_occurance_dict(morphdict, morph[0])
+	# if there are any "used" morphs then print a statement saying so
+	if len(morphdict) > 0:
+		if VMD_MOREINFO: core.MY_PRINT_FUNC("...unique morphs, used/total= %d / %d" % (len(morphdict), len(morphset)))
+
+	return bonedict, morphdict
+
+
 ########################################################################################################################
 # primary functions: read_vmd() and write_vmd()
 ########################################################################################################################
@@ -598,12 +608,16 @@ def read_vmd(vmd_filename: str, getdict=False, moreinfo=False):
 	
 	core.print_progress_oneline(0)
 	A = parse_vmd_header(vmd_bytes)
-	B, bonedict = parse_vmd_boneframe(vmd_bytes)
-	C, morphdict = parse_vmd_morphframe(vmd_bytes)
+	B = parse_vmd_boneframe(vmd_bytes)
+	C = parse_vmd_morphframe(vmd_bytes)
 	D = parse_vmd_camframe(vmd_bytes)
 	E = parse_vmd_lightframe(vmd_bytes)
 	F = parse_vmd_shadowframe(vmd_bytes)
 	G = parse_vmd_ikdispframe(vmd_bytes)
+	if getdict:
+		bonedict, morphdict = parse_vmd_bonemorphdicts(B, C)
+	else:
+		bonedict = morphdict = None  # just so pycharm shuts up
 	if VMD_MOREINFO: core.print_failed_decodes()
 	
 	bytes_remain = len(vmd_bytes) - core.get_readfrom_byte()
