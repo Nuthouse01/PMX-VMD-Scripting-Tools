@@ -193,10 +193,11 @@ def identify_unused_bones(pmx, moreinfo=False):
 	final_used_bones = set()
 	for bidx in parent_used_bones:
 		b = pmx[5][bidx]
-		# if this bone has a tail, add it to the set
+		# if this bone has a tail,
 		if b[12]:
+			# add it and anything it depends on to the set.
 			recursive_climb_inherit_tree(b[13][0], final_used_bones)
-	# now add the actual parents
+	# now merge the two sets
 	final_used_bones = final_used_bones.union(parent_used_bones)
 	
 	# sixth: assemble the final "unused" set by inverting
@@ -210,7 +211,9 @@ def identify_unused_bones(pmx, moreinfo=False):
 	
 	# print neat stuff
 	if moreinfo:
-		core.MY_PRINT_FUNC("Used: true = %d, true+parents = %d, true+parents+tails = %d" % (len(true_used_bones), len(parent_used_bones),len(final_used_bones)))
+		core.MY_PRINT_FUNC("Bones: total=%d, true_used=%d, parents=%d, tails=%d, unused=%d" %
+						   (len(pmx[5]), len(true_used_bones), len(parent_used_bones)-len(true_used_bones),
+							len(final_used_bones)-len(parent_used_bones), len(unused_bones_list)))
 		# debug aid
 		if PRINT_VERTICES_CONTROLLED_BY_EACH_BONE:
 			core.MY_PRINT_FUNC("Number of vertices controlled by each bone:")
