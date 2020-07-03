@@ -173,8 +173,8 @@ bone_dict =  {
 "ひざD": "knee_D",   # "left/right knee_D"
 "足首D": "foot_D",   # "left/right foot_D"
 "足先EX": "toe_EX", # "left/right toes_EX"
-"胸": "breast",
-"乳": "breast",  # chinese symbol for breast, sometimes used
+"胸": "breast",  # translates to "chest" or "breast"
+"乳": "breast",  # translates to "breast" or "milk"??? idk man language is wierd
 }
 
 # these should be nicely capitalized
@@ -218,7 +218,7 @@ words_dict = {
 "モーフ": "morph",
 "ネクタイ": "necktie",
 "スカーフ": "scarf",
-"マフラー": "scarf",  # litteraly "muffler"
+"マフラー": "scarf",  # actually "muffler" but a muffler is basically a scarf
 "スカート": "skirt",
 "ｽｶｰﾄ": "skirt",
 "ﾄﾞﾚｽ": "dress",
@@ -238,6 +238,7 @@ words_dict = {
 "尻尾": "tail",
 "おっぱい": "boobs", # literally "oppai"
 "ヘッドセット": "headset",
+"ヘッドホン": "headphone",
 "センター": "center",
 "グルーブ": "groove",
 "上半身": "upper body",
@@ -247,13 +248,13 @@ words_dict = {
 "アホ毛": "ahoge",
 "腰": "waist",
 "舌": "tongue",
-"胸": "breast",
+"胸": "breast",  # translates to "chest" or "breast"
+"乳": "breast",  # translates to "breast" or "milk"??? idk man language is wierd
 "乳首": "nipple",
 "乳輪": "areola",
-"乳": "breast",
 "ブラ": "bra",
-"耳": "ear",
-"みみ": "ear",
+"耳": "ear",  # phonetically "mimi"
+"みみ": "ear",  # phonetically "mimi"
 "開く": "open",
 "開け": "open",
 "開き": "open",
@@ -265,9 +266,10 @@ words_dict = {
 "ヘア": "hair",
 "新規": "new",
 "材質": "material",
-"なみだ": "tears",
 "尻": "butt",
+"鎖": "chain",
 "目": "eye",
+"眼": "eye",
 "瞳": "pupil",
 "着地": "landing",
 "水着": "swimsuit",
@@ -284,14 +286,17 @@ words_dict = {
 "ブロック": "block", # literally burroku, not sure why he picked this name
 "花": "flower",
 "鳥": "bird",
-"弓": "bow",
+"弓": "bow",  # as in bowtie not as in bending at the waist
 "その他": "other",
 "他": "other",
 "ハイライト": "highlight",
 "ﾊｲﾗｲﾄ": "highlight",
-"靴": "shoe",
-"くつ": "shoe",
+"艶": "gloss",
+"靴": "shoe",  # phonetically "kutsu"
+"くつ": "shoe",  # phonetically "kutsu"
 "顔": "face",
+"ほほ": "cheek",  # phonetically "hoho"
+"頬": "cheek",  # phonetically "hoho"
 "あご": "chin",
 "顎": "chin",
 "足首": "foot",  # this must be high priority, otherwise its components will be individually (wrongly) translated
@@ -305,12 +310,12 @@ words_dict = {
 "ベルト": "belt",
 "手": "hand",
 "首": "neck",
-"親指": "thumb",  # this must be high priority, otherwise its components will be individually (wrongly) translated
-"人差指": "fore",  # this must be high priority, otherwise its components will be individually (wrongly) translated
-"人指": "fore",  # this must be high priority, otherwise its components will be individually (wrongly) translated
-"中指": "middle",  # this must be high priority, otherwise its components will be individually (wrongly) translated
-"薬指": "third",  # this must be high priority, otherwise its components will be individually (wrongly) translated
-"小指": "little",  # this must be high priority, otherwise its components will be individually (wrongly) translated
+"親指": "thumb",
+"人差指": "fore",
+"人指": "fore",
+"中指": "middle",
+"薬指": "third",
+"小指": "little",
 "指": "finger",
 "ひざ": "knee",
 "膝": "knee",
@@ -333,15 +338,15 @@ words_dict = {
 "体": "body",
 "ボディ": "body",
 "肌": "skin",
-"裙": "skirt",
+"裙": "skirt",  # chinese for "skirt"
 "輪": "ring",  # was "round", better translation is ring/loop/circle maybe?
 "武器": "weapon",
 "釦": "button",
 "連動": "interlock",
 "捩": "twist",
 "捻り": "twist",
-"メガネ": "glasses",
-"眼鏡": "glasses",
+"メガネ": "glasses",  # phonetically "megane"
+"眼鏡": "glasses",  # phonetically "megane"
 "星": "star",
 "パーツ": "parts",
 "筋": "muscle",
@@ -352,21 +357,23 @@ words_dict = {
 "牙": "fang",
 "爪": "nail",
 "犬": "dog",
-"猫": "cat",
-"ねこ": "cat",
+"猫": "cat",  # phonetically "neko"
+"ねこ": "cat",  # phonetically "neko"
 "獣": "animal",
-"口": "mouth",
-"まぶた": "eyelid",
-"瞼": "eyelid",
-"まつげ": "eyelash",
-"睫毛": "eyelash",
-"睫": "eyelash",
+"くち": "mouth",  # phonetically "kuchi"
+"口": "mouth",  # phonetically "kuchi"
+"まぶた": "eyelid",  # phonetically "mabuta"
+"瞼": "eyelid",  # phonetically "mabuta"
+"まつげ": "eyelash",  # phonetically "matsuge"
+"睫毛": "eyelash",  # phonetically "matsuge"
+"睫": "eyelash",  # also somehow "matsuge"
 "よだれ": "drool",
 "まゆ": "brow",
 "眉毛": "brow",
 "眉": "brow",
 "光": "light",
-"影": "shadow",
+"かげ": "shadow",  # phonetically "kage"
+"影": "shadow",  # phonetically "kage"
 "鼻": "nose",
 "表情": "expression",
 "襟": "collar",
@@ -412,6 +419,7 @@ words_dict = {
 "基部": "base",
 "基": "base",  # either group or base
 "錘": "weight",
+"操作": "control",  # more closely translates to "operation" but w/e
 
 # morphs
 "ぺろっ": "tongue out",  # phonetically "perrow"
@@ -420,6 +428,7 @@ words_dict = {
 "ずらし": "shift",
 "短": "short",
 "長": "long",
+
 "穏やか": "calm",
 "螺旋": "spiral",
 "回転": "rotate",
@@ -427,7 +436,8 @@ words_dict = {
 "動": "motion",
 "食込無": "none",
 "無し": "none",
-"なし": "none",
+"なし": "none",  # phonetically "nashi"
+"ナシ": "none",  # phonetically "nashi"
 "无": "none",
 "消えて": "disappear", # as in whole model disappear
 "消える": "disappear", 
@@ -437,6 +447,7 @@ words_dict = {
 "広い": "wide",
 "広": "wide",
 "潰れ": "shrink",  # literally "collapse"
+"狭く": "narrow",
 "狭": "narrow",
 "細い": "thin",
 "細": "thin",  # literally "fine"
@@ -518,7 +529,8 @@ words_dict = {
 "お": "o",
 "ワ": "wa",
 "わ": "wa",
-"涙": "tears",
+"なみだ": "tears",  # phonetically "namida"
+"涙": "tears",  # phonetically "namida"
 "ん": "hmm",
 "へ": "eeeh",
 "の": "of", # backwards yoda-style grammar: technically "A の B" translates to "B of A" but I can't do that switcheroo without major changes
