@@ -64,10 +64,10 @@ def gui_fileprompt(extensions: str) -> str:
 	
 	# dont trust file dialog to remember last-opened path, manually save/read it
 	recordpath = core.get_persistient_storage_path("last_opened_dir.txt")
-	c = core.read_txt_to_rawlist(recordpath, quiet=True)
+	c = core.read_txtfile_to_list(recordpath, quiet=True)
 	if c:
-		c = c[0][0]
 		# if it has been used before, use the path from last time.
+		c = c[0]
 		# if the path from last time does not exist, walk up the path till I find a level that does still exist.
 		while c and not path.isdir(c):
 			c = path.dirname(c)
@@ -86,7 +86,7 @@ def gui_fileprompt(extensions: str) -> str:
 		raise RuntimeError()
 	
 	# they got an existing file! update the last_opened_dir file
-	core.write_rawlist_to_txt(recordpath, [[path.dirname(newpath)]], quiet=True)
+	core.write_list_to_txtfile(recordpath, [path.dirname(newpath)], quiet=True)
 	
 	return newpath
 

@@ -133,7 +133,7 @@ def check_translate_budget(num_proposed: int) -> bool:
 	# first, get path to persistient storage file, also creates an empty file if it doesn't exist
 	recordpath = core.get_persistient_storage_path("translate_record.txt")
 	# then read the file into memory, quietly
-	record = core.read_txt_to_rawlist(recordpath, quiet=True)
+	record = core.read_file_to_csvlist(recordpath, quiet=True)
 	# discard all request records that are older than <timeframe>
 	now = time()
 	i = 0
@@ -152,7 +152,7 @@ def check_translate_budget(num_proposed: int) -> bool:
 		# this many translations is OK! go ahead!
 		# write this transaction into the record
 		record.append([now, num_proposed])
-		core.write_rawlist_to_txt(recordpath, record, quiet=True)
+		core.write_csvlist_to_file(recordpath, record, quiet=True)
 		return True
 	else:
 		# cannot do the translate, this would exceed the budget

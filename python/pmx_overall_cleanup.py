@@ -270,6 +270,7 @@ def main(moreinfo=False):
 	core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 	if not is_changed:
 		core.MY_PRINT_FUNC("++++             No writeback required              ++++")
+		core.MY_PRINT_FUNC("Done!")
 		return
 	
 	core.MY_PRINT_FUNC("++++ Done with cleanup, saving improvements to file ++++")

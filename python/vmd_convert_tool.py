@@ -463,7 +463,7 @@ def read_vmdtext(vmdtext_filename: str) -> list:
 	# return nicelist = [header, modelname, bone_list, morph_list, cam_list, light_list, shadow_list, ikdisp_list]
 	
 	core.MY_PRINT_FUNC("Begin reading VMD-as-text file '%s'" % vmdtext_filename)
-	vmdtext_rawlist = core.read_txt_to_rawlist(vmdtext_filename)
+	vmdtext_rawlist = core.read_file_to_csvlist(vmdtext_filename)
 	core.MY_PRINT_FUNC("...total size   = %s lines" % len(vmdtext_rawlist))
 	core.MY_PRINT_FUNC("Begin parsing VMD-as-text file '%s'" % vmdtext_filename)
 	
@@ -503,7 +503,7 @@ def write_vmdtext(nicelist: list, vmdtext_filename: str) -> None:
 	# done formatting!
 	core.MY_PRINT_FUNC("Begin writing VMD-as-text file '%s'" % vmdtext_filename)
 	core.MY_PRINT_FUNC("...total size   = %s lines" % len(rawlist))
-	core.write_rawlist_to_txt(vmdtext_filename, rawlist)
+	core.write_csvlist_to_file(vmdtext_filename, rawlist)
 	core.MY_PRINT_FUNC("Done writing VMD-as-text file '%s'" % vmdtext_filename)
 	return None
 
@@ -516,7 +516,7 @@ def write_summary_dicts(bonedict: dict, morphdict: dict, summary_filename: str) 
 	# done formatting!
 	core.MY_PRINT_FUNC("Begin writing bone & morph summary file '%s'" % summary_filename)
 	core.MY_PRINT_FUNC("...total size   = %s lines" % len(rawlist))
-	core.write_rawlist_to_txt(summary_filename, rawlist)
+	core.write_csvlist_to_file(summary_filename, rawlist)
 	core.MY_PRINT_FUNC("Done writing bone & morph summary file '%s'" % summary_filename)
 	return None
 

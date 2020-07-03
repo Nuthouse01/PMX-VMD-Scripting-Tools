@@ -149,7 +149,7 @@ def main(moreinfo=True):
 							  (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx))
 		output_filename_morph = core.get_unused_file_name(output_filename_morph)
 		core.MY_PRINT_FUNC("...writing result to file '%s'..." % (core.get_clean_basename(output_filename_morph) + ".txt"))
-		core.write_rawlist_to_txt(output_filename_morph, rawlist_out, use_jis_encoding=False)
+		core.write_csvlist_to_file(output_filename_morph, rawlist_out, use_jis_encoding=False)
 		core.MY_PRINT_FUNC("done!")
 	
 	##############################################
@@ -242,7 +242,7 @@ def main(moreinfo=True):
 							   (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx))
 		output_filename_bone = core.get_unused_file_name(output_filename_bone)
 		core.MY_PRINT_FUNC("...writing result to file '%s'..." % (core.get_clean_basename(output_filename_bone) + ".txt"))
-		core.write_rawlist_to_txt(output_filename_bone, rawlist_out, use_jis_encoding=False)
+		core.write_csvlist_to_file(output_filename_bone, rawlist_out, use_jis_encoding=False)
 		core.MY_PRINT_FUNC("done!")
 	return None
 
