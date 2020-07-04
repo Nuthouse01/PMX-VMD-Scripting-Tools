@@ -6,11 +6,13 @@
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_vmd_parser as vmdlib
+	from . import nuthouse01_vpd_parser as vpdlib
 	from . import nuthouse01_pmx_parser as pmxlib
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_vmd_parser as vmdlib
+		import nuthouse01_vpd_parser as vpdlib
 		import nuthouse01_pmx_parser as pmxlib
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
@@ -18,7 +20,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = vmdlib = pmxlib = None
+		core = vmdlib = vpdlib = pmxlib = None
 
 
 
@@ -31,8 +33,8 @@ DEBUG = False
 
 helptext = '''=================================================
 vmd_model_compatability_check:
-This tool will check the compabability of a given model (PMX) with a given dance motion (VMD).
-This means checking whether the model supports all the bones and/or morphs the VMD dance is trying to use.
+This tool will check for compabability between a given model (PMX) and a given dance motion (VMD) or pose (VPD).
+This means checking whether the model supports all the bones and/or morphs the VMD/VPD is trying to use.
 All bone/morph names are compared using the JP names.
 
 This requires both a PMX model and a VMD motion to run.
@@ -53,8 +55,14 @@ def main(moreinfo=True):
 	
 	# prompt VMD file name
 	core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
-	input_filename_vmd = core.MY_FILEPROMPT_FUNC(".vmd")
-	nicelist_in, bonedict, morphdict = vmdlib.read_vmd(input_filename_vmd, getdict=True, moreinfo=moreinfo)
+	input_filename = core.MY_FILEPROMPT_FUNC(".vmd .vpd")
+	if input_filename.lower().endswith(".vmd"):
+		# the actual VMD part isn't even used, only bonedict and morphdict
+		vmd, bonedict, morphdict = vmdlib.read_vmd(input_filename, getdict=True, moreinfo=moreinfo)
+	else:
+		vmd = vpdlib.read_vpd(input_filename, moreinfo=moreinfo)
+		bonedict, morphdict = vmdlib.parse_vmd_bonemorphdicts(vmd[1], vmd[2])
+		
 	
 	core.MY_PRINT_FUNC("")
 	
@@ -73,9 +81,9 @@ def main(moreinfo=True):
 	
 	# ensure that the VMD contains at least some morphs, to prevent zero-divide error
 	if len(morphs_in_vmd) == 0:
-		core.MY_PRINT_FUNC("Skipping morph compatability check: VMD '%s' does not contain any morphs that are used in a significant way." % input_filename_vmd)
+		core.MY_PRINT_FUNC("Skipping morph compatability check: VMD '%s' does not contain any morphs that are used in a significant way." % core.get_clean_basename(input_filename))
 	elif len(morphs_in_model) == 0:
-		core.MY_PRINT_FUNC("Skipping morph compatability check: PMX '%s' does not contain any morphs." % input_filename_pmx)
+		core.MY_PRINT_FUNC("Skipping morph compatability check: PMX '%s' does not contain any morphs." % core.get_clean_basename(input_filename_pmx))
 	else:
 		
 		# convert all these names to bytes
@@ -109,7 +117,8 @@ def main(moreinfo=True):
 		
 		# display results!
 		core.MY_PRINT_FUNC("This model supports {} / {} = {:.1%} of the MORPHS in '{}'".format(
-			len(matching_morphs), len(morphs_in_vmd), len(matching_morphs) / len(morphs_in_vmd), input_filename_vmd))
+			len(matching_morphs), len(morphs_in_vmd), len(matching_morphs) / len(morphs_in_vmd),
+			core.get_clean_basename(input_filename)))
 			
 		# convert the dicts to lists and sort for printing
 		missing_morphs_list = list(missing_morphs.items())
@@ -131,7 +140,7 @@ def main(moreinfo=True):
 		# list
 		
 		rawlist_out = [
-			["vmd_dance_file", "'" + input_filename_vmd + "'"],
+			["vmd_dance_file", "'" + core.get_clean_basename(input_filename) + "'"],
 			["modelname_jp", "'" + modelname_jp + "'"],
 			["modelname_en", "'" + modelname_en + "'"],
 			["num_morphs_missing", len(missing_morphs)]
@@ -146,7 +155,7 @@ def main(moreinfo=True):
 		
 		# write out
 		output_filename_morph = "%s_morph_compatability_with_%s.txt" % \
-							  (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx))
+							  (input_filename[0:-4], core.get_clean_basename(input_filename_pmx))
 		output_filename_morph = core.get_unused_file_name(output_filename_morph)
 		core.MY_PRINT_FUNC("...writing result to file '%s'..." % (core.get_clean_basename(output_filename_morph) + ".txt"))
 		core.write_csvlist_to_file(output_filename_morph, rawlist_out, use_jis_encoding=False)
@@ -165,9 +174,9 @@ def main(moreinfo=True):
 	
 	# ensure that the VMD contains at least some bones, to prevent zero-divide error
 	if len(bones_in_vmd) == 0:
-		core.MY_PRINT_FUNC("Skipping bone compatability check: VMD '%s' does not contain any bones that are used in a significant way." % input_filename_vmd)
+		core.MY_PRINT_FUNC("Skipping bone compatability check: VMD '%s' does not contain any bones that are used in a significant way." % core.get_clean_basename(input_filename))
 	elif len(bones_in_model) == 0:
-		core.MY_PRINT_FUNC("Skipping bone compatability check: PMX '%s' does not contain any bones." % input_filename_pmx)
+		core.MY_PRINT_FUNC("Skipping bone compatability check: PMX '%s' does not contain any bones." % core.get_clean_basename(input_filename_pmx))
 	else:
 		
 		# convert all these names to bytes
@@ -202,7 +211,8 @@ def main(moreinfo=True):
 		
 		# display results!
 		core.MY_PRINT_FUNC("This model supports {} / {} = {:.1%} of the BONES in '{}'".format(
-			len(matching_bones), len(bones_in_vmd), len(matching_bones) / len(bones_in_vmd), input_filename_vmd))
+			len(matching_bones), len(bones_in_vmd), len(matching_bones) / len(bones_in_vmd),
+			core.get_clean_basename(input_filename)))
 		
 		# convert the dicts to lists and sort for printing
 		missing_bones_list = list(missing_bones.items())
@@ -224,7 +234,7 @@ def main(moreinfo=True):
 		# list
 		
 		rawlist_out = [
-			["vmd_dance_file", "'" + input_filename_vmd + "'"],
+			["vmd_dance_file", "'" + core.get_clean_basename(input_filename) + "'"],
 			["modelname_jp", "'" + modelname_jp + "'"],
 			["modelname_en", "'" + modelname_en + "'"],
 			["num_bones_missing", len(missing_bones)]
@@ -239,7 +249,7 @@ def main(moreinfo=True):
 		
 		# write out
 		output_filename_bone = "%s_bone_compatability_with_%s.txt" % \
-							   (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx))
+							   (input_filename[0:-4], core.get_clean_basename(input_filename_pmx))
 		output_filename_bone = core.get_unused_file_name(output_filename_bone)
 		core.MY_PRINT_FUNC("...writing result to file '%s'..." % (core.get_clean_basename(output_filename_bone) + ".txt"))
 		core.write_csvlist_to_file(output_filename_bone, rawlist_out, use_jis_encoding=False)

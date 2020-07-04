@@ -43,8 +43,11 @@ except ImportError as eee:
 
 
 FILE_EXTENSION_MAP = {
+	".vpd .vmd": ("VPD/VMD file", "*.vpd *.vmd *.vmd.bak"),
+	".vmd .vpd": ("VPD/VMD file", "*.vpd *.vmd *.vmd.bak"),
 	".vmd .txt": ("VMD/TXT file", "*.txt *.vmd *.vmd.bak"),
 	".txt .vmd": ("VMD/TXT file", "*.txt *.vmd *.vmd.bak"),
+	".vpd": ("VPD file", "*.vpd"),
 	".csv": ("CSV file", "*.csv"),
 	".txt": ("Text file", "*.txt"),
 	".pmx": ("PMX model", "*.pmx"),
