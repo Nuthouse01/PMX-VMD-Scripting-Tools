@@ -31,12 +31,12 @@ This script is for organizing the texture imports used in a PMX model, to elimin
 ##### file_translate_names.py
 This is for translating JP names of files to English. Unlike the "file_sort_textures" script, this will attempt to rename ALL files within the tree, it will not restrict itself to only certain filetypes.
 
-##### vmd_model_compatability_check.py
-This script is to check if the model you are using is compatible with the VMD you wish to use. This will create a summary file that lists all important bones/morphs in the VMD dance file, and sorts them into two groups: ones that the model can support, and ones that it cannot support. If you are loading a motion designed for some different model (usually the case), and it seems to be playing wrong, it is very likely that there is a name mismatch.
+##### model_compatability_check.py
+This script is to check if the model you are using is compatible with the VMD/VPD you wish to use. This will create a summary file that lists all important bones/morphs in the VMD/VPD file, and sorts them into two groups: ones that the model can support, and ones that it cannot support. If you are loading a motion designed for some different model (usually the case), and it seems to be playing wrong, it is very likely that there is a name mismatch.
 
 (For example, if a model's eye-smile morph is named "笑い" and the motion uses "笑顔" for eye-smile, that morph will not be applied to the model and it will look wrong when played.)
 
-This script will reveal what exactly is mismatched; but to fix the issue, you must either change the PMX to match the VMD (using PMXEditor or a similar tool) or you must change the VMD to match the PMX (convert the VMD to text form, replace all uses of "笑顔" with "笑い" to match the model, and then convert it back to VMD form).
+This script will reveal what exactly is mismatched; but to fix the issue, you must either change the PMX to match the VMD/VPD (using PMXEditor or a similar tool) or you must change the VMD/VPD to match the PMX (convert the VMD to text form, replace all uses of "笑顔" with "笑い" to match the model, and then convert it back to VMD form).
 
 ##### morph_hide.py
 This script simply sets the specified morphs within a model to group "0" so they do not show up in the eye/lip/brow/other menus. This is handy for components of group morphs that you don't want to be used independently.

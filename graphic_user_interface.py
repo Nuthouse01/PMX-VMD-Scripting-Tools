@@ -30,14 +30,14 @@ try:
 	from python import file_translate_names
 	from python import vmd_armtwist_insert
 	from python import vmd_convert_tool
-	from python import vmd_model_compatability_check
+	from python import model_compatability_check
 except ImportError as eee:
 	print(eee.__class__.__name__, eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 	print("...press ENTER to exit...")
 	input()
 	exit()
-	vmd_convert_tool = pmx_overall_cleanup = file_sort_textures = vmd_model_compatability_check = None
+	vmd_convert_tool = pmx_overall_cleanup = file_sort_textures = model_compatability_check = None
 	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = pmx_arm_ik_addremove = None
 	core = morph_invert = morph_hide = morph_scale = file_translate_names = None
 
@@ -233,7 +233,7 @@ class Application(tk.Frame):
 			("morph_invert.py",                  morph_invert.helptext,                  morph_invert.main),
 			("morph_hide.py",                    morph_hide.helptext,                    morph_hide.main),
 			("morph_scale.py",                   morph_scale.helptext,                   morph_scale.main),
-			("vmd_model_compatability_check.py", vmd_model_compatability_check.helptext, vmd_model_compatability_check.main),
+			("model_compatability_check.py",     model_compatability_check.helptext,     model_compatability_check.main),
 			("vmd_armtwist_insert.py",           vmd_armtwist_insert.helptext,           vmd_armtwist_insert.main),
 			("vmd_convert_tool.py",              vmd_convert_tool.helptext,              vmd_convert_tool.main),
 			("make_ik_from_vmd.py",              make_ik_from_vmd.helptext,              make_ik_from_vmd.main),

@@ -31,7 +31,7 @@ This script is for organizing the texture imports used in a PMX model, to elimin
 ##### file_translate_names.py
 This is for translating JP names of files to English. Unlike the "file_sort_textures" script, this will attempt to rename ALL files within the tree, it will not restrict itself to only certain filetypes.  
 
-##### vmd_model_compatability_check.py   
+##### model_compatability_check.py   
 This script is to check if the model you are using is compatible with the VMD/VPD you wish to use. This will create a summary file that lists all important bones/morphs in the VMD/VPD file, and sorts them into two groups: ones that the model can support, and ones that it cannot support. If you are loading a motion designed for some different model (usually the case), and it seems to be playing wrong, it is very likely that there is a name mismatch.  
   
 (For example, if a model's eye-smile morph is named "笑い" and the motion uses "笑顔" for eye-smile, that morph will not be applied to the model and it will look wrong when played.)  

@@ -94,7 +94,7 @@ except ImportError as eee:
 DEBUG = False
 
 # do you want to print a summary of bones & morphs in the VMD file?
-# now that "vmd_model_compatability_check.py" exists, this feature is turned off by default
+# now that "model_compatability_check.py" exists, this feature is turned off by default
 PRINT_BONE_MORPH_SUMMARY_FILE = False
 
 filestr_txt = ".txt"
