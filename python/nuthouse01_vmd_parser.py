@@ -549,37 +549,47 @@ def encode_vmd_ikdispframe(nice) -> bytearray:
 	return output
 
 
-def parse_vmd_bonemorphdicts(boneframes: list, morphframes: list) -> (dict, dict):
-	# input is boneframe section and morphframe section
-	# output is bonedict and morphdict
+def parse_vmd_bonemorphdicts(boneframes: list, morphframes: list, moreinfo=False) -> (dict, dict):
+	"""
+	Generate two dictionaries where keys are bones/morphs that are "actually used" and values are # of times they are used.
+	"Actually used" means the first frame with a nonzero value and each frame after that. (ignore leading repeated zeros)
+	:param moreinfo: print extra info and stuff
+	:param boneframes: vmd[1]
+	:param morphframes: vmd[2]
+	:return: tuple(bonedict, morphdict)
+	"""
 	bonedict = {}
-	boneset = set()
 	morphdict = {}
+	# 1, ensure frames are in sorted order
+	boneframes_sorted = sorted(boneframes, key=core.get2nd)
+	morphframes_sorted = sorted(morphframes, key=core.get2nd)
+	boneset = set()  # as i walk forward in time, this is the set of everything that has been used so far
 	morphset = set()
-	# first, find all the "used" bones:
-	for bone in boneframes:
+	# 2, iterate over items and count all instances except first if first has no value
+	for bone in boneframes_sorted:
 		# bname_str = bone[0]
 		# f = bone[1]
 		# xp, yp, zp = bone[2:5]
 		# xrot, yrot, zrot = bone[5:8]
-		boneset.add(bone[0])
-		# new idea: mask out the boilerplate unused frames! if time=0 and value=0, then its not "used" so dont count it
-		if bone[1] != 0 or bone[2:5] != [0, 0, 0] or bone[5:8] != [0.0, 0.0, 0.0]:
-			core.increment_occurance_dict(bonedict, bone[0])
-	# if there are any "used" bones then print a statement saying so
+		if bone[0] not in boneset:  # if this has not been used before,
+			if bone[2:5] == [0, 0, 0] and bone[5:8] == [0.0, 0.0, 0.0]:  # if it is not used now,
+				continue  # do not count it.
+			else:  # if it is used now,
+				boneset.add(bone[0])  # add it and count it	
+		core.increment_occurance_dict(bonedict, bone[0])  # otherwise, count it.
+	for morph in morphframes_sorted:
+		if morph[0] not in morphset:  # if this has not been used before,
+			if morph[2] == 0.0:  # if it is not used now,
+				continue  # do not count it.
+			else:  # if it is used now,
+				morphset.add(morph[0])  # add it and count it	
+		core.increment_occurance_dict(morphdict, morph[0])  # otherwise, count it.
+	# 3, if there are any "used" items then print a statement saying so
 	if len(bonedict) > 0:
-		if VMD_MOREINFO: core.MY_PRINT_FUNC("...unique bones, used/total = %d / %d" % (len(bonedict), len(boneset)))
-	
-	# second, find all the "used" morphs:
-	for morph in morphframes:
-		# new idea: mask out the boilerplate unused frames! if time=0 and value=0, then its not "used" so dont count it
-		morphset.add(morph[0])
-		if morph[1] != 0 or morph[2] != 0:
-			core.increment_occurance_dict(morphdict, morph[0])
-	# if there are any "used" morphs then print a statement saying so
+		if moreinfo: core.MY_PRINT_FUNC("...unique bones, used/total = %d / %d" % (len(bonedict), len(boneset)))
 	if len(morphdict) > 0:
-		if VMD_MOREINFO: core.MY_PRINT_FUNC("...unique morphs, used/total= %d / %d" % (len(morphdict), len(morphset)))
-
+		if moreinfo: core.MY_PRINT_FUNC("...unique morphs, used/total= %d / %d" % (len(morphdict), len(morphset)))
+	
 	return bonedict, morphdict
 
 
@@ -615,7 +625,7 @@ def read_vmd(vmd_filename: str, getdict=False, moreinfo=False):
 	F = parse_vmd_shadowframe(vmd_bytes)
 	G = parse_vmd_ikdispframe(vmd_bytes)
 	if getdict:
-		bonedict, morphdict = parse_vmd_bonemorphdicts(B, C)
+		bonedict, morphdict = parse_vmd_bonemorphdicts(B, C, moreinfo=moreinfo)
 	else:
 		bonedict = morphdict = None  # just so pycharm shuts up
 	if VMD_MOREINFO: core.print_failed_decodes()
