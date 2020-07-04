@@ -23,6 +23,9 @@ except ImportError as eee:
 		core = vmdlib = vpdlib = pmxlib = None
 
 
+########################################################################################################################
+# constants & options
+########################################################################################################################
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -30,16 +33,18 @@ except ImportError as eee:
 DEBUG = False
 
 
+# if true, print items that match as well as items that miss
+# if false, print only items that miss
+PRINT_MATCHING_ITEMS = False
+
 
 helptext = '''=================================================
-vmd_model_compatability_check:
+model_compatability_check:
 This tool will check for compabability between a given model (PMX) and a given dance motion (VMD) or pose (VPD).
 This means checking whether the model supports all the bones and/or morphs the VMD/VPD is trying to use.
 All bone/morph names are compared using the JP names.
 
 This requires both a PMX model and a VMD motion to run.
-Outputs: morph compatability summary text file '[dancename]_morph_compatability_with_[modelname].txt'
-         bone compatability summary text file '[dancename]_bone_compatability_with_[modelname].txt'
 '''
 
 
@@ -50,8 +55,8 @@ def main(moreinfo=True):
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	realbones = pmx[5]		# get bones
 	realmorphs = pmx[6]		# get morphs
-	modelname_jp = pmx[0][1]
-	modelname_en = pmx[0][2]
+	# modelname_jp = pmx[0][1]
+	# modelname_en = pmx[0][2]
 	
 	# prompt VMD file name
 	core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
@@ -61,7 +66,7 @@ def main(moreinfo=True):
 		vmd, bonedict, morphdict = vmdlib.read_vmd(input_filename, getdict=True, moreinfo=moreinfo)
 	else:
 		vmd = vpdlib.read_vpd(input_filename, moreinfo=moreinfo)
-		bonedict, morphdict = vmdlib.parse_vmd_bonemorphdicts(vmd[1], vmd[2])
+		bonedict, morphdict = vmdlib.parse_vmd_bonemorphdicts(vmd[1], vmd[2], moreinfo=False)
 		
 	
 	core.MY_PRINT_FUNC("")
@@ -81,9 +86,9 @@ def main(moreinfo=True):
 	
 	# ensure that the VMD contains at least some morphs, to prevent zero-divide error
 	if len(morphs_in_vmd) == 0:
-		core.MY_PRINT_FUNC("Skipping morph compatability check: VMD '%s' does not contain any morphs that are used in a significant way." % core.get_clean_basename(input_filename))
+		core.MY_PRINT_FUNC("MORPH SKIP: VMD '%s' does not contain any morphs that are used in a meaningful way." % core.get_clean_basename(input_filename))
 	elif len(morphs_in_model) == 0:
-		core.MY_PRINT_FUNC("Skipping morph compatability check: PMX '%s' does not contain any morphs." % core.get_clean_basename(input_filename_pmx))
+		core.MY_PRINT_FUNC("MORPH SKIP: PMX '%s' does not contain any morphs." % core.get_clean_basename(input_filename_pmx))
 	else:
 		
 		# convert all these names to bytes
@@ -116,19 +121,39 @@ def main(moreinfo=True):
 				matching_morphs[modelmorphmatch[0]] = morphdict[vmdmorph]
 		
 		# display results!
-		core.MY_PRINT_FUNC("This model supports {} / {} = {:.1%} of the MORPHS in '{}'".format(
-			len(matching_morphs), len(morphs_in_vmd), len(matching_morphs) / len(morphs_in_vmd),
-			core.get_clean_basename(input_filename)))
+		r = "PASS" if len(matching_morphs) == len(morphs_in_vmd) else "FAIL"
+		core.MY_PRINT_FUNC("MORPH {}: {} / {} = {:.1%} of the morphs are supported".format(
+			r, len(matching_morphs), len(morphs_in_vmd), len(matching_morphs) / len(morphs_in_vmd)))
 			
-		# convert the dicts to lists and sort for printing
-		missing_morphs_list = list(missing_morphs.items())
-		missing_morphs_list.sort(key=core.get1st)  # sort by name as tiebreaker
-		missing_morphs_list.sort(key=core.get2nd, reverse=True)  # sort in-place descending by 2nd element as primary
-		
-		matching_morphs_list = list(matching_morphs.items())
-		matching_morphs_list.sort(key=core.get1st)  # sort by name as tiebreaker
-		matching_morphs_list.sort(key=core.get2nd, reverse=True)  # sort in-place descending by 2nd element as primary
-		
+		# if there are no missing morphs (all match), don't print anything at all
+		if missing_morphs:
+			if not moreinfo:
+				core.MY_PRINT_FUNC("For detailed list, please re-run with 'more info' enabled")
+			else:
+				# convert the dicts to lists and sort for printing
+				# sort in-place descending by 2nd element as primary
+				missing_morphs_list = sorted(list(missing_morphs.items()), key=core.get2nd, reverse=True)
+				# justify the names!
+				missing_just = core.MY_JUSTIFY_STRINGLIST(["'" + m[0] + "'" for m in missing_morphs_list])
+				# re-attach the justified names to the usage numbers
+				missing_morphs_list = list(zip(missing_just, [m[1] for m in missing_morphs_list]))
+				
+				core.MY_PRINT_FUNC("")
+				core.MY_PRINT_FUNC("Unsupported morphs: name + times used")
+				for m, num in missing_morphs_list:
+					core.MY_PRINT_FUNC("  %s  ||  %d" % (m, int(num)))
+				
+				# only print the matching morphs if there are some, and if enabled by options
+				if matching_morphs and PRINT_MATCHING_ITEMS:
+					matching_morphs_list = list(matching_morphs.items())
+					matching_morphs_list.sort(key=core.get2nd, reverse=True)  # sort in-place descending by 2nd element as primary
+					matching_just = core.MY_JUSTIFY_STRINGLIST(["'" + m[0] + "'" for m in matching_morphs_list])
+					matching_morphs_list = list(zip(matching_just, [m[1] for m in matching_morphs_list]))
+					core.MY_PRINT_FUNC("")
+					core.MY_PRINT_FUNC("Supported morphs: name + times used")
+					for m, num in matching_morphs_list:
+						core.MY_PRINT_FUNC("  %s  ||  %d" % (m, int(num)))
+			
 		# since only jap names are available, printing to screen won't help. must write to a file.
 		# format:
 		# "vmd_dance_file", -----
@@ -139,27 +164,27 @@ def main(moreinfo=True):
 		# "matching_morph_name", "num_times_used"
 		# list
 		
-		rawlist_out = [
-			["vmd_dance_file", "'" + core.get_clean_basename(input_filename) + "'"],
-			["modelname_jp", "'" + modelname_jp + "'"],
-			["modelname_en", "'" + modelname_en + "'"],
-			["num_morphs_missing", len(missing_morphs)]
-		]
-		if len(missing_morphs) != 0:
-			rawlist_out.append(["missing_morph_name", "num_times_used"])
-			rawlist_out += missing_morphs_list
-		rawlist_out.append(["num_morphs_matching", len(matching_morphs)])
-		if len(matching_morphs) != 0:
-			rawlist_out.append(["matching_morph_name", "num_times_used"])
-			rawlist_out += matching_morphs_list
-		
-		# write out
-		output_filename_morph = "%s_morph_compatability_with_%s.txt" % \
-							  (input_filename[0:-4], core.get_clean_basename(input_filename_pmx))
-		output_filename_morph = core.get_unused_file_name(output_filename_morph)
-		core.MY_PRINT_FUNC("...writing result to file '%s'..." % (core.get_clean_basename(output_filename_morph) + ".txt"))
-		core.write_csvlist_to_file(output_filename_morph, rawlist_out, use_jis_encoding=False)
-		core.MY_PRINT_FUNC("done!")
+		# rawlist_out = [
+		# 	["vmd_dance_file", "'" + core.get_clean_basename(input_filename) + "'"],
+		# 	["modelname_jp", "'" + modelname_jp + "'"],
+		# 	["modelname_en", "'" + modelname_en + "'"],
+		# 	["num_morphs_missing", len(missing_morphs)]
+		# ]
+		# if len(missing_morphs) != 0:
+		# 	rawlist_out.append(["missing_morph_name", "num_times_used"])
+		# 	rawlist_out += missing_morphs_list
+		# rawlist_out.append(["num_morphs_matching", len(matching_morphs)])
+		# if len(matching_morphs) != 0:
+		# 	rawlist_out.append(["matching_morph_name", "num_times_used"])
+		# 	rawlist_out += matching_morphs_list
+		# 
+		# # write out
+		# output_filename_morph = "%s_morph_compatability_with_%s.txt" % \
+		# 					  (input_filename[0:-4], core.get_clean_basename(input_filename_pmx))
+		# output_filename_morph = core.get_unused_file_name(output_filename_morph)
+		# core.MY_PRINT_FUNC("...writing result to file '%s'..." % (core.get_clean_basename(output_filename_morph) + ".txt"))
+		# core.write_csvlist_to_file(output_filename_morph, rawlist_out, use_jis_encoding=False)
+		# core.MY_PRINT_FUNC("done!")
 	
 	##############################################
 	# check bone compatability
@@ -174,9 +199,9 @@ def main(moreinfo=True):
 	
 	# ensure that the VMD contains at least some bones, to prevent zero-divide error
 	if len(bones_in_vmd) == 0:
-		core.MY_PRINT_FUNC("Skipping bone compatability check: VMD '%s' does not contain any bones that are used in a significant way." % core.get_clean_basename(input_filename))
+		core.MY_PRINT_FUNC("BONE SKIP: VMD '%s' does not contain any bones that are used in a meaningful way." % core.get_clean_basename(input_filename))
 	elif len(bones_in_model) == 0:
-		core.MY_PRINT_FUNC("Skipping bone compatability check: PMX '%s' does not contain any bones." % core.get_clean_basename(input_filename_pmx))
+		core.MY_PRINT_FUNC("BONE SKIP: PMX '%s' does not contain any bones." % core.get_clean_basename(input_filename_pmx))
 	else:
 		
 		# convert all these names to bytes
@@ -210,18 +235,38 @@ def main(moreinfo=True):
 				matching_bones[modelbonematch[0]] = bonedict[vmdbone]
 		
 		# display results!
-		core.MY_PRINT_FUNC("This model supports {} / {} = {:.1%} of the BONES in '{}'".format(
-			len(matching_bones), len(bones_in_vmd), len(matching_bones) / len(bones_in_vmd),
-			core.get_clean_basename(input_filename)))
-		
-		# convert the dicts to lists and sort for printing
-		missing_bones_list = list(missing_bones.items())
-		missing_bones_list.sort(key=core.get1st)  # sort by name as tiebreaker
-		missing_bones_list.sort(key=core.get2nd, reverse=True)  # sort in-place descending by 2nd element as primary
-		
-		matching_bones_list = list(matching_bones.items())
-		matching_bones_list.sort(key=core.get1st)  # sort by name as tiebreaker
-		matching_bones_list.sort(key=core.get2nd, reverse=True)  # sort in-place descending by 2nd element as primary
+		r = "PASS" if len(matching_bones) == len(bones_in_vmd) else "FAIL"
+		core.MY_PRINT_FUNC("BONE {}: {} / {} = {:.1%} of the bones are supported".format(
+			r, len(matching_bones), len(bones_in_vmd), len(matching_bones) / len(bones_in_vmd)))
+
+		# if there are no missing bones (all match), don't print anything at all
+		if missing_bones:
+			if not moreinfo:
+				core.MY_PRINT_FUNC("For detailed list, please re-run with 'more info' enabled")
+			else:
+				# convert the dicts to lists and sort for printing
+				# sort in-place descending by 2nd element as primary
+				missing_bones_list = sorted(list(missing_bones.items()), key=core.get2nd, reverse=True)
+				# justify the names!
+				missing_just = core.MY_JUSTIFY_STRINGLIST(["'" + m[0] + "'" for m in missing_bones_list])
+				# re-attach the justified names to the usage numbers
+				missing_bones_list = list(zip(missing_just, [m[1] for m in missing_bones_list]))
+				
+				core.MY_PRINT_FUNC("")
+				core.MY_PRINT_FUNC("Unsupported bones: name + times used")
+				for m, num in missing_bones_list:
+					core.MY_PRINT_FUNC("  %s  ||  %d" % (m, int(num)))
+				
+				# only print the matching bones if there are some, and if enabled by options
+				if matching_bones and PRINT_MATCHING_ITEMS:
+					matching_bones_list = list(matching_bones.items())
+					matching_bones_list.sort(key=core.get2nd, reverse=True)  # sort in-place descending by 2nd element as primary
+					matching_just = core.MY_JUSTIFY_STRINGLIST(["'" + m[0] + "'" for m in matching_bones_list])
+					matching_bones_list = list(zip(matching_just, [m[1] for m in matching_bones_list]))
+					core.MY_PRINT_FUNC("")
+					core.MY_PRINT_FUNC("Supported bones: name + times used")
+					for m, num in matching_bones_list:
+						core.MY_PRINT_FUNC("  %s  ||  %d" % (m, int(num)))
 		
 		# since only jap names are available, printing to screen won't work. must write to a file.
 		# format:
@@ -233,27 +278,28 @@ def main(moreinfo=True):
 		# "matching_bone_name", "num_times_used"
 		# list
 		
-		rawlist_out = [
-			["vmd_dance_file", "'" + core.get_clean_basename(input_filename) + "'"],
-			["modelname_jp", "'" + modelname_jp + "'"],
-			["modelname_en", "'" + modelname_en + "'"],
-			["num_bones_missing", len(missing_bones)]
-		]
-		if len(missing_bones) != 0:
-			rawlist_out.append(["missing_bone_name", "num_times_used"])
-			rawlist_out += missing_bones_list
-		rawlist_out.append(["num_bones_matching", len(matching_bones)])
-		if len(matching_bones) != 0:
-			rawlist_out.append(["matching_bone_name", "num_times_used"])
-			rawlist_out += matching_bones_list
-		
-		# write out
-		output_filename_bone = "%s_bone_compatability_with_%s.txt" % \
-							   (input_filename[0:-4], core.get_clean_basename(input_filename_pmx))
-		output_filename_bone = core.get_unused_file_name(output_filename_bone)
-		core.MY_PRINT_FUNC("...writing result to file '%s'..." % (core.get_clean_basename(output_filename_bone) + ".txt"))
-		core.write_csvlist_to_file(output_filename_bone, rawlist_out, use_jis_encoding=False)
-		core.MY_PRINT_FUNC("done!")
+		# rawlist_out = [
+		# 	["vmd_dance_file", "'" + core.get_clean_basename(input_filename) + "'"],
+		# 	["modelname_jp", "'" + modelname_jp + "'"],
+		# 	["modelname_en", "'" + modelname_en + "'"],
+		# 	["num_bones_missing", len(missing_bones)]
+		# ]
+		# if len(missing_bones) != 0:
+		# 	rawlist_out.append(["missing_bone_name", "num_times_used"])
+		# 	rawlist_out += missing_bones_list
+		# rawlist_out.append(["num_bones_matching", len(matching_bones)])
+		# if len(matching_bones) != 0:
+		# 	rawlist_out.append(["matching_bone_name", "num_times_used"])
+		# 	rawlist_out += matching_bones_list
+		#
+		# # write out
+		# output_filename_bone = "%s_bone_compatability_with_%s.txt" % \
+		# 					   (input_filename[0:-4], core.get_clean_basename(input_filename_pmx))
+		# output_filename_bone = core.get_unused_file_name(output_filename_bone)
+		# core.MY_PRINT_FUNC("...writing result to file '%s'..." % (core.get_clean_basename(output_filename_bone) + ".txt"))
+		# core.write_csvlist_to_file(output_filename_bone, rawlist_out, use_jis_encoding=False)
+	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC("done!")
 	return None
 
 
