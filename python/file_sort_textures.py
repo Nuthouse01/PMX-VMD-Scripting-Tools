@@ -556,14 +556,13 @@ def main(moreinfo=False):
 		# if the name I build is not the name it already has, queue it for actual rename
 		if newname != p.name:
 			# resolve potential collisions by adding numbers suffix to file names
-			# first, check against whats on disk. need to make path absolute so get_unused_file_name can check the disk.
-			newname = core.get_unused_file_name(os.path.join(startpath, newname))
-			# make the path no longer absolute: undo adding "startpath" above
-			newname = os.path.relpath(newname, startpath)
-			# second, check against other proposed rename targets
-			newname = core.get_unused_file_name(newname, all_new_names)
+			# first need to make path absolute so get_unused_file_name can check the disk.
+			# then check uniqueness against files on disk and files in namelist (files that WILL be on disk)
+			newname = core.get_unused_file_name(os.path.join(startpath, newname), namelist=all_new_names)
 			# now dest path is guaranteed unique against other existing files & other proposed name changes
 			all_new_names.add(newname.lower())
+			# make the path no longer absolute: undo adding "startpath" above
+			newname = os.path.relpath(newname, startpath)
 			p.newname = newname
 	
 	# used files get sorted into tex/toon/sph/multi (unless tex and already in a folder that says clothes, etc)
@@ -598,14 +597,13 @@ def main(moreinfo=False):
 		# if the name I build is not the name it already has, queue it for actual rename
 		if newname != p.name:
 			# resolve potential collisions by adding numbers suffix to file names
-			# first, check against whats on disk. need to make path absolute so get_unused_file_name can check the disk.
-			newname = core.get_unused_file_name(os.path.join(startpath, newname))
-			# make the path no longer absolute: undo adding "startpath" above
-			newname = os.path.relpath(newname, startpath)
-			# second, check against other proposed rename targets
-			newname = core.get_unused_file_name(newname, all_new_names)
+			# first need to make path absolute so get_unused_file_name can check the disk.
+			# then check uniqueness against files on disk and files in namelist (files that WILL be on disk)
+			newname = core.get_unused_file_name(os.path.join(startpath, newname), namelist=all_new_names)
 			# now dest path is guaranteed unique against other existing files & other proposed name changes
 			all_new_names.add(newname.lower())
+			# make the path no longer absolute: undo adding "startpath" above
+			newname = os.path.relpath(newname, startpath)
 			p.newname = newname
 	
 	# =========================================================================================================

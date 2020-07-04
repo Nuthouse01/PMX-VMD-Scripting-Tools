@@ -298,32 +298,47 @@ def prompt_user_filename(extensions_in: str) -> str:
 MY_FILEPROMPT_FUNC = prompt_user_filename
 
 def get_clean_basename(initial_name: str) -> str:
-	# remove extension and all folders from a file name
+	"""
+	Remove extension and all folders from a file name: D:/docs/user/mmd/whatever/mikumodel.pmx -> mikumodel
+	:param initial_name: input path, abs or relative
+	:return: stripped path
+	"""
 	return path.splitext(path.basename(initial_name))[0]
 
 def get_unused_file_name(initial_name: str, namelist=None) -> str:
+	"""
+	Given a desired filepath, generate a path that is guaranteed to be unused & safe to write to.
+	Append integers to the end of the basename until it passes.
+	Often it doesn't need to append anything and returns initial_name unmodified.
+	:param initial_name: desired file path, absolute or relative
+	:param namelist: optional list/set of forbidden names
+	:return: same file path as initial_name, but with integers appended until it becomes unique (if needed)
+	"""
 	# if namelist is given, check against namelist instead of what's on the disk... assume namelist contains all lowercase names
-	# return a name that is unused, might be the same one passed in.
-	# given an initial name, see if it is valid to use. if not, keep appending numbers until you find a name that is unused.
 	basename, extension = path.splitext(initial_name)
-	test_name = basename + extension
+	test_name = basename + extension  # first, try it without adding any numbers
 	for append_num in range(2, 1000):
-		if namelist is None and not path.exists(test_name):
-			# if test_name doesn't exist, then its a good name
-			return test_name
-		elif namelist is not None and test_name.lower() not in [n.lower() for n in namelist]:
-			# if test_name isn't in the list (case-insensitive matching), then its a good name
+		if not path.exists(test_name) and ((namelist is None) or (test_name.lower() not in [n.lower() for n in namelist])):
+			# if test_name doesn't exist, AND it isn't in the list (case-insensitive matching), then its a good name
 			return test_name
 		else:
-			test_name = basename + str(append_num) + extension
+			test_name = basename + str(append_num) + extension  # each future test_name has a number inserted in it
 	# if it hits here, it tried 1,000 file names and none of them worked
 	MY_PRINT_FUNC("Err: unable to find unused variation of '%s' for file-write" % initial_name)
 	raise RuntimeError()
 
 def get_persistient_storage_path(filename="") -> str:
-	# for writing to the "appdata" directory to preserve info between multiple runs of the script, from any location
+	"""
+	Get the path to a storage location that will persist between runs, usually in APPDATA folder.
+	If not given a filename, return the path to the folder.
+	If given a filename, and the file does not exist, create it empty & return the path to this new file.
+	If the file does exist, return the path to the existing file.
+	:param filename: filename within the persistient storage directory
+	:return: absolute file path to the persitient directory, or the file within it
+	"""
+	# this is the name of my "app"
 	appname = "nuthouse01_mmd_tools"
-	# build the appropriate path
+	# build the appropriate path for windows or unix
 	if platform == 'win32':
 		appdata = path.join(getenv('APPDATA'), appname)
 	else:
