@@ -563,7 +563,7 @@ def parse_vmd_bonemorphdicts(boneframes: list, morphframes: list, moreinfo=False
 	# 1, ensure frames are in sorted order
 	boneframes_sorted = sorted(boneframes, key=core.get2nd)
 	morphframes_sorted = sorted(morphframes, key=core.get2nd)
-	boneset = set()  # as i walk forward in time, this is the set of everything that has been used so far
+	boneset = set()  # set of everything that exists, used or not
 	morphset = set()
 	# 2, iterate over items and count all instances except first if first has no value
 	for bone in boneframes_sorted:
@@ -571,19 +571,17 @@ def parse_vmd_bonemorphdicts(boneframes: list, morphframes: list, moreinfo=False
 		# f = bone[1]
 		# xp, yp, zp = bone[2:5]
 		# xrot, yrot, zrot = bone[5:8]
-		if bone[0] not in boneset:  # if this has not been used before,
+		boneset.add(bone[0])
+		if bone[0] not in bonedict:  # if this has not been used before,
 			if bone[2:5] == [0, 0, 0] and bone[5:8] == [0.0, 0.0, 0.0]:  # if it is not used now,
 				continue  # do not count it.
-			else:  # if it is used now,
-				boneset.add(bone[0])  # add it and count it	
-		core.increment_occurance_dict(bonedict, bone[0])  # otherwise, count it.
+		core.increment_occurance_dict(bonedict, bone[0])  # if it has been used before or is used now, count it.
 	for morph in morphframes_sorted:
-		if morph[0] not in morphset:  # if this has not been used before,
+		morphset.add(morph[0])
+		if morph[0] not in morphdict:  # if this has not been used before,
 			if morph[2] == 0.0:  # if it is not used now,
 				continue  # do not count it.
-			else:  # if it is used now,
-				morphset.add(morph[0])  # add it and count it	
-		core.increment_occurance_dict(morphdict, morph[0])  # otherwise, count it.
+		core.increment_occurance_dict(morphdict, morph[0])  # if it has been used before or is used now, count it.
 	# 3, if there are any "used" items then print a statement saying so
 	if len(bonedict) > 0:
 		if moreinfo: core.MY_PRINT_FUNC("...unique bones, used/total = %d / %d" % (len(bonedict), len(boneset)))
