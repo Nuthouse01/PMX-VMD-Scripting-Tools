@@ -50,7 +50,7 @@ This will scale the strength/magnitude of a vertex, UV, or bone morph by a speci
 ##### vmd_armtwist_insert.py
 Some models have "armtwist" and "wristtwist" bones, but almost no VMD dances actually use them. If you twist a model's arm bone around the axis of the arm (the local X-axis) it will cause ugly pinching/tearing at the joint, but if you do that same motion with the armtwist bone instead, the pinching/tearing will not happen. This script does some very clever math to extract the local X-axis rotation from the arm bones and elbow bones and transfer it to the armtwist bones instead, totally fixing the pinching/tearing problem! This operation must be done separately for each model/dance pair.
 
-##### vmd_convert_tool.py
+##### convert_vmd_to_txt.py
 This tool is for converting VMD (Vocaloid Motion Data) files from their packed binary form to a human-readable and human-editable text form, and vice versa. This can allow 3rd-party scripts to perform procedural edits on the VMD data while it is in text format, such as (for example) constraining certain bones to a desired max range of motion, and then converting it back to VMD form for use in MikuMikuDance. Or it can be used to modify the names of the bones/morphs that the VMD is trying to control, to customize it to work better with a specific model.
 
 ##### make_ik_from_vmd.py

@@ -565,8 +565,9 @@ def convert_vmd_to_txt(input_filename, moreinfo=True):
 	return None
 
 helptext = '''=================================================
-vmd_convert_tool:
+convert_vmd_to_txt:
 This tool is for converting VMD files to and from human-readable text form.
+VMD -> TXT and TXT -> VMD are both supported.
 This supports all types of VMD frame data: bones, morphs, camera, lighting, shadow, IK/disp.
 That means this tool supports literally ALL types of VMD files: dance, cam, or facials.
 The text output file is arranged as valid CSV (comma-separated value) format, so you can technically change the file extension and load it into Microsoft Excel or whatever. But Excel doesn't properly display the Japanese characters so this is not recommended.
