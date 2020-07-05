@@ -59,9 +59,9 @@ def main(moreinfo=True):
 	# modelname_en = pmx[0][2]
 	
 	# prompt VMD file name
-	core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
+	core.MY_PRINT_FUNC("Please enter name of VMD motion or VPD pose file to check compatability with:")
 	input_filename = core.MY_FILEPROMPT_FUNC(".vmd .vpd")
-	if input_filename.lower().endswith(".vmd"):
+	if not input_filename.lower().endswith(".vpd"):
 		# the actual VMD part isn't even used, only bonedict and morphdict
 		vmd, bonedict, morphdict = vmdlib.read_vmd(input_filename, getdict=True, moreinfo=moreinfo)
 	else:
