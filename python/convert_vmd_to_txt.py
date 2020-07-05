@@ -494,7 +494,7 @@ def read_vmdtext(vmdtext_filename: str) -> list:
 	# version+modelname, bonelist, morphlist, camlist, lightlist, shadowlist, ikdisplist
 	return [A, B, C, D, E, F, G]
 
-def write_vmdtext(nicelist: list, vmdtext_filename: str) -> None:
+def write_vmdtext(vmdtext_filename: str, nicelist: list) -> None:
 	# assume the output filename has already been validated as unused, etc
 	core.MY_PRINT_FUNC("Begin formatting VMD-as-text file '%s'" % vmdtext_filename)
 	
@@ -525,27 +525,40 @@ def write_summary_dicts(bonedict: dict, morphdict: dict, summary_filename: str) 
 ########################################################################################################################
 
 def convert_txt_to_vmd(input_filename, moreinfo=True):
+	"""
+	Read a VMD-as-text file from disk, convert it, and write to disk as a VMD motion file.
+	The output will have the same path and basename, but the opposite file extension.
+	:param input_filename: filepath to input vmd, absolute or relative to CWD
+	:param moreinfo: default false. if true, get extra printouts with more info about stuff.
+	"""
 	# read the VMD-as-text into the nicelist format, all in one function
 	vmd_nicelist = read_vmdtext(input_filename)
 	
 	# identify an unused filename for writing the output
 	dumpname = core.get_unused_file_name(input_filename[0:-4] + ".vmd")
-	# write the output VMD-as-text file
+	
+	# write the output VMD file
 	vmdlib.write_vmd(dumpname, vmd_nicelist, moreinfo=moreinfo)
 	
 	# done!
 	return None
 
 
-def convert_vmd_to_txt(input_filename, moreinfo=True):
+def convert_vmd_to_txt(input_filename: str, moreinfo=True) -> None:
+	"""
+	Read a VMD motion file from disk, convert it, and write to disk as a text file.
+	The output will have the same path and basename, but the opposite file extension.
+	See 'README.txt' for more details about VMD-as-text output format.
+	:param input_filename: filepath to input vmd, absolute or relative to CWD
+	:param moreinfo: default false. if true, get extra printouts with more info about stuff.
+	"""
 	# read the entire VMD, all in this one function
 	# also create the bonedict & morphdict
 	vmd_nicelist, bonedict, morphdict = vmdlib.read_vmd(input_filename, getdict=True, moreinfo=moreinfo)
-	
 	# identify an unused filename for writing the output
 	dumpname = core.get_unused_file_name(input_filename[0:-4] + filestr_txt)
 	# write the output VMD-as-text file
-	write_vmdtext(vmd_nicelist, dumpname)
+	write_vmdtext(dumpname, vmd_nicelist)
 	
 	#####################################
 	# summary file:
@@ -574,19 +587,21 @@ The text output file is arranged as valid CSV (comma-separated value) format, so
 See 'README.txt' for more details about output format.
 
 This takes as input either a VMD file or a TXT file produced by this tool.
-The output will have the same basename, but the opposite file extension.
+The output will have the same path and basename, but the opposite file extension.
 '''
 
 def main(moreinfo=False):
 	# prompt for "convert text -> VMD" or "VMD -> text"
+	core.MY_PRINT_FUNC("For VMD->TXT, please enter the name of a .vmd file.\nFor TXT->VMD, please enter the name of a .txt file.")
 	input_filename = core.MY_FILEPROMPT_FUNC(".vmd .txt")
 	
-	if input_filename.lower().endswith(".vmd"):
+	if input_filename.lower().endswith((".vmd", ".vmd.bak")):
 		# activate correct function
 		convert_vmd_to_txt(input_filename, moreinfo=moreinfo)
 	else:
 		# activate correct function
 		convert_txt_to_vmd(input_filename, moreinfo=moreinfo)
+	core.MY_PRINT_FUNC("Done!")
 	return None
 	
 ########################################################################################################################

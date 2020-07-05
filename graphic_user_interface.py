@@ -5,8 +5,6 @@
 # pyinstaller --onefile --noconsole graphic_user_interface.py
 
 
-# TODO: error wrappers in PMX parser? ugh
-
 # to get better GUI responsiveness, I need to launch the parser and processing functions in separate threads.
 # this causes the GUI progress updates to look all flickery and unpleasant... but its worth it.
 import threading
@@ -30,6 +28,7 @@ try:
 	from python import file_translate_names
 	from python import vmd_armtwist_insert
 	from python import convert_vmd_to_txt
+	from python import convert_vpd_to_vmd
 	from python import model_compatability_check
 except ImportError as eee:
 	print(eee.__class__.__name__, eee)
@@ -39,7 +38,7 @@ except ImportError as eee:
 	exit()
 	convert_vmd_to_txt = pmx_overall_cleanup = file_sort_textures = model_compatability_check = None
 	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = pmx_arm_ik_addremove = None
-	core = morph_invert = morph_hide = morph_scale = file_translate_names = None
+	core = morph_invert = morph_hide = morph_scale = file_translate_names = convert_vpd_to_vmd = None
 
 
 FILE_EXTENSION_MAP = {
@@ -236,6 +235,7 @@ class Application(tk.Frame):
 			("model_compatability_check.py",     model_compatability_check.helptext,     model_compatability_check.main),
 			("vmd_armtwist_insert.py",           vmd_armtwist_insert.helptext,           vmd_armtwist_insert.main),
 			("convert_vmd_to_txt.py",            convert_vmd_to_txt.helptext,            convert_vmd_to_txt.main),
+			("convert_vpd_to_vmd.py",            convert_vpd_to_vmd.helptext,            convert_vpd_to_vmd.main),
 			("make_ik_from_vmd.py",              make_ik_from_vmd.helptext,              make_ik_from_vmd.main),
 			("pmx_arm_ik_addremove.py",          pmx_arm_ik_addremove.helptext,          pmx_arm_ik_addremove.main),
 			("pmx_list_bone_morph_names.py",     pmx_list_bone_morph_names.helptext,     pmx_list_bone_morph_names.main),
