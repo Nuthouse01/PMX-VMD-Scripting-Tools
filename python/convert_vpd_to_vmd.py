@@ -44,7 +44,8 @@ def convert_vpd_to_vmd(vpd_path: str, moreinfo=True) -> None:
 	:param moreinfo: default false. if true, get extra printouts with more info about stuff.
 	"""
 	# read the VPD into memory as a VMD object
-	vmd = vpdlib.read_vpd(vpd_path)
+	vmd = vpdlib.read_vpd(vpd_path, moreinfo=moreinfo)
+	core.MY_PRINT_FUNC("")
 	# identify an unused filename for writing the output
 	vmd_outpath = core.get_unused_file_name(vpd_path[0:-4] + ".vmd")
 	# write the output VMD file
@@ -63,10 +64,11 @@ def convert_vmd_to_vpd(vmd_path: str, moreinfo=True) -> None:
 	"""
 	# read the entire VMD, all in this one function
 	vmd = vmdlib.read_vmd(vmd_path, moreinfo=moreinfo)
+	core.MY_PRINT_FUNC("")
 	# identify an unused filename for writing the output
 	vpd_outpath = core.get_unused_file_name(vmd_path[0:-4] + ".vpd")
 	# write the output VPD file
-	vpdlib.write_vpd(vpd_outpath, vmd)
+	vpdlib.write_vpd(vpd_outpath, vmd, moreinfo=moreinfo)
 	# done!
 	return None
 
@@ -82,7 +84,8 @@ The output will have the same path and basename, but the opposite file extension
 
 def main(moreinfo=False):
 	# prompt for "convert text -> VMD" or "VMD -> text"
-	core.MY_PRINT_FUNC("For VPD->VMD, please enter the name of a .vpd file.\nFor VMD->VPD, please enter the name of a .vmd file.")
+	core.MY_PRINT_FUNC("For VPD->VMD, please enter the name of a .vpd file.\nOr for VMD->VPD, please enter the name of a .vmd file.")
+	core.MY_PRINT_FUNC("")
 	input_filename = core.MY_FILEPROMPT_FUNC(".vpd .vmd")
 	
 	if input_filename.lower().endswith(".vpd"):

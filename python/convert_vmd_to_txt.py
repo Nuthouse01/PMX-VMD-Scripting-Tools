@@ -462,10 +462,11 @@ def read_vmdtext(vmdtext_filename: str) -> list:
 	# also check that headers are where they should be and each line has the proper number of items on it
 	# return nicelist = [header, modelname, bone_list, morph_list, cam_list, light_list, shadow_list, ikdisp_list]
 	
-	core.MY_PRINT_FUNC("Begin reading VMD-as-text file '%s'" % vmdtext_filename)
+	cleanname = core.get_clean_basename(vmdtext_filename) + ".txt"
+	core.MY_PRINT_FUNC("Begin reading VMD-as-text file '%s'" % cleanname)
 	vmdtext_rawlist = core.read_file_to_csvlist(vmdtext_filename)
 	core.MY_PRINT_FUNC("...total size   = %s lines" % len(vmdtext_rawlist))
-	core.MY_PRINT_FUNC("Begin parsing VMD-as-text file '%s'" % vmdtext_filename)
+	core.MY_PRINT_FUNC("Begin parsing VMD-as-text file '%s'" % cleanname)
 	
 	global readfrom_line
 	# set this to zero just in case
@@ -489,22 +490,23 @@ def read_vmdtext(vmdtext_filename: str) -> list:
 		core.MY_PRINT_FUNC("Warning: there are unsupported trailing lines on the end of the file", readfrom_line,
 			  len(vmdtext_rawlist))
 	
-	core.MY_PRINT_FUNC("Done parsing VMD-as-text file '%s'" % vmdtext_filename)
+	core.MY_PRINT_FUNC("Done parsing VMD-as-text file '%s'" % cleanname)
 	# stuff to return:
 	# version+modelname, bonelist, morphlist, camlist, lightlist, shadowlist, ikdisplist
 	return [A, B, C, D, E, F, G]
 
 def write_vmdtext(vmdtext_filename: str, nicelist: list) -> None:
 	# assume the output filename has already been validated as unused, etc
-	core.MY_PRINT_FUNC("Begin formatting VMD-as-text file '%s'" % vmdtext_filename)
+	cleanname = core.get_clean_basename(vmdtext_filename) + ".txt"
+	core.MY_PRINT_FUNC("Begin formatting VMD-as-text file '%s'" % cleanname)
 	
 	rawlist = format_nicelist_as_rawlist(nicelist)
 	
 	# done formatting!
-	core.MY_PRINT_FUNC("Begin writing VMD-as-text file '%s'" % vmdtext_filename)
+	core.MY_PRINT_FUNC("Begin writing VMD-as-text file '%s'" % cleanname)
 	core.MY_PRINT_FUNC("...total size   = %s lines" % len(rawlist))
 	core.write_csvlist_to_file(vmdtext_filename, rawlist)
-	core.MY_PRINT_FUNC("Done writing VMD-as-text file '%s'" % vmdtext_filename)
+	core.MY_PRINT_FUNC("Done writing VMD-as-text file '%s'" % cleanname)
 	return None
 
 def write_summary_dicts(bonedict: dict, morphdict: dict, summary_filename: str) -> None:
@@ -533,10 +535,9 @@ def convert_txt_to_vmd(input_filename, moreinfo=True):
 	"""
 	# read the VMD-as-text into the nicelist format, all in one function
 	vmd_nicelist = read_vmdtext(input_filename)
-	
+	core.MY_PRINT_FUNC("")
 	# identify an unused filename for writing the output
 	dumpname = core.get_unused_file_name(input_filename[0:-4] + ".vmd")
-	
 	# write the output VMD file
 	vmdlib.write_vmd(dumpname, vmd_nicelist, moreinfo=moreinfo)
 	
@@ -555,6 +556,7 @@ def convert_vmd_to_txt(input_filename: str, moreinfo=True) -> None:
 	# read the entire VMD, all in this one function
 	# also create the bonedict & morphdict
 	vmd_nicelist, bonedict, morphdict = vmdlib.read_vmd(input_filename, getdict=True, moreinfo=moreinfo)
+	core.MY_PRINT_FUNC("")
 	# identify an unused filename for writing the output
 	dumpname = core.get_unused_file_name(input_filename[0:-4] + filestr_txt)
 	# write the output VMD-as-text file
@@ -592,7 +594,8 @@ The output will have the same path and basename, but the opposite file extension
 
 def main(moreinfo=False):
 	# prompt for "convert text -> VMD" or "VMD -> text"
-	core.MY_PRINT_FUNC("For VMD->TXT, please enter the name of a .vmd file.\nFor TXT->VMD, please enter the name of a .txt file.")
+	core.MY_PRINT_FUNC("For VMD->TXT, please enter the name of a .vmd file.\nOr for TXT->VMD, please enter the name of a .txt file.")
+	core.MY_PRINT_FUNC("")
 	input_filename = core.MY_FILEPROMPT_FUNC(".vmd .txt")
 	
 	if input_filename.lower().endswith((".vmd", ".vmd.bak")):

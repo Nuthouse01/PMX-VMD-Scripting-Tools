@@ -54,8 +54,6 @@ f4_re = re.compile(f4_pattern)
 # primary functions: read_vpd() and write_vpd()
 ########################################################################################################################
 
-# TODO: various print statements like "beginning parsing" or "done parsing" etc
-
 def read_vpd(vpd_filepath: str, moreinfo=False) -> list:
 	"""
 	Read a VPD text file and convert it to a VMD object with all boneframes and morphframes at time=0.
@@ -63,6 +61,9 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> list:
 	:param moreinfo: if true, get extra printouts with more info about stuff
 	:return: VMD object
 	"""
+	cleanname = core.get_clean_basename(vpd_filepath) + ".vpd"
+	core.MY_PRINT_FUNC("Begin reading VPD file '%s'" % cleanname)
+	
 	# read textfile to linelist, no CSV fields to untangle here
 	lines = core.read_txtfile_to_list(vpd_filepath, use_jis_encoding=True)
 	
@@ -217,6 +218,8 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> list:
 	# builds object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
 	vmd_retme = [[2, temp_title], vmd_boneframes, vmd_morphframes, list(), list(), list(), list()]
 	
+	core.MY_PRINT_FUNC("Done reading VPD file '%s'" % cleanname)
+	
 	return vmd_retme
 
 def write_vpd(vpd_filepath: str, vmd: list, moreinfo=False) -> None:
@@ -226,7 +229,9 @@ def write_vpd(vpd_filepath: str, vmd: list, moreinfo=False) -> None:
 	:param vmd: input VMD object
 	:param moreinfo: if true, get extra printouts with more info about stuff
 	"""
-	
+	cleanname = core.get_clean_basename(vpd_filepath) + ".vpd"
+	core.MY_PRINT_FUNC("Begin writing VPD file '%s'" % cleanname)
+
 	# first, lets gather the relevant boneframes & morphframes
 	pose_bones, otherbones = core.my_list_partition(vmd[1], lambda b: b[1] == 0)
 	pose_morphs, othermorphs = core.my_list_partition(vmd[2], lambda b: b[1] == 0)
@@ -269,7 +274,8 @@ def write_vpd(vpd_filepath: str, vmd: list, moreinfo=False) -> None:
 	
 	# ok, now i'm done building the printlist! now actually write it!
 	core.write_list_to_txtfile(vpd_filepath, printlist, use_jis_encoding=True)
-	
+	core.MY_PRINT_FUNC("Done writing VPD file '%s'" % cleanname)
+
 	return None
 
 
