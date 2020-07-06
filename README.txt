@@ -3,6 +3,8 @@
 PMX/VMD Scripting Tools README
 Created by Nuthouse01 - 06/27/2020 - v4.50
 
+If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!
+
 ###### Legal:
 This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause. You are permitted to examine and modify the code as you see fit, but I make no guarantees about the safety or quality of the result.
 I take no responsibility for how you use this code: any damages, or copyright violations or other illegal activity are completely the fault of the user. These tools only gives you "the ability to read/edit", what you do with that ability is not my business and not my fault.
