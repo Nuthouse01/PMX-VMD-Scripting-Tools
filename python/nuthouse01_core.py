@@ -7,6 +7,7 @@
 
 import csv
 import math
+import re
 import struct
 from os import path, listdir, getenv, makedirs
 from sys import platform, version_info, version
@@ -872,6 +873,10 @@ UNPACKER_ENCODING = "utf8"
 UNPACKER_FAILED_TRANSLATE_DICT = {}
 # flag to indicate whether the last decoding needed escaping or not, cuz returning as a tuple is ugly
 UNPACKER_FAILED_TRANSLATE_FLAG = False
+# simple regex to find char "t" along with as many digits appear in front of it as possible
+t_fmt_pattern = r"\d*t"
+t_fmt_re = re.compile(t_fmt_pattern)
+
 
 # why do things with accessor functions? ¯\_(ツ)_/¯ cuz i want to
 def reset_unpack():
@@ -890,13 +895,18 @@ def print_failed_decodes():
 		MY_PRINT_FUNC(UNPACKER_FAILED_TRANSLATE_DICT)
 		
 def decode_bytes_with_escape(r: bytearray) -> str:
+	"""
+	Turns bytes into a string, with some special quirks. Reversible opposite of encode_string_with_escape().
+	In VMDs the text fields are truncated to a set # of bytes, so it's possible that they might be cut off
+	mid multibyte char, and therefore be undecodeable. Instead of losing this data, I decode what I can and
+	the truncated char is converted to UNPACKER_ESCAPE_CHAR followed by hex digits that represent the remaining
+	byte. It's not useful to humans, but it is better than simply losing the data.
+	TODO: get example
+	All cases I tested require at most 1 escape char, but just to be safe it recursively calls as much as needed.
+	:param r: bytearray object which represents a string through encoding UNPACKER_ENCODING
+	:return: decoded string, possibly ending with escape char and hex digits
+	"""
 	global UNPACKER_FAILED_TRANSLATE_FLAG
-	# reverisible opposite of encode_string_with_escape()
-	# now i have r, a bytearray which represents a string
-	# want to convert it to actual string type (note decoding scheme varies depending on application)
-	# if decoding from VMD, it's possible that it might be cut off mid multibyte char, and therefore undecodeable
-	# undecodeable trailing bytes are escaped with a double-dagger and then represented with hex digits
-	# all cases I tested require at most 1 escape char, but just to be safe recursively call until it succeeds
 	try:
 		s = r.decode(UNPACKER_ENCODING)				# try to decode the whole string
 		return s
@@ -908,9 +918,17 @@ def decode_bytes_with_escape(r: bytearray) -> str:
 		return s
 
 def encode_string_with_escape(a: str) -> bytearray:
-	# reverisible opposite of decode_bytes_with_escape()
-	# now i have "a", a string to be converted to a bytearray, possibly containing escape char(s)
-	# all cases I tested require at most 1 escape char, but just to be safe recursively call until it succeeds
+	"""
+	Turns a string into bytes, with some special quirks. Reversible opposite of decode_string_with_escape().
+	In VMDs the text fields are truncated to a set # of bytes, so it's possible that they might be cut off
+	mid multibyte char, and therefore be undecodeable. Instead of losing this data, I decode what I can and
+	the truncated char is converted to UNPACKER_ESCAPE_CHAR followed by hex digits that represent the remaining
+	byte. It's not useful to humans, but it is better than simply losing the data.
+	TODO: get example
+	All cases I tested require at most 1 escape char, but just to be safe it recursively calls as much as needed.
+	:param a: string that might contain my custom escape sequence
+	:return: bytearray after encoding
+	"""
 	try:
 		if len(a) > 3:									# is it long enough to maybe contain an escape char?
 			if a[-3] == UNPACKER_ESCAPE_CHAR:			# check if 3rd from end is an escape char
@@ -925,71 +943,62 @@ def encode_string_with_escape(a: str) -> bytearray:
 		try:
 			return bytearray(new_a, UNPACKER_ENCODING)	# no escape char: convert from str to bytearray the standard way
 		except UnicodeEncodeError as e:
-			# MY_PRINT_FUNC(e.__class__.__name__, e)
-			# MY_PRINT_FUNC("encode_string_with_escape")
+			# to reduce redundant printouts, all the info I wanna print is put into RuntimeError and caught somewhere higher up
 			newerrstr = "encode_string_with_escape: chr='%s', str='%s', encoding=%s, err=%s" % (a[e.start:e.end], a, e.encoding, e.reason),
-			# newerrstr = "err=" + str(e) + "\nstr=" + str(a) + "\nencoding=" + str(UNPACKER_ENCODING)
 			newerr = RuntimeError(newerrstr)
 			raise newerr
 
-def my_t_format_partitioning(fmt:str) -> (tuple, None):
-	# return the indexes within fmt string that produce a slice containing exactly the "t" atom and any preceding numbers
-	# if the "t" atom does not exist, return None
-	t_pos_start = fmt.find("t")
-	if t_pos_start == -1:
-		# if no "t" atom is found, return None
-		return None
-	else:
-		t_pos_end = t_pos_start + 1
-		# find the t, then count left until i find non-numeric character or reach beginning of string
-		while t_pos_start > 0:
-			# if it becomes 0, then break
-			if fmt[t_pos_start-1].isnumeric():
-				# if the char before the current start is numeric, move the current start to include that number
-				t_pos_start -= 1
-			else:
-				# if it is not numeric we don't want it
-				break
-		return t_pos_start, t_pos_end
 
-def my_unpack(fmt:str, raw:bytearray, top=True):
-	# recursively! handle the format string until it's all consumed
-	# returns a list of values, or if there is only 1 value it automatically un-listifies it
-	t_slice_idx = my_t_format_partitioning(fmt)
-	if t_slice_idx is None:
-		# if fmt string doesn't contain "t" atoms, no need to handle strings, give it to default unpacker
-		retlist = unpack_other(fmt, raw)
-	else:
-		# if fmt string does contain "t" atoms, then need to handle those & return as strings, not byte arrays
-		fmt_before = fmt[:t_slice_idx[0]]
-		fmt_t = fmt[t_slice_idx[0]:t_slice_idx[1]]
-		fmt_after = fmt[t_slice_idx[1]:]
-		# before definitely does not contain t: parse as normal & return value
-		if fmt_before == "" or fmt_before.isspace():
-			before_ret = []		# if fmt is emtpy then don't attempt to unpack
+def my_unpack(fmt:str, raw:bytearray) -> (list, str, int, float, bool):
+	"""
+	Use a given format string to convert the next section of a binary file bytearray into type-correct variables.
+	Uses global var UNPACKER_READFROM_BYTE to know where to start unpacking next.
+	Very similar to python struct.unpack() function, except: 1) automatically tracks where it has unpacked & where it
+	should unpack next via the size of the format strings, 2) if exactly 1 variable would be unpacked it is
+	automatically de-listed and returned naked, 3) new atom type "t" is supported and indicates auto-length strings,
+	4) new atom type "##t" is supported and indicates fixed-length strings.
+	:param fmt: string-type format argument very similar to formats for python "struct" lib
+	:param raw: bytearray being walked & unpacked
+	:return: if fmt specifies several variables, return all as list. if exactly one, return the variable without list wrapper.
+	"""
+	retlist = []
+	startfrom = 0
+	while startfrom < len(fmt):  # usually just gonna loop until it hits "break"
+		t_match = t_fmt_re.search(fmt, startfrom)
+		if t_match is None:
+			# if fmt string doesn't contain "t" atoms, no need to handle strings, give it to default unpacker
+			other_ret = _unpack_other(fmt[startfrom:], raw)
+			retlist.extend(other_ret)
+			break
 		else:
-			before_ret = unpack_other(fmt_before, raw)
-		# the section with the text gets specially handled
-		t_ret = unpack_text(fmt_t, raw)
-		# after might still contain another t, needs further parsing
-		if fmt_after == "" or fmt_after.isspace():
-			after_ret = []		# if fmt is emtpy then don't attempt to unpack
-		else:
-			after_ret = my_unpack(fmt_after, raw, top=False)
-			
-		# concatenate the 3 returned lists (some might be empty, but they will all definitely be lists)
-		retlist = before_ret + t_ret + after_ret
-	# if it has length of 1, and about to return the final result, then de-listify it
-	if top and len(retlist) == 1:
-		return retlist[0]
-	else:
-		return retlist
+			# fmt_before definitely does not contain t: parse as normal & return value
+			# fmt_before might be empty or blank, but that's handled inside the func
+			fmt_before = fmt[startfrom:t_match.start()]
+			# fmt_t contains a "t" atom, guaranteed not blank, it gets specially handled
+			fmt_t = fmt[t_match.start():t_match.end()]
+			# now unpack the text separate from the non-text
+			before_ret = _unpack_other(fmt_before, raw)
+			t_ret = _unpack_text(fmt_t, raw)
+			# concat the returned list+string (some might be empty, but they will all definitely be lists)
+			retlist.extend(before_ret)
+			retlist.append(t_ret)
+			# repeat the process starting from the section after the "t" atom
+			startfrom = t_match.end()
+	# if it has length of 1, then de-listify it
+	if len(retlist) == 1: return retlist[0]
+	else:                 return retlist
 
-def unpack_other(fmt:str, raw:bytearray) -> list:
-	# takes format and sequence of bytes, format is guaranteed to not contain the atom "t"
-	# returns a list of values, even if its just one value its still in a list
+def _unpack_other(fmt:str, raw:bytearray) -> list:
+	"""
+	Internal use only.
+	Handle unpacking of all types other than "t" atoms. "fmt" is guaranteed to not contain any "t" atoms.
+	:param fmt: string-type format argument very similar to formats for python "struct" lib
+	:param raw: bytearray being walked & unpacked
+	:return: list of all variables that were unpacked corresponding to fmt
+	"""
 	global UNPACKER_READFROM_BYTE
-	r = ()
+	if fmt == "" or fmt.isspace():
+		return []  # if fmt is emtpy then don't attempt to unpack
 	try:
 		autofmt = "<" + fmt
 		r = struct.unpack_from(autofmt, raw, UNPACKER_READFROM_BYTE)
@@ -1004,7 +1013,14 @@ def unpack_other(fmt:str, raw:bytearray) -> list:
 	# convert from tuple to list
 	return list(r)
 
-def unpack_text(fmt:str, raw:bytearray) -> list:
+def _unpack_text(fmt:str, raw:bytearray) -> str:
+	"""
+	Internal use only.
+	Handle unpacking of "t" atoms. "fmt" is guaranteed to contain only a "t" atom, nothing else.
+	:param fmt: string-type format argument very similar to formats for python "struct" lib
+	:param raw: bytearray being walked & unpacked
+	:return: string
+	"""
 	global UNPACKER_READFROM_BYTE
 	global UNPACKER_FAILED_TRANSLATE_DICT
 	global UNPACKER_FAILED_TRANSLATE_FLAG
@@ -1044,57 +1060,73 @@ def unpack_text(fmt:str, raw:bytearray) -> list:
 		UNPACKER_FAILED_TRANSLATE_FLAG = False
 		increment_occurance_dict(UNPACKER_FAILED_TRANSLATE_DICT, s)
 	# still need to return as a list for concatenation reasons
-	return [s]
+	return s
 
 def my_pack(fmt: str, args_in) -> bytearray:
-	# opposite of my_unpack()
-	# takes format and list of args (if given a single non-list argument, automatically converts it to a list)
-	# return a bytes object which should be appended onto a growing bytearray object
+	"""
+	Use a given format string to convert a list of args into the next section of a binary file bytearray.
+	Very similar to python struct.unpack() function, except: 1) if the input arg is not a list/tuple it is automatically
+	wrapped in a list, 2) new atom type "t" is supported and indicates auto-length strings, 3) new atom type "##t" is
+	supported and indicates fixed-length strings.
+	:param fmt: string-type format argument very similar to formats for python "struct" lib
+	:param args_in: list of variables to pack, or a single variable not inside a list
+	:return: bytearray representation of these args
+	"""
 	
 	if isinstance(args_in, list):
 		args = args_in						# if given list, pass thru unchanged
 	elif isinstance(args_in, tuple):
-		args = list(args_in)
+		args = list(args_in)				# if given tuple, make it a list
 	else:
-		args = [args_in]					# if given something other than a list, automatically convert it into a list
+		args = [args_in]					# if given lone arg, wrap it with a list
 	
-	# first search for "t"
-	t_slice_idx = my_t_format_partitioning(fmt)
-	if t_slice_idx is None:
-		# if fmt string doesn't contain "t" atoms, no need to handle strings, give it to default packer
-		return pack_other(fmt, args)
-	else:
-		# if fmt string does contain "t" atoms, then need to handle those specially
-		fmt_before = fmt[:t_slice_idx[0]]
-		fmt_t = fmt[t_slice_idx[0]:t_slice_idx[1]]
-		fmt_after = fmt[t_slice_idx[1]:]
-		# where is the string that corresponds to the "t" atom?
-		i = 0
-		for i in range(len(args)):
-			if isinstance(args[i], str):
-				break
-		args_before = args[:i]
-		args_t = args[i:i+1]
-		args_after = args[i+1:]
-		
-		# before definitely does not contain t: parse as normal & return value
-		if fmt_before == "" or fmt_before.isspace():
-			ret_before = bytearray()	# if fmt is emtpy then don't attempt to pack
+	retbytes = bytearray()
+	startfrom = 0
+	startfrom_args = 0
+	
+	while startfrom < len(fmt) and startfrom_args < len(args):  # usually just gonna loop until it hits "break"
+		t_match = t_fmt_re.search(fmt, startfrom)
+		if t_match is None:
+			# if fmt string doesn't contain "t" atoms, no need to handle strings, give it to default packer
+			ret_other = _pack_other(fmt[startfrom:], args[startfrom_args:])
+			retbytes += ret_other
+			break
 		else:
-			ret_before = pack_other(fmt_before, args_before)
-		# the section with the text gets specially handled
-		ret_t = pack_text(fmt_t, args_t)
-		# after might still contain another t, needs further parsing
-		if fmt_after == "" or fmt_after.isspace():
-			ret_after = bytearray()		# if fmt is emtpy then don't attempt to pack
-		else:
-			ret_after = my_pack(fmt_after, args_after)
+			# a t-atom exists, so find the string in "args" that corresponds to it
+			str_idx = -1  # the index within "args" of the string that corresponds to the "t" atom
+			for i in range(startfrom_args, len(args)):
+				if isinstance(args[i], str):
+					str_idx = i
+					break
+			if str_idx == -1:
+				raise RuntimeError("given format string references more strings than are found in args list")
+			# fmt_before definitely does not contain t: parse as normal & return value
+			# fmt_before might be empty or blank, but that's handled inside the func
+			fmt_before = fmt[startfrom:t_match.start()]
+			# fmt_t contains a "t" atom, guaranteed not blank, it gets specially handled
+			fmt_t = fmt[t_match.start():t_match.end()]
+			# pack the text separate from the non-text
+			ret_before = _pack_other(fmt_before, args[startfrom_args:str_idx])
+			ret_t = _pack_text(fmt_t, args[str_idx])
+			# accumulate the result
+			retbytes += ret_before
+			retbytes += ret_t
+			# repeat the process starting from the section after the "t" atom
+			startfrom = t_match.end()
+			startfrom_args = str_idx + 1
+			pass
+	return retbytes
 
-		# concatenate the 3 returned bytearrays (some might be empty, but they will all definitely be bytearrays)
-		retlist = ret_before + ret_t + ret_after
-		return retlist
-
-def pack_other(fmt: str, args: list) -> bytearray:
+def _pack_other(fmt: str, args: list) -> bytearray:
+	"""
+	Internal use only.
+	Handle packing of all types other than "t" atoms. "fmt" is guaranteed to not contain any "t" atoms.
+	:param fmt: string-type format argument very similar to formats for python "struct" lib
+	:param args: list filled with variables to pack
+	:return: bytearray representation of the args
+	"""
+	if not args or fmt == "" or fmt.isspace():
+		return bytearray()  # if fmt is emtpy or args is empty then don't attempt to pack
 	try:
 		b = struct.pack("<" + fmt, *args)	# now do the actual packing
 		return bytearray(b)
@@ -1106,11 +1138,16 @@ def pack_other(fmt: str, args: list) -> bytearray:
 		newerr = RuntimeError(newerrstr)
 		raise newerr
 
-def pack_text(fmt: str, args: list) -> bytearray:
-	# input fmt string is exactly either "t" or "#t" or "##t", etc
-	# input args list is list of exactly 1 string
+def _pack_text(fmt: str, args: str) -> bytearray:
+	"""
+	Internal use only.
+	Handle packing of "t" atoms. "fmt" is guaranteed to contain only a "t" atom, nothing else.
+	:param fmt: string-type format argument very similar to formats for python "struct" lib
+	:param args: string
+	:return: bytearray representation of the input string
+	"""
 	try:
-		n = encode_string_with_escape(args[0])		# convert str to bytearray
+		n = encode_string_with_escape(args)		# convert str to bytearray
 		if fmt == "t":			# auto-text
 			# "t" means "i ##s" where ##=i. convert to bytearray, measure len, replace t with "i ##s"
 			autofmt = "<i" + str(len(n)) + "s"
