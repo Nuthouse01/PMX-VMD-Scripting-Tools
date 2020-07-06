@@ -510,9 +510,14 @@ def translate_to_english(pmx, moreinfo=False):
 			google_results = google_translate([item.jp_old for item in translate_notdone])
 			# determine if each item passed or not, update the en_new and trans_type fields
 			for item, result in zip(translate_notdone, google_results):
-				# save the result regardless of pass/fail, it's the best I've got
-				item.en_new = result
-				if not translation_tools.needs_translate(result):
+				# determine whether it passed or failed
+				if translation_tools.needs_translate(result):
+					if ACCEPT_INCOMPLETE_RESULT:
+						item.en_new = result
+					else:
+						item.en_new = item.en_old
+					item.trans_type = -1
+				else:
 					item.en_new = result
 					item.trans_type = 4
 			# grab the newly-done items and move them to the done list
@@ -535,6 +540,12 @@ def translate_to_english(pmx, moreinfo=False):
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("Internet translate unexpectedly failed, attempting to recover...")
+			# for each in translate-notdone, set status to fail, set newname to oldname
+			for item in translate_notdone:
+				item.trans_type = -1
+				item.en_new = item.en_old
+			# append to translate_maps
+			translate_maps.extend(translate_notdone)
 	
 	###########################################
 	# done translating!!!!!
@@ -549,12 +560,12 @@ def translate_to_english(pmx, moreinfo=False):
 	type_google = 			temp
 	total_changed = int(newcommentsource != 0) + len(type_copy) + len(type_exact) + len(type_local) + len(type_google)
 	total_fields = len(translate_maps)
+	if type_fail:
+		# warn about any strings that failed translation
+		core.MY_PRINT_FUNC("Warning: %d items were unable to be translated by Google, try doing translation manually" % len(type_fail))
 	if total_changed == 0:
 		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
-	if type_fail:
-		# warn about any strings that failed translation
-		core.MY_PRINT_FUNC("Warning: %d items were unable to be translated by Google, try running translation again" % len(type_fail))
 		
 	###########################################
 	# next, apply!
@@ -582,8 +593,8 @@ def translate_to_english(pmx, moreinfo=False):
 		# now print the table of before/after/etc
 		# hide good/copyJP/exactmatch cuz those are uninteresting and guaranteed to be safe
 		# only show piecewise and google translations
-		# include 'fails' if the flag is true
-		maps_printme = [item for item in translate_maps if item.trans_type > 2 or (ACCEPT_INCOMPLETE_RESULT and item.trans_type == -1)]
+		# include 'fails' always
+		maps_printme = [item for item in translate_maps if item.trans_type > 2 or item.trans_type == -1]
 		if maps_printme:
 			# first, SORT THE LIST!
 			maps_printme.sort(key=lambda x: x.idx)
