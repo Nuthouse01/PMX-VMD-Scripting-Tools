@@ -40,11 +40,6 @@ PREFER_EXISTING_ENGLISH_NAME = True
 TRANSLATE_MODEL_COMMENT = False
 
 
-# if this is true, accept whatever Google trans returns, even if it has bad chars still in it
-# if this is false, and Google trans returns something with bad chars in it, retain the previous EN value
-ACCEPT_INCOMPLETE_RESULT = True
-
-
 # sometimes chinese translation gives better results than japanese translation
 # when false, force input to be interpreted as Japanese. When true, autodetect input language.
 GOOGLE_AUTODETECT_LANGUAGE = True
@@ -234,7 +229,7 @@ def _single_google_translate(jp_str: str) -> str:
 
 ################################################################################################################
 
-def easy_translate(jp, en, specific_dict=None):
+def easy_translate(jp:str, en:str, specific_dict=None) -> (str, int):
 	"""
 	attempt to translate a string using the 'easy' methods.
 	0: input already good.
@@ -262,12 +257,12 @@ def easy_translate(jp, en, specific_dict=None):
 	# if none of these pass, return nothing & type -1 to signfiy it is still in progress
 	return "", -1
 
-def google_translate(in_list, strategy=1):
+def google_translate(in_list:(list,str), strategy=1) -> (list,str):
 	"""
 	Take a list of strings & get them all translated by asking Google. Can use per-line strategy or new 'chunkwise' strategy.
 	:param in_list: list of JP or partially JP strings
 	:param strategy: 0=old per-line strategy, 1=new chunkwise strategy, 2=auto choose whichever needs less Google traffic
-	:return: list of strings almost guaranteed to be pure EN, but sometimes CN chars sneak in and confuse the translator
+	:return: list of strings probably pure EN, but sometimes odd unicode symbols show up
 	"""
 	input_is_str = isinstance(in_list, str)
 	if input_is_str: in_list = [in_list]  # force it to be a list anyway so I don't have to change my structure
@@ -307,12 +302,14 @@ def google_translate(in_list, strategy=1):
 	jp_chunks = list(jp_chunks)
 	localtrans_dict = dict()
 	# remove the chunks that can already be translated
-	# chunks are guaranteed to NOT be part of compound words, probably. so any exact matches with my words-dict should be valid!
+	# chunks are guaranteed to not be PART OF compound words, probably. but they are probably compound words themselves.
+	# so any exact matches with my words-dict should be valid!
 	jp_chunks_localtrans = translation_tools.piecewise_translate(jp_chunks, translation_tools.words_dict)
 	# results are chunk+trans: split into (where trans failed) (where trans passed)
 	# use "is_jp"->fail and not "needs_translate" so I am only sending actual JP stuff to Google and not unicode arrows or whatever
 	trans_fail, trans_pass = core.my_list_partition(zip(jp_chunks, jp_chunks_localtrans), lambda x: translation_tools.is_jp(x[1]))
-	for chunk, trans in trans_pass:  # add dict entries for the ones that passed
+	for chunk, trans in trans_pass:
+		# if it passed, no need to ask google what they mean cuz I already have a good translation
 		localtrans_dict[chunk] = trans
 	jp_chunks = [j[0] for j in trans_fail]  # rebuild the jp_chunks list for the ones that failed
 	
@@ -348,6 +345,8 @@ def google_translate(in_list, strategy=1):
 		print(google_dict)
 		
 		google_dict.update(localtrans_dict)  # add dict entries from things that succeeded localtrans
+		google_dict.update(translation_tools.symbols_dict)  # add various non-jp symbols i do know how to translate
+		# google_dict.update(translation_tools.words_dict)  # add the full-blown words dict to the chunk-translate results
 		# dict->list->sort->dict: sort the longest chunks first, VERY CRITICAL so things don't get undershadowed!!!
 		google_dict = dict(sorted(list(google_dict.items()), reverse=True, key=lambda x: len(x[0])))
 		
@@ -510,18 +509,15 @@ def translate_to_english(pmx, moreinfo=False):
 			google_results = google_translate([item.jp_old for item in translate_notdone])
 			# determine if each item passed or not, update the en_new and trans_type fields
 			for item, result in zip(translate_notdone, google_results):
-				# determine whether it passed or failed
+				# always accept the google result, pass or fail it's the best i've got
+				item.en_new = result
+				# determine whether it passed or failed for display purposes
+				# failure probably due to unusual geometric symbols, not due to japanese text
 				if translation_tools.needs_translate(result):
-					if ACCEPT_INCOMPLETE_RESULT:
-						item.en_new = result
-					else:
-						item.en_new = item.en_old
 					item.trans_type = -1
 				else:
-					item.en_new = result
 					item.trans_type = 4
 			# grab the newly-done items and move them to the done list
-			# translate_done2, translate_notdone = separate_notdone(translate_notdone)
 			translate_maps.extend(translate_notdone)
 			if TRANSLATE_MODEL_COMMENT and newcommentsource == -1:  # -1 = pending, 0 = did nothing, 4 = did something
 				# if i am going to translate the comment, but was unable to do it earlier, then do it now
@@ -540,7 +536,7 @@ def translate_to_english(pmx, moreinfo=False):
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("Internet translate unexpectedly failed, attempting to recover...")
-			# for each in translate-notdone, set status to fail, set newname to oldname
+			# for each in translate-notdone, set status to fail, set newname to oldname (so it won't change)
 			for item in translate_notdone:
 				item.trans_type = -1
 				item.en_new = item.en_old
@@ -558,11 +554,13 @@ def translate_to_english(pmx, moreinfo=False):
 	type_exact, temp = 		core.my_list_partition(temp, lambda x: x.trans_type == 2)
 	type_local, temp = 		core.my_list_partition(temp, lambda x: x.trans_type == 3)
 	type_google = 			temp
-	total_changed = int(newcommentsource != 0) + len(type_copy) + len(type_exact) + len(type_local) + len(type_google)
-	total_fields = len(translate_maps)
+	# number of things I could have translated
+	total_fields = len(translate_maps) + int(TRANSLATE_MODEL_COMMENT)
+	# number of things that weren't already good (includes changed and fail)
+	total_changed = total_fields - len(type_good) - int(newcommentsource != 0)
 	if type_fail:
 		# warn about any strings that failed translation
-		core.MY_PRINT_FUNC("Warning: %d items were unable to be translated by Google, try doing translation manually" % len(type_fail))
+		core.MY_PRINT_FUNC("WARNING: %d items were unable to be translated, try running the script again or doing translation manually." % len(type_fail))
 	if total_changed == 0:
 		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
@@ -573,9 +571,11 @@ def translate_to_english(pmx, moreinfo=False):
 	if TRANSLATE_MODEL_COMMENT and newcommentsource != 0:
 		pmx[0][4] = newcomment
 	# everything else: iterate over all entries, write when anything has type != 0
-	# even write when type=-1=fail (if enabled), because it's the best I've got
+	# even write when type=-1=fail, because it's the best I've got
+	# if its being translated thats cuz old_en is bad, so im not making it any worse
+	# failure probably due to unusual geometric symbols, not due to japanese text
 	for item in translate_maps:
-		if item.trans_type > 0 or (ACCEPT_INCOMPLETE_RESULT and item.trans_type == -1):
+		if item.trans_type > 0 or item.trans_type == -1:
 			if item.cat_id == 0:  # this is header-type
 				pmx[item.cat_id][item.idx] = item.en_new
 			else:  # this is anything else
@@ -592,11 +592,10 @@ def translate_to_english(pmx, moreinfo=False):
 		#########
 		# now print the table of before/after/etc
 		# hide good/copyJP/exactmatch cuz those are uninteresting and guaranteed to be safe
-		# only show piecewise and google translations
-		# include 'fails' always
+		# only show piecewise and google translations and fails
 		maps_printme = [item for item in translate_maps if item.trans_type > 2 or item.trans_type == -1]
 		if maps_printme:
-			# first, SORT THE LIST!
+			# first, SORT THE LIST! print items in PMXE order
 			maps_printme.sort(key=lambda x: x.idx)
 			maps_printme.sort(key=lambda x: x.cat_id)
 			# then, justify each column
@@ -613,7 +612,6 @@ def translate_to_english(pmx, moreinfo=False):
 			for args in zip(just_cat, just_idx, just_source, just_enold, just_ennew, just_jpold):
 				core.MY_PRINT_FUNC("{} {} {} || EN: {} --> {} || JP: {}".format(*args))
 				
-	
 	###########################################
 	# next, return!
 	return pmx, True

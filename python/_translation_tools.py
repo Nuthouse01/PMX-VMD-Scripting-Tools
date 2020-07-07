@@ -20,6 +20,7 @@ symbols_dict = {
 "╱": "/",  # x2571 "box drawing" section.
 "╲": "\\",  # x2572 "box drawing" section. NOTE backslash isn't MMD supported, find something better!
 "╳": "X",  # x2573 "box drawing" section.
+"×": "x",  # x0215 multiply symbol
 "↑": "^", # x2191, NOTE: backslashes work poorly so /\ doesn't work right
 "↓": "v", # x2193, NOTE: backslashes work poorly so \/ doesn't work right
 "→": "->", # x2192
@@ -31,7 +32,7 @@ symbols_dict = {
 "△": "^ open",  #x25b3   less common than above
 "∧": "^",  #x2227 "logical and"
 "∨": "V",  #x2228 "logical or"
-"〜": "~",  # x301C wave dash, not supported in shift_jis so it shouldn't be used often i hope. NOTE tilde isn't mmd supported, find something better!
+"〜": "~",  # x301C wave dash, not a "fullwidth tilde"
 "○": "o",  #x25cb
 "◯": "O",  #x25ef
 "〇": "O",  # x3007
@@ -572,7 +573,7 @@ odd_punctuation_dict = {
 "【": "[",  # x3010
 "】": "]",  # x3011
 "・": "-",  # x30fb, could map to 00B7 but i don't think MMD would display that either
-"〜": "~",  # x301C wave dash, not supported in shift_jis so it shouldn't be used often i hope. NOTE tilde isn't mmd supported, find something better!
+"〜": "~",  # x301C wave dash, not a "fullwidth tilde"
 }
 # note: "ー" = "katakana/hiragana prolonged sound mark" = 0x30fc should !!!NOT!!! be treated as punctuation cuz it shows up in several "words"
 
@@ -635,11 +636,7 @@ DEBUG = False
 # not 100% confident this is right, there are probably other characters that can display just fine in MMD like accents
 # TODO: check for other chars that can display in MMD just fine, try accents maybe
 def is_latin(text:str) -> bool:
-	for c in text:
-		o = ord(c)
-		if o >= 0x7f:
-			return False
-	return True
+	return all(ord(c) < 128 for c in text)
 
 def is_jp(text:str) -> bool:
 	""" is jp/cn and needs translation and can be plausibly translated """
@@ -654,9 +651,13 @@ def needs_translate(text:str) -> bool:
 	return bool(m)
 
 
-def pre_translate(in_list):
+def pre_translate(in_list:(list,str)) -> (list,tuple):
 	"""
-	Handle common translation things like prefixes, suffixes, fullwidth alphanumeric characters, etc.
+	Handle common translation things like prefixes, suffixes, fullwidth alphanumeric characters, indents,
+	and some types of punctuation. Returns 3-ple of EN indent, JP body, EN suffix. This way the translate can work on
+	the important stuff and ignore the chaff.
+	:param in_list: list of JP strings, or a single JP string
+	:return: list of indent/body/suffix tuples, or a single tuple
 	"""
 	# input str breakdown: (indent) (L/R prefix) (padding) (((body))) (padding) (L/R suffix)
 	
@@ -731,13 +732,17 @@ def pre_translate(in_list):
 	else:			return indent_list, body_list, suffix_list	# otherwise return as a list
 
 
-def piecewise_translate(in_list, in_dict):
+def piecewise_translate(in_list:(list, str), in_dict: dict) -> (list, str):
 	"""
-	apply piecewise translation to inputs when given a mapping dict.
-	mapping dict should usually be the comprehensive 'words dict' or some results found from Google Translate.
-	for each position in the string(ordered), check each map entry(ordered).
-	returns what it produces, even if not a complete translation.
-	outer layers must check if the translation is complete before using it.
+	Apply piecewise translation to inputs when given a mapping dict.
+	Mapping dict will usually be the builtin comprehensive 'words_dict' or some results found from Google Translate.
+	From each position in the string(ordered), check each map entry(ordered). Dict should have keys ordered from longest
+	to shortest to avoid "undershadowing" problem.
+	Always returns what it produces, even if not a complete translation. Outer layers are responsible for checking if
+	the translation is "complete" before using it.
+	:param in_list: list of JP strings, or a single JP string
+	:param in_dict: dict of mappings from JP substrings to EN substrings
+	:return: list of resulting strings, or a single resulting string
 	"""
 	input_is_str = isinstance(in_list, str)
 	if input_is_str: in_list = [in_list]  # force it to be a list anyway so I don't have to change my structure
@@ -778,11 +783,13 @@ def piecewise_translate(in_list, in_dict):
 	else:				return outlist		# otherwise return as a list
 
 
-def local_translate(in_list):
+def local_translate(in_list:(list,str)) -> (list,str):
 	"""
-	attempt to use the hardcoded translation dict to translate as many of the words as I can.
-	results are best-effort translations, even if incomplete.
-	with DEBUG=True, it prints successful/before/after.
+	Simple wrapper func to run both pre_translate and local_translate using words_dict.
+	With DEBUG=True, it prints before/after.
+	Results are best-effort translations, even if incomplete.
+	:param in_list: list of JP strings, or a single JP string
+	:return: list of resulting strings, or a single resulting string
 	"""
 	input_is_str = isinstance(in_list, str)
 	if input_is_str: in_list = [in_list]  # force it to be a list anyway so I don't have to change my structure
