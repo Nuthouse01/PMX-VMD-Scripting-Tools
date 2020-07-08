@@ -55,7 +55,7 @@ DISABLE_INTERNET_TRANSLATE = False
 # tho in testing, sometimes translations produce different results if on their own vs in a newline list... oh well
 # or sometimes they lose newlines during translation
 # more lines per request = riskier, but uses less of your transaction budget
-TRANSLATE_MAX_LINES_PER_REQUEST = 15
+TRANSLATE_MAX_LINES_PER_REQUEST = 5
 # how many requests are permitted per timeframe, to avoid the lockout
 # true limit is ~100 so enforce limit of 80 just to be safe
 TRANSLATE_BUDGET_MAX_REQUESTS = 80
@@ -308,9 +308,10 @@ def google_translate(in_list:(list,str), strategy=1) -> (list,str):
 	# results are chunk+trans: split into (where trans failed) (where trans passed)
 	# use "is_jp"->fail and not "needs_translate" so I am only sending actual JP stuff to Google and not unicode arrows or whatever
 	trans_fail, trans_pass = core.my_list_partition(zip(jp_chunks, jp_chunks_localtrans), lambda x: translation_tools.is_jp(x[1]))
-	for chunk, trans in trans_pass:
-		# if it passed, no need to ask google what they mean cuz I already have a good translation
-		localtrans_dict[chunk] = trans
+	# new: since I add the entire words_dict later, and that means this will be translated the same way later, no reason to add it here
+	# for chunk, trans in trans_pass:
+	# 	# if it passed, no need to ask google what they mean cuz I already have a good translation
+	# 	localtrans_dict[chunk] = trans
 	jp_chunks = [j[0] for j in trans_fail]  # rebuild the jp_chunks list for the ones that failed
 	
 	# 4. combine them into fewer requests
@@ -345,8 +346,8 @@ def google_translate(in_list:(list,str), strategy=1) -> (list,str):
 		print(google_dict)
 		
 		google_dict.update(localtrans_dict)  # add dict entries from things that succeeded localtrans
-		google_dict.update(translation_tools.symbols_dict)  # add various non-jp symbols i do know how to translate
-		# google_dict.update(translation_tools.words_dict)  # add the full-blown words dict to the chunk-translate results
+		# google_dict.update(translation_tools.symbols_dict)  # add various non-jp symbols i do know how to translate
+		google_dict.update(translation_tools.words_dict)  # add the full-blown words dict to the chunk-translate results
 		# dict->list->sort->dict: sort the longest chunks first, VERY CRITICAL so things don't get undershadowed!!!
 		google_dict = dict(sorted(list(google_dict.items()), reverse=True, key=lambda x: len(x[0])))
 		
