@@ -325,7 +325,7 @@ class Application(tk.Frame):
 	# replacement for core.basic_print function, print to text thingy instead of to console
 	def my_write(self, *args, is_progress=False):
 		the_string = ' '.join([str(x) for x in args])
-		core.basic_print(the_string, is_progress=is_progress)  # todo remove this probably?
+		# core.basic_print(the_string, is_progress=is_progress)  # todo remove this probably?
 		# if last print was a progress update, then overwrite it with next print
 		if self.last_print_was_progress:	self._overwrite(the_string)
 		# if last print was a normal print, then print normally
