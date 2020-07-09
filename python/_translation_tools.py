@@ -384,6 +384,8 @@ words_dict = {
 "甲": "armor",
 "鎧": "armor",
 "胴": "torso",
+"マーク": "mark",
+"ネック": "neck",
 
 
 # modifiers
@@ -450,6 +452,7 @@ words_dict = {
 "潰れ": "shrink",  # literally "collapse"
 "狭く": "narrow",
 "狭": "narrow",
+"幅": "width",
 "細い": "thin",
 "細": "thin",  # literally "fine"
 "太": "thick",
