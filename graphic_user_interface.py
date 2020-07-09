@@ -40,7 +40,16 @@ except ImportError as eee:
 	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = pmx_arm_ik_addremove = None
 	core = morph_invert = morph_hide = morph_scale = file_translate_names = convert_vpd_to_vmd = None
 
+########################################################################################################################
+# constants & options
+########################################################################################################################
 
+# if true, calls stock "print" function whenever it prints to the GUI print-space.
+# when running from EXE, in noconsole mode, this does nothing at all.
+ALSO_PRINT_TO_CONSOLE = False
+
+
+# DO NOT TOUCH: mapping from MY_FILEPROMPT_FUNC filetype input to the info the gui filedialog needs
 FILE_EXTENSION_MAP = {
 	".vpd .vmd": ("VPD/VMD file", "*.vpd *.vmd *.vmd.bak"),
 	".vmd .vpd": ("VPD/VMD file", "*.vpd *.vmd *.vmd.bak"),
@@ -53,6 +62,20 @@ FILE_EXTENSION_MAP = {
 	".vmd": ("VMD file", "*.vmd *.vmd.bak"),
 	"*": tuple()
 }
+
+# DO NOT TOUCH: global vars for passing info between GUI input popup and the thread the script lives in
+inputpopup_args = None
+inputpopup_done = threading.Event()
+inputpopup_done.clear()
+inputpopup_result = None
+
+
+########################################################################################################################
+# MAIN & functions
+########################################################################################################################
+
+
+
 
 def gui_fileprompt(extensions: str) -> str:
 	# replaces core func MY_FILEPROMPT_FUNC when running in GUI mode
@@ -93,11 +116,6 @@ def gui_fileprompt(extensions: str) -> str:
 	return newpath
 
 
-
-inputpopup_args = None
-inputpopup_done = threading.Event()
-inputpopup_done.clear()
-inputpopup_result = None
 
 # this is the function called by the script-thread to invoke a popup
 # waits for the popup to be dismissed before getting the result & resuming the thread
@@ -325,7 +343,7 @@ class Application(tk.Frame):
 	# replacement for core.basic_print function, print to text thingy instead of to console
 	def my_write(self, *args, is_progress=False):
 		the_string = ' '.join([str(x) for x in args])
-		# core.basic_print(the_string, is_progress=is_progress)  # todo remove this probably?
+		if ALSO_PRINT_TO_CONSOLE: core.basic_print(the_string, is_progress=is_progress)
 		# if last print was a progress update, then overwrite it with next print
 		if self.last_print_was_progress:	self._overwrite(the_string)
 		# if last print was a normal print, then print normally
@@ -364,6 +382,7 @@ class Application(tk.Frame):
 	
 	def do_the_thing(self):
 		core.MY_PRINT_FUNC("="*50)
+		core.MY_PRINT_FUNC(str(self.optionvar.get()))
 		# disable all gui elements for the duration of this function
 		# run_butt, spinbox, clear, help, debug
 		self.run_butt.configure(state='disabled')
