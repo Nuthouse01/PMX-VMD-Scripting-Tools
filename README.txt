@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README
-Created by Nuthouse01 - 06/27/2020 - v4.50
+Created by Nuthouse01 - 07/09/2020 - v4.60
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!
 
@@ -54,6 +54,9 @@ Some models have "armtwist" and "wristtwist" bones, but almost no VMD dances act
 
 ##### convert_vmd_to_txt.py
 This tool is for converting VMD (Vocaloid Motion Data) files from their packed binary form to a human-readable and human-editable text form, and vice versa. This can allow 3rd-party scripts to perform procedural edits on the VMD data while it is in text format, such as (for example) constraining certain bones to a desired max range of motion, and then converting it back to VMD form for use in MikuMikuDance. Or it can be used to modify the names of the bones/morphs that the VMD is trying to control, to customize it to work better with a specific model.
+
+##### convert_vpd_to_vmd.py
+This script will convert VPD (Vocaloid Pose Data) files to or from VMD (Vocaloid Motion Data) files. The motion files will be only a single frame long, with all bones/morphs framed at time=0.
 
 ##### make_ik_from_vmd.py
 This script runs forward kinematics for a given VMD dance motion on the bone structure for a given model, and calculates where the feet bones should be at each frame. It then creates a VMD motion file that has frames to move the IK bones to those locations at those frames. This is only useful for a dance motion that doesn't already use IK (such as Conqueror by IA).
@@ -210,6 +213,16 @@ The following files should be included with this README:
 * python/*.py
 
 #### Changelog:
+
+    v4.60:
+    rename "vmd_convert_tool" to "convert_vmd_to_txt"
+    rename "vmd_model_compatability_check" to "model_compatability_check"
+    NEW: "convert_vpd_to_vmd", lets you convert between pose and motion file
+    update model_compatability_check to allow comparing against VPD pose files as well as VMDs
+    extra safety net for file_translate_names, remove characters that are forbidden in windows file paths
+    change how translate_to_english handles stuff that Google was unable to translate
+    tweak binary pack/unpack functions for greater cleanliness & efficiency
+    more comments & documentation
 
     v4.50:
     rename "texture_file_sort" to "file_sort_textures"
