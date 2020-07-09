@@ -903,6 +903,7 @@ def decode_bytes_with_escape(r: bytearray) -> str:
 	byte. It's not useful to humans, but it is better than simply losing the data.
 	TODO: get example
 	All cases I tested require at most 1 escape char, but just to be safe it recursively calls as much as needed.
+	
 	:param r: bytearray object which represents a string through encoding UNPACKER_ENCODING
 	:return: decoded string, possibly ending with escape char and hex digits
 	"""
@@ -926,6 +927,7 @@ def encode_string_with_escape(a: str) -> bytearray:
 	byte. It's not useful to humans, but it is better than simply losing the data.
 	TODO: get example
 	All cases I tested require at most 1 escape char, but just to be safe it recursively calls as much as needed.
+	
 	:param a: string that might contain my custom escape sequence
 	:return: bytearray after encoding
 	"""
@@ -957,33 +959,29 @@ def my_unpack(fmt:str, raw:bytearray) -> (list, str, int, float, bool):
 	should unpack next via the size of the format strings, 2) if exactly 1 variable would be unpacked it is
 	automatically de-listed and returned naked, 3) new atom type "t" is supported and indicates auto-length strings,
 	4) new atom type "##t" is supported and indicates fixed-length strings.
+	
 	:param fmt: string-type format argument very similar to formats for python "struct" lib
 	:param raw: bytearray being walked & unpacked
 	:return: if fmt specifies several variables, return all as list. if exactly one, return the variable without list wrapper.
 	"""
 	retlist = []
 	startfrom = 0
-	while startfrom < len(fmt):  # usually just gonna loop until it hits "break"
-		t_match = t_fmt_re.search(fmt, startfrom)
-		if t_match is None:
-			# if fmt string doesn't contain "t" atoms, no need to handle strings, give it to default unpacker
-			other_ret = _unpack_other(fmt[startfrom:], raw)
-			retlist.extend(other_ret)
-			break
-		else:
-			# fmt_before definitely does not contain t: parse as normal & return value
-			# fmt_before might be empty or blank, but that's handled inside the func
-			fmt_before = fmt[startfrom:t_match.start()]
-			# fmt_t contains a "t" atom, guaranteed not blank, it gets specially handled
-			fmt_t = fmt[t_match.start():t_match.end()]
-			# now unpack the text separate from the non-text
-			before_ret = _unpack_other(fmt_before, raw)
-			t_ret = _unpack_text(fmt_t, raw)
-			# concat the returned list+string (some might be empty, but they will all definitely be lists)
-			retlist.extend(before_ret)
-			retlist.append(t_ret)
-			# repeat the process starting from the section after the "t" atom
-			startfrom = t_match.end()
+	# first find where all "t" atoms in the format string are
+	t_atom_list = t_fmt_re.finditer(fmt)
+	for t_atom in t_atom_list:
+		# fmt_before definitely does not contain t: parse as normal & return value
+		fmt_before = fmt[startfrom:t_atom.start()]  # fmt_before might be empty or blank, but that's handled inside the func
+		before_vars = _unpack_other(fmt_before, raw)
+		retlist.extend(before_vars)  # before_vars might be empty list but thats ok
+		# fmt_t contains a "t" atom, guaranteed not blank, it gets specially handled
+		fmt_t = fmt[t_atom.start():t_atom.end()]
+		t_str = _unpack_text(fmt_t, raw)
+		retlist.append(t_str)  # t_str guaranteed to exist and be a lone string
+		# repeat the process starting from the section after the "t" atom
+		startfrom = t_atom.end()
+	# when there are no more "t" atoms, all that remains gets handled by default unpacker
+	other_vars = _unpack_other(fmt[startfrom:], raw)
+	retlist.extend(other_vars)  # other_vars might be empty list but thats ok
 	# if it has length of 1, then de-listify it
 	if len(retlist) == 1: return retlist[0]
 	else:                 return retlist
@@ -992,6 +990,7 @@ def _unpack_other(fmt:str, raw:bytearray) -> list:
 	"""
 	Internal use only.
 	Handle unpacking of all types other than "t" atoms. "fmt" is guaranteed to not contain any "t" atoms.
+	
 	:param fmt: string-type format argument very similar to formats for python "struct" lib
 	:param raw: bytearray being walked & unpacked
 	:return: list of all variables that were unpacked corresponding to fmt
@@ -1017,6 +1016,7 @@ def _unpack_text(fmt:str, raw:bytearray) -> str:
 	"""
 	Internal use only.
 	Handle unpacking of "t" atoms. "fmt" is guaranteed to contain only a "t" atom, nothing else.
+	
 	:param fmt: string-type format argument very similar to formats for python "struct" lib
 	:param raw: bytearray being walked & unpacked
 	:return: string
@@ -1068,6 +1068,7 @@ def my_pack(fmt: str, args_in) -> bytearray:
 	Very similar to python struct.unpack() function, except: 1) if the input arg is not a list/tuple it is automatically
 	wrapped in a list, 2) new atom type "t" is supported and indicates auto-length strings, 3) new atom type "##t" is
 	supported and indicates fixed-length strings.
+	
 	:param fmt: string-type format argument very similar to formats for python "struct" lib
 	:param args_in: list of variables to pack, or a single variable not inside a list
 	:return: bytearray representation of these args
@@ -1084,43 +1085,39 @@ def my_pack(fmt: str, args_in) -> bytearray:
 	startfrom = 0
 	startfrom_args = 0
 	
-	while startfrom < len(fmt) and startfrom_args < len(args):  # usually just gonna loop until it hits "break"
-		t_match = t_fmt_re.search(fmt, startfrom)
-		if t_match is None:
-			# if fmt string doesn't contain "t" atoms, no need to handle strings, give it to default packer
-			ret_other = _pack_other(fmt[startfrom:], args[startfrom_args:])
-			retbytes += ret_other
-			break
-		else:
-			# a t-atom exists, so find the string in "args" that corresponds to it
-			str_idx = -1  # the index within "args" of the string that corresponds to the "t" atom
-			for i in range(startfrom_args, len(args)):
-				if isinstance(args[i], str):
-					str_idx = i
-					break
-			if str_idx == -1:
-				raise RuntimeError("given format string references more strings than are found in args list")
-			# fmt_before definitely does not contain t: parse as normal & return value
-			# fmt_before might be empty or blank, but that's handled inside the func
-			fmt_before = fmt[startfrom:t_match.start()]
-			# fmt_t contains a "t" atom, guaranteed not blank, it gets specially handled
-			fmt_t = fmt[t_match.start():t_match.end()]
-			# pack the text separate from the non-text
-			ret_before = _pack_other(fmt_before, args[startfrom_args:str_idx])
-			ret_t = _pack_text(fmt_t, args[str_idx])
-			# accumulate the result
-			retbytes += ret_before
-			retbytes += ret_t
-			# repeat the process starting from the section after the "t" atom
-			startfrom = t_match.end()
-			startfrom_args = str_idx + 1
-			pass
+	# first find where all "t" atoms in the format string are
+	# (note: returns an iterator, to get its length I need to walk the whole thing and then convert to list)
+	t_atom_list = [t for t in t_fmt_re.finditer(fmt)]
+	# then find where all strings in the input args list are
+	str_idx_list = [d for d,a in enumerate(args) if isinstance(a, str)]
+	# assert that they are the same length
+	if len(t_atom_list) != len(str_idx_list):
+		raise RuntimeError("given format string '%s' references %d strings, found %d in args list" %
+						   (fmt, len(t_atom_list), len(str_idx_list)))
+	
+	for t_atom, str_idx in zip(t_atom_list, str_idx_list):
+		# fmt_before definitely does not contain t: parse as normal & return value
+		fmt_before = fmt[startfrom:t_atom.start()]  # fmt_before might be empty or blank, but that's handled inside the func
+		bytes_before = _pack_other(fmt_before, args[startfrom_args:str_idx])
+		retbytes += bytes_before  # bytes_before might be empty but thats ok
+		# fmt_t contains a "t" atom, guaranteed not blank, it gets specially handled
+		fmt_t = fmt[t_atom.start():t_atom.end()]
+		bytes_t = _pack_text(fmt_t, args[str_idx])  # guaranteed to return non-empty
+		retbytes += bytes_t
+		# repeat the process starting from the section after the "t" atom
+		startfrom = t_atom.end()
+		startfrom_args = str_idx + 1
+	# when there are no more "t" atoms, all that remains gets handled by default packer
+	ret_other = _pack_other(fmt[startfrom:], args[startfrom_args:])
+	retbytes += ret_other
+
 	return retbytes
 
 def _pack_other(fmt: str, args: list) -> bytearray:
 	"""
 	Internal use only.
 	Handle packing of all types other than "t" atoms. "fmt" is guaranteed to not contain any "t" atoms.
+	
 	:param fmt: string-type format argument very similar to formats for python "struct" lib
 	:param args: list filled with variables to pack
 	:return: bytearray representation of the args
@@ -1142,6 +1139,7 @@ def _pack_text(fmt: str, args: str) -> bytearray:
 	"""
 	Internal use only.
 	Handle packing of "t" atoms. "fmt" is guaranteed to contain only a "t" atom, nothing else.
+	
 	:param fmt: string-type format argument very similar to formats for python "struct" lib
 	:param args: string
 	:return: bytearray representation of the input string
@@ -1153,7 +1151,7 @@ def _pack_text(fmt: str, args: str) -> bytearray:
 			autofmt = "<i" + str(len(n)) + "s"
 			autoargs = [len(n), n]
 		else:					# manual-text
-			autofmt = fmt[:-1] + "s"				# simply replace trailing t with s
+			autofmt = "<" + fmt[0:-1] + "s"		# simply replace trailing t with s
 			autoargs = [n]
 		
 		b = struct.pack(autofmt, *autoargs)		# now do the actual packing
