@@ -1138,10 +1138,14 @@ def encode_string_with_escape(a: str) -> bytearray:
 		try:
 			return bytearray(new_a, UNPACKER_ENCODING)	# no escape char: convert from str to bytearray the standard way
 		except UnicodeEncodeError as e:
-			# to reduce redundant printouts, all the info I wanna print is put into RuntimeError and caught somewhere higher up
-			newerrstr = "encode_string_with_escape: chr='%s', str='%s', encoding=%s, err=%s" % (a[e.start:e.end], a, e.encoding, e.reason),
-			newerr = RuntimeError(newerrstr)
-			raise newerr
+			# overwrite the 'reason' field with the original string it was trying to encode
+			e.reason = a
+			# then return it to be handled outside
+			raise e
+			# # to reduce redundant printouts, all the info I wanna print is put into RuntimeError and caught somewhere higher up
+			# newerrstr = "encode_string_with_escape: chr='%s', str='%s', encoding=%s, err=%s" % (a[e.start:e.end], a, e.encoding, e.reason),
+			# newerr = RuntimeError(newerrstr)
+			# raise newerr
 
 
 def my_unpack(fmt:str, raw:bytearray) -> Any:
