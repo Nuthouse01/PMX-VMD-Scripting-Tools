@@ -11,7 +11,6 @@ try:
 	from . import nuthouse01_pmx_parser as pmxlib
 	from ._weight_cleanup import normalize_weights
 	from .bone_merge_helpers import transfer_bone_weights
-	from ._prune_unused_vertices import bisect_left, bisect_right
 	from ._translation_tools import local_translate
 except ImportError as eee:
 	try:
@@ -19,15 +18,14 @@ except ImportError as eee:
 		import nuthouse01_pmx_parser as pmxlib
 		from _weight_cleanup import normalize_weights
 		from bone_merge_helpers import transfer_bone_weights
-		from _prune_unused_vertices import bisect_left, bisect_right
-		from _local_translation_dicts import local_translate
+		from _translation_tools import local_translate
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = normalize_weights = transfer_bone_weights = bisect_left = bisect_right = local_translate = None
+		core = pmxlib = normalize_weights = transfer_bone_weights = local_translate = None
 
 
 
@@ -493,7 +491,7 @@ def main(moreinfo=True):
 			# "conservative" endpoints: define ends such that no bad stuff exists within bounds, even if i miss some good stuff
 			# start in the middle and work outward until i find a vert NOT controlled by only parent_idx, then back off 1
 			# where is the middle? use "bisect_left"
-			middle = bisect_left(percentiles, 0.5)
+			middle = core.bisect_left(percentiles, 0.5)
 			for i_min_conserv in reversed(range(middle - 1)): # start in middle, work toward head,
 				if pmx[1][verts[i_min_conserv]][9] != 0:  	# if the vertex is NOT BDEF1 type,
 					break  									# then stop looking,
@@ -526,8 +524,8 @@ def main(moreinfo=True):
 			p_min = core.clamp(p_min, 0.0, 1.0)
 			p_max = core.clamp(p_max, 0.0, 1.0)
 			if moreinfo:
-				i_min = bisect_left(percentiles, p_min)
-				i_max = bisect_left(percentiles, p_max)
+				i_min = core.bisect_left(percentiles, p_min)
+				i_max = core.bisect_left(percentiles, p_max)
 				core.MY_PRINT_FUNC("   Compromise bounds:       idx = %d to %d, %% = %f to %f" %
 								   (i_min, i_max, p_min, p_max))
 				

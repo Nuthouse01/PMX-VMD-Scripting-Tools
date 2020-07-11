@@ -572,6 +572,50 @@ def read_txtfile_to_list(src_path:str, use_jis_encoding=False, quiet=False) -> l
 	return rb_unicode.splitlines()
 	
 
+########################################################################################################################
+# these handle binary searching thru sorted lists for MASSIVE speedup
+########################################################################################################################
+
+# bisect_left and bisect_right literally just copied from the "bisect" library so I don't need to import that file
+def bisect_left(a, x):
+	"""
+	Return the index where to insert item x in list a, assuming a is sorted.
+	The return value i is such that all e in a[:i] have e < x, and all e in
+	a[i:] have e >= x.  So if x already appears in the list, a.insert(x) will
+	insert just before the leftmost x already there.
+	"""
+	lo = 0
+	hi = len(a)
+	while lo < hi:
+		mid = (lo+hi)//2
+		if a[mid] < x: lo = mid+1
+		else: hi = mid
+	return lo
+def bisect_right(a, x):
+	"""
+	Return the index where to insert item x in list a, assuming a is sorted.
+	The return value i is such that all e in a[:i] have e <= x, and all e in
+	a[i:] have e > x.  So if x already appears in the list, a.insert(x) will
+	insert just after the rightmost x already there.
+	"""
+	lo = 0
+	hi = len(a)
+	while lo < hi:
+		mid = (lo+hi)//2
+		if x < a[mid]: hi = mid
+		else: lo = mid+1
+	return lo
+
+def binary_search_isin(x, a):
+	# if x is in a, return TRUE. otherwise return FALSE.
+	pos = bisect_left(a, x)  # find insertion position
+	return True if pos != len(a) and a[pos] == x else False  # don't walk off the end
+
+def binary_search_wherein(x, a):
+	# if x is in a, return its index. otherwise return -1
+	pos = bisect_left(a, x)  # find insertion position
+	return pos if pos != len(a) and a[pos] == x else -1  # don't walk off the end
+
 
 ########################################################################################################################
 # these functions are for various math operations

@@ -35,56 +35,13 @@ iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_vertprun
 
 
 
-# bisect_left and bisect_right literally just copied from the "bisect" library
-def bisect_left(a, x):
-	"""Return the index where to insert item x in list a, assuming a is sorted.
-
-	The return value i is such that all e in a[:i] have e < x, and all e in
-	a[i:] have e >= x.  So if x already appears in the list, a.insert(x) will
-	insert just before the leftmost x already there.
-	"""
-	lo = 0
-	hi = len(a)
-	while lo < hi:
-		mid = (lo+hi)//2
-		if a[mid] < x: lo = mid+1
-		else: hi = mid
-	return lo
-
-def bisect_right(a, x):
-	"""Return the index where to insert item x in list a, assuming a is sorted.
-
-	The return value i is such that all e in a[:i] have e <= x, and all e in
-	a[i:] have e > x.  So if x already appears in the list, a.insert(x) will
-	insert just after the rightmost x already there.
-	"""
-	lo = 0
-	hi = len(a)
-	while lo < hi:
-		mid = (lo+hi)//2
-		if x < a[mid]: hi = mid
-		else: lo = mid+1
-	return lo
-
-def binary_search_isin(x, a):
-	# if x is in a, return TRUE. otherwise return FALSE.
-	pos = bisect_left(a, x)  # find insertion position
-	return True if pos != len(a) and a[pos] == x else False  # don't walk off the end
-
-def binary_search_wherein(x, a):
-	# if x is in a, return its index. otherwise return -1
-	pos = bisect_left(a, x)  # find insertion position
-	return pos if pos != len(a) and a[pos] == x else -1  # don't walk off the end
-
-
-
 def newval_from_range_map(v, range_map):
 	# support both int and list-of-int inputs... do basically the same thing, just looped
 	# if input is list, IT MUST BE IN ASCENDING SORTED ORDER
 	# core idea: walk BACKWARDS along the range_map until i find the start that is CLOSEST BELOW the input v
 	if isinstance(v, int):
 		# # bisect_right: same as bisect_left but when matching something already in it it goes one to the right
-		pos = bisect_right(range_map[0], v)
+		pos = core.bisect_right(range_map[0], v)
 		if pos == 0:
 			# if it doesnt find a block starting below v, then the offset is 0
 			return v
@@ -213,7 +170,7 @@ def prune_unused_vertices(pmx, moreinfo=False):
 		i = 0
 		while i < len(morph[4]):
 			# if the vertex being manipulated is in the list of verts being deleted,
-			if binary_search_isin(morph[4][i][0], delme_verts):
+			if core.binary_search_isin(morph[4][i][0], delme_verts):
 				# delete it here too
 				morph[4].pop(i)
 				orphan_vertex_references += 1
