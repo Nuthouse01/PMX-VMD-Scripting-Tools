@@ -2,7 +2,7 @@
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-# os.path, os.walk, os.renames
+# first, system imports
 import os
 
 # second, wrap custom imports with a try-except to catch it if files are missing

@@ -108,7 +108,7 @@ def main(moreinfo=True):
 			
 			# then do the "remapping" on all existing bone references, to make space for inserting 4 bones
 			# don't delete any bones, just remap them
-			bone_shiftmap = [[shoulder_idx+1], [-4]]
+			bone_shiftmap = ([shoulder_idx+1], [-4])
 			pmx = apply_bone_remapping(pmx, [], bone_shiftmap)
 			# new bones will be inserted AFTER shoulder_idx
 			# newarm_idx = shoulder_idx+1

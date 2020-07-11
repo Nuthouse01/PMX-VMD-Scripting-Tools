@@ -2,6 +2,9 @@
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
+# first, system imports
+from typing import List, Tuple, Union
+
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
 	from . import nuthouse01_core as core
@@ -35,7 +38,15 @@ iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_vertprun
 
 
 
-def newval_from_range_map(v, range_map):
+def newval_from_range_map(v: Union[int,List[int]], range_map: Tuple[List[int],List[int]]) -> Union[int,List[int]]:
+	"""
+	Given a rangemap from delme_list_to_rangemap(), determine the resulting index for an input or set of inputs.
+	If v is a list, it must be in ascending sorted order. Returns same type as v type.
+	
+	:param v: int or list of ints in ascending sorted order
+	:param range_map: result from delme_list_to_rangemap()
+	:return: int if v is int, list[int] if v is list[int]
+	"""
 	# support both int and list-of-int inputs... do basically the same thing, just looped
 	# if input is list, IT MUST BE IN ASCENDING SORTED ORDER
 	# core idea: walk BACKWARDS along the range_map until i find the start that is CLOSEST BELOW the input v
@@ -67,10 +78,16 @@ def newval_from_range_map(v, range_map):
 		retme.reverse()
 		return retme
 	
-def delme_list_to_rangemap(delme_verts: list):
-	# INPUT MUST BE IN ASCENDING SORTED ORDER
-	# convert from individual vertices to list of ranges, [start-length]
-	# start begins 0, end begins 1
+def delme_list_to_rangemap(delme_verts: List[int]) -> Tuple[List[int],List[int]]:
+	"""
+	Given an ascending sorted list of ints, build a pair of lists that let me know what indices OTHER things will map
+	to when THESE indices are deleted. list1 is the index each cluster starts at, list2 is where that index will map
+	to after the deletion happens.
+	Exclusively used with newval_from_range_map().
+	
+	:param delme_verts: ascending sorted list of ints
+	:return: tuple(list-of-starts, list-of-cumulativelength)
+	"""
 	delme_range = []
 	start_idx = 0
 	for end_idx in range(1, len(delme_verts)+1):
@@ -181,29 +198,6 @@ def prune_unused_vertices(pmx, moreinfo=False):
 		
 		# morphs usually contain vertexes in sorted order, but not guaranteed!!! MAKE it sorted, nobody will mind
 		morph[4].sort(key=lambda x: x[0])
-		
-		# # remove all orphan verts from the list of affected verts
-		# # delme_verts is sorted, morph[4] is sorted, this walk-side-by-side approach should be much more efficient
-		# idx_m = idx_del = 0
-		# n = []
-		# while idx_m < len(morph[4]) and idx_del < len(delme_verts):
-		# 	v_m = morph[4][idx_m][0]
-		# 	v_del = delme_verts[idx_del]
-		# 	if v_m < v_del:
-		# 		# if v_m is lesser, then dellist jumped over this vert, therefore this is a keep vert
-		# 		# save it and walk up mlist
-		# 		n.append(morph[4][idx_m])
-		# 		idx_m += 1
-		# 	elif v_m > v_del:
-		# 		# if v_del is lesser, then delllist needs to catch up, walk up dellist
-		# 		idx_del += 1
-		# 	else:  # v_m == v_del:
-		# 		# this is a vert to be deleted... inc both but dont save the m
-		# 		idx_m += 1
-		# 		idx_del += 1
-		# morph[4] = n
-		# # count how many I removed
-		# orphan_vertex_references += (lenbefore - len(morph[4]))
 		
 		# separate the vertices from the morph entries into a list of their own, for more efficient remapping
 		vertlist = [x[0] for x in morph[4]]

@@ -18,6 +18,9 @@
 
 
 
+# first, system imports
+from typing import List, Tuple
+
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
 	from . import nuthouse01_core as core
@@ -88,7 +91,7 @@ def showprompt():
 	return pmx, input_filename_pmx
 	
 
-def identify_unused_bones(pmx, moreinfo=False):
+def identify_unused_bones(pmx: list, moreinfo: bool) -> List[int]:
 	#############################
 	# THE PLAN:
 	# 1. get bones used by a rigidbody
@@ -224,7 +227,7 @@ def identify_unused_bones(pmx, moreinfo=False):
 	return unused_bones_list
 	
 
-def apply_bone_remapping(pmx, bone_dellist, bone_shiftmap):
+def apply_bone_remapping(pmx, bone_dellist: List[int], bone_shiftmap: Tuple[List[int],List[int]]):
 	# where are all places bones are used in the model?
 	
 	# !vertex weight
