@@ -2,13 +2,14 @@
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-# os.path, os.walk, os.renames
+# first, system imports
 import os
-# shutil.make_archive
 import re
 import shutil
 
 # second, wrap custom imports with a try-except to catch it if files are missing
+from typing import List
+
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
@@ -69,7 +70,7 @@ remove_re = re.compile(remove_pattern)
 
 
 # a struct to bundle all the relevant info about a file that is on disk or used by PMX
-class filerecord:
+class FileRecord:
 	def __init__(self, name, exists):
 		# the "clean" name this file uses on disk: relative to startpath and separator-normalized
 		# or, if it does not exist on disk, whatever name shows up in the PMX entry
@@ -93,7 +94,7 @@ class filerecord:
 		return p
 
 
-def walk_filetree_from_root(startpath: str) -> list:
+def walk_filetree_from_root(startpath: str) -> List[str]:
 	absolute_all_exist_files = []
 	# os.walk: returns (path to the folder i'm in),(list of folders in this folder),(list of files in this folder)
 	for where, subfolders, files in os.walk(startpath):
@@ -144,10 +145,11 @@ def remove_pattern(s: str) -> str:
 	return remove_re.sub("", s)
 
 
-def make_zipfile_backup(startpath, backup_suffix) -> bool:
+def make_zipfile_backup(startpath: str, backup_suffix: str) -> bool:
 	"""
 	Make a .zip backup of the folder 'startpath' and all its contents. Returns True if all goes well, False if it should abort.
 	Resulting zip will be adjacent to the folder it is backing up with a slightly different name.
+	
 	:param startpath: absolute path of the folder you want to zip
 	:param backup_suffix: segment inserted between the foldername and .zip extension
 	:return: true if things are good, False if i should abort
@@ -172,13 +174,14 @@ def make_zipfile_backup(startpath, backup_suffix) -> bool:
 	return True
 
 
-def apply_file_renaming(pmx_dict: dict, filerecord_list: list, startpath: str):
+def apply_file_renaming(pmx_dict: dict, filerecord_list: List[FileRecord], startpath: str):
 	"""
 	Apply all the renaming operations to files on the disk and in any PMX objects where they are used.
 	First, try to rename all files on disk. If any raise exceptions, those files will not be changed in PMXes.
 	Then, change the file references in the PMX to match the new locations on disk for all files that succeeded.
+	
 	:param pmx_dict: dict of PMX objects, key is path relative to startpath, value is actual PMX obj
-	:param filerecord_list: list of filerecord obj, all completely processed & filled out
+	:param filerecord_list: list of FileRecord obj, all completely processed & filled out
 	:param startpath: absolute path that all filepaths are relative to
 	"""
 	# first, rename files on disk:
@@ -195,7 +198,7 @@ def apply_file_renaming(pmx_dict: dict, filerecord_list: list, startpath: str):
 				core.MY_PRINT_FUNC(e.__class__.__name__, e)
 				core.MY_PRINT_FUNC(
 					"ERROR1!: unable to rename file '%s' --> '%s', attempting to continue with other file rename operations"
-					% (p.norm, p.newname))
+					% (p.name, p.newname))
 				# change this to empty to signify that it didn't actually get moved, check this before changing PMX paths
 				p.newname = None
 	
@@ -208,13 +211,14 @@ def apply_file_renaming(pmx_dict: dict, filerecord_list: list, startpath: str):
 				# acutally write the new name into the correct location within the correct pmx obj
 				pmx_dict[thispmx_name][3][thispmx_idx] = p.newname
 	core.MY_PRINT_FUNC("...done renaming!")
-	return None
+	return
 
 
-def combine_tex_reference(pmx, dupe_to_master_map):
+def combine_tex_reference(pmx: list, dupe_to_master_map: dict):
 	"""
 	Update a PMX object by merging several of its texture entries.
 	Deciding which textures to merge is done outside this level.
+	
 	:param pmx: pmx obj to update
 	:param dupe_to_master_map: dict where keys are dupes to remove, values are what to replace with
 	"""
@@ -240,20 +244,21 @@ def combine_tex_reference(pmx, dupe_to_master_map):
 			if mat[23] in dupe_to_master_map:  # toon id
 				mat[23] = dupe_to_master_map[mat[23]]
 			mat[23] = newval_from_range_map(mat[23], idx_shift_map)
-	return None
+	return
 
 
-def categorize_files(pmx_dict: dict, exist_files: list, moreinfo: bool):
+def categorize_files(pmx_dict: dict, exist_files: List[str], moreinfo: bool) -> List[FileRecord]:
 	"""
 	Categorize file usage and normalize cases and separators within PMX files and across PMX files.
 	First, normalize file uses within each PMX to match the exact case/separators used on disk.
 	Second, unify duplicate texture references within each PMX.
-	Then, build the filerecord obj for each tex reference and count how many times & how it is used in the PMX.
-	Finally, unify filerecord objects across all PMX files.
+	Then, build the FileRecord obj for each tex reference and count how many times & how it is used in the PMX.
+	Finally, unify FileRecord objects across all PMX files.
+	
 	:param pmx_dict: dict of PMX objects, key is path relative to startpath, value is actual PMX obj
 	:param exist_files: list of strings which are relative filepaths for files I located on disk
 	:param moreinfo: bool moreinfo from main layer
-	:return: list of filerecord obj which are completely filled out except for destination names.
+	:return: list of FileRecord obj which are completely filled out except for destination names.
 	"""
 	
 	recordlist = []
@@ -303,8 +308,8 @@ def categorize_files(pmx_dict: dict, exist_files: list, moreinfo: bool):
 		thispmx_recordlist = []
 		# now that they are unique, for each tex:
 		for d, tex in enumerate(pmx[3]):
-			# create the actual "filerecord" entry
-			record = filerecord(tex, False)
+			# create the actual "FileRecord" entry
+			record = FileRecord(tex, False)
 			# all I know about it so far is that it is used by this pmx file at this index
 			record.used_pmx[pmxpath] = d
 			# add it to the list for this specific pmx
@@ -339,7 +344,7 @@ def categorize_files(pmx_dict: dict, exist_files: list, moreinfo: bool):
 		if num_unify_within_pmx: core.MY_PRINT_FUNC("Unified %d tex references within PMXes" % num_unify_within_pmx)
 		
 	# next, append all the files I know exist, will cause many dupes but this is how i get "exist but not used" files in there
-	recordlist.extend([filerecord(f, True) for f in exist_files])
+	recordlist.extend([FileRecord(f, True) for f in exist_files])
 	
 	# finally, unify all tex among all pmx that reference the same file: basically the same approach as unifying tex within a pmx file
 	# there is only one actual file on disk, even if each PMX references it. therefore there should only be one entry.

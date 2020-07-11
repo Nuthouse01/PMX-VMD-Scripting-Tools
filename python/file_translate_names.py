@@ -78,7 +78,7 @@ def main(moreinfo=False):
 	# 10. zip backup (NEW FUNC!)
 	# 11. apply renaming, NEW FUNC! rename all including old PMXes on disk
 	# 12. get new names for PMXes, write PMX from mem to disk if any of its contents changed
-	#	i.e. of all filerecord with a new name, create a set of all the PMX that use them
+	#	i.e. of all FileRecord with a new name, create a set of all the PMX that use them
 
 	
 	# absolute path to directory holding the pmx
@@ -154,7 +154,7 @@ def main(moreinfo=False):
 	# now repair any windows-forbidden symbols that might have shown up after translation
 	newname_list = [n.translate(invalid_windows_chars_ord) for n in newname_list]
 	
-	# iterate over the results in parallel with the filerecord items
+	# iterate over the results in parallel with the FileRecord items
 	for p, newname in zip(filerecord_list, newname_list):
 		if newname != p.name:
 			# resolve potential collisions by adding numbers suffix to file names
@@ -216,7 +216,7 @@ def main(moreinfo=False):
 	
 	# write out
 	for this_pmx_name, this_pmx_obj in all_pmx_obj.items():
-		# what name do i write this pmx to? it may be different now! find it in the filerecord!
+		# what name do i write this pmx to? it may be different now! find it in the FileRecord!
 		# this script does not filter filerecord_list so it is guaranteed to hae a record
 		rec = None
 		for r in filerecord_list:
