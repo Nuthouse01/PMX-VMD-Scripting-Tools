@@ -250,7 +250,7 @@ def divvy_weights(pmx, vert_zip, axis_limits, bone_hasweight, bone_getsweight, b
 		if wdict[bone_hasweight] == 0: continue
 		
 		# 3. use percentile as input to bezier curve, [0.0-1.0]->bezier->[0.0-1.0]
-		bez_percentile = core.my_bezier_approximation(percentile, bezier)
+		bez_percentile = bezier.approximate(percentile)
 		
 		####################################################
 		# now I am left with only percentiles between 0,1 but not including 0,1: these verts will be blended!
@@ -455,7 +455,7 @@ def main(moreinfo=True):
 			pmx[5].append(armYZIK)
 			
 			# 6. build the bezier curve
-			bezier_curve = core.my_bezier_characterize(*boneset[4])
+			bezier_curve = core.MyBezier(boneset[4][0], boneset[4][1], resolution=50)
 			
 			# 7. find relevant verts & determine unbounded percentile for each
 			(verts, percentiles, centers) = calculate_percentiles(pmx, start_idx, end_idx, parent_idx)

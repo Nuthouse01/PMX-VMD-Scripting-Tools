@@ -208,13 +208,13 @@ def main(moreinfo=True):
 				thisframequat = core.euler_to_quaternion(this[5:8])
 				prevframequat = core.euler_to_quaternion(prev[5:8])
 				# 12, 16, 20, 24 = ax, ay, bx, by
-				curve = core.my_bezier_characterize((this[12], this[16]), (this[20], this[24]))
+				bez = core.MyBezier((this[12], this[16]), (this[20], this[24]), resolution=50)
 				# create new frames at these frame numbers, spacing is OVERKEY_FRAME_SPACING
 				for interp_framenum in range(prevframenum + OVERKEY_FRAME_SPACING, thisframenum, OVERKEY_FRAME_SPACING):
 					# calculate the x time percentage from prev frame to this frame
 					x = (interp_framenum - prevframenum) / (thisframenum - prevframenum)
 					# apply the interpolation curve to translate X to Y
-					y = core.my_bezier_approximation(x, curve)
+					y = bez.approximate(x)
 					# interpolate from prev to this by amount Y
 					interp_quat = core.my_slerp(prevframequat, thisframequat, y)
 					# begin building the new frame
