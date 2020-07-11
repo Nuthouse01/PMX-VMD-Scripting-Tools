@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README
-Created by Nuthouse01 - 07/09/2020 - v4.60
+Created by Nuthouse01 - 07/11/2020 - v4.61
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!
 
@@ -211,8 +211,13 @@ The following files should be included with this README:
 * graphic_user_interface.py
 * graphic_user_interface.exe
 * python/*.py
+* img/screenshot1.png
 
 #### Changelog:
+
+    v4.61:
+    bugfix: in "model_compatability_check", catch errors due to bad chars in names instead of crashing outright
+    loads of documentation & type-checking to make stuff more maintainable & readable
 
     v4.60:
     rename "vmd_convert_tool" to "convert_vmd_to_txt"
