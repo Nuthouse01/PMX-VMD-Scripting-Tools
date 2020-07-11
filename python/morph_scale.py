@@ -164,6 +164,7 @@ def main(moreinfo=True):
 	output_filename_pmx = input_filename_pmx[0:-4] + ("_%dscal.pmx" % target_index)
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx, moreinfo=moreinfo)
+	core.MY_PRINT_FUNC("Done!")
 	return None
 
 

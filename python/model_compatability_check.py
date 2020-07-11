@@ -299,7 +299,7 @@ def main(moreinfo=True):
 		# core.MY_PRINT_FUNC("...writing result to file '%s'..." % (core.get_clean_basename(output_filename_bone) + ".txt"))
 		# core.write_csvlist_to_file(output_filename_bone, rawlist_out, use_jis_encoding=False)
 	core.MY_PRINT_FUNC("")
-	core.MY_PRINT_FUNC("done!")
+	core.MY_PRINT_FUNC("Done!")
 	return None
 
 

@@ -234,6 +234,7 @@ def main(moreinfo=False):
 		# write it, overwriting the existing file at that name
 		pmxlib.write_pmx(output_filename_pmx, this_pmx_obj, moreinfo=moreinfo)
 	
+	core.MY_PRINT_FUNC("Done!")
 	return None
 
 

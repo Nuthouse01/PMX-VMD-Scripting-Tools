@@ -761,6 +761,7 @@ def main(moreinfo=False):
 		# output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 		pmxlib.write_pmx(output_filename_pmx, this_pmx_obj, moreinfo=moreinfo)
 	
+	core.MY_PRINT_FUNC("Done!")
 	return None
 
 

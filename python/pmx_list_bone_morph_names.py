@@ -74,6 +74,7 @@ def main(moreinfo=True):
 	output_filename_morph = core.get_unused_file_name(output_filename_morph)
 	core.MY_PRINT_FUNC("...writing result to file '%s'..." % output_filename_morph)
 	core.write_csvlist_to_file(output_filename_morph, morphlist_out, use_jis_encoding=False)
+	core.MY_PRINT_FUNC("Done!")
 	return None
 
 

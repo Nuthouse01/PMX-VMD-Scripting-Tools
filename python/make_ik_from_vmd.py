@@ -423,6 +423,7 @@ def main(moreinfo=True):
 	output_filename_vmd = core.get_unused_file_name(output_filename_vmd)
 	vmdlib.write_vmd(output_filename_vmd, nicelist_out, moreinfo=moreinfo)
 
+	core.MY_PRINT_FUNC("Done!")
 	return None
 
 if __name__ == '__main__':
