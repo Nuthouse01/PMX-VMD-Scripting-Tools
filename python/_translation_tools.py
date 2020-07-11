@@ -869,6 +869,6 @@ def local_translate(in_list: Union[List[str],str]) -> Union[List[str],str]:
 # 		numpass, numtotal, numpass / numtotal))
 #
 # if __name__ == '__main__':
-# 	core.MY_PRINT_FUNC("Nuthouse01 - 07/09/2020 - v4.60")
+# 	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
 # 	main()
 #
