@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/09/2020 - v4.60
+# Nuthouse01 - 07/11/2020 - v4.61
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -44,7 +44,6 @@ def main(moreinfo=True):
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	
-	target_index = 0
 	while True:
 		# any input is considered valid
 		s = core.MY_GENERAL_INPUT_FUNC(lambda x: True,
@@ -126,11 +125,12 @@ def main(moreinfo=True):
 	output_filename_pmx = input_filename_pmx[0:-4] + ("_%dinv.pmx" % target_index)
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx, moreinfo=moreinfo)
+	core.MY_PRINT_FUNC("Done!")
 	return None
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 07/09/2020 - v4.60")
+	print("Nuthouse01 - 07/11/2020 - v4.61")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

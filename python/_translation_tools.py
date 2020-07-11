@@ -14,6 +14,7 @@
 ########################################################################################################################
 
 import re
+from typing import List, Union, Tuple
 
 # this dict is added to both "words" and "morphs"... just in one place so I can keep thing straight
 symbols_dict = {
@@ -653,8 +654,7 @@ def needs_translate(text:str) -> bool:
 	# print(bool(m), str(text))
 	return bool(m)
 
-
-def pre_translate(in_list:(list,str)) -> (list,tuple):
+def pre_translate(in_list: Union[List[str],str]) -> Union[Tuple[str,str,str],Tuple[List[str],List[str],List[str]]]:
 	"""
 	Handle common translation things like prefixes, suffixes, fullwidth alphanumeric characters, indents,
 	and some types of punctuation. Returns 3-ple of EN indent, JP body, EN suffix. This way the translate can work on
@@ -735,7 +735,7 @@ def pre_translate(in_list:(list,str)) -> (list,tuple):
 	else:			return indent_list, body_list, suffix_list	# otherwise return as a list
 
 
-def piecewise_translate(in_list:(list, str), in_dict: dict) -> (list, str):
+def piecewise_translate(in_list: Union[List[str],str], in_dict: dict) -> Union[List[str],str]:
 	"""
 	Apply piecewise translation to inputs when given a mapping dict.
 	Mapping dict will usually be the builtin comprehensive 'words_dict' or some results found from Google Translate.
@@ -743,6 +743,7 @@ def piecewise_translate(in_list:(list, str), in_dict: dict) -> (list, str):
 	to shortest to avoid "undershadowing" problem.
 	Always returns what it produces, even if not a complete translation. Outer layers are responsible for checking if
 	the translation is "complete" before using it.
+	
 	:param in_list: list of JP strings, or a single JP string
 	:param in_dict: dict of mappings from JP substrings to EN substrings
 	:return: list of resulting strings, or a single resulting string
@@ -786,11 +787,12 @@ def piecewise_translate(in_list:(list, str), in_dict: dict) -> (list, str):
 	else:				return outlist		# otherwise return as a list
 
 
-def local_translate(in_list:(list,str)) -> (list,str):
+def local_translate(in_list: Union[List[str],str]) -> Union[List[str],str]:
 	"""
 	Simple wrapper func to run both pre_translate and local_translate using words_dict.
 	With DEBUG=True, it prints before/after.
 	Results are best-effort translations, even if incomplete.
+	
 	:param in_list: list of JP strings, or a single JP string
 	:return: list of resulting strings, or a single resulting string
 	"""
@@ -867,6 +869,6 @@ def local_translate(in_list:(list,str)) -> (list,str):
 # 		numpass, numtotal, numpass / numtotal))
 #
 # if __name__ == '__main__':
-# 	core.MY_PRINT_FUNC("Nuthouse01 - 07/09/2020 - v4.60")
+# 	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
 # 	main()
 #

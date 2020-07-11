@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/09/2020 - v4.60
+# Nuthouse01 - 07/11/2020 - v4.61
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -20,8 +20,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = None
-		apply_bone_remapping = None
+		core = pmxlib = apply_bone_remapping = delme_list_to_rangemap = None
 
 
 
@@ -109,7 +108,7 @@ def main(moreinfo=True):
 			
 			# then do the "remapping" on all existing bone references, to make space for inserting 4 bones
 			# don't delete any bones, just remap them
-			bone_shiftmap = [[shoulder_idx+1], [-4]]
+			bone_shiftmap = ([shoulder_idx+1], [-4])
 			pmx = apply_bone_remapping(pmx, [], bone_shiftmap)
 			# new bones will be inserted AFTER shoulder_idx
 			# newarm_idx = shoulder_idx+1
@@ -189,11 +188,12 @@ def main(moreinfo=True):
 	# write out
 	output_filename = core.get_unused_file_name(output_filename)
 	pmxlib.write_pmx(output_filename, pmx, moreinfo=moreinfo)
+	core.MY_PRINT_FUNC("Done!")
 	return None
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/09/2020 - v4.60")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

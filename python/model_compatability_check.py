@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/09/2020 - v4.60
+# Nuthouse01 - 07/11/2020 - v4.61
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -55,8 +55,6 @@ def main(moreinfo=True):
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	realbones = pmx[5]		# get bones
 	realmorphs = pmx[6]		# get morphs
-	# modelname_jp = pmx[0][1]
-	# modelname_en = pmx[0][2]
 	
 	# prompt VMD file name
 	core.MY_PRINT_FUNC("Please enter name of VMD motion or VPD pose file to check compatability with:")
@@ -66,7 +64,7 @@ def main(moreinfo=True):
 		vmd, bonedict, morphdict = vmdlib.read_vmd(input_filename, getdict=True, moreinfo=moreinfo)
 	else:
 		vmd = vpdlib.read_vpd(input_filename, moreinfo=moreinfo)
-		bonedict, morphdict = vmdlib.parse_vmd_bonemorphdicts(vmd[1], vmd[2], moreinfo=False)
+		bonedict, morphdict = vmdlib.parse_vmd_bonemorphdicts(vmd[1], vmd[2], moreinfo=moreinfo)
 		
 	
 	core.MY_PRINT_FUNC("")
@@ -91,16 +89,29 @@ def main(moreinfo=True):
 		core.MY_PRINT_FUNC("MORPH SKIP: PMX '%s' does not contain any morphs." % core.get_clean_basename(input_filename_pmx))
 	else:
 		
-		# convert all these names to bytes
-		morphs_in_model_b = [core.encode_string_with_escape(a) for a in morphs_in_model]
+		# convert pmx-morph names to bytes
+		# these can plausibly fail shift_jis encoding because they came from the UTF-8 pmx file
+		morphs_in_model_b = []
+		for a in morphs_in_model:
+			try:
+				b = core.encode_string_with_escape(a)
+			except UnicodeEncodeError as e:
+				newerrstr = "%s: '%s' codec cannot encode char '%s' within string '%s'" % (
+					e.__class__.__name__, e.encoding, e.reason[e.start:e.end], e.reason)
+				core.MY_PRINT_FUNC(newerrstr)
+				b = bytearray()
+			morphs_in_model_b.append(b)
+		
+		# convert vmd-morph names to bytes
+		# these might be truncated but cannot fail because they were already decoded from the shift_jis vmd file
+		morphs_in_vmd_b = [core.encode_string_with_escape(a) for a in morphs_in_vmd]
 		
 		matching_morphs = {}
 		missing_morphs = {}
 		# iterate over list of morphs
-		for vmdmorph in morphs_in_vmd:
+		for vmdmorph, vmdmorph_b in zip(morphs_in_vmd, morphs_in_vmd_b):
 			# question: does "vmdmorph" match something in "morphs_in_model"?
 			# BUT, doing comparison in bytes-space to handle escape characters: vmdmorph_b vs morphs_in_model_b
-			vmdmorph_b = core.encode_string_with_escape(vmdmorph)
 			# NOTE: MMD does not try to use "begins-with" matching like I had hoped/assumed, it only looks for exact matches
 			# return list of ALL matches, this way i can raise an error if there are multiple matches
 			# exact match
@@ -115,9 +126,9 @@ def main(moreinfo=True):
 				matching_morphs[core.decode_bytes_with_escape(modelmorphmatch_b[0])] = morphdict[vmdmorph]
 			else:
 				# more than 1 morph was a match!?
-				core.MY_PRINT_FUNC("Warning: VMDmorph '%s' matched multiple PMXmorphs, its behavior is uncertain. Assuming it matches against the first." % vmdmorph)
+				core.MY_PRINT_FUNC("Warning: VMDmorph '%s' matched multiple PMXmorphs, its behavior is uncertain." % vmdmorph)
 				modelmorphmatch = [core.decode_bytes_with_escape(a) for a in modelmorphmatch_b]
-				core.MY_PRINT_FUNC(modelmorphmatch)
+				# core.MY_PRINT_FUNC(modelmorphmatch)
 				matching_morphs[modelmorphmatch[0]] = morphdict[vmdmorph]
 		
 		# display results!
@@ -154,38 +165,6 @@ def main(moreinfo=True):
 					for m, num in matching_morphs_list:
 						core.MY_PRINT_FUNC("  %s  ||  %d" % (m, int(num)))
 			
-		# since only jap names are available, printing to screen won't help. must write to a file.
-		# format:
-		# "vmd_dance_file", -----
-		# "num_morphs_missing", #
-		# "missing_morph_name", "num_times_used"
-		# list
-		# "num_morphs_matching", #
-		# "matching_morph_name", "num_times_used"
-		# list
-		
-		# rawlist_out = [
-		# 	["vmd_dance_file", "'" + core.get_clean_basename(input_filename) + "'"],
-		# 	["modelname_jp", "'" + modelname_jp + "'"],
-		# 	["modelname_en", "'" + modelname_en + "'"],
-		# 	["num_morphs_missing", len(missing_morphs)]
-		# ]
-		# if len(missing_morphs) != 0:
-		# 	rawlist_out.append(["missing_morph_name", "num_times_used"])
-		# 	rawlist_out += missing_morphs_list
-		# rawlist_out.append(["num_morphs_matching", len(matching_morphs)])
-		# if len(matching_morphs) != 0:
-		# 	rawlist_out.append(["matching_morph_name", "num_times_used"])
-		# 	rawlist_out += matching_morphs_list
-		# 
-		# # write out
-		# output_filename_morph = "%s_morph_compatability_with_%s.txt" % \
-		# 					  (input_filename[0:-4], core.get_clean_basename(input_filename_pmx))
-		# output_filename_morph = core.get_unused_file_name(output_filename_morph)
-		# core.MY_PRINT_FUNC("...writing result to file '%s'..." % (core.get_clean_basename(output_filename_morph) + ".txt"))
-		# core.write_csvlist_to_file(output_filename_morph, rawlist_out, use_jis_encoding=False)
-		# core.MY_PRINT_FUNC("done!")
-	
 	##############################################
 	# check bone compatability
 	core.MY_PRINT_FUNC("")
@@ -204,16 +183,29 @@ def main(moreinfo=True):
 		core.MY_PRINT_FUNC("BONE SKIP: PMX '%s' does not contain any bones." % core.get_clean_basename(input_filename_pmx))
 	else:
 		
-		# convert all these names to bytes
-		bones_in_model_b = [core.encode_string_with_escape(a) for a in bones_in_model]
+		# convert pmx-bone names to bytes
+		# these can plausibly fail shift_jis encoding because they came from the UTF-8 pmx file
+		bones_in_model_b = []
+		for a in bones_in_model:
+			try:
+				b = core.encode_string_with_escape(a)
+			except UnicodeEncodeError as e:
+				newerrstr = "%s: '%s' codec cannot encode char '%s' within string '%s'" % (
+					e.__class__.__name__, e.encoding, e.reason[e.start:e.end], e.reason)
+				core.MY_PRINT_FUNC(newerrstr)
+				b = bytearray()
+			bones_in_model_b.append(b)
+		
+		# convert vmd-bone names to bytes
+		# these might be truncated but cannot fail because they were already decoded from the shift_jis vmd file
+		bones_in_vmd_b = [core.encode_string_with_escape(a) for a in bones_in_vmd]
 		
 		matching_bones = {}
 		missing_bones = {}
 		# iterate over list of bones that pass the size check
-		for vmdbone in bones_in_vmd:
+		for vmdbone, vmdbone_b in zip(bones_in_vmd, bones_in_vmd_b):
 			# question: does "vmdbone" match something in "bones_in_model"?
 			# BUT, doing comparison in bytes-space to handle escape characters: vmdbone_b vs bones_in_model_b
-			vmdbone_b = core.encode_string_with_escape(vmdbone)
 			# NOTE: MMD does not try to use "begins-with" matching like I had hoped/assumed, it only looks for exact matches
 			# return list of ALL matches, this way i can raise an error if there are multiple matches
 			# exact match
@@ -228,10 +220,9 @@ def main(moreinfo=True):
 				matching_bones[core.decode_bytes_with_escape(modelbonematch_b[0])] = bonedict[vmdbone]
 			else:
 				# more than 1 bone was a match!?
-				core.MY_PRINT_FUNC(
-					"Warning: VMDbone '%s' matched multiple PMXbones, its behavior is uncertain. Assuming it matches against the first." % vmdbone)
+				core.MY_PRINT_FUNC("Warning: VMDbone '%s' matched multiple PMXbones, its behavior is uncertain." % vmdbone)
 				modelbonematch = [core.decode_bytes_with_escape(a) for a in modelbonematch_b]
-				core.MY_PRINT_FUNC(modelbonematch)
+				# core.MY_PRINT_FUNC(modelbonematch)
 				matching_bones[modelbonematch[0]] = bonedict[vmdbone]
 		
 		# display results!
@@ -268,43 +259,13 @@ def main(moreinfo=True):
 					for m, num in matching_bones_list:
 						core.MY_PRINT_FUNC("  %s  ||  %d" % (m, int(num)))
 		
-		# since only jap names are available, printing to screen won't work. must write to a file.
-		# format:
-		# "vmd_dance_file", -----
-		# "num_bones_missing", #
-		# "missing_bone_name", "num_times_used"
-		# list
-		# "num_bones_matching", #
-		# "matching_bone_name", "num_times_used"
-		# list
-		
-		# rawlist_out = [
-		# 	["vmd_dance_file", "'" + core.get_clean_basename(input_filename) + "'"],
-		# 	["modelname_jp", "'" + modelname_jp + "'"],
-		# 	["modelname_en", "'" + modelname_en + "'"],
-		# 	["num_bones_missing", len(missing_bones)]
-		# ]
-		# if len(missing_bones) != 0:
-		# 	rawlist_out.append(["missing_bone_name", "num_times_used"])
-		# 	rawlist_out += missing_bones_list
-		# rawlist_out.append(["num_bones_matching", len(matching_bones)])
-		# if len(matching_bones) != 0:
-		# 	rawlist_out.append(["matching_bone_name", "num_times_used"])
-		# 	rawlist_out += matching_bones_list
-		#
-		# # write out
-		# output_filename_bone = "%s_bone_compatability_with_%s.txt" % \
-		# 					   (input_filename[0:-4], core.get_clean_basename(input_filename_pmx))
-		# output_filename_bone = core.get_unused_file_name(output_filename_bone)
-		# core.MY_PRINT_FUNC("...writing result to file '%s'..." % (core.get_clean_basename(output_filename_bone) + ".txt"))
-		# core.write_csvlist_to_file(output_filename_bone, rawlist_out, use_jis_encoding=False)
 	core.MY_PRINT_FUNC("")
-	core.MY_PRINT_FUNC("done!")
+	core.MY_PRINT_FUNC("Done!")
 	return None
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/09/2020 - v4.60")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

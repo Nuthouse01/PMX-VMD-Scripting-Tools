@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/09/2020 - v4.60
+# Nuthouse01 - 07/11/2020 - v4.61
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -83,8 +83,10 @@ def find_toolong_bonemorph(pmx):
 			mb = core.encode_string_with_escape(m[0])
 			if len(mb) > 15:
 				toolong_list_bone.append("%d[%d]" % (d, len(mb)))
-		except RuntimeError as e:
-			core.MY_PRINT_FUNC(str(e.args[0][0]))
+		except UnicodeEncodeError as e:
+			newerrstr = "%s: '%s' codec cannot encode char '%s' within string '%s'" % (
+				e.__class__.__name__, e.encoding, e.reason[e.start:e.end], e.reason)
+			core.MY_PRINT_FUNC(newerrstr)
 			failct += 1
 	toolong_list_morph = []
 	for d,m in enumerate(pmx[6]):
@@ -92,8 +94,10 @@ def find_toolong_bonemorph(pmx):
 			mb = core.encode_string_with_escape(m[0])
 			if len(mb) > 15:
 				toolong_list_morph.append("%d[%d]" % (d, len(mb)))
-		except RuntimeError as e:
-			core.MY_PRINT_FUNC(str(e.args[0][0]))
+		except UnicodeEncodeError as e:
+			newerrstr = "%s: '%s' codec cannot encode char '%s' within string '%s'" % (
+				e.__class__.__name__, e.encoding, e.reason[e.start:e.end], e.reason)
+			core.MY_PRINT_FUNC(newerrstr)
 			failct += 1
 	if failct:
 		core.MY_PRINT_FUNC("WARNING: found %d JP names that cannot be encoded with SHIFT-JIS, this will cause MMD to behave strangely. Please replace the bad characters in the strings printed above!" % failct)
@@ -285,7 +289,7 @@ def main(moreinfo=False):
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/09/2020 - v4.60")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

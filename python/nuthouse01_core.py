@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/09/2020 - v4.60
+# Nuthouse01 - 07/11/2020 - v4.61
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -18,6 +18,8 @@ from sys import platform, version_info, version
 # i don't know if it will actually work in 3.4 but i know it will fail in any python2 version
 # actually written/tested with 3.6.6 so guaranteed to work on that or higher
 # between 3.4 and 3.6, who knows
+from typing import Any, Tuple, List, Sequence, Callable, Iterable
+
 if version_info < (3, 4):
 	print("Your version of Python is too old to run this script, please update!")
 	print("Your current version = " + version)
@@ -73,7 +75,14 @@ bone_interpolation_default_linear = [20, 20, 20, 20, 20, 20, 20, 20, 107, 107, 1
 # misc functions and user-input functions
 ########################################################################################################################
 
-def basic_print(*args, is_progress=False):
+def basic_print(*args, is_progress=False) -> None:
+	"""
+	CONSOLE FUNCTION: emulate builtin print() function and display text in console.
+	
+	:param args: any number of string-able objects, will be joined with spaces.
+	:param is_progress: default false. if true, move the cursor to the beginning of THIS line after printing, so NEXT
+	print contents will overwrite this one.
+	"""
 	the_string = ' '.join([str(x) for x in args])
 	# replace the print() function with this so i can replace this with the text redirector
 	if is_progress:
@@ -88,30 +97,37 @@ def basic_print(*args, is_progress=False):
 # global variable holding a function pointer that i can overwrite with a different function pointer when in GUI mode
 MY_PRINT_FUNC = basic_print
 
-def pause_and_quit(message):
+def pause_and_quit(message=None) -> None:
+	"""
+	CONSOLE FUNCTION: use input() to suspend until user presses ENTER, then die.
+	DO NOT USE THIS FUNCTION IN ANY SCRIPTS THAT WILL BE EXECUTED BY THE GUI.
+	
+	:param message: optional string to print before dying
+	"""
 	# wait for user input before exiting because i want the window to stay open long enough for them to read output
 	MY_PRINT_FUNC(message)
 	MY_PRINT_FUNC("...press ENTER to exit...")
 	input()
 	exit()
 
-# new version:
-# >THIS LEVEL< decides when it's appropriate to print, not the calling level
-# track last % i did print to know when it's time to print again
-# track last curr, when "curr" decreases, then i reset my tracker
-PROGRESS_REFRESH_RATE = 0.03
+
+PROGRESS_REFRESH_RATE = 0.03  # threshold for actually printing
 PROGRESS_LAST_VALUE = 0.0  # last%
-def print_progress_oneline(newpercent):
+def print_progress_oneline(newpercent:float) -> None:
+	"""
+	Prints progress percentage on one continually-overwriting line. To minimize actual print-to-screen events, only
+	print in increments of PROGRESS_REFRESH_RATE (currently 3%) regardless of how often this function is called.
+	This uses the MY_PRINT_FUNC approach so this function works in both GUI and CONSOLE modes.
+	
+	:param newpercent: float [0-1], current progress %
+	"""
 	global PROGRESS_LAST_VALUE
 	# if 'curr' is lower than it was last printed (meaning reset), or it's been a while since i last printed a %, then print
 	if (newpercent < PROGRESS_LAST_VALUE) or (newpercent >= PROGRESS_LAST_VALUE + PROGRESS_REFRESH_RATE):
-		# print progress updates on one line, continually overwriting itself
 		# cursor gets left at the beginning of line, so the next print will overwrite this one
 		p = "...working: {:05.1%}".format(newpercent)
-		# MY_PRINT_FUNC(p)
 		MY_PRINT_FUNC(p, is_progress=True)
 		PROGRESS_LAST_VALUE = newpercent
-
 
 # useful as keys for sorting
 def get1st(x):
@@ -119,6 +135,7 @@ def get1st(x):
 def get2nd(x):
 	return x[1]
 
+# todo: revise this to be more generic & take a lambda
 def my_sublist_find(searchme, sublist_idx, matchme, getindex=False):
 	# in a list of lists, find the list with the specified value at the specified sub-index
 	for d,row in enumerate(searchme):
@@ -129,9 +146,10 @@ def my_sublist_find(searchme, sublist_idx, matchme, getindex=False):
 				return row
 	return None
 
-def my_list_partition(l, condition):
+def my_list_partition(l: Iterable, condition: Callable) -> Tuple[list,list]:
 	"""
 	Split one list into two NEW lists based on a condition. Kinda like a list comprehension but it produces 2 results.
+	
 	:param l: the list to be split in two
 	:param condition: lambda function that returns true or false
 	:return: tuple of lists, (list_lambda_true, list_lambda_false)
@@ -171,9 +189,10 @@ def recursively_compare(A,B):
 		return float("inf")
 	return 0
 
-# recursively flatten a list of lists
-# empty lists get turned into "none" instead of completely vanishing
-def flatten(x):
+def flatten(x: Sequence) -> list:
+	"""
+	Recursively flatten a list of lists (or tuples). Empty lists get replaced with "None" instead of completely vanishing.
+	"""
 	retme = []
 	for thing in x:
 		if isinstance(thing, list) or isinstance(thing, tuple):
@@ -185,19 +204,26 @@ def flatten(x):
 			retme.append(thing)
 	return retme
 
-def increment_occurance_dict(d: dict, k):
-	# this does a pass-by-reference thing so i dont need to bother with returning, it just updates the value in-place
+def increment_occurance_dict(d: dict, k: Any) -> None:
+	"""
+	Increment occurance dict, updates in-place so nothing is returned.
+	"""
 	try:
 		d[k] += 1
 	except KeyError:
 		d[k] = 1
 	return None
 
-def justify_stringlist(j: list, right=False) -> list:
-	# receive a list of strings and add padding such that they are all the same length
-	# this doesn't work properly for JP/CN strings but it mostly works so w/e
+def justify_stringlist(j: List[str], right=False) -> List[str]:
+	"""
+	CONSOLE FUNCTION: justify all str in a list to match the length of the longest str in that list. Determined by
+	len() function, i.e. number of chars, not by true width when printed, so it doesn't work well with JP/CN chars.
+	
+	:param j: list[str] to be justified
+	:param right: by default, left-justify (right-pad). if this is true, right-justify (left-pad) instead.
+	:return: list[str] after padding/justifying
+	"""
 	# first, look for an excuse to give up early
-	# if list is empty, nothing to do. if list has only 1 item, also nothing to do.
 	if len(j) == 0 or len(j) == 1: return j
 	# second, find the length of the longest string in the list
 	longest_name_len = max([len(p) for p in j])
@@ -212,10 +238,14 @@ def justify_stringlist(j: list, right=False) -> list:
 # global variable holding a function pointer that i can overwrite with a different function pointer when in GUI mode
 MY_JUSTIFY_STRINGLIST = justify_stringlist
 
-def prompt_user_choice(options, explain_info=None):
-	# loop until the user chooses one of the specified options, returns as int
-	# options is a list of ints
-	# explain_info is a list of strings to print before beginning prompt loop, or maybe just 1
+def prompt_user_choice(options: Sequence[int], explain_info=None) -> int:
+	"""
+	CONSOLE FUNCTION: prompt for multiple-choice question & continue prompting until one of those options is chosen.
+	
+	:param options: list/tuple of ints
+	:param explain_info: None or str or list[str], help text that will be printed when func is called
+	:return: int that the user chose
+	"""
 	if isinstance(explain_info, (list, tuple)):
 		for p in explain_info:
 			MY_PRINT_FUNC(p)
@@ -239,16 +269,24 @@ def prompt_user_choice(options, explain_info=None):
 # global variable holding a function pointer that i can overwrite with a different function pointer when in GUI mode
 MY_SIMPLECHOICE_FUNC = prompt_user_choice
 
-def general_input(valid_check, explain_info=None):
-	# prompt for text-form input, loop until it passes
-	# 'valid_check' is a function that checks whether the input is """good""" and may print errors if not, return true if good
-	# both the check and the explanation for why it doesn't pass will be unique
-	# explain_info is a list of strings to print before beginning prompt loop, or maybe just 1
-	if isinstance(explain_info, (list, tuple)):
-		for p in explain_info:
-			MY_PRINT_FUNC(p)
+def general_input(valid_check: Callable, explain_info=None) -> str:
+	"""
+	CONSOLE FUNCTION: Prompt for string input & continue prompting until given function 'valid_check' returns True.
+	'valid_check' should probably print some kind of error whenever it returns False, explaining why input isn't valid.
+	Trailing whitespace is removed before calling 'valid_check' and before returning result.
+	
+	:param valid_check: function or lambda that takes str as in put and returns bool
+	:param explain_info: None or str or list[str], help text that will be printed when func is called
+	:return: input string (trailing whitespace removed)
+	"""
+	if explain_info is None:
+		pass
 	elif isinstance(explain_info, str):
 		MY_PRINT_FUNC(explain_info)
+	elif isinstance(explain_info, (list, tuple)):
+		for p in explain_info:
+			MY_PRINT_FUNC(p)
+	
 	while True:
 		s = input("> ")
 		s = s.rstrip()  # no use for trailing whitespace, sometimes have use for leading whitespace
@@ -265,20 +303,21 @@ MY_GENERAL_INPUT_FUNC = general_input
 
 
 def prompt_user_filename(extensions_in: str) -> str:
-	# loop until user enters the name of an existing file with the specified extension
-	# accepts string or iterable
-	# returns the case-correct name, matches relative/absolute of input
+	"""
+	CONSOLE FUNCTION: prompt for file & continue prompting until user enters the name of an existing file with the
+	specified file extension. Returns case-correct absolute file path to the specified file.
+	
+	:param extensions_in: string of valid extensions, separated by spaces
+	:return: case-correct absolute file path
+	"""
 	extensions = extensions_in.split(" ")
-	# if isinstance(extensions, str):
-	# 	# force extensions to be a list
-	# 	extensions = [extensions]
 	MY_PRINT_FUNC('(type/paste the path to the file, ".." means "go up a folder")')
 	MY_PRINT_FUNC('(path can be absolute, like C:/username/Documents/miku.pmx)')
 	MY_PRINT_FUNC('(or path can be relative to here, example: ../../mmd/models/miku.pmx)')
 	while True:
 		# continue prompting until the user gives valid input
 		name = input(" Filename ending with %s = " % extensions)
-		valid_ext = sum([bool(name.lower().endswith(a.lower())) for a in extensions])
+		valid_ext = any(name.lower().endswith(a.lower()) for a in extensions)
 		if not valid_ext:
 			MY_PRINT_FUNC("Err: given file must have %s extension" % extensions)
 		elif not path.isfile(name):
@@ -286,9 +325,11 @@ def prompt_user_filename(extensions_in: str) -> str:
 			MY_PRINT_FUNC("Err: given file does not exist, did you type it wrong?")
 		else:
 			break
+	# it exists, so make it absolute
+	name = path.abspath(path.normpath(name))
 	# windows is case insensitive, so this doesn't matter, but to make it match the same case as the existing file:
-	# inputname > absolute path > dir name > list files in dir > compare-case-insensitive with inputname > get actual existing name
-	manyfiles = listdir(path.dirname(path.abspath(name)))
+	# inputname > dir name > list files in dir > compare-case-insensitive with inputname > get case-correct name
+	manyfiles = listdir(path.dirname(name))
 	for casename in manyfiles:
 		if casename.lower() == path.basename(name).lower():
 			return path.join(path.dirname(name), casename)
@@ -301,6 +342,7 @@ MY_FILEPROMPT_FUNC = prompt_user_filename
 def get_clean_basename(initial_name: str) -> str:
 	"""
 	Remove extension and all folders from a file name: D:/docs/user/mmd/whatever/mikumodel.pmx -> mikumodel
+	
 	:param initial_name: input path, abs or relative
 	:return: stripped path
 	"""
@@ -311,6 +353,7 @@ def get_unused_file_name(initial_name: str, namelist=None) -> str:
 	Given a desired filepath, generate a path that is guaranteed to be unused & safe to write to.
 	Append integers to the end of the basename until it passes.
 	Often it doesn't need to append anything and returns initial_name unmodified.
+	
 	:param initial_name: desired file path, absolute or relative
 	:param namelist: optional list/set of forbidden names
 	:return: same file path as initial_name, but with integers appended until it becomes unique (if needed)
@@ -334,6 +377,7 @@ def get_persistient_storage_path(filename="") -> str:
 	If not given a filename, return the path to the folder.
 	If given a filename, and the file does not exist, create it empty & return the path to this new file.
 	If the file does exist, return the path to the existing file.
+	
 	:param filename: filename within the persistient storage directory
 	:return: absolute file path to the persitient directory, or the file within it
 	"""
@@ -361,9 +405,10 @@ def get_persistient_storage_path(filename="") -> str:
 # these functions do CSV read/write and binary-file read/write
 ########################################################################################################################
 
-def write_csvlist_to_file(dest_path:str, content:list, use_jis_encoding=False, quiet=False) -> None:
+def write_csvlist_to_file(dest_path:str, content:List[list], use_jis_encoding=False, quiet=False) -> None:
 	"""
 	Receive a list-of-lists format and write it to textfile on disk in CSV format.
+	
 	:param dest_path: destination file path, as a string, relative from CWD or absolute
 	:param content: list-of-lists format, OR list-of-strings format
 	:param use_jis_encoding: by default, assume utf-8 encoding. if this=True, use shift_jis instead.
@@ -406,9 +451,10 @@ def write_csvlist_to_file(dest_path:str, content:list, use_jis_encoding=False, q
 
 	return None
 
-def read_file_to_csvlist(src_path:str, use_jis_encoding=False, quiet=False) -> list:
+def read_file_to_csvlist(src_path:str, use_jis_encoding=False, quiet=False) -> List[list]:
 	"""
 	Read a CSV text file from disk & return a type-correct list-of-lists format
+	
 	:param src_path: source file path, as a string, relative from CWD or absolute
 	:param use_jis_encoding: by default, assume utf-8 encoding. if this=True, use shift_jis instead.
 	:param quiet: by default, print the absolute path being written to. if this=True, don't do this.
@@ -465,10 +511,10 @@ def read_file_to_csvlist(src_path:str, use_jis_encoding=False, quiet=False) -> l
 		data.append(newrow)
 	return data
 
-
 def write_bytes_to_binfile(dest_path:str, content:bytearray, quiet=False) -> None:
 	"""
 	WRITE a BINARY file from memory to disk.
+	
 	:param dest_path: destination file path, as a string, relative from CWD or absolute
 	:param content: bytearray obj or bytes obj
 	:param quiet: by default, print the absolute path being written to. if this=True, don't do this.
@@ -491,6 +537,7 @@ def write_bytes_to_binfile(dest_path:str, content:bytearray, quiet=False) -> Non
 def read_binfile_to_bytes(src_path:str, quiet=False) -> bytearray:
 	"""
 	READ a BINARY file from disk into memory.
+	
 	:param src_path: source file path, as a string, relative from CWD or absolute
 	:param quiet: by default, print the absolute path being written to. if this=True, don't do this.
 	:return: bytearray obj
@@ -510,9 +557,10 @@ def read_binfile_to_bytes(src_path:str, quiet=False) -> bytearray:
 		raise RuntimeError()
 	return bytearray(raw)
 
-def write_list_to_txtfile(dest_path:str, content:list, use_jis_encoding=False, quiet=False) -> None:
+def write_list_to_txtfile(dest_path:str, content:List[str], use_jis_encoding=False, quiet=False) -> None:
 	"""
 	WRITE a TEXT file from memory to disk.
+	
 	:param dest_path: destination file path, as a string, relative from CWD or absolute
 	:param content: list of lines, each line is a string
 	:param use_jis_encoding: by default, assume utf-8 encoding. if this=True, use shift_jis instead.
@@ -541,9 +589,10 @@ def write_list_to_txtfile(dest_path:str, content:list, use_jis_encoding=False, q
 		raise RuntimeError()
 	return None
 
-def read_txtfile_to_list(src_path:str, use_jis_encoding=False, quiet=False) -> list:
+def read_txtfile_to_list(src_path:str, use_jis_encoding=False, quiet=False) -> List[str]:
 	"""
 	READ a TEXT file from disk into memory.
+	
 	:param src_path: source file path, as a string, relative from CWD or absolute
 	:param use_jis_encoding: by default, assume utf-8 encoding. if this=True, use shift_jis instead.
 	:param quiet: by default, print the absolute path being written to. if this=True, don't do this.
@@ -572,91 +621,220 @@ def read_txtfile_to_list(src_path:str, use_jis_encoding=False, quiet=False) -> l
 	return rb_unicode.splitlines()
 	
 
+########################################################################################################################
+# searching thru sorted lists for MASSIVE speedup
+########################################################################################################################
+
+# bisect_left and bisect_right literally just copied from the "bisect" library so I don't need to import that file
+def bisect_left(a: Sequence[Any], x: Any) -> int:
+	"""
+	Return the index where to insert item x in list a, assuming a is sorted.
+	The return value i is such that all e in a[:i] have e < x, and all e in
+	a[i:] have e >= x.  So if x already appears in the list, then i = the index
+	where the leftmost x can be found.
+	"""
+	lo = 0
+	hi = len(a)
+	while lo < hi:
+		mid = (lo+hi)//2
+		if a[mid] < x: lo = mid+1
+		else: hi = mid
+	return lo
+def bisect_right(a: Sequence[Any], x: Any) -> int:
+	"""
+	Return the index where to insert item x in list a, assuming a is sorted.
+	The return value i is such that all e in a[:i] have e <= x, and all e in
+	a[i:] have e > x.  So if x already appears in the list, then i = index + 1
+	of the rightmost x already there.
+	"""
+	lo = 0
+	hi = len(a)
+	while lo < hi:
+		mid = (lo+hi)//2
+		if x < a[mid]: hi = mid
+		else: lo = mid+1
+	return lo
+def binary_search_isin(x: Any, a: Sequence[Any]) -> bool:
+	"""
+	If x is in a, return True. Otherwise return False. a must be in ascending sorted order.
+	"""
+	pos = bisect_left(a, x)  # find insertion position
+	return True if pos != len(a) and a[pos] == x else False  # don't walk off the end
+def binary_search_wherein(x: Any, a: Sequence[Any]) -> int:
+	"""
+	If x is in a, return its index. Otherwise return -1. a must be in ascending sorted order.
+	"""
+	pos = bisect_left(a, x)  # find insertion position
+	return pos if pos != len(a) and a[pos] == x else -1  # don't walk off the end
+
 
 ########################################################################################################################
-# these functions are for various math operations
+# simple, fundamental math operations
 ########################################################################################################################
 
-def linear_map(x1, y1, x2, y2, x_in_val):
+def linear_map(x1: float, y1: float, x2: float, y2: float, x_in_val: float) -> float:
+	"""
+	Define a Y=MX+B slope via coords x1,y1 and x2,y2. Then given an X value, calculate the resulting Y.
+	
+	:param x1: x1
+	:param y1: y1
+	:param x2: x2
+	:param y2: y2
+	:param x_in_val: any float, does not need to be constrained by x1/x2
+	:return: resulting Y
+	"""
 	m = (y2 - y1) / (x2 - x1)
 	b = y2 - (m * x2)
 	return x_in_val * m + b
 
-# basic clamp
-def clamp(value, lower, upper):
+def clamp(value: float, lower: float, upper: float) -> float:
+	"""
+	Basic clamp function: if below the floor, return floor; if above the ceiling, return ceiling; else return unchanged.
+	
+	:param value: float input
+	:param lower: float floor
+	:param upper: float ceiling
+	:return: float within range [lower-upper]
+	"""
 	return lower if value < lower else upper if value > upper else value
-# clamp where you dont know the relative order of a and b
-def bidirectional_clamp(val, a, b):
+
+def bidirectional_clamp(val: float, a: float, b: float) -> float:
+	"""
+	Clamp when you don't know the relative order of a and b.
+	
+	:param val: float input
+	:param a: ceiling or floor
+	:param b: ceiling or floor
+	:return: float within range [lower-upper]
+	"""
 	return clamp(val, a, b) if a < b else clamp(val, b, a)
 
-BEZIER_RESOLUTION = 50
-def _my_bezier(t, point1, point2):
-	# this should not be directly called by a user!
-	# this function does bezier curve calculation as a function of "t"
-	# ideally i want a function of X but this will have to be good enough
-	# point0 is always (0,0), point3 is always (1,1)
+def my_dot(v0: Sequence[float], v1: Sequence[float]) -> float:
+	"""
+	Perform mathematical dot product between two same-length vectors. IE component-wise multiply, then sum.
+
+	:param v0: any number of floats
+	:param v1: same number of floats
+	:return: single float
+	"""
+	dot = 0.0
+	for (a, b) in zip(v0, v1):
+		dot += a * b
+	return dot
+
+def my_euclidian_distance(x: Sequence[float]) -> float:
+	"""
+	Calculate Euclidian distance (square each component, sum, and square root).
+
+	:param x: any number of floats
+	:return: single float
+	"""
+	return math.sqrt(my_dot(x, x))
+
+########################################################################################################################
+# MyBezier object for bezier curve interpolation
+########################################################################################################################
+
+def _bezier_math(t: float, p1: Tuple[float, float], p2: Tuple[float, float]) -> Tuple[float, float]:
+	"""
+	Internal use only.
+	Use standard bezier equations, assuming p0=(0,0) and p3=(1,1) and p1/p2 are args, with a time value t, to calculate
+	the resulting X and Y. If X/Y of p1/p2 are within range [0-1] then output X/Y are guaranteed to also be within
+	[0-1].
+	
+	:param t: float time value
+	:param p1: 2x float, coord of p1
+	:param p2: 2x float, coord of p2
+	:return: 2x float, resulting X Y coords
+	"""
 	x0, y0 = 0, 0
-	x1, y1 = point1
-	x2, y2 = point2
+	x1, y1 = p1
+	x2, y2 = p2
 	x3, y3 = 1, 1
 	x = (1 - t) ** 3 * x0 + 3 * (1 - t) ** 2 * t * x1 + 3 * (1 - t) * t ** 2 * x2 + t ** 3 * x3
 	y = (1 - t) ** 3 * y0 + 3 * (1 - t) ** 2 * t * y1 + 3 * (1 - t) * t ** 2 * y2 + t ** 3 * y3
 	return x, y
 
-def my_bezier_characterize(point1, point2):
-	# point1 and point2 are each a pair of ints 0-128 that give XY coordinates of control points
-	# return a list of points along the bezier curve, evenly spaced in "t"
-	# this will be used for linear mapping approximations
-	point1 = [clamp(p / 128, 0.0, 1.0) for p in point1]
-	point2 = [clamp(p / 128, 0.0, 1.0) for p in point2]
-	retlist = [(0, 0)] # curve always starts at 0,0
-	for i in range(1, BEZIER_RESOLUTION):
-		retlist.append(_my_bezier(i / BEZIER_RESOLUTION, point1, point2))
-	retlist.append((1, 1)) # curve always ends at 1,1
-	return retlist
+class MyBezier(object):
+	def __init__(self, p1: Tuple[int,int], p2: Tuple[int,int], resolution=50) -> None:
+		"""
+		This implements a linear approximation of a constrained Bezier curve for motion interpolation. After defining
+		the control points, Y values can be easily generated from X values using self.approximate(x).
+		
+		:param p1: 2x int range [0-128], XY coordinates of control point
+		:param p2: 2x int range [0-128], XY coordinates of control point
+		:param resolution: int, number of points in the linear approximation of the bezier curve
+		"""
+		# first convert tuple(int [0-128]) to tuple(float [0.0-1.0])
+		point1 = (clamp(p1[0] / 128, 0.0, 1.0), clamp(p1[1] / 128, 0.0, 1.0))
+		point2 = (clamp(p2[0] / 128, 0.0, 1.0), clamp(p2[1] / 128, 0.0, 1.0))
+		retlist = [(0.0, 0.0)]  # curve always starts at 0,0
+		# use bezier math to create a list of XY points along the actual bezier curve, evenly spaced in t=time
+		# both x-coords and y-coords are strictly increasing, but not evenly spaced
+		for i in range(1, resolution):
+			retlist.append(_bezier_math(i / resolution, point1, point2))
+		retlist.append((1.0, 1.0))  # curve always ends at 1,1
+		self.resolution = resolution  # store resolution param
+		xx, yy = zip(*retlist)
+		self.xx = list(xx)
+		self.yy = list(yy)
 
-def my_bezier_approximation(x, characterization):
-	# use a previously-created bezier characterization with an input X value to create an output Y value
-	x = clamp(x, 0.0, 1.0)
-	for i in range(BEZIER_RESOLUTION):
-		if characterization[i][0] <= x <= characterization[i+1][0]:
-			return linear_map(characterization[i][0],   characterization[i][1],
-							  characterization[i+1][0], characterization[i+1][1],
-							  x)
-	MY_PRINT_FUNC("ERR: not supposed to hit here! bad bezier characterization given!")
-	MY_PRINT_FUNC(x)
-	MY_PRINT_FUNC(characterization)
-	return 0
+	def approximate(self, x: float) -> float:
+		# use a previously-created bezier characterization with an input X value to create an output Y value
+		x = clamp(x, 0.0, 1.0)
+		# use binary search to find pos, the idx of the entry in self.xx which is <= x
+		if x == 1.0:
+			# using bisect_left would return 50 which would be 50-51 segment but there is no index 51 so it crashes
+			pos = self.resolution - 1
+		else:
+			pos = bisect_left(self.xx, x)
+		# use pos and pos+1 to get two xy points, to build a line segment, to perform linear approximation
+		return linear_map(self.xx[pos],   self.yy[pos],
+						  self.xx[pos+1], self.yy[pos+1],
+						  x)
 
-def my_dot(v0, v1):
-	dot = 0.0
-	for (a,b) in zip(v0, v1):
-		dot += a*b
-	return dot
+########################################################################################################################
+# advanced geometric math functions
+########################################################################################################################
 
-def my_projection(x, y):
+def my_projection(x: Sequence[float], y: Sequence[float]) -> Tuple[float,float,float]:
+	"""
+	Project 3D vector X onto vector Y, i.e. the component of X that is parallel with Y.
+	
+	:param x: 3x float X Y Z
+	:param y: 3x float X Y Z
+	:return: 3x float X Y Z
+	"""
 	# project x onto y:          y * (my_dot(x, y) / my_dot(y, y))
 	scal = my_dot(x, y) / my_dot(y, y)
-	out = [y_ * scal for y_ in y]
-	return out
+	# out = tuple(y_ * scal for y_ in y)
+	return y[0]*scal, y[1]*scal, y[2]*scal
 
-def my_euclidian_distance(x):
-	return math.sqrt(my_dot(x, x))
+def my_cross_product(a: Sequence[float], b: Sequence[float]) -> Tuple[float,float,float]:
+	"""
+	Perform mathematical cross product between two 3D vectors.
+	
+	:param a: 3x float
+	:param b: 3x float
+	:return: 3x float
+	"""
+	return a[1]*b[2] - a[2]*b[1],\
+		   a[2]*b[0] - a[0]*b[2],\
+		   a[0]*b[1] - a[1]*b[0]
 
-def my_cross_product(a, b):
-	# assume a and b are exactly length 3
-	return [a[1]*b[2] - a[2]*b[1],
-			a[2]*b[0] - a[0]*b[2],
-			a[0]*b[1] - a[1]*b[0]]
+def my_quat_conjugate(q: Sequence[float]) -> Tuple[float,float,float,float]:
+	return q[0], -q[1], -q[2], -q[3]
 
-def my_quat_conjugate(q):
-	return [q[0], -q[1], -q[2], -q[3]]
-
-
-def my_slerp(v0, v1, t):
+def my_slerp(v0: Sequence[float], v1: Sequence[float], t: float) -> Tuple[float, ...]:
 	"""
 	Spherically Linear intERPolates between quat1 and quat2 by t.
-	The parameter t should be clamped to the range [0, 1]
+	The param t should be clamped to the range [0, 1].
+	If t==0, return v0. If t==1, return v1.
+
+	:param v0: 4x float, W X Y Z quaternion
+	:param v1: 4x float, W X Y Z quaternion
+	:param t: float [0,1] how far to interpolate
+	:return: 4x float, W X Y Z quaternion
 	"""
 	# https://stackoverflow.com/questions/44706591/how-to-test-quaternion-slerp
 	# fuck this guy his code is mostly wrong, except for the quaternion flipping bit thats clever
@@ -671,29 +849,32 @@ def my_slerp(v0, v1, t):
 	# have opposite handed-ness and slerp won't take
 	# the shorter path. Fix by reversing one quaternion.
 	if dot < 0.0:
-		for a in range(len(v1)):
-			v1[a] = -v1[a]
+		v1 = [-v for v in v1]
 		dot = -dot
 	
 	# clamp just to be safe
-	if dot < -1.0:
-		dot = -1.0
-	elif dot > 1.0:
-		dot = 1.0
+	dot = clamp(dot, -1.0, 1.0)
 	
 	theta = math.acos(dot)
 	if theta == 0:
 		# if there is no angle between the two quaternions, then interpolation is pointless
-		return v0
+		return tuple(v0)
 	
 	# q1 * sin((1-t) * theta) / sin(theta) + q2 * sin(t * theta) / sin(theta)
 	factor0 = math.sin((1 - t) * theta) / math.sin(theta)
 	factor1 = math.sin(t * theta) / math.sin(theta)
-	res = [(v0[i] * factor0) + (v1[i] * factor1) for i in range(4)]
+	res = tuple((v0[i] * factor0) + (v1[i] * factor1) for i in range(4))
 	return res
 
-
-def hamilton_product(quat1, quat2):
+def hamilton_product(quat1: Sequence[float], quat2: Sequence[float]) -> Tuple[float,float,float,float]:
+	"""
+	Perform the mathematical "hamilton product", effectively adds two quaternions. However the order of the inputs does matter.
+	Result is another quaternion.
+	
+	:param quat1: 4x float, W X Y Z quaternion
+	:param quat2: 4x float, W X Y Z quaternion
+	:return: 4x float, W X Y Z quaternion
+	"""
 	# this product returns the equivalent of rotation quat2 followed by rotation quat1
 	# thank you stackexchange and thank you wikipedia
 	(a1, b1, c1, d1) = quat1
@@ -704,9 +885,7 @@ def hamilton_product(quat1, quat2):
 	c3 = (a1 * c2) - (b1 * d2) + (c1 * a2) + (d1 * b2)
 	d3 = (a1 * d2) + (b1 * c2) - (c1 * b2) + (d1 * a2)
 	
-	quat3 = [a3, b3, c3, d3]
-	return quat3
-
+	return a3, b3, c3, d3
 
 # def pure_euler_to_quaternion(euler):
 # 	# THIS IS THE PURE MATH-ONLY TRANSFORM WITHOUT ANY OF THE MMD SPECIAL CASE COMPENSATION
@@ -758,11 +937,17 @@ def hamilton_product(quat1, quat2):
 #
 # 	return [roll, pitch, yaw]
 
+def euler_to_quaternion(euler: Sequence[float]) -> Tuple[float,float,float,float]:
+	"""
+	Convert XYZ euler angles to WXYZ quaternion, using the same method as MikuMikuDance.
+	Massive thanks and credit to "Isometric" for helping me discover the transformation method used in mmd!!!!
 
-def euler_to_quaternion(euler):
+	:param euler: 3x float, X Y Z angle in degrees
+	:return: 4x float, W X Y Z quaternion
+	"""
 	# massive thanks and credit to "Isometric" for helping me discover the transformation method used in mmd!!!!
 	# angles are in degrees, must convert to radians
-	(roll, pitch, yaw) = euler
+	roll, pitch, yaw = euler
 	roll = math.radians(roll)
 	pitch = math.radians(pitch)
 	yaw = math.radians(yaw)
@@ -780,13 +965,17 @@ def euler_to_quaternion(euler):
 	y = (sz * cy * sx) - (cz * sy * cx)
 	z = (cz * sy * sx) - (sz * cy * cx)
 	
-	return [w, x, y, z]
+	return w, x, y, z
 
-
-def quaternion_to_euler(quaternion):
-	# massive thanks and credit to "Isometric" for helping me discover the transformation method used in mmd!!!!
-	# angles are returned in degrees
-	(w, x, y, z) = quaternion
+def quaternion_to_euler(quat: Sequence[float]) -> Tuple[float,float,float]:
+	"""
+	Convert WXYZ quaternion to XYZ euler angles, using the same method as MikuMikuDance.
+	Massive thanks and credit to "Isometric" for helping me discover the transformation method used in mmd!!!!
+	
+	:param quat: 4x float, W X Y Z quaternion
+	:return: 3x float, X Y Z angle in degrees
+	"""
+	w, x, y, z = quat
 	
 	# pitch (y-axis rotation)
 	sinr_cosp = 2 * ((w * y) + (x * z))
@@ -824,13 +1013,17 @@ def quaternion_to_euler(quaternion):
 	pitch = math.degrees(pitch)
 	yaw = math.degrees(yaw)
 	
-	return [roll, pitch, yaw]
+	return roll, pitch, yaw
 
-
-def rotate2d(origin, angle, point):
+def rotate2d(origin: Sequence[float], angle: float, point: Sequence[float]) -> Tuple[float,float]:
 	"""
 	Rotate a 2d point counterclockwise by a given angle around a given 2d origin.
 	The angle should be given in radians.
+	
+	:param origin: 2x float X Y, rotate-around point
+	:param angle: float, radians to rotate
+	:param point: 2x float X Y, point-that-will-be-rotated
+	:return: 2x float X Y, point after rotation
 	"""
 	ox, oy = origin
 	px, py = point
@@ -945,13 +1138,17 @@ def encode_string_with_escape(a: str) -> bytearray:
 		try:
 			return bytearray(new_a, UNPACKER_ENCODING)	# no escape char: convert from str to bytearray the standard way
 		except UnicodeEncodeError as e:
-			# to reduce redundant printouts, all the info I wanna print is put into RuntimeError and caught somewhere higher up
-			newerrstr = "encode_string_with_escape: chr='%s', str='%s', encoding=%s, err=%s" % (a[e.start:e.end], a, e.encoding, e.reason),
-			newerr = RuntimeError(newerrstr)
-			raise newerr
+			# overwrite the 'reason' field with the original string it was trying to encode
+			e.reason = a
+			# then return it to be handled outside
+			raise e
+			# # to reduce redundant printouts, all the info I wanna print is put into RuntimeError and caught somewhere higher up
+			# newerrstr = "encode_string_with_escape: chr='%s', str='%s', encoding=%s, err=%s" % (a[e.start:e.end], a, e.encoding, e.reason),
+			# newerr = RuntimeError(newerrstr)
+			# raise newerr
 
 
-def my_unpack(fmt:str, raw:bytearray) -> (list, str, int, float, bool):
+def my_unpack(fmt:str, raw:bytearray) -> Any:
 	"""
 	Use a given format string to convert the next section of a binary file bytearray into type-correct variables.
 	Uses global var UNPACKER_READFROM_BYTE to know where to start unpacking next.
@@ -1024,7 +1221,6 @@ def _unpack_text(fmt:str, raw:bytearray) -> str:
 	global UNPACKER_READFROM_BYTE
 	global UNPACKER_FAILED_TRANSLATE_DICT
 	global UNPACKER_FAILED_TRANSLATE_FLAG
-	r = ()
 	# input fmt string is exactly either "t" or "#t" or "##t", etc
 	try:
 		if fmt == "t":		# this mode exclusively used for PMX parsing
@@ -1062,7 +1258,7 @@ def _unpack_text(fmt:str, raw:bytearray) -> str:
 	# still need to return as a list for concatenation reasons
 	return s
 
-def my_pack(fmt: str, args_in) -> bytearray:
+def my_pack(fmt: str, args_in: Any) -> bytearray:
 	"""
 	Use a given format string to convert a list of args into the next section of a binary file bytearray.
 	Very similar to python struct.unpack() function, except: 1) if the input arg is not a list/tuple it is automatically
@@ -1166,5 +1362,5 @@ def _pack_text(fmt: str, args: str) -> bytearray:
 		raise newerr
 
 if __name__ == '__main__':
-	MY_PRINT_FUNC("Nuthouse01 - 07/09/2020 - v4.60")
+	MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
 	pause_and_quit("you are not supposed to directly run this file haha")

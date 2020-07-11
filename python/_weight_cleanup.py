@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/09/2020 - v4.60
+# Nuthouse01 - 07/11/2020 - v4.61
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -6,19 +6,17 @@
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
-	from . import _prune_unused_vertices as prune_unused_vertices
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
-		import _prune_unused_vertices as prune_unused_vertices
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = prune_unused_vertices = None
+		core = pmxlib = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -189,7 +187,7 @@ def normalize_normals(pmx):
 def repair_invalid_normals(pmx, normbad):
 	normbad_err = 0
 	# create a list in parallel with the faces list for holding the perpendicular normal to each face
-	facenorm_list = [None] * len(pmx[2])
+	facenorm_list = [list() for i in pmx[2]]
 	# create a list in paralle with normbad for holding the set of connected faces
 	normbad_linked_faces = [list() for i in normbad]
 	
@@ -203,7 +201,7 @@ def repair_invalid_normals(pmx, normbad):
 	for d, facevert in enumerate(flatlist):
 		core.print_progress_oneline(.7 * d / len(flatlist))
 		# bad vertices are unique and in sorted order, can use binary search to further optimize
-		whereinlist = prune_unused_vertices.binary_search_wherein(facevert, normbad)
+		whereinlist = core.binary_search_wherein(facevert, normbad)
 		if whereinlist != -1:
 			# if it is a bad vertex, int div by 3 to get face ID
 			(normbad_linked_faces[whereinlist]).append(d // 3)
@@ -315,7 +313,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/09/2020 - v4.60")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
 	if DEBUG:
 		main()
 	else:

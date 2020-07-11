@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/09/2020 - v4.60
+# Nuthouse01 - 07/11/2020 - v4.61
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -105,6 +105,7 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> list:
 				core.MY_PRINT_FUNC("line = '%s'" % line)
 				raise RuntimeError()
 			temp_title = m.group(1)  # if valid match, then grab the actual title
+			if moreinfo: core.MY_PRINT_FUNC("...model name   = JP:'%s'" % temp_title)
 			parse_state = 10  # next thing to look for is #bones
 		
 		elif parse_state == 10:  # 10 = #bones
@@ -114,6 +115,7 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> list:
 				core.MY_PRINT_FUNC("line = '%s'" % line)
 				raise RuntimeError()
 			num_bones = int(float(m.group(1)))  # if a valid match, then grab the actual # of bones
+			if moreinfo: core.MY_PRINT_FUNC("...# of boneframes          = %d" % num_bones)
 			if num_bones == 0:	parse_state = 30  # if there are 0 bones then immediately begin with the morphs
 			else:				parse_state = 20  # otherwise look for bones next
 		
@@ -206,14 +208,12 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> list:
 			core.MY_PRINT_FUNC("this should not happen, err & die")
 			raise RuntimeError()
 	
+	if moreinfo: core.MY_PRINT_FUNC("...# of morphframes         = %d" % len(vmd_morphframes))
+
 	# verify we did not hit end-of-file unexpectedly, looking-for-morphA is only valid ending state
 	if parse_state != 30:
-		core.MY_PRINT_FUNC("Parse err state %d: hit end-of-file unexpectedly")
+		core.MY_PRINT_FUNC("Parse err state %d: hit end-of-file unexpectedly" % parse_state)
 		raise RuntimeError()
-	
-	# print more info if asked for
-	if moreinfo:
-		core.MY_PRINT_FUNC("Pose contains %d bones + %d morphs" % (len(vmd_boneframes), len(vmd_morphframes)))
 	
 	# after hitting end-of-file, assemble the parts of the final returnable VMD-list thing
 	# builds object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
@@ -240,10 +240,7 @@ def write_vpd(vpd_filepath: str, vmd: list, moreinfo=False) -> None:
 	if otherbones or othermorphs:
 		core.MY_PRINT_FUNC("Warning: input VMD contains %d frames not at time=0, these will not be captured in the resulting pose!" % (len(otherbones) + len(othermorphs)))
 	
-	# print more info if asked for
-	if moreinfo:
-		core.MY_PRINT_FUNC("Pose contains %d bones + %d morphs" % (len(pose_bones), len(pose_morphs)))
-	
+	if moreinfo: core.MY_PRINT_FUNC("...model name   = JP:'%s'" % vmd[0][1])
 	# init printlist with magic header, title, and numbones
 	printlist = ["Vocaloid Pose Data file",
 				 "",
@@ -253,8 +250,10 @@ def write_vpd(vpd_filepath: str, vmd: list, moreinfo=False) -> None:
 	
 	# now iterate over all bones
 	# bone-floats always have exactly 6 digits
+	if moreinfo: core.MY_PRINT_FUNC("...# of boneframes          = %d" % len(pose_bones))
 	for d, pb in enumerate(pose_bones):
 		quat = core.euler_to_quaternion(pb[5:8])  # returns quat WXYZ
+		quat = list(quat)
 		quat.append(quat.pop(0))  # WXYZ -> XYZW, AKA move head (w) to tail
 		newitem = ["Bone{:d}{{{:s}".format(d, pb[0]),
 				   "  {:.6f},{:.6f},{:.6f};".format(pb[2], pb[3], pb[4]),
@@ -266,6 +265,7 @@ def write_vpd(vpd_filepath: str, vmd: list, moreinfo=False) -> None:
 	# now iterate over all morphs
 	# morph-floats are flexible, need to TEST how long they can be!
 	# lets say max precision is 3, but strip any trailing zeros and reduce "1." to "1"
+	if moreinfo: core.MY_PRINT_FUNC("...# of morphframes         = %d" % len(pose_morphs))
 	for d, pm in enumerate(pose_morphs):
 		newitem = ["Morph{:d}{{{:s}".format(d, pm[0]),
 				   "  {:.3f}".format(pm[2]).rstrip("0").rstrip(".") + ";",
@@ -313,7 +313,7 @@ def main():
 ########################################################################################################################
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/09/2020 - v4.60")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
 	if DEBUG:
 		main()
 	else:

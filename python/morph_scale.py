@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/09/2020 - v4.60
+# Nuthouse01 - 07/11/2020 - v4.61
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -49,7 +49,6 @@ def main(moreinfo=True):
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	
-	target_index = 0
 	# loop until an existing morph is specified, or given empty input
 	while True:
 		# any input is considered valid
@@ -146,7 +145,6 @@ def main(moreinfo=True):
 			item[1] *= factor
 			item[2] *= factor
 	elif morphtype in (4, 5, 6, 7):  # UV1 UV2 UV3 UV4
-		whichuv = morphtype - 4
 		for d, item in enumerate(newmorph[4]):
 			# scale the morph UV
 			item[1] *= factor
@@ -166,11 +164,12 @@ def main(moreinfo=True):
 	output_filename_pmx = input_filename_pmx[0:-4] + ("_%dscal.pmx" % target_index)
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx, moreinfo=moreinfo)
+	core.MY_PRINT_FUNC("Done!")
 	return None
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 07/09/2020 - v4.60")
+	print("Nuthouse01 - 07/11/2020 - v4.61")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/09/2020 - v4.60
+# Nuthouse01 - 07/11/2020 - v4.61
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -210,11 +210,12 @@ def main(moreinfo=True):
 	output_filename_pmx = input_filename_pmx[0:-4] + "_weightmerge.pmx"
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx, moreinfo=moreinfo)
+	core.MY_PRINT_FUNC("Done!")
 	return None
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/09/2020 - v4.60")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

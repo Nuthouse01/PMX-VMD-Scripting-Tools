@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/09/2020 - v4.60
+# Nuthouse01 - 07/11/2020 - v4.61
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -11,7 +11,6 @@ try:
 	from . import nuthouse01_pmx_parser as pmxlib
 	from ._weight_cleanup import normalize_weights
 	from .bone_merge_helpers import transfer_bone_weights
-	from ._prune_unused_vertices import bisect_left, bisect_right
 	from ._translation_tools import local_translate
 except ImportError as eee:
 	try:
@@ -19,15 +18,14 @@ except ImportError as eee:
 		import nuthouse01_pmx_parser as pmxlib
 		from _weight_cleanup import normalize_weights
 		from bone_merge_helpers import transfer_bone_weights
-		from _prune_unused_vertices import bisect_left, bisect_right
-		from _local_translation_dicts import local_translate
+		from _translation_tools import local_translate
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = normalize_weights = transfer_bone_weights = bisect_left = bisect_right = local_translate = None
+		core = pmxlib = normalize_weights = transfer_bone_weights = local_translate = None
 
 
 
@@ -252,7 +250,7 @@ def divvy_weights(pmx, vert_zip, axis_limits, bone_hasweight, bone_getsweight, b
 		if wdict[bone_hasweight] == 0: continue
 		
 		# 3. use percentile as input to bezier curve, [0.0-1.0]->bezier->[0.0-1.0]
-		bez_percentile = core.my_bezier_approximation(percentile, bezier)
+		bez_percentile = bezier.approximate(percentile)
 		
 		####################################################
 		# now I am left with only percentiles between 0,1 but not including 0,1: these verts will be blended!
@@ -457,7 +455,7 @@ def main(moreinfo=True):
 			pmx[5].append(armYZIK)
 			
 			# 6. build the bezier curve
-			bezier_curve = core.my_bezier_characterize(*boneset[4])
+			bezier_curve = core.MyBezier(boneset[4][0], boneset[4][1], resolution=50)
 			
 			# 7. find relevant verts & determine unbounded percentile for each
 			(verts, percentiles, centers) = calculate_percentiles(pmx, start_idx, end_idx, parent_idx)
@@ -493,7 +491,7 @@ def main(moreinfo=True):
 			# "conservative" endpoints: define ends such that no bad stuff exists within bounds, even if i miss some good stuff
 			# start in the middle and work outward until i find a vert NOT controlled by only parent_idx, then back off 1
 			# where is the middle? use "bisect_left"
-			middle = bisect_left(percentiles, 0.5)
+			middle = core.bisect_left(percentiles, 0.5)
 			for i_min_conserv in reversed(range(middle - 1)): # start in middle, work toward head,
 				if pmx[1][verts[i_min_conserv]][9] != 0:  	# if the vertex is NOT BDEF1 type,
 					break  									# then stop looking,
@@ -526,8 +524,8 @@ def main(moreinfo=True):
 			p_min = core.clamp(p_min, 0.0, 1.0)
 			p_max = core.clamp(p_max, 0.0, 1.0)
 			if moreinfo:
-				i_min = bisect_left(percentiles, p_min)
-				i_max = bisect_left(percentiles, p_max)
+				i_min = core.bisect_left(percentiles, p_min)
+				i_max = core.bisect_left(percentiles, p_max)
 				core.MY_PRINT_FUNC("   Compromise bounds:       idx = %d to %d, %% = %f to %f" %
 								   (i_min, i_max, p_min, p_max))
 				
@@ -556,11 +554,12 @@ def main(moreinfo=True):
 	output_filename_pmx = input_filename_pmx[0:-4] + "_magictwist.pmx"
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx, moreinfo=moreinfo)
+	core.MY_PRINT_FUNC("Done!")
 	return None
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/09/2020 - v4.60")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

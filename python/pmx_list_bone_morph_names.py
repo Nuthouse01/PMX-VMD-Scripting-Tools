@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/09/2020 - v4.60
+# Nuthouse01 - 07/11/2020 - v4.61
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -74,11 +74,12 @@ def main(moreinfo=True):
 	output_filename_morph = core.get_unused_file_name(output_filename_morph)
 	core.MY_PRINT_FUNC("...writing result to file '%s'..." % output_filename_morph)
 	core.write_csvlist_to_file(output_filename_morph, morphlist_out, use_jis_encoding=False)
+	core.MY_PRINT_FUNC("Done!")
 	return None
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/09/2020 - v4.60")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

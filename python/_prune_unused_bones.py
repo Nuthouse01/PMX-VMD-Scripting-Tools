@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/09/2020 - v4.60
+# Nuthouse01 - 07/11/2020 - v4.61
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -18,16 +18,19 @@
 
 
 
+# first, system imports
+from typing import List, Tuple
+
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
-	from ._prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap, binary_search_isin
+	from ._prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
-		from _prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap, binary_search_isin
+		from _prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
@@ -35,7 +38,7 @@ except ImportError as eee:
 		input()
 		exit()
 		core = pmxlib = None
-		newval_from_range_map = delme_list_to_rangemap = binary_search_isin = None
+		newval_from_range_map = delme_list_to_rangemap = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -88,7 +91,7 @@ def showprompt():
 	return pmx, input_filename_pmx
 	
 
-def identify_unused_bones(pmx, moreinfo=False):
+def identify_unused_bones(pmx: list, moreinfo: bool) -> List[int]:
 	#############################
 	# THE PLAN:
 	# 1. get bones used by a rigidbody
@@ -224,7 +227,7 @@ def identify_unused_bones(pmx, moreinfo=False):
 	return unused_bones_list
 	
 
-def apply_bone_remapping(pmx, bone_dellist, bone_shiftmap):
+def apply_bone_remapping(pmx, bone_dellist: List[int], bone_shiftmap: Tuple[List[int],List[int]]):
 	# where are all places bones are used in the model?
 	
 	# !vertex weight
@@ -282,7 +285,7 @@ def apply_bone_remapping(pmx, bone_dellist, bone_shiftmap):
 		i = 0
 		while i < len(morph[4]):
 			# if the bone being manipulated is in the list of bones being deleted, delete it here too. otherwise remap.
-			if binary_search_isin(morph[4][i][0], bone_dellist):
+			if core.binary_search_isin(morph[4][i][0], bone_dellist):
 				morph[4].pop(i)
 			else:
 				morph[4][i][0] = newval_from_range_map(morph[4][i][0], bone_shiftmap)
@@ -300,7 +303,7 @@ def apply_bone_remapping(pmx, bone_dellist, bone_shiftmap):
 				i += 1
 			else:
 				# if this is one of the bones being deleted, delete it here too. otherwise remap.
-				if binary_search_isin(item[1], bone_dellist):
+				if core.binary_search_isin(item[1], bone_dellist):
 					frame[3].pop(i)
 				else:
 					item[1] = newval_from_range_map(item[1], bone_shiftmap)
@@ -319,7 +322,7 @@ def apply_bone_remapping(pmx, bone_dellist, bone_shiftmap):
 	for d, bone in enumerate(pmx[5]):
 		# point-at link:
 		if bone[12]:
-			if binary_search_isin(bone[13][0], bone_dellist):
+			if core.binary_search_isin(bone[13][0], bone_dellist):
 				# if pointing at a bone that will be deleted, instead change to offset with offset 0,0,0
 				bone[12] = 0
 				bone[13] = [0, 0, 0]
@@ -331,7 +334,7 @@ def apply_bone_remapping(pmx, bone_dellist, bone_shiftmap):
 		bone[5] = newval_from_range_map(bone[5], bone_shiftmap)
 		# partial append:
 		if (bone[14] or bone[15]) and bone[16][1] != 0:
-			if binary_search_isin(bone[16][0], bone_dellist):
+			if core.binary_search_isin(bone[16][0], bone_dellist):
 				# if a bone is getting partial append from a bone getting deleted, break that relationship
 				bone[14] = 0
 				bone[15] = 0
@@ -393,7 +396,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/09/2020 - v4.60")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
 	if DEBUG:
 		main()
 	else:

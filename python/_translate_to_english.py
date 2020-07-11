@@ -1,8 +1,10 @@
-# Nuthouse01 - 07/09/2020 - v4.60
+# Nuthouse01 - 07/11/2020 - v4.61
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
+# first, system imports
 from time import time
+from typing import List, Tuple, Union
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -119,12 +121,11 @@ def check_translate_budget(num_proposed: int) -> bool:
 	Goal: block translations that would trigger the lockout.
 	Create & maintain a persistient file that contains timestamps and # of requests, to know if my proposed number will
 	exceed the budget. If it would still be under budget, then update the log assuming that the proposed requests will
-	happen.
-	options: TRANSLATE_BUDGET_MAX_REQUESTS, TRANSLATE_BUDGET_TIMEFRAME
+	happen. options: TRANSLATE_BUDGET_MAX_REQUESTS, TRANSLATE_BUDGET_TIMEFRAME
+	
 	:param num_proposed: number of times I want to contact the google API
 	:return: bool True = go ahead, False = stop
 	"""
-	
 	# first, get path to persistient storage file, also creates an empty file if it doesn't exist
 	recordpath = core.get_persistient_storage_path("translate_record.txt")
 	# then read the file into memory, quietly
@@ -171,10 +172,13 @@ def check_translate_budget(num_proposed: int) -> bool:
 	
 ################################################################################################################
 
-def combine_translate_requests(jp_list: list) -> list:
+def combine_translate_requests(jp_list: List[str]) -> List[str]:
 	"""
 	Split/join a massive list of items to translate into fewer requests which each contain many separated by newlines.
 	options: TRANSLATE_MAX_LINES_PER_REQUEST.
+	
+	:param jp_list: list of each JP name, names must not include newlines
+	:return: list of combined names, which are many JP names joined by newlines
 	"""
 	retme = []
 	start_idx = 0
@@ -185,9 +189,12 @@ def combine_translate_requests(jp_list: list) -> list:
 		start_idx += TRANSLATE_MAX_LINES_PER_REQUEST
 	return retme
 
-def unpack_translate_requests(list_after: list) -> list:
+def unpack_translate_requests(list_after: List[str]) -> List[str]:
 	"""
-	Opposite of combine_translate_requests().
+	Opposite of combine_translate_requests(). Breaks each string at newlines and flattens result into one long list.
+	
+	:param list_after: list of newline-joined strings
+	:return: list of strings not containing newlines
 	"""
 	retme = []
 	for after in list_after:
@@ -199,6 +206,7 @@ def _single_google_translate(jp_str: str) -> str:
 	"""
 	Actually send a single string to Google API for translation, unless internet trans is disabled.
 	Options: _DISABLE_INTERNET_TRANSLATE and GOOGLE_AUTODETECT_LANGUAGE.
+	
 	:param jp_str: JP string to be translated
 	:return: usually english-translated result
 	"""
@@ -229,14 +237,19 @@ def _single_google_translate(jp_str: str) -> str:
 
 ################################################################################################################
 
-def easy_translate(jp:str, en:str, specific_dict=None) -> (str, int):
+def easy_translate(jp:str, en:str, specific_dict=None) -> Tuple[str, int]:
 	"""
-	attempt to translate a string using the 'easy' methods.
+	Attempt to translate a string using the 'easy' sources.
 	0: input already good.
 	1: copied from JP.
 	2: exact match in specific dict.
-	return new name + the type of translation that succeeded or -1.
+	Return new name + the type of translation that succeeded, or empty str and -1.
 	options: PREFER_EXISTING_ENGLISH_NAME will cause mode 0 to be checked here.
+	
+	:param jp: str from JP name field
+	:param en: str from EN name field
+	:param specific_dict: optional dict for use in exact-matching
+	:return: tuple(newENname, translate_type)
 	"""
 	# first, if en name is already good (not blank and not JP), just keep it
 	if PREFER_EXISTING_ENGLISH_NAME and en and not en.isspace() and not translation_tools.needs_translate(en):
@@ -257,9 +270,11 @@ def easy_translate(jp:str, en:str, specific_dict=None) -> (str, int):
 	# if none of these pass, return nothing & type -1 to signfiy it is still in progress
 	return "", -1
 
-def google_translate(in_list:(list,str), strategy=1) -> (list,str):
+
+def google_translate(in_list: Union[List[str],str], strategy=1) -> Union[List[str],str]:
 	"""
 	Take a list of strings & get them all translated by asking Google. Can use per-line strategy or new 'chunkwise' strategy.
+	
 	:param in_list: list of JP or partially JP strings
 	:param strategy: 0=old per-line strategy, 1=new chunkwise strategy, 2=auto choose whichever needs less Google traffic
 	:return: list of strings probably pure EN, but sometimes odd unicode symbols show up
@@ -636,7 +651,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/09/2020 - v4.60")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
 	if DEBUG:
 		main()
 	else:

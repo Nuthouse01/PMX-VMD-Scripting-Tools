@@ -1,8 +1,8 @@
-# Nuthouse01 - 07/09/2020 - v4.60
+# Nuthouse01 - 07/11/2020 - v4.61
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-# os.path, os.walk, os.renames
+# first, system imports
 import os
 
 # second, wrap custom imports with a try-except to catch it if files are missing
@@ -78,7 +78,7 @@ def main(moreinfo=False):
 	# 10. zip backup (NEW FUNC!)
 	# 11. apply renaming, NEW FUNC! rename all including old PMXes on disk
 	# 12. get new names for PMXes, write PMX from mem to disk if any of its contents changed
-	#	i.e. of all filerecord with a new name, create a set of all the PMX that use them
+	#	i.e. of all FileRecord with a new name, create a set of all the PMX that use them
 
 	
 	# absolute path to directory holding the pmx
@@ -154,7 +154,7 @@ def main(moreinfo=False):
 	# now repair any windows-forbidden symbols that might have shown up after translation
 	newname_list = [n.translate(invalid_windows_chars_ord) for n in newname_list]
 	
-	# iterate over the results in parallel with the filerecord items
+	# iterate over the results in parallel with the FileRecord items
 	for p, newname in zip(filerecord_list, newname_list):
 		if newname != p.name:
 			# resolve potential collisions by adding numbers suffix to file names
@@ -216,7 +216,7 @@ def main(moreinfo=False):
 	
 	# write out
 	for this_pmx_name, this_pmx_obj in all_pmx_obj.items():
-		# what name do i write this pmx to? it may be different now! find it in the filerecord!
+		# what name do i write this pmx to? it may be different now! find it in the FileRecord!
 		# this script does not filter filerecord_list so it is guaranteed to hae a record
 		rec = None
 		for r in filerecord_list:
@@ -234,11 +234,12 @@ def main(moreinfo=False):
 		# write it, overwriting the existing file at that name
 		pmxlib.write_pmx(output_filename_pmx, this_pmx_obj, moreinfo=moreinfo)
 	
+	core.MY_PRINT_FUNC("Done!")
 	return None
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/09/2020 - v4.60")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

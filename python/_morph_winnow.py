@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/09/2020 - v4.60
+# Nuthouse01 - 07/11/2020 - v4.61
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -6,12 +6,12 @@
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
-	from ._prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap, binary_search_isin
+	from ._prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
-		from _prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap, binary_search_isin
+		from _prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
@@ -19,7 +19,7 @@ except ImportError as eee:
 		input()
 		exit()
 		core = pmxlib = None
-		newval_from_range_map = delme_list_to_rangemap = binary_search_isin = None
+		newval_from_range_map = delme_list_to_rangemap = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -65,7 +65,7 @@ def apply_morph_remapping(pmx, morph_dellist, morph_shiftmap):
 				i += 1
 			else:
 				# if this is one of the morphs being deleted, delete it here too. otherwise remap.
-				if binary_search_isin(item[1], morph_dellist):
+				if core.binary_search_isin(item[1], morph_dellist):
 					frame[3].pop(i)
 				else:
 					item[1] = newval_from_range_map(item[1], morph_shiftmap)
@@ -79,7 +79,7 @@ def apply_morph_remapping(pmx, morph_dellist, morph_shiftmap):
 		i = 0
 		while i < len(morph[4]):
 			# if this is one of the morphs being deleted, delete it here too. otherwise remap.
-			if binary_search_isin(morph[4][i][0], morph_dellist):
+			if core.binary_search_isin(morph[4][i][0], morph_dellist):
 				morph[4].pop(i)
 			else:
 				morph[4][i][0] = newval_from_range_map(morph[4][i][0], morph_shiftmap)
@@ -169,7 +169,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/09/2020 - v4.60")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
 	if DEBUG:
 		main()
 	else:

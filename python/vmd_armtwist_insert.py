@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/09/2020 - v4.60
+# Nuthouse01 - 07/11/2020 - v4.61
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -208,13 +208,13 @@ def main(moreinfo=True):
 				thisframequat = core.euler_to_quaternion(this[5:8])
 				prevframequat = core.euler_to_quaternion(prev[5:8])
 				# 12, 16, 20, 24 = ax, ay, bx, by
-				curve = core.my_bezier_characterize((this[12], this[16]), (this[20], this[24]))
+				bez = core.MyBezier((this[12], this[16]), (this[20], this[24]), resolution=50)
 				# create new frames at these frame numbers, spacing is OVERKEY_FRAME_SPACING
 				for interp_framenum in range(prevframenum + OVERKEY_FRAME_SPACING, thisframenum, OVERKEY_FRAME_SPACING):
 					# calculate the x time percentage from prev frame to this frame
 					x = (interp_framenum - prevframenum) / (thisframenum - prevframenum)
 					# apply the interpolation curve to translate X to Y
-					y = core.my_bezier_approximation(x, curve)
+					y = bez.approximate(x)
 					# interpolate from prev to this by amount Y
 					interp_quat = core.my_slerp(prevframequat, thisframequat, y)
 					# begin building the new frame
@@ -292,10 +292,11 @@ def main(moreinfo=True):
 	output_filename_vmd = core.get_unused_file_name(output_filename_vmd)
 	vmdlib.write_vmd(output_filename_vmd, nicelist_in, moreinfo=moreinfo)
 	
+	core.MY_PRINT_FUNC("Done!")
 	return None
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/09/2020 - v4.60")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)
