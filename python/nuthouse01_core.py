@@ -18,6 +18,8 @@ from sys import platform, version_info, version
 # i don't know if it will actually work in 3.4 but i know it will fail in any python2 version
 # actually written/tested with 3.6.6 so guaranteed to work on that or higher
 # between 3.4 and 3.6, who knows
+from typing import Any, Union, Tuple, List, Sequence
+
 if version_info < (3, 4):
 	print("Your version of Python is too old to run this script, please update!")
 	print("Your current version = " + version)
@@ -573,7 +575,7 @@ def read_txtfile_to_list(src_path:str, use_jis_encoding=False, quiet=False) -> l
 	
 
 ########################################################################################################################
-# these handle binary searching thru sorted lists for MASSIVE speedup
+# searching thru sorted lists for MASSIVE speedup
 ########################################################################################################################
 
 # bisect_left and bisect_right literally just copied from the "bisect" library so I don't need to import that file
@@ -581,8 +583,8 @@ def bisect_left(a, x):
 	"""
 	Return the index where to insert item x in list a, assuming a is sorted.
 	The return value i is such that all e in a[:i] have e < x, and all e in
-	a[i:] have e >= x.  So if x already appears in the list, a.insert(x) will
-	insert just before the leftmost x already there.
+	a[i:] have e >= x.  So if x already appears in the list, then i = the index
+	where the leftmost x can be found.
 	"""
 	lo = 0
 	hi = len(a)
@@ -595,8 +597,8 @@ def bisect_right(a, x):
 	"""
 	Return the index where to insert item x in list a, assuming a is sorted.
 	The return value i is such that all e in a[:i] have e <= x, and all e in
-	a[i:] have e > x.  So if x already appears in the list, a.insert(x) will
-	insert just after the rightmost x already there.
+	a[i:] have e > x.  So if x already appears in the list, then i = index + 1
+	of the rightmost x already there.
 	"""
 	lo = 0
 	hi = len(a)
@@ -621,86 +623,151 @@ def binary_search_wherein(x, a):
 # these functions are for various math operations
 ########################################################################################################################
 
-def linear_map(x1, y1, x2, y2, x_in_val):
+def linear_map(x1: float, y1: float, x2: float, y2: float, x_in_val: float) -> float:
+	"""
+	Define a Y=MX+B slope via x1,y1 and x2,y2. Then given an X value, calculate the resulting Y.
+	
+	:param x1: x1
+	:param y1: y1
+	:param x2: x2
+	:param y2: y2
+	:param x_in_val: any float, does not need to be constrained by x1/x2
+	:return: resulting Y
+	"""
 	m = (y2 - y1) / (x2 - x1)
 	b = y2 - (m * x2)
 	return x_in_val * m + b
 
 # basic clamp
-def clamp(value, lower, upper):
+def clamp(value: float, lower: float, upper: float) -> float:
 	return lower if value < lower else upper if value > upper else value
 # clamp where you dont know the relative order of a and b
-def bidirectional_clamp(val, a, b):
+def bidirectional_clamp(val: float, a: float, b: float) -> float:
 	return clamp(val, a, b) if a < b else clamp(val, b, a)
 
-BEZIER_RESOLUTION = 50
-def _my_bezier(t, point1, point2):
-	# this should not be directly called by a user!
-	# this function does bezier curve calculation as a function of "t"
-	# ideally i want a function of X but this will have to be good enough
-	# point0 is always (0,0), point3 is always (1,1)
+def _bezier_math(t: float, p1: Tuple[float, float], p2: Tuple[float, float]) -> Tuple[float, float]:
+	"""
+	Internal use only.
+	Use standard bezier equations, assuming p0=(0,0) and p3=(1,1) and p1/p2 are args, with a time value t, to calculate
+	the resulting X and Y. If X/Y of p1/p2 are within range [0-1] then output X/Y are guaranteed to also be within
+	[0-1].
+	
+	:param t: float time value
+	:param p1: 2x float, coord of p1
+	:param p2: 2x float, coord of p2
+	:return: 2x float, resulting X Y coords
+	"""
 	x0, y0 = 0, 0
-	x1, y1 = point1
-	x2, y2 = point2
+	x1, y1 = p1
+	x2, y2 = p2
 	x3, y3 = 1, 1
 	x = (1 - t) ** 3 * x0 + 3 * (1 - t) ** 2 * t * x1 + 3 * (1 - t) * t ** 2 * x2 + t ** 3 * x3
 	y = (1 - t) ** 3 * y0 + 3 * (1 - t) ** 2 * t * y1 + 3 * (1 - t) * t ** 2 * y2 + t ** 3 * y3
 	return x, y
 
-def my_bezier_characterize(point1, point2):
-	# point1 and point2 are each a pair of ints 0-128 that give XY coordinates of control points
-	# return a list of points along the bezier curve, evenly spaced in "t"
-	# this will be used for linear mapping approximations
-	point1 = [clamp(p / 128, 0.0, 1.0) for p in point1]
-	point2 = [clamp(p / 128, 0.0, 1.0) for p in point2]
-	retlist = [(0, 0)] # curve always starts at 0,0
-	for i in range(1, BEZIER_RESOLUTION):
-		retlist.append(_my_bezier(i / BEZIER_RESOLUTION, point1, point2))
-	retlist.append((1, 1)) # curve always ends at 1,1
-	return retlist
+class MyBezier(object):
+	"""
+	This implements a linear approximation of a constrained Bezier curve for motion interpolation. After defining
+	the control points, Y values can be easily generated from X values.
+	"""
+	def __init__(self, p1: Tuple[int,int], p2: Tuple[int,int], resolution=50) -> None:
+		"""
+		:param p1: 2x int range [0-128], XY coordinates of control point
+		:param p2: 2x int range [0-128], XY coordinates of control point
+		:param resolution: int, number of points in the linear approximation of the bezier curve
+		"""
+		# first convert tuple(int [0-128]) to tuple(float [0.0-1.0])
+		point1 = (clamp(p1[0] / 128, 0.0, 1.0), clamp(p1[1] / 128, 0.0, 1.0))
+		point2 = (clamp(p2[0] / 128, 0.0, 1.0), clamp(p2[1] / 128, 0.0, 1.0))
+		retlist = [(0.0, 0.0)]  # curve always starts at 0,0
+		# use bezier math to create a list of XY points along the actual bezier curve, evenly spaced in t=time
+		# both x-coords and y-coords are strictly increasing, but not evenly spaced
+		for i in range(1, resolution):
+			retlist.append(_bezier_math(i / resolution, point1, point2))
+		retlist.append((1.0, 1.0))  # curve always ends at 1,1
+		self.resolution = resolution  # store resolution param
+		xx, yy = zip(*retlist)
+		self.xx = list(xx)
+		self.yy = list(yy)
 
-def my_bezier_approximation(x, characterization):
-	# use a previously-created bezier characterization with an input X value to create an output Y value
-	x = clamp(x, 0.0, 1.0)
-	for i in range(BEZIER_RESOLUTION):
-		if characterization[i][0] <= x <= characterization[i+1][0]:
-			return linear_map(characterization[i][0],   characterization[i][1],
-							  characterization[i+1][0], characterization[i+1][1],
-							  x)
-	MY_PRINT_FUNC("ERR: not supposed to hit here! bad bezier characterization given!")
-	MY_PRINT_FUNC(x)
-	MY_PRINT_FUNC(characterization)
-	return 0
+	def approximate(self, x: float) -> float:
+		# use a previously-created bezier characterization with an input X value to create an output Y value
+		x = clamp(x, 0.0, 1.0)
+		# use binary search to find pos, the idx of the entry in self.xx which is <= x
+		if x == 1.0:
+			# using bisect_left would return 50 which would be 50-51 segment but there is no index 51 so it crashes
+			pos = self.resolution - 1
+		else:
+			pos = bisect_left(self.xx, x)
+		# use pos and pos+1 to get two xy points, to build a line segment, to perform linear approximation
+		return linear_map(self.xx[pos],   self.yy[pos],
+						  self.xx[pos+1], self.yy[pos+1],
+						  x)
 
-def my_dot(v0, v1):
+
+def my_dot(v0: Sequence[float], v1: Sequence[float]) -> float:
+	"""
+	Perform mathematical dot product between two same-length vectors. IE component-wise multiply, then sum.
+	
+	:param v0: any number of floats
+	:param v1: same number of floats
+	:return: single float
+	"""
 	dot = 0.0
 	for (a,b) in zip(v0, v1):
 		dot += a*b
 	return dot
 
-def my_projection(x, y):
-	# project x onto y:          y * (my_dot(x, y) / my_dot(y, y))
-	scal = my_dot(x, y) / my_dot(y, y)
-	out = [y_ * scal for y_ in y]
-	return out
 
-def my_euclidian_distance(x):
+def my_euclidian_distance(x: Sequence[float]) -> float:
+	"""
+	Calculate Euclidian distance (square each component, sum, and square root).
+
+	:param x: any number of floats
+	:return: single float
+	"""
 	return math.sqrt(my_dot(x, x))
 
-def my_cross_product(a, b):
-	# assume a and b are exactly length 3
-	return [a[1]*b[2] - a[2]*b[1],
-			a[2]*b[0] - a[0]*b[2],
-			a[0]*b[1] - a[1]*b[0]]
 
-def my_quat_conjugate(q):
-	return [q[0], -q[1], -q[2], -q[3]]
+def my_projection(x: Sequence[float], y: Sequence[float]) -> Tuple[float,float,float]:
+	"""
+	Project 3D vector X onto vector Y, i.e. the component of X that is parallel with Y.
+	
+	:param x: 3x float X Y Z
+	:param y: 3x float X Y Z
+	:return: 3x float X Y Z
+	"""
+	# project x onto y:          y * (my_dot(x, y) / my_dot(y, y))
+	scal = my_dot(x, y) / my_dot(y, y)
+	# out = tuple(y_ * scal for y_ in y)
+	return y[0]*scal, y[1]*scal, y[2]*scal
+
+def my_cross_product(a: Sequence[float], b: Sequence[float]) -> Tuple[float,float,float]:
+	"""
+	Perform mathematical cross product between two 3D vectors.
+	
+	:param a: 3x float
+	:param b: 3x float
+	:return: 3x float
+	"""
+	return a[1]*b[2] - a[2]*b[1],\
+		   a[2]*b[0] - a[0]*b[2],\
+		   a[0]*b[1] - a[1]*b[0]
+
+def my_quat_conjugate(q: Sequence[float]) -> Tuple[float,float,float,float]:
+	return q[0], -q[1], -q[2], -q[3]
 
 
-def my_slerp(v0, v1, t):
+def my_slerp(v0: Sequence[float], v1: Sequence[float], t: float) -> Tuple[float, ...]:
 	"""
 	Spherically Linear intERPolates between quat1 and quat2 by t.
-	The parameter t should be clamped to the range [0, 1]
+	The param t should be clamped to the range [0, 1].
+	If t==0, return v0. If t==1, return v1.
+
+	:param v0: 4x float, W X Y Z quaternion
+	:param v1: 4x float, W X Y Z quaternion
+	:param t: float [0,1] how far to interpolate
+	:return: 4x float, W X Y Z quaternion
 	"""
 	# https://stackoverflow.com/questions/44706591/how-to-test-quaternion-slerp
 	# fuck this guy his code is mostly wrong, except for the quaternion flipping bit thats clever
@@ -715,29 +782,32 @@ def my_slerp(v0, v1, t):
 	# have opposite handed-ness and slerp won't take
 	# the shorter path. Fix by reversing one quaternion.
 	if dot < 0.0:
-		for a in range(len(v1)):
-			v1[a] = -v1[a]
+		v1 = [-v for v in v1]
 		dot = -dot
 	
 	# clamp just to be safe
-	if dot < -1.0:
-		dot = -1.0
-	elif dot > 1.0:
-		dot = 1.0
+	dot = clamp(dot, -1.0, 1.0)
 	
 	theta = math.acos(dot)
 	if theta == 0:
 		# if there is no angle between the two quaternions, then interpolation is pointless
-		return v0
+		return tuple(v0)
 	
 	# q1 * sin((1-t) * theta) / sin(theta) + q2 * sin(t * theta) / sin(theta)
 	factor0 = math.sin((1 - t) * theta) / math.sin(theta)
 	factor1 = math.sin(t * theta) / math.sin(theta)
-	res = [(v0[i] * factor0) + (v1[i] * factor1) for i in range(4)]
+	res = tuple((v0[i] * factor0) + (v1[i] * factor1) for i in range(4))
 	return res
 
-
-def hamilton_product(quat1, quat2):
+def hamilton_product(quat1: Sequence[float], quat2: Sequence[float]) -> Tuple[float,float,float,float]:
+	"""
+	Perform the mathematical "hamilton product", effectively adds two quaternions. However the order of the inputs does matter.
+	Result is another quaternion.
+	
+	:param quat1: 4x float, W X Y Z quaternion
+	:param quat2: 4x float, W X Y Z quaternion
+	:return: 4x float, W X Y Z quaternion
+	"""
 	# this product returns the equivalent of rotation quat2 followed by rotation quat1
 	# thank you stackexchange and thank you wikipedia
 	(a1, b1, c1, d1) = quat1
@@ -748,8 +818,7 @@ def hamilton_product(quat1, quat2):
 	c3 = (a1 * c2) - (b1 * d2) + (c1 * a2) + (d1 * b2)
 	d3 = (a1 * d2) + (b1 * c2) - (c1 * b2) + (d1 * a2)
 	
-	quat3 = [a3, b3, c3, d3]
-	return quat3
+	return a3, b3, c3, d3
 
 
 # def pure_euler_to_quaternion(euler):
@@ -802,8 +871,14 @@ def hamilton_product(quat1, quat2):
 #
 # 	return [roll, pitch, yaw]
 
+def euler_to_quaternion(euler: Sequence[float]) -> Tuple[float,float,float,float]:
+	"""
+	Convert XYZ euler angles to WXYZ quaternion, using the same method as MikuMikuDance.
+	Massive thanks and credit to "Isometric" for helping me discover the transformation method used in mmd!!!!
 
-def euler_to_quaternion(euler):
+	:param euler: 3x float, X Y Z angle in degrees
+	:return: 4x float, W X Y Z quaternion
+	"""
 	# massive thanks and credit to "Isometric" for helping me discover the transformation method used in mmd!!!!
 	# angles are in degrees, must convert to radians
 	(roll, pitch, yaw) = euler
@@ -824,13 +899,18 @@ def euler_to_quaternion(euler):
 	y = (sz * cy * sx) - (cz * sy * cx)
 	z = (cz * sy * sx) - (sz * cy * cx)
 	
-	return [w, x, y, z]
+	return w, x, y, z
 
 
-def quaternion_to_euler(quaternion):
-	# massive thanks and credit to "Isometric" for helping me discover the transformation method used in mmd!!!!
-	# angles are returned in degrees
-	(w, x, y, z) = quaternion
+def quaternion_to_euler(quat: Sequence[float]) -> Tuple[float,float,float]:
+	"""
+	Convert WXYZ quaternion to XYZ euler angles, using the same method as MikuMikuDance.
+	Massive thanks and credit to "Isometric" for helping me discover the transformation method used in mmd!!!!
+	
+	:param quat: 4x float, W X Y Z quaternion
+	:return: 3x float, X Y Z angle in degrees
+	"""
+	(w, x, y, z) = quat
 	
 	# pitch (y-axis rotation)
 	sinr_cosp = 2 * ((w * y) + (x * z))
@@ -868,13 +948,18 @@ def quaternion_to_euler(quaternion):
 	pitch = math.degrees(pitch)
 	yaw = math.degrees(yaw)
 	
-	return [roll, pitch, yaw]
+	return roll, pitch, yaw
 
 
-def rotate2d(origin, angle, point):
+def rotate2d(origin: Sequence[float], angle: float, point: Sequence[float]) -> Tuple[float,float]:
 	"""
 	Rotate a 2d point counterclockwise by a given angle around a given 2d origin.
 	The angle should be given in radians.
+	
+	:param origin: 2x float X Y, rotate-around point
+	:param angle: float, radians to rotate
+	:param point: 2x float X Y, point-that-will-be-rotated
+	:return: 2x float X Y, point after rotation
 	"""
 	ox, oy = origin
 	px, py = point
@@ -995,7 +1080,7 @@ def encode_string_with_escape(a: str) -> bytearray:
 			raise newerr
 
 
-def my_unpack(fmt:str, raw:bytearray) -> (list, str, int, float, bool):
+def my_unpack(fmt:str, raw:bytearray) -> Any:
 	"""
 	Use a given format string to convert the next section of a binary file bytearray into type-correct variables.
 	Uses global var UNPACKER_READFROM_BYTE to know where to start unpacking next.
@@ -1106,7 +1191,7 @@ def _unpack_text(fmt:str, raw:bytearray) -> str:
 	# still need to return as a list for concatenation reasons
 	return s
 
-def my_pack(fmt: str, args_in) -> bytearray:
+def my_pack(fmt: str, args_in: Any) -> bytearray:
 	"""
 	Use a given format string to convert a list of args into the next section of a binary file bytearray.
 	Very similar to python struct.unpack() function, except: 1) if the input arg is not a list/tuple it is automatically
