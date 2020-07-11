@@ -20,8 +20,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = None
-		apply_bone_remapping = None
+		core = pmxlib = apply_bone_remapping = delme_list_to_rangemap = None
 
 
 

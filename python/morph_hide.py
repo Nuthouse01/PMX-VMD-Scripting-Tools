@@ -43,7 +43,6 @@ def main(moreinfo=True):
 	# usually want to hide many morphs at a time, so put all this in a loop
 	num_hidden = 0
 	while True:
-		target_index = 0
 		# loop until an existing morph is specified, or given empty input
 		while True:
 			# any input is considered valid

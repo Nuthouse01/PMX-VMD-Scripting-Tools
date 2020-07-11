@@ -44,7 +44,6 @@ def main(moreinfo=True):
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	
-	target_index = 0
 	while True:
 		# any input is considered valid
 		s = core.MY_GENERAL_INPUT_FUNC(lambda x: True,

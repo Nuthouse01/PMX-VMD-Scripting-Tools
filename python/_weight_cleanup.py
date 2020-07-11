@@ -187,7 +187,7 @@ def normalize_normals(pmx):
 def repair_invalid_normals(pmx, normbad):
 	normbad_err = 0
 	# create a list in parallel with the faces list for holding the perpendicular normal to each face
-	facenorm_list = [None] * len(pmx[2])
+	facenorm_list = [list() for i in pmx[2]]
 	# create a list in paralle with normbad for holding the set of connected faces
 	normbad_linked_faces = [list() for i in normbad]
 	

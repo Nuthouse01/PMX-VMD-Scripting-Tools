@@ -49,7 +49,6 @@ def main(moreinfo=True):
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	
-	target_index = 0
 	# loop until an existing morph is specified, or given empty input
 	while True:
 		# any input is considered valid
@@ -146,7 +145,6 @@ def main(moreinfo=True):
 			item[1] *= factor
 			item[2] *= factor
 	elif morphtype in (4, 5, 6, 7):  # UV1 UV2 UV3 UV4
-		whichuv = morphtype - 4
 		for d, item in enumerate(newmorph[4]):
 			# scale the morph UV
 			item[1] *= factor

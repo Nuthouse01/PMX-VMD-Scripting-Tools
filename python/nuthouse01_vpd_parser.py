@@ -255,6 +255,7 @@ def write_vpd(vpd_filepath: str, vmd: list, moreinfo=False) -> None:
 	# bone-floats always have exactly 6 digits
 	for d, pb in enumerate(pose_bones):
 		quat = core.euler_to_quaternion(pb[5:8])  # returns quat WXYZ
+		quat = list(quat)
 		quat.append(quat.pop(0))  # WXYZ -> XYZW, AKA move head (w) to tail
 		newitem = ["Bone{:d}{{{:s}".format(d, pb[0]),
 				   "  {:.6f},{:.6f},{:.6f};".format(pb[2], pb[3], pb[4]),
