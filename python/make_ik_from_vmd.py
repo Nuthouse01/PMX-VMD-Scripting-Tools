@@ -223,10 +223,11 @@ def main(moreinfo=True):
 	
 	# check if this VMD uses IK or not, print a warning if it does
 	any_ik_on = False
-	for ikdispframe in nicelist_in[6]:
-		for ik_bone in ikdispframe[2]:
-			if ik_bone[1] is True:
+	for ikdispframe in nicelist_in.ikdispframes:
+		for ik_bone in ikdispframe.ikbones:
+			if ik_bone.enable is True:
 				any_ik_on = True
+				break
 	if any_ik_on:
 		core.MY_PRINT_FUNC("Warning: the input VMD already has IK enabled, there is no point in running this script. Attempting to continue...")
 		
@@ -234,24 +235,23 @@ def main(moreinfo=True):
 	# also build a list of each framenumber with a frame for a bone we care about
 	relevant_framenums = set()
 	boneframe_list = []
-	for boneframe in nicelist_in[1]:
-		if boneframe[0] in relevant_bones:
+	for boneframe in nicelist_in.boneframes:
+		if boneframe.name in relevant_bones:
 			boneframe_list.append(boneframe)
-			relevant_framenums.add(boneframe[1])
+			relevant_framenums.add(boneframe.f)
 	# sort the boneframes by frame number
-	boneframe_list.sort(key=core.get2nd)
+	boneframe_list.sort(key=lambda x: x.f)
 	# make the relevant framenumbers also an ascending list
-	relevant_framenums = list(relevant_framenums)
-	relevant_framenums.sort()
+	relevant_framenums = sorted(list(relevant_framenums))
 	
 	boneframe_dict = dict()
 	# now restructure the data from a list to a dictionary, keyed by bone name. also discard excess data when i do
 	for b in boneframe_list:
-		if b[0] not in boneframe_dict:
-			boneframe_dict[b[0]] = []
+		if b.name not in boneframe_dict:
+			boneframe_dict[b.name] = []
 		# only storing the frame#(1) + position(234) + rotation values(567)
-		saveme = b[1:8]
-		boneframe_dict[b[0]].append(saveme)
+		saveme = [b.f, *b.pos, *b.rot]
+		boneframe_dict[b.name].append(saveme)
 	
 	core.MY_PRINT_FUNC("...running interpolation to rectangularize the frames...")
 	
@@ -311,10 +311,10 @@ def main(moreinfo=True):
 	
 	# output array
 	ikframe_list = []
-
-	# # have list of bones, parentage, initial pos
-	# # have list of frames
-	# # now i "run the dance" and build the ik frames
+	
+	# have list of bones, parentage, initial pos
+	# have list of frames
+	# now i "run the dance" and build the ik frames
 	# for each relevant frame,
 	for I in range(len(relevant_framenums)):
 		# for each side,
@@ -402,19 +402,26 @@ def main(moreinfo=True):
 	
 	if INCLUDE_IK_ENABLE_FRAME:
 		# create a single ikdispframe that enables the ik bones at frame 0
-		ikdispframe_list = [[0, True, [[jp_rightfoot_ik, True], [jp_righttoe_ik, True], [jp_leftfoot_ik, True], [jp_lefttoe_ik, True]]]]
+		ikbones = [vmdlib.VmdIkbone(name=jp_rightfoot_ik, enable=True),
+		           vmdlib.VmdIkbone(name=jp_righttoe_ik, enable=True),
+		           vmdlib.VmdIkbone(name=jp_leftfoot_ik, enable=True),
+		           vmdlib.VmdIkbone(name=jp_lefttoe_ik, enable=True)]
+		ikdispframe_list = [vmdlib.VmdIkdispFrame(f=0,disp=True,ikbones=ikbones)]
 	else:
 		ikdispframe_list = []
 		core.MY_PRINT_FUNC("Warning: IK following will NOT be enabled when this VMD is loaded, you will need enable it manually!")
 	
-	nicelist_out = [[2,"SEMISTANDARD-IK-BONES--------"],
-					ikframe_list,	# bone
-					[],				# morph
-					[],				# cam
-					[],				# light
-					[],				# shadow
-					ikdispframe_list	# ikdisp
-					]
+	# convert old-style bonelist ikframe_list to new object format
+	ikframe_list = [vmdlib.VmdBoneFrame(name=r[0],f=r[1],pos=r[2:5],rot=r[5:8],phys_off=r[8],interp=r[9:]) for r in ikframe_list]
+	# build actual VMD object
+	nicelist_out = vmdlib.Vmd(vmdlib.VmdHeader(2,"SEMISTANDARD-IK-BONES--------"),
+					          ikframe_list,		# bone
+					          [],				# morph
+					          [],				# cam
+					          [],				# light
+					          [],				# shadow
+					          ikdispframe_list	# ikdisp
+							  )
 	
 	
 	# write out

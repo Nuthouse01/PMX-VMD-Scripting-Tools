@@ -9,16 +9,18 @@ import re
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
 	from . import nuthouse01_core as core
+	from . import nuthouse01_vmd_parser as vmdlib
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
+		import nuthouse01_vmd_parser as vmdlib
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = None
+		core = vmdlib = None
 
 ########################################################################################################################
 # constants & options
@@ -55,9 +57,10 @@ f4_re = re.compile(f4_pattern)
 # primary functions: read_vpd() and write_vpd()
 ########################################################################################################################
 
-def read_vpd(vpd_filepath: str, moreinfo=False) -> list:
+def read_vpd(vpd_filepath: str, moreinfo=False) -> vmdlib.Vmd:
 	"""
 	Read a VPD text file and convert it to a VMD object with all boneframes and morphframes at time=0.
+	
 	:param vpd_filepath: destination filepath/name, relative from CWD or absolute
 	:param moreinfo: if true, get extra printouts with more info about stuff
 	:return: VMD object
@@ -161,13 +164,13 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> list:
 			# finish the bone-obj and add to VMD structure
 			# this_boneframe = [bname_str, f, xp, yp, zp, xrot, yrot, zrot, phys_off, x_ax, y_ax, z_ax, r_ax, x_ay, y_ay,
 			# 				  z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by]
-			new_boneframe = [temp_name, 0]
-			new_boneframe.extend(temp_pos)
-			new_boneframe.extend(temp_rot)
-			new_boneframe.append(False)  # phys_off = False
-			new_boneframe.extend([20] * 8)  # fill the interpolation bytes with default values
-			new_boneframe.extend([107] * 8)  # fill the interpolation bytes with default values
-			vmd_boneframes.append(new_boneframe)
+			newframe = vmdlib.VmdBoneFrame(name=temp_name,
+										   f=0,
+										   pos=temp_pos,
+										   rot=list(temp_rot),
+										   phys_off=False,
+										   interp=list(core.bone_interpolation_default_linear))
+			vmd_boneframes.append(newframe)
 			if len(vmd_boneframes) == num_bones:	parse_state = 30  # if i got all the bones i expected, move to morphs
 			else:									parse_state = 20  # otherwise, get another bone
 		
@@ -200,8 +203,10 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> list:
 				raise RuntimeError()
 			# finish the morph-obj and add to VMD structure
 			# morphframe_list.append([mname_str, f, v])
-			new_morphframe = [temp_name, 0, temp_value]
-			vmd_morphframes.append(new_morphframe)
+			newframe = vmdlib.VmdMorphFrame(name=temp_name,
+											f=0,
+											val=temp_value)
+			vmd_morphframes.append(newframe)
 			parse_state = 30  # loop morphs until end-of-file
 		
 		else:
@@ -217,15 +222,19 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> list:
 	
 	# after hitting end-of-file, assemble the parts of the final returnable VMD-list thing
 	# builds object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
-	vmd_retme = [[2, temp_title], vmd_boneframes, vmd_morphframes, list(), list(), list(), list()]
+	vmd_retme = vmdlib.Vmd(vmdlib.VmdHeader(version=2, modelname=temp_title),
+						   vmd_boneframes,
+						   vmd_morphframes,
+						   list(), list(), list(), list())
 	
 	core.MY_PRINT_FUNC("Done reading VPD file '%s'" % cleanname)
 	
 	return vmd_retme
 
-def write_vpd(vpd_filepath: str, vmd: list, moreinfo=False) -> None:
+def write_vpd(vpd_filepath: str, vmd: vmdlib.Vmd, moreinfo=False):
 	"""
 	Grab all bone/morph frames at time=0 in a VMD object and write them to a properly-formatted VPD text file.
+	
 	:param vpd_filepath: destination filepath/name, relative from CWD or absolute
 	:param vmd: input VMD object
 	:param moreinfo: if true, get extra printouts with more info about stuff
@@ -233,18 +242,19 @@ def write_vpd(vpd_filepath: str, vmd: list, moreinfo=False) -> None:
 	cleanname = core.get_clean_basename(vpd_filepath) + ".vpd"
 	core.MY_PRINT_FUNC("Begin writing VPD file '%s'" % cleanname)
 
-	# first, lets gather the relevant boneframes & morphframes
-	pose_bones, otherbones = core.my_list_partition(vmd[1], lambda b: b[1] == 0)
-	pose_morphs, othermorphs = core.my_list_partition(vmd[2], lambda b: b[1] == 0)
+	# first, lets partition boneframes & morphframes into those at/notat time=0
+	pose_bones, otherbones = core.my_list_partition(vmd.boneframes, lambda b: b.f == 0)
+	pose_morphs, othermorphs = core.my_list_partition(vmd.morphframes, lambda b: b.f == 0)
+	
 	# if there are frames not on time=0, raise a warning but continue
 	if otherbones or othermorphs:
 		core.MY_PRINT_FUNC("Warning: input VMD contains %d frames not at time=0, these will not be captured in the resulting pose!" % (len(otherbones) + len(othermorphs)))
 	
-	if moreinfo: core.MY_PRINT_FUNC("...model name   = JP:'%s'" % vmd[0][1])
+	if moreinfo: core.MY_PRINT_FUNC("...model name   = JP:'%s'" % vmd.header.modelname)
 	# init printlist with magic header, title, and numbones
 	printlist = ["Vocaloid Pose Data file",
 				 "",
-				 "{:s}.osm;".format(vmd[0][1]),
+				 "{:s}.osm;".format(vmd.header.modelname),
 				 "{:d};".format(len(pose_bones)),
 				 "",]
 	
@@ -252,11 +262,10 @@ def write_vpd(vpd_filepath: str, vmd: list, moreinfo=False) -> None:
 	# bone-floats always have exactly 6 digits
 	if moreinfo: core.MY_PRINT_FUNC("...# of boneframes          = %d" % len(pose_bones))
 	for d, pb in enumerate(pose_bones):
-		quat = core.euler_to_quaternion(pb[5:8])  # returns quat WXYZ
-		quat = list(quat)
+		quat = list(core.euler_to_quaternion(pb.rot))  # returns quat WXYZ
 		quat.append(quat.pop(0))  # WXYZ -> XYZW, AKA move head (w) to tail
-		newitem = ["Bone{:d}{{{:s}".format(d, pb[0]),
-				   "  {:.6f},{:.6f},{:.6f};".format(pb[2], pb[3], pb[4]),
+		newitem = ["Bone{:d}{{{:s}".format(d, pb.name),
+				   "  {:.6f},{:.6f},{:.6f};".format(*pb.pos),
 				   "  {:.6f},{:.6f},{:.6f},{:.6f};".format(*quat),
 				   "}",
 				   "",]
@@ -267,8 +276,8 @@ def write_vpd(vpd_filepath: str, vmd: list, moreinfo=False) -> None:
 	# lets say max precision is 3, but strip any trailing zeros and reduce "1." to "1"
 	if moreinfo: core.MY_PRINT_FUNC("...# of morphframes         = %d" % len(pose_morphs))
 	for d, pm in enumerate(pose_morphs):
-		newitem = ["Morph{:d}{{{:s}".format(d, pm[0]),
-				   "  {:.3f}".format(pm[2]).rstrip("0").rstrip(".") + ";",
+		newitem = ["Morph{:d}{{{:s}".format(d, pm.name),
+				   "  {:.3f}".format(pm.val).rstrip("0").rstrip(".") + ";",
 				   "}",
 				   ""]
 		printlist.extend(newitem)

@@ -129,7 +129,7 @@ def main(moreinfo=True):
 	core.MY_PRINT_FUNC("")
 	# get bones
 	realbones = pmx[5]
-
+	
 	twistbone_axes = []
 	# then, grab the "twist" bones & save their fixed-rotate axes, if they have them
 	# fallback plan: find the arm-to-elbow and elbow-to-wrist unit vectors and use those
@@ -163,7 +163,7 @@ def main(moreinfo=True):
 	
 	# done extracting axes limits from bone CSV, in list "twistbone_axes"
 	core.MY_PRINT_FUNC("...done extracting axis limits from PMX...")
-
+	
 	
 	###################################################################################
 	# prompt VMD file name
@@ -173,12 +173,16 @@ def main(moreinfo=True):
 	# next, read/use/prune the dance vmd
 	nicelist_in = vmdlib.read_vmd(input_filename_vmd, moreinfo=moreinfo)
 	
-	# sort boneframes into individual lists: [Larm + Lelbow + Rarm + Relbow] + everything else
-	# copy from nicelist to dedicated lists:
-	all_sourcebone_frames = [[x for x in nicelist_in[1] if x[0] == sourcebone] for sourcebone in jp_sourcebones]
-	# remove these frames from the nicelist
-	nicelist_in[1] = [x for x in nicelist_in[1] if x[0] not in jp_sourcebones]
+	# sort boneframes into individual lists: one for each [Larm + Lelbow + Rarm + Relbow] and remove them from the master boneframelist
+	# frames for all other bones stay in the master boneframelist
+	all_sourcebone_frames = []
+	for sourcebone in jp_sourcebones:
+		# partition & writeback
+		temp, nicelist_in.boneframes = core.my_list_partition(nicelist_in.boneframes, lambda x: x.name == sourcebone)
+		# all frames for "sourcebone" get their own sublist here
+		all_sourcebone_frames.append(temp)
 	
+	# verify that there is actually arm/elbow frames to process
 	sourcenumframes = sum([len(x) for x in all_sourcebone_frames])
 	if sourcenumframes == 0:
 		core.MY_PRINT_FUNC("No arm/elbow bone frames are found in the VMD, nothing for me to do!")
@@ -193,22 +197,22 @@ def main(moreinfo=True):
 		# i'm replacing the interpolation curves with actual frames
 		for sublist in all_sourcebone_frames:
 			newframelist = []
-			sublist.sort(key=core.get2nd) # ensure they are sorted by frame number
+			sublist.sort(key=lambda x: x.f) # ensure they are sorted by frame number
 			# for each frame
 			for i in range(1, len(sublist)):
 				this = sublist[i]
 				prev = sublist[i-1]
 				# use interpolation curve i to interpolate from i-1 to i
-				# first: do i need to do anything or are they already close?
-				thisframenum = this[1]
-				prevframenum = prev[1]
+				# first: do i need to do anything or are they already close on the timeline?
+				thisframenum = this.f
+				prevframenum = prev.f
 				if (thisframenum - prevframenum) <= OVERKEY_FRAME_SPACING:
 					continue
 				# if they are far enough apart that i need to do something,
-				thisframequat = core.euler_to_quaternion(this[5:8])
-				prevframequat = core.euler_to_quaternion(prev[5:8])
-				# 12, 16, 20, 24 = ax, ay, bx, by
-				bez = core.MyBezier((this[12], this[16]), (this[20], this[24]), resolution=50)
+				thisframequat = core.euler_to_quaternion(this.rot)
+				prevframequat = core.euler_to_quaternion(prev.rot)
+				# 3, 7, 11, 15 = r_ax, r_ay, r_bx, r_by
+				bez = core.MyBezier((this.interp[3], this.interp[7]), (this.interp[11], this.interp[15]), resolution=50)
 				# create new frames at these frame numbers, spacing is OVERKEY_FRAME_SPACING
 				for interp_framenum in range(prevframenum + OVERKEY_FRAME_SPACING, thisframenum, OVERKEY_FRAME_SPACING):
 					# calculate the x time percentage from prev frame to this frame
@@ -218,16 +222,20 @@ def main(moreinfo=True):
 					# interpolate from prev to this by amount Y
 					interp_quat = core.my_slerp(prevframequat, thisframequat, y)
 					# begin building the new frame
-					newframe = list(this)
-					newframe[1] = interp_framenum # overwrite frame num
-					newframe[5:8] = core.quaternion_to_euler(interp_quat) # overwrite euler angles
-					newframe[9:25] = core.bone_interpolation_default_linear # overwrite custom interpolation
+					newframe = vmdlib.VmdBoneFrame(name=this.name,  # same name
+												   f=interp_framenum,  # overwrite frame num
+												   pos=list(this.pos),  # same pos (but make a copy)
+												   rot=list(core.quaternion_to_euler(interp_quat)),  # overwrite euler angles
+												   phys_off=this.phys_off,  # same phys_off
+												   interp=list(core.bone_interpolation_default_linear)  # overwrite interpolation
+												   )
 					newframelist.append(newframe)
 				# overwrite thisframe interp curve with default too
-				this[9:25] = core.bone_interpolation_default_linear # overwrite custom interpolation
+				this.interp = list(core.bone_interpolation_default_linear) # overwrite custom interpolation
 			# concat the new frames onto the existing frames for this sublist
 			sublist += newframelist
 			
+	# re-count the number of frames for printing purposes
 	totalnumframes = sum([len(x) for x in all_sourcebone_frames])
 	overkeyframes = totalnumframes - sourcenumframes
 	if overkeyframes != 0:
@@ -247,11 +255,10 @@ def main(moreinfo=True):
 	
 	# for each sourcebone & corresponding twistbone,
 	for (twistbone, axis_orig, sourcebone_frames) in zip(jp_twistbones, twistbone_axes, all_sourcebone_frames):
-		new_twistbone_frames.append([])
 		# for each frame of the sourcebone,
 		for frame in sourcebone_frames:
 			# XYZrot = 567 euler
-			quat_in = core.euler_to_quaternion(frame[5:8])
+			quat_in = core.euler_to_quaternion(frame.rot)
 			axis = list(axis_orig)	# make a copy to be safe
 			
 			# "swing twist decomposition"
@@ -262,15 +269,19 @@ def main(moreinfo=True):
 			# modify "frame" in-place
 			# only modify the XYZrot to use new values
 			new_sourcebone_euler = core.quaternion_to_euler(swing)
-			frame[5:8] = new_sourcebone_euler
+			frame.rot = list(new_sourcebone_euler)
 			
 			# create & store new twistbone frame
 			# name=twistbone, framenum=copy, XYZpos=copy, XYZrot=new, phys=copy, interp16=copy
-			newframe = list(frame)
-			newframe[0] = twistbone
 			new_twistbone_euler = core.quaternion_to_euler(twist)
-			newframe[5:8] = new_twistbone_euler
-			new_twistbone_frames[-1].append(newframe)
+			newframe = vmdlib.VmdBoneFrame(name=twistbone,
+										   f=frame.f,
+										   pos=list(frame.pos),
+										   rot=list(new_twistbone_euler),
+										   phys_off=frame.phys_off,
+										   interp=list(frame.interp)
+										   )
+			new_twistbone_frames.append(newframe)
 			# print progress updates
 			curr_progress += 1
 			core.print_progress_oneline(curr_progress / totalnumframes)
@@ -281,9 +292,8 @@ def main(moreinfo=True):
 	core.MY_PRINT_FUNC("...done with decomposition, now reassembling output...")
 	# attach the list of newly created boneframes, modify the original input
 	for sublist in all_sourcebone_frames:
-		nicelist_in[1] += sublist
-	for sublist in new_twistbone_frames:
-		nicelist_in[1] += sublist
+		nicelist_in.boneframes += sublist
+	nicelist_in.boneframes += new_twistbone_frames
 	
 	core.MY_PRINT_FUNC("")
 	# write out the VMD

@@ -61,11 +61,11 @@ def main(moreinfo=True):
 	input_filename = core.MY_FILEPROMPT_FUNC(".vmd .vpd")
 	if not input_filename.lower().endswith(".vpd"):
 		# the actual VMD part isn't even used, only bonedict and morphdict
-		vmd, bonedict, morphdict = vmdlib.read_vmd(input_filename, getdict=True, moreinfo=moreinfo)
+		vmd = vmdlib.read_vmd(input_filename, moreinfo=moreinfo)
 	else:
 		vmd = vpdlib.read_vpd(input_filename, moreinfo=moreinfo)
-		bonedict, morphdict = vmdlib.parse_vmd_bonemorphdicts(vmd[1], vmd[2], moreinfo=moreinfo)
-		
+	bonedict = vmdlib.parse_vmd_used_dict(vmd.boneframes, frametype="bone", moreinfo=moreinfo)
+	morphdict = vmdlib.parse_vmd_used_dict(vmd.morphframes, frametype="morph", moreinfo=moreinfo)
 	
 	core.MY_PRINT_FUNC("")
 	
