@@ -813,8 +813,9 @@ def write_vmd(vmd_filename: str, vmd: Vmd, moreinfo=False):
 	global ENCODE_PERCENT_MORPH
 	# cam is not included cuz a file contains only bone+morph OR cam
 	total_bone = len(vmd.boneframes) * ENCODE_FACTOR_BONE
-	total_morph = len(vmd.boneframes) * ENCODE_FACTOR_MORPH
+	total_morph = len(vmd.morphframes) * ENCODE_FACTOR_MORPH
 	ALLENCODE = total_bone + total_morph
+	if ALLENCODE == 0: ALLENCODE = 1  # just a bandaid to avoid zero-div error when writing empty VMD
 	ENCODE_PERCENT_BONE = total_bone / ALLENCODE
 	ENCODE_PERCENT_MORPH = total_morph / ALLENCODE
 	
