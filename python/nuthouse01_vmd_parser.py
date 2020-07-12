@@ -138,12 +138,16 @@ class VmdBoneFrame(object):
 		# interp = [x_ax, y_ax, z_ax, r_ax, 	x_ay, y_ay, z_ay, r_ay,
 		# 			x_bx, y_bx, z_bx, r_bx, 	x_by, y_by, z_by, r_by]
 		self.interp = interp  # 16x int [0-127], see readme for interp explanation
+	def list(self) -> list:
+		return [self.name, self.f, *self.pos, *self.rot, self.phys_off, *self.interp]
 		
 class VmdMorphFrame(object):
 	def __init__(self, name:str="", f:int=0, val:float=0.0):
 		self.name = name
 		self.f = f
 		self.val = val
+	def list(self) -> list:
+		return [self.name, self.f, self.val]
 
 class VmdCamFrame(object):
 	def __init__(self, f:int=0, dist:float=0.0, pos:List[float]=None, rot:List[float]=None, interp:List[int]=None,
@@ -160,7 +164,9 @@ class VmdCamFrame(object):
 		self.interp = interp  # 24x int [0-127], see readme for interp explanation
 		self.fov = fov  # int
 		self.perspective = perspective
-		
+	def list(self) -> list:
+		return [self.f, self.dist, *self.pos, *self.rot, *self.interp, self.fov, self.perspective]
+
 class VmdLightFrame(object):
 	def __init__(self, f:int=0, color:List[int]=None, pos:List[float]=None):
 		if color is None: color = [0] * 3
@@ -168,17 +174,23 @@ class VmdLightFrame(object):
 		self.f = f
 		self.color = color  # R G B int [0-255]
 		self.pos = pos  # X Y Z
+	def list(self) -> list:
+		return [self.f, *self.color, *self.pos]
 
 class VmdShadowFrame(object):
 	def __init__(self, f:int=0, mode:int=0, val:int=0):
 		self.f = f
 		self.mode = mode  # int (0=off, 1=mode1, 2=mode2)
 		self.val = val  # int [0-9999]
+	def list(self) -> list:
+		return [self.f, self.mode, self.val]
 
 class VmdIkbone(object):
 	def __init__(self, name:str="", enable:bool=False):
 		self.name = name
 		self.enable = enable
+	def list(self) -> list:
+		return [self.name, self.enable]
 
 class VmdIkdispFrame(object):
 	def __init__(self, f:int=0, disp:bool=True, ikbones:List[VmdIkbone]=None):
@@ -186,6 +198,9 @@ class VmdIkdispFrame(object):
 		self.f = f
 		self.disp = disp
 		self.ikbones = ikbones
+	def list(self) -> list:
+		return core.flatten([self.f, self.disp, self.ikbones])
+
 
 # creates object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
 class Vmd(object):
