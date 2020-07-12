@@ -34,6 +34,30 @@ mtype_dict = {0:"group", 1:"vertex", 2:"bone", 3:"UV",
 			  4:"UV1", 5:"UV2", 6:"UV3", 7:"UV4",
 			  8:"material", 9:"flip", 10:"impulse"}
 
+
+# function that takes a string & returns morph idx if it can match one, or None otherwise
+def get_morphidx_from_name(s: str, p):
+	if s == "": return -1
+	# then get the morph index from this
+	# search JP names first
+	t = core.my_sublist_find(p[6], 0, s, getindex=True)
+	if t is not None: return t
+	# search EN names next
+	t = core.my_sublist_find(p[6], 1, s, getindex=True)
+	if t is not None: return t
+	# try to cast to int next
+	try:
+		t = int(s)
+		if 0 <= t < len(p[6]):
+			return t
+		else:
+			core.MY_PRINT_FUNC("valid morph indexes are 0-'%d'" % (len(p[6]) - 1))
+			return None
+	except ValueError:
+		core.MY_PRINT_FUNC("unable to find matching morph for '%s'" % s)
+		return None
+
+
 def main(moreinfo=True):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
@@ -43,49 +67,29 @@ def main(moreinfo=True):
 	# usually want to hide many morphs at a time, so put all this in a loop
 	num_hidden = 0
 	while True:
-		# loop until an existing morph is specified, or given empty input
-		while True:
-			# any input is considered valid
-			s = core.MY_GENERAL_INPUT_FUNC(lambda x: True,
-										   ["Please specify the target morph: morph #, JP name, or EN name (names are case sensitive)",
-											"Empty input will quit the script"])
-			# if empty, leave & do nothing
-			if s == "":
-				target_index = -1
-				break
-			# then get the morph index from this
-			# search JP names first
-			target_index = core.my_sublist_find(pmx[6], 0, s, getindex=True)
-			if target_index is not None: break  # did i find a match?
-			# search EN names next
-			target_index = core.my_sublist_find(pmx[6], 1, s, getindex=True)
-			if target_index is not None: break  # did i find a match?
-			# try to cast to int next
-			try:
-				target_index = int(s)
-				if 0 <= target_index < len(pmx[6]): break  # is this within the proper bounds?
-				else: core.MY_PRINT_FUNC("valid morph indexes are 0-'%d'" % (len(pmx[6]) - 1))
-			except ValueError:
-				pass
-			core.MY_PRINT_FUNC("unable to find matching morph for '%s'" % s)
+		core.MY_PRINT_FUNC("")
+		# valid input is any string that can matched aginst a morph idx
+		s = core.MY_GENERAL_INPUT_FUNC(lambda x: get_morphidx_from_name(x, pmx) is not None,
+									   ["Please specify the target morph: morph #, JP name, or EN name (names are case sensitive).",
+										"Empty input will quit the script."])
+		# do it again, cuz the lambda only returns true/false
+		target_index = get_morphidx_from_name(s, pmx)
 		
 		# when given empty text, done!
-		if target_index == -1:
+		if target_index == -1 or target_index is None:
 			core.MY_PRINT_FUNC("quitting")
 			break
 		
 		# determine the morph type
 		morphtype = pmx[6][target_index][3]
 		core.MY_PRINT_FUNC("Found {} morph #{}: '{}' / '{}'".format(mtype_dict[morphtype], target_index, pmx[6][target_index][0], pmx[6][target_index][1]))
-		core.MY_PRINT_FUNC("Was group# = {}".format(pmx[6][target_index][2]))
+		core.MY_PRINT_FUNC("Was group {}, now group 0 (hidden)".format(pmx[6][target_index][2]))
 		# make the actual change
 		pmx[6][target_index][2] = 0
 		num_hidden += 1
 	
-	core.MY_PRINT_FUNC("done!")
-	
 	if num_hidden == 0:
-		core.MY_PRINT_FUNC("nothing was changed")
+		core.MY_PRINT_FUNC("Nothing was changed")
 		return None
 	
 	# last step: remove all invalid morphs from all display panels
