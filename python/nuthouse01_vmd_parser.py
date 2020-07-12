@@ -199,7 +199,11 @@ class VmdIkdispFrame(object):
 		self.disp = disp
 		self.ikbones = ikbones
 	def list(self) -> list:
-		return core.flatten([self.f, self.disp, self.ikbones])
+		ret = [self.f, self.disp]
+		for ik in self.ikbones:
+			ret.append(ik.name)
+			ret.append(ik.enable)
+		return ret
 
 
 # creates object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
