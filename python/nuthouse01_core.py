@@ -18,7 +18,7 @@ from sys import platform, version_info, version
 # i don't know if it will actually work in 3.4 but i know it will fail in any python2 version
 # actually written/tested with 3.6.6 so guaranteed to work on that or higher
 # between 3.4 and 3.6, who knows
-from typing import Any, Tuple, List, Sequence, Callable, Iterable
+from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
 
 if version_info < (3, 4):
 	print("Your version of Python is too old to run this script, please update!")
@@ -146,7 +146,8 @@ def my_sublist_find(searchme, sublist_idx, matchme, getindex=False):
 				return row
 	return None
 
-def my_list_partition(l: Iterable, condition: Callable) -> Tuple[list,list]:
+T = TypeVar('T')      # Declare type variable so I can say "whatever input type is, it matches the output type"
+def my_list_partition(l: Iterable[T], condition: Callable[[T],bool]) -> Tuple[List[T],List[T]]:
 	"""
 	Split one list into two NEW lists based on a condition. Kinda like a list comprehension but it produces 2 results.
 	
