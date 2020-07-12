@@ -68,6 +68,8 @@
 # 		core.write_bytes_to_binfile()
 
 
+# first, system imports
+from typing import List
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -162,7 +164,7 @@ def check3_match_keystr(rawlist_text: list, keystr: list):
 # functions to allow reading vmd-as-txt
 ########################################################################################################################
 
-def read_vmdtext_header(rawlist_text: list) -> list:
+def read_vmdtext_header(rawlist_text: List[list]) -> vmdlib.VmdHeader:
 	##################################
 	# header data
 	global readfrom_line
@@ -182,9 +184,9 @@ def read_vmdtext_header(rawlist_text: list) -> list:
 	readfrom_line += 1
 	core.MY_PRINT_FUNC("...model name   = JP:'%s'" % modelname)
 	# assemble and return
-	return [version, modelname]
+	return vmdlib.VmdHeader(version, modelname)
 
-def read_vmdtext_boneframe(rawlist_text: list) -> list:
+def read_vmdtext_boneframe(rawlist_text: List[list]) -> List[vmdlib.VmdBoneFrame]:
 	#############################
 	# bone frames
 	global readfrom_line
@@ -207,14 +209,16 @@ def read_vmdtext_boneframe(rawlist_text: list) -> list:
 			# ensure it has the right # of items on the line
 			check1_match_len(rawlist_text, len(keystr_boneframekey))
 			# the nicelist has angles in euler format, don't convert the values here
-			bone_list.append(rawlist_text[readfrom_line])
+			r = rawlist_text[readfrom_line]
+			newframe = vmdlib.VmdBoneFrame(name=r[0],f=r[1],pos=r[2:5],rot=r[5:8],phys_off=r[8],interp=r[9:])
+			bone_list.append(newframe)
 			# increment the readfrom_line pointer
 			readfrom_line += 1
 			# progress tracker just because
 			core.print_progress_oneline(i / boneframe_ct)
 	return bone_list
 
-def read_vmdtext_morphframe(rawlist_text: list) -> list:
+def read_vmdtext_morphframe(rawlist_text: List[list]) -> List[vmdlib.VmdMorphFrame]:
 	###########################################
 	# morph frames
 	global readfrom_line
@@ -235,14 +239,16 @@ def read_vmdtext_morphframe(rawlist_text: list) -> list:
 		for i in range(morphframe_ct):
 			# ensure it has the right # of items on the line
 			check1_match_len(rawlist_text, len(keystr_morphframekey))
-			morph_list.append(rawlist_text[readfrom_line])
+			r = rawlist_text[readfrom_line]
+			newframe = vmdlib.VmdMorphFrame(name=r[0],f=r[1],val=r[2])
+			morph_list.append(newframe)
 			# increment the readfrom_line pointer
 			readfrom_line += 1
 			# progress tracker just because
 			core.print_progress_oneline(i / morphframe_ct)
 	return morph_list
 
-def read_vmdtext_camframe(rawlist_text: list) -> list:
+def read_vmdtext_camframe(rawlist_text: List[list]) -> List[vmdlib.VmdCamFrame]:
 	###########################################
 	# cam frames
 	global readfrom_line
@@ -262,14 +268,16 @@ def read_vmdtext_camframe(rawlist_text: list) -> list:
 		for i in range(camframe_ct):
 			# ensure it has the right # of items on the line
 			check1_match_len(rawlist_text, len(keystr_camframekey))
-			cam_list.append(rawlist_text[readfrom_line])
+			r = rawlist_text[readfrom_line]
+			newframe = vmdlib.VmdCamFrame(f=r[0],dist=r[1],pos=r[2:5],rot=r[5:8],interp=r[8:32],fov=r[32],perspective=r[33])
+			cam_list.append(newframe)
 			# increment the readfrom_line pointer
 			readfrom_line += 1
 			# progress tracker just because
 			core.print_progress_oneline(i / camframe_ct)
 	return cam_list
 
-def read_vmdtext_lightframe(rawlist_text: list) -> list:
+def read_vmdtext_lightframe(rawlist_text: List[list]) -> List[vmdlib.VmdLightFrame]:
 	###########################################
 	# light frames
 	global readfrom_line
@@ -289,12 +297,14 @@ def read_vmdtext_lightframe(rawlist_text: list) -> list:
 		for i in range(lightframe_ct):
 			# ensure it has the right # of items on the line
 			check1_match_len(rawlist_text, len(keystr_lightframekey))
-			light_list.append(rawlist_text[readfrom_line])
+			r = rawlist_text[readfrom_line]
+			newframe = vmdlib.VmdLightFrame(f=r[0],color=r[1:4],pos=r[4:7])
+			light_list.append(newframe)
 			# increment the readfrom_line pointer
 			readfrom_line += 1
 	return light_list
 
-def read_vmdtext_shadowframe(rawlist_text: list) -> list:
+def read_vmdtext_shadowframe(rawlist_text: List[list]) -> List[vmdlib.VmdShadowFrame]:
 	###########################################
 	# shadow frames
 	global readfrom_line
@@ -315,12 +325,14 @@ def read_vmdtext_shadowframe(rawlist_text: list) -> list:
 			# ensure it has the right # of items on the line
 			check1_match_len(rawlist_text, len(keystr_shadowframekey))
 			# the nicelist has angles in euler format, don't convert the values here
-			shadow_list.append(rawlist_text[readfrom_line])
+			r = rawlist_text[readfrom_line]
+			newframe = vmdlib.VmdShadowFrame(f=r[0],mode=r[1],val=r[2])
+			shadow_list.append(newframe)
 			# increment the readfrom_line pointer
 			readfrom_line += 1
 	return shadow_list
 
-def read_vmdtext_ikdispframe(rawlist_text: list) -> list:
+def read_vmdtext_ikdispframe(rawlist_text: List[list]) -> List[vmdlib.VmdIkdispFrame]:
 	###########################################
 	# disp/ik frames
 	global readfrom_line
@@ -350,8 +362,9 @@ def read_vmdtext_ikdispframe(rawlist_text: list) -> list:
 			# need to restructure the frame before it becomes the correct nicelist format
 			ik_pairs = []
 			for pos in range(2, len(l), 2):
-				ik_pairs.append(l[pos:pos+2])
-			ikdisp_list.append([l[0], l[1], ik_pairs])
+				ik_pairs.append(vmdlib.VmdIkbone(name=l[pos],enable=l[pos+1]))
+			newframe = vmdlib.VmdIkdispFrame(f=l[0],disp=l[1],ikbones=ik_pairs)
+			ikdisp_list.append(newframe)
 			# increment the readfrom_line pointer
 			readfrom_line += 1
 	return ikdisp_list
@@ -362,102 +375,99 @@ def read_vmdtext_ikdispframe(rawlist_text: list) -> list:
 
 # TODO LOW: redo vmd-as-text structure to remove "how many of each frame type" specifiers
 
-def format_nicelist_as_rawlist(nicelist: list) -> list:
+def format_nicelist_as_rawlist(vmd: vmdlib.Vmd) -> List[list]:
 	# unpack the fields of the nicelist format into named lists
-	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list,
-	 ikdispframe_list) = nicelist
+	# (header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list,
+	#  ikdispframe_list) = nicelist
 	
 	# format the nicelist with the CSV format I decided to use, return a list of lines for file-write
-	rawlist = []
 	# header
-	rawlist.append([keystr_version, header[0]])
-	rawlist.append([keystr_modelname, header[1]])
+	rawlist = [[keystr_version, vmd.header.version], [keystr_modelname, vmd.header.modelname]]
 	
 	# bones
-	boneframe_ct = len(boneframe_list)
+	boneframe_ct = len(vmd.boneframes)
 	rawlist.append([keystr_boneframect, boneframe_ct])
 	if boneframe_ct != 0:
 		rawlist.append(keystr_boneframekey)  # key
-		rawlist += boneframe_list
+		rawlist += [b.list() for b in vmd.boneframes]
 	
 	# morphs
-	morphframe_ct = len(morphframe_list)
+	morphframe_ct = len(vmd.morphframes)
 	rawlist.append([keystr_morphframect, morphframe_ct])
 	if morphframe_ct != 0:
 		rawlist.append(keystr_morphframekey)  # key
-		rawlist += morphframe_list
+		rawlist += [b.list() for b in vmd.morphframes]
 	
 	# cams
-	camframe_ct = len(camframe_list)
+	camframe_ct = len(vmd.camframes)
 	rawlist.append([keystr_camframect, camframe_ct])
 	if camframe_ct != 0:
 		rawlist.append(keystr_camframekey)  # key
-		rawlist += camframe_list
+		rawlist += [b.list() for b in vmd.camframes]
 	
 	# light
-	lightframe_ct = len(lightframe_list)
+	lightframe_ct = len(vmd.lightframes)
 	rawlist.append([keystr_lightframect, lightframe_ct])
 	if lightframe_ct != 0:
 		rawlist.append(keystr_lightframekey)  # key
-		rawlist += lightframe_list
+		rawlist += [b.list() for b in vmd.lightframes]
 	
 	# shadows
-	shadowframe_ct = len(shadowframe_list)
+	shadowframe_ct = len(vmd.shadowframes)
 	rawlist.append([keystr_shadowframect, shadowframe_ct])
 	if shadowframe_ct != 0:
 		rawlist.append(keystr_shadowframekey)  # key
-		rawlist += shadowframe_list
+		rawlist += [b.list() for b in vmd.shadowframes]
 	
 	# ikdisp
-	ikdispframe_ct = len(ikdispframe_list)
+	ikdispframe_ct = len(vmd.ikdispframes)
 	rawlist.append([keystr_ikdispframect, ikdispframe_ct])
 	if ikdispframe_ct != 0:
 		rawlist.append(keystr_ikdispframekey)  # key
-		for frame in ikdispframe_list:
-			rawlist.append(core.flatten(frame))
+		rawlist += [b.list() for b in vmd.ikdispframes]
 	
 	return rawlist
 
-def format_dicts_as_rawlist(bonedict: dict, morphdict: dict) -> list:
-	# add headers and stuff to arrange the dictionaries into CSV format to prep for printing
-	rawlist = []
-	
-	# morphdict totals
-	num_morphs_multi_use = 0
-	for b, c in morphdict.items():
-		if c > 1:
-			num_morphs_multi_use += 1
-	rawlist.append([keystr_morphsummct, len(morphdict)])
-	if len(morphdict) > 0:
-		rawlist.append([keystr_morphsummmultict, num_morphs_multi_use])
-		# morphdict actual
-		morphdict_sorted = list(morphdict.items())  # dict -> list
-		morphdict_sorted.sort(key=core.get1st)  # sort by name as tiebreaker
-		morphdict_sorted.sort(key=core.get2nd, reverse=True)  # sort in-place descending by 2nd element as primary
-		rawlist.append(keystr_morphsummkey)  # key
-		rawlist += morphdict_sorted  # append
-	
-	# bonedict totals
-	num_bones_multi_use = 0
-	for b, c in bonedict.items():
-		if c > 1:
-			num_bones_multi_use += 1
-	rawlist.append([keystr_bonesummct, len(bonedict)])
-	if len(bonedict) > 0:
-		rawlist.append([keystr_bonesummmultict, num_bones_multi_use])
-		# bonedict actual
-		bonedict_sorted = list(bonedict.items())  # dict -> list
-		bonedict_sorted.sort(key=core.get1st)  # sort by name as tiebreaker
-		bonedict_sorted.sort(key=core.get2nd, reverse=True)  # sort in-place descending by 2nd element as primary
-		rawlist.append(keystr_bonesummkey)  # key
-		rawlist += bonedict_sorted  # append
-	return rawlist
+# def format_dicts_as_rawlist(bonedict: dict, morphdict: dict) -> list:
+# 	# add headers and stuff to arrange the dictionaries into CSV format to prep for printing
+# 	rawlist = []
+#
+# 	# morphdict totals
+# 	num_morphs_multi_use = 0
+# 	for b, c in morphdict.items():
+# 		if c > 1:
+# 			num_morphs_multi_use += 1
+# 	rawlist.append([keystr_morphsummct, len(morphdict)])
+# 	if len(morphdict) > 0:
+# 		rawlist.append([keystr_morphsummmultict, num_morphs_multi_use])
+# 		# morphdict actual
+# 		morphdict_sorted = list(morphdict.items())  # dict -> list
+# 		morphdict_sorted.sort(key=core.get1st)  # sort by name as tiebreaker
+# 		morphdict_sorted.sort(key=core.get2nd, reverse=True)  # sort in-place descending by 2nd element as primary
+# 		rawlist.append(keystr_morphsummkey)  # key
+# 		rawlist += morphdict_sorted  # append
+#
+# 	# bonedict totals
+# 	num_bones_multi_use = 0
+# 	for b, c in bonedict.items():
+# 		if c > 1:
+# 			num_bones_multi_use += 1
+# 	rawlist.append([keystr_bonesummct, len(bonedict)])
+# 	if len(bonedict) > 0:
+# 		rawlist.append([keystr_bonesummmultict, num_bones_multi_use])
+# 		# bonedict actual
+# 		bonedict_sorted = list(bonedict.items())  # dict -> list
+# 		bonedict_sorted.sort(key=core.get1st)  # sort by name as tiebreaker
+# 		bonedict_sorted.sort(key=core.get2nd, reverse=True)  # sort in-place descending by 2nd element as primary
+# 		rawlist.append(keystr_bonesummkey)  # key
+# 		rawlist += bonedict_sorted  # append
+# 	return rawlist
 
 ########################################################################################################################
 # read_vmdtext() and write_vmdtext()
 ########################################################################################################################
 
-def read_vmdtext(vmdtext_filename: str) -> list:
+def read_vmdtext(vmdtext_filename: str) -> vmdlib.Vmd:
 	# break apart the CSV text-file format, arrange the data into a easier-to-manipulate list of lists
 	# also check that headers are where they should be and each line has the proper number of items on it
 	# return nicelist = [header, modelname, bone_list, morph_list, cam_list, light_list, shadow_list, ikdisp_list]
@@ -493,9 +503,9 @@ def read_vmdtext(vmdtext_filename: str) -> list:
 	core.MY_PRINT_FUNC("Done parsing VMD-as-text file '%s'" % cleanname)
 	# stuff to return:
 	# version+modelname, bonelist, morphlist, camlist, lightlist, shadowlist, ikdisplist
-	return [A, B, C, D, E, F, G]
+	return vmdlib.Vmd(A, B, C, D, E, F, G)
 
-def write_vmdtext(vmdtext_filename: str, nicelist: list) -> None:
+def write_vmdtext(vmdtext_filename: str, nicelist: vmdlib.Vmd):
 	# assume the output filename has already been validated as unused, etc
 	cleanname = core.get_clean_basename(vmdtext_filename) + ".txt"
 	core.MY_PRINT_FUNC("Begin formatting VMD-as-text file '%s'" % cleanname)
@@ -507,20 +517,20 @@ def write_vmdtext(vmdtext_filename: str, nicelist: list) -> None:
 	core.MY_PRINT_FUNC("...total size   = %s lines" % len(rawlist))
 	core.write_csvlist_to_file(vmdtext_filename, rawlist)
 	core.MY_PRINT_FUNC("Done writing VMD-as-text file '%s'" % cleanname)
-	return None
+	return
 
-def write_summary_dicts(bonedict: dict, morphdict: dict, summary_filename: str) -> None:
-	# assume the output filename has already been validated as unused, etc
-	core.MY_PRINT_FUNC("Begin formatting bone & morph summary file '%s'" % summary_filename)
-	
-	rawlist = format_dicts_as_rawlist(bonedict, morphdict)
-	
-	# done formatting!
-	core.MY_PRINT_FUNC("Begin writing bone & morph summary file '%s'" % summary_filename)
-	core.MY_PRINT_FUNC("...total size   = %s lines" % len(rawlist))
-	core.write_csvlist_to_file(summary_filename, rawlist)
-	core.MY_PRINT_FUNC("Done writing bone & morph summary file '%s'" % summary_filename)
-	return None
+# def write_summary_dicts(bonedict: dict, morphdict: dict, summary_filename: str) -> None:
+# 	# assume the output filename has already been validated as unused, etc
+# 	core.MY_PRINT_FUNC("Begin formatting bone & morph summary file '%s'" % summary_filename)
+#
+# 	rawlist = format_dicts_as_rawlist(bonedict, morphdict)
+#
+# 	# done formatting!
+# 	core.MY_PRINT_FUNC("Begin writing bone & morph summary file '%s'" % summary_filename)
+# 	core.MY_PRINT_FUNC("...total size   = %s lines" % len(rawlist))
+# 	core.write_csvlist_to_file(summary_filename, rawlist)
+# 	core.MY_PRINT_FUNC("Done writing bone & morph summary file '%s'" % summary_filename)
+# 	return None
 
 ########################################################################################################################
 # MAIN & menu, also convert_txt_to_vmd() and convert_vmd_to_txt()
@@ -530,6 +540,7 @@ def convert_txt_to_vmd(input_filename, moreinfo=True):
 	"""
 	Read a VMD-as-text file from disk, convert it, and write to disk as a VMD motion file.
 	The output will have the same path and basename, but the opposite file extension.
+	
 	:param input_filename: filepath to input vmd, absolute or relative to CWD
 	:param moreinfo: default false. if true, get extra printouts with more info about stuff.
 	"""
@@ -542,42 +553,43 @@ def convert_txt_to_vmd(input_filename, moreinfo=True):
 	vmdlib.write_vmd(dumpname, vmd_nicelist, moreinfo=moreinfo)
 	
 	# done!
-	return None
+	return
 
 
-def convert_vmd_to_txt(input_filename: str, moreinfo=True) -> None:
+def convert_vmd_to_txt(input_filename: str, moreinfo=True):
 	"""
 	Read a VMD motion file from disk, convert it, and write to disk as a text file.
 	The output will have the same path and basename, but the opposite file extension.
 	See 'README.txt' for more details about VMD-as-text output format.
+	
 	:param input_filename: filepath to input vmd, absolute or relative to CWD
 	:param moreinfo: default false. if true, get extra printouts with more info about stuff.
 	"""
 	# read the entire VMD, all in this one function
 	# also create the bonedict & morphdict
-	vmd_nicelist, bonedict, morphdict = vmdlib.read_vmd(input_filename, getdict=True, moreinfo=moreinfo)
+	vmd_nicelist = vmdlib.read_vmd(input_filename, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("")
 	# identify an unused filename for writing the output
 	dumpname = core.get_unused_file_name(input_filename[0:-4] + filestr_txt)
 	# write the output VMD-as-text file
 	write_vmdtext(dumpname, vmd_nicelist)
 	
-	#####################################
-	# summary file:
-	
-	# if there are no bones and no morphs, there is no need for a summary file... just return early
-	if len(bonedict) == 0 and len(morphdict) == 0:
-		return None
-	# if the user doesn't want a summary, dont bother
-	elif not PRINT_BONE_MORPH_SUMMARY_FILE:
-		return None
-	else:
-		# identify an unused filename for writing the output
-		summname = core.get_unused_file_name(core.get_clean_basename(dumpname) + "_summary" + filestr_txt)
-		write_summary_dicts(bonedict, morphdict, summname)
+	# #####################################
+	# # summary file:
+	#
+	# # if there are no bones and no morphs, there is no need for a summary file... just return early
+	# if len(bonedict) == 0 and len(morphdict) == 0:
+	# 	return None
+	# # if the user doesn't want a summary, dont bother
+	# elif not PRINT_BONE_MORPH_SUMMARY_FILE:
+	# 	return None
+	# else:
+	# 	# identify an unused filename for writing the output
+	# 	summname = core.get_unused_file_name(core.get_clean_basename(dumpname) + "_summary" + filestr_txt)
+	# 	write_summary_dicts(bonedict, morphdict, summname)
 	
 	# done!
-	return None
+	return
 
 helptext = '''=================================================
 convert_vmd_to_txt:
@@ -605,7 +617,7 @@ def main(moreinfo=False):
 		# activate correct function
 		convert_txt_to_vmd(input_filename, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("Done!")
-	return None
+	return
 	
 ########################################################################################################################
 # after all the funtions are defined, actually execute main()
