@@ -57,6 +57,7 @@ def main(moreinfo=True):
 	realmorphs = pmx[6]		# get morphs
 	
 	# prompt VMD file name
+	core.MY_PRINT_FUNC("")
 	core.MY_PRINT_FUNC("Please enter name of VMD motion or VPD pose file to check compatability with:")
 	input_filename = core.MY_FILEPROMPT_FUNC(".vmd .vpd")
 	if not input_filename.lower().endswith(".vpd"):
