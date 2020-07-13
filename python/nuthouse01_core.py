@@ -781,17 +781,25 @@ class MyBezier(object):
 		self.yy = list(yy)
 
 	def approximate(self, x: float) -> float:
-		# use a previously-created bezier characterization with an input X value to create an output Y value
+		"""
+		In a constrained bezier curve, X and Y have a perfect one-to-one correspondance, but the math makes it
+		incredibly difficult to exactly calculate a Y given an X. So, approximate it via a series of precalculated line
+		segments.
+
+		:param x: float input x [0.0-1.0]
+		:return: float output y [0.0-1.0]
+		"""
 		x = clamp(x, 0.0, 1.0)
-		# use binary search to find pos, the idx of the entry in self.xx which is <= x
-		if x == 1.0:
-			# using bisect_left would return 50 which would be 50-51 segment but there is no index 51 so it crashes
-			pos = self.resolution - 1
+		# first take care of the corner cases, i.e. the cases I already know the answers to:
+		if x == 1.0:	return 1.0
+		elif x == 0.0:	return 0.0
 		else:
+			# use binary search to find pos, the idx of the entry in self.xx which is <= x
+			# if xx[3] < x < xx[4], then pos=4. so the segment starts at pos-1 and ends at pos.
 			pos = bisect_left(self.xx, x)
-		# use pos and pos+1 to get two xy points, to build a line segment, to perform linear approximation
-		return linear_map(self.xx[pos],   self.yy[pos],
-						  self.xx[pos+1], self.yy[pos+1],
+		# use pos-1 and pos to get two xy points, to build a line segment, to perform linear approximation
+		return linear_map(self.xx[pos-1], self.yy[pos-1],
+						  self.xx[pos],   self.yy[pos],
 						  x)
 
 ########################################################################################################################
