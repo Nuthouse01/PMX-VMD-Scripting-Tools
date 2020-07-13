@@ -648,44 +648,6 @@ def encode_vmd_ikdispframe(nice:List[VmdIkdispFrame]) -> bytearray:
 	return output
 
 
-# def parse_vmd_bonemorphdicts(boneframes: List[VmdBoneFrame], morphframes: List[VmdMorphFrame], moreinfo=False) -> Tuple[dict, dict]:
-# 	"""
-# 	Generate two dictionaries where keys are bones/morphs that are "actually used" and values are # of times they are used.
-# 	"Actually used" means the first frame with a nonzero value and each frame after that. (ignore leading repeated zeros)
-#
-# 	:param moreinfo: print extra info and stuff
-# 	:param boneframes: vmd[1]
-# 	:param morphframes: vmd[2]
-# 	:return: tuple(bonedict, morphdict)
-# 	"""
-# 	bonedict = {}
-# 	morphdict = {}
-# 	# 1, ensure frames are in sorted order
-# 	boneframes_sorted = sorted(boneframes, key=lambda x: x.f)
-# 	morphframes_sorted = sorted(morphframes, key=lambda x: x.f)
-# 	boneset = set()  # set of everything that exists, used or not
-# 	morphset = set()
-# 	# 2, iterate over items and count all instances except first if first has no value
-# 	for bone in boneframes_sorted:
-# 		boneset.add(bone.name)
-# 		if bone.name not in bonedict:  # if this has not been used before,
-# 			if list(bone.pos) == [0.0,0.0,0.0] and list(bone.rot) == [0.0,0.0,0.0]:  # if it is not used now,
-# 				continue  # do not count it.
-# 		core.increment_occurance_dict(bonedict, bone.name)  # if it has been used before or is used now, count it.
-# 	for morph in morphframes_sorted:
-# 		morphset.add(morph.name)
-# 		if morph.name not in morphdict:  # if this has not been used before,
-# 			if morph.val == 0.0:  # if it is not used now,
-# 				continue  # do not count it.
-# 		core.increment_occurance_dict(morphdict, morph.name)  # if it has been used before or is used now, count it.
-# 	# 3, if there are any "used" items then print a statement saying so
-# 	if len(bonedict) > 0:
-# 		if moreinfo: core.MY_PRINT_FUNC("...unique bones, used/total = %d / %d" % (len(bonedict), len(boneset)))
-# 	if len(morphdict) > 0:
-# 		if moreinfo: core.MY_PRINT_FUNC("...unique morphs, used/total= %d / %d" % (len(morphdict), len(morphset)))
-#
-# 	return bonedict, morphdict
-
 def parse_vmd_used_dict(frames: List[Union[VmdBoneFrame,VmdMorphFrame]], frametype="", moreinfo=False) -> dict:
 	"""
 	Generate a dictionary where keys are bones/morphs that are "actually used" and values are # of times they are used.
