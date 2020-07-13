@@ -215,7 +215,7 @@ def repair_invalid_normals(pmx, normbad):
 		for face_id in badvert_faces:
 			# for each face, does the perpendicular normal already exist in the parallel list? if not, calculate and save it for reuse
 			facenorm = facenorm_list[face_id]
-			if facenorm is None:
+			if not facenorm:
 				# need to calculate it! use cross product or whatever
 				# order of vertices is important! not sure what's right
 				q = pmx[1][pmx[2][face_id][0]][0:3]
