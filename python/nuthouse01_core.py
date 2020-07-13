@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/11/2020 - v4.61
+# Nuthouse01 - 07/13/2020 - v4.62
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -18,7 +18,7 @@ from sys import platform, version_info, version
 # i don't know if it will actually work in 3.4 but i know it will fail in any python2 version
 # actually written/tested with 3.6.6 so guaranteed to work on that or higher
 # between 3.4 and 3.6, who knows
-from typing import Any, Tuple, List, Sequence, Callable, Iterable
+from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
 
 if version_info < (3, 4):
 	print("Your version of Python is too old to run this script, please update!")
@@ -146,7 +146,8 @@ def my_sublist_find(searchme, sublist_idx, matchme, getindex=False):
 				return row
 	return None
 
-def my_list_partition(l: Iterable, condition: Callable) -> Tuple[list,list]:
+T = TypeVar('T')      # Declare type variable so I can say "whatever input type is, it matches the output type"
+def my_list_partition(l: Iterable[T], condition: Callable[[T],bool]) -> Tuple[List[T],List[T]]:
 	"""
 	Split one list into two NEW lists based on a condition. Kinda like a list comprehension but it produces 2 results.
 	
@@ -780,17 +781,25 @@ class MyBezier(object):
 		self.yy = list(yy)
 
 	def approximate(self, x: float) -> float:
-		# use a previously-created bezier characterization with an input X value to create an output Y value
+		"""
+		In a constrained bezier curve, X and Y have a perfect one-to-one correspondance, but the math makes it
+		incredibly difficult to exactly calculate a Y given an X. So, approximate it via a series of precalculated line
+		segments.
+
+		:param x: float input x [0.0-1.0]
+		:return: float output y [0.0-1.0]
+		"""
 		x = clamp(x, 0.0, 1.0)
-		# use binary search to find pos, the idx of the entry in self.xx which is <= x
-		if x == 1.0:
-			# using bisect_left would return 50 which would be 50-51 segment but there is no index 51 so it crashes
-			pos = self.resolution - 1
+		# first take care of the corner cases, i.e. the cases I already know the answers to:
+		if x == 1.0:	return 1.0
+		elif x == 0.0:	return 0.0
 		else:
+			# use binary search to find pos, the idx of the entry in self.xx which is <= x
+			# if xx[3] < x < xx[4], then pos=4. so the segment starts at pos-1 and ends at pos.
 			pos = bisect_left(self.xx, x)
-		# use pos and pos+1 to get two xy points, to build a line segment, to perform linear approximation
-		return linear_map(self.xx[pos],   self.yy[pos],
-						  self.xx[pos+1], self.yy[pos+1],
+		# use pos-1 and pos to get two xy points, to build a line segment, to perform linear approximation
+		return linear_map(self.xx[pos-1], self.yy[pos-1],
+						  self.xx[pos],   self.yy[pos],
 						  x)
 
 ########################################################################################################################
@@ -1362,5 +1371,5 @@ def _pack_text(fmt: str, args: str) -> bytearray:
 		raise newerr
 
 if __name__ == '__main__':
-	MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
+	MY_PRINT_FUNC("Nuthouse01 - 07/13/2020 - v4.62")
 	pause_and_quit("you are not supposed to directly run this file haha")

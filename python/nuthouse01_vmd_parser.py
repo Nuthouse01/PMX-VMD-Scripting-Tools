@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/11/2020 - v4.61
+# Nuthouse01 - 07/13/2020 - v4.62
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 # massive thanks and credit to "Isometric" for helping me discover the quaternion transformation method used in mmd!!!!
@@ -51,9 +51,10 @@
 # 	core.write_bytes_to_binfile()
 
 
-
+# first, system imports
 import math
 import struct
+from typing import List, Union
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -118,11 +119,130 @@ fmt_ikframe = "20t ?"
 
 
 
+class VmdHeader(object):
+	def __init__(self, version, modelname):
+		self.version = version
+		self.modelname = modelname
+	def __str__(self) -> str:
+		return "[%d, %s]" % (self.version, self.modelname)
+		
+class VmdBoneFrame(object):
+	def __init__(self, name:str="", f:int=0, pos:List[float]=None, rot:List[float]=None,
+				 phys_off:bool=False, interp:List[int]=None):
+		if pos is None: pos = [0.0] * 3
+		if rot is None: rot = [0.0] * 3
+		if interp is None: interp = [0] * 16
+		self.name = name
+		self.f = f
+		self.pos = pos  # X Y Z
+		self.rot = rot  # X Y Z euler angles in degrees
+		self.phys_off = phys_off
+		# interp = [x_ax, y_ax, z_ax, r_ax, 	x_ay, y_ay, z_ay, r_ay,
+		# 			x_bx, y_bx, z_bx, r_bx, 	x_by, y_by, z_by, r_by]
+		self.interp = interp  # 16x int [0-127], see readme for interp explanation
+	def list(self) -> list:
+		return [self.name, self.f, *self.pos, *self.rot, self.phys_off, *self.interp]
+	def __str__(self) -> str:
+		return str(self.list())
+		
+class VmdMorphFrame(object):
+	def __init__(self, name:str="", f:int=0, val:float=0.0):
+		self.name = name
+		self.f = f
+		self.val = val
+	def list(self) -> list:
+		return [self.name, self.f, self.val]
+	def __str__(self) -> str:
+		return str(self.list())
+
+class VmdCamFrame(object):
+	def __init__(self, f:int=0, dist:float=0.0, pos:List[float]=None, rot:List[float]=None, interp:List[int]=None,
+				 fov:int=0, perspective:bool=True):
+		if pos is None: pos = [0.0] * 3
+		if rot is None: rot = [0.0] * 3
+		if interp is None: interp = [0] * 24
+		self.f = f
+		self.dist = dist
+		self.pos = pos  # X Y Z float
+		self.rot = rot  # X Y Z float euler angles in degrees
+		# interp = [x_ax, x_bx, x_ay, x_by, 	y_ax, y_bx, y_ay, y_by, 				z_ax, z_bx, z_ay, z_by,
+		# 			r_ax, r_bx, r_ay, r_by,		dist_ax, dist_bx, dist_ay, dist_by, 	ang_ax, ang_bx, ang_ay, ang_by]
+		self.interp = interp  # 24x int [0-127], see readme for interp explanation
+		self.fov = fov  # int
+		self.perspective = perspective
+	def list(self) -> list:
+		return [self.f, self.dist, *self.pos, *self.rot, *self.interp, self.fov, self.perspective]
+	def __str__(self) -> str:
+		return str(self.list())
+
+class VmdLightFrame(object):
+	def __init__(self, f:int=0, color:List[int]=None, pos:List[float]=None):
+		if color is None: color = [0] * 3
+		if pos is None: pos = [0.0] * 3
+		self.f = f
+		self.color = color  # R G B int [0-255]
+		self.pos = pos  # X Y Z
+	def list(self) -> list:
+		return [self.f, *self.color, *self.pos]
+	def __str__(self) -> str:
+		return str(self.list())
+
+class VmdShadowFrame(object):
+	def __init__(self, f:int=0, mode:int=0, val:int=0):
+		self.f = f
+		self.mode = mode  # int (0=off, 1=mode1, 2=mode2)
+		self.val = val  # int [0-9999]
+	def list(self) -> list:
+		return [self.f, self.mode, self.val]
+	def __str__(self) -> str:
+		return str(self.list())
+
+class VmdIkbone(object):
+	def __init__(self, name:str="", enable:bool=False):
+		self.name = name
+		self.enable = enable
+	def list(self) -> list:
+		return [self.name, self.enable]
+	def __str__(self) -> str:
+		return str(self.list())
+
+class VmdIkdispFrame(object):
+	def __init__(self, f:int=0, disp:bool=True, ikbones:List[VmdIkbone]=None):
+		if ikbones is None: ikbones = []
+		self.f = f
+		self.disp = disp
+		self.ikbones = ikbones
+	def list(self) -> list:
+		ret = [self.f, self.disp]
+		for ik in self.ikbones:
+			ret.append(ik.name)
+			ret.append(ik.enable)
+		return ret
+	def __str__(self) -> str:
+		return str(self.list())
+
+
+# creates object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
+class Vmd(object):
+	def __init__(self, header:VmdHeader, boneframes:List[VmdBoneFrame], morphframes:List[VmdMorphFrame],
+				 camframes:List[VmdCamFrame], lightframes:List[VmdLightFrame], shadowframes:List[VmdShadowFrame],
+				 ikdispframes:List[VmdIkdispFrame]):
+		# header = version, modelname
+		# self.version = version
+		# self.modelname = modelname
+		self.header = 		header
+		self.boneframes = 	boneframes
+		self.morphframes = 	morphframes
+		self.camframes = 	camframes
+		self.lightframes = 	lightframes
+		self.shadowframes = shadowframes
+		self.ikdispframes = ikdispframes
+
 ########################################################################################################################
 # pipeline functions for READING
 ########################################################################################################################
 
-def parse_vmd_header(raw) -> list:
+def parse_vmd_header(raw:bytearray) -> VmdHeader:
 	############################
 	# unpack the header, get file version and model name
 	# version only affects the length of the model name text field, but i'll return it anyway
@@ -161,9 +281,9 @@ def parse_vmd_header(raw) -> list:
 	
 	core.MY_PRINT_FUNC("...model name   = JP:'%s'" % modelname)
 	
-	return [version, modelname]
+	return VmdHeader(version=version, modelname=modelname)
 
-def parse_vmd_boneframe(raw) -> list:
+def parse_vmd_boneframe(raw:bytearray) -> List[VmdBoneFrame]:
 	# get all the bone-frames, store in a list of lists
 	boneframe_list = []
 	# verify that there is enough file left to read a single number
@@ -201,8 +321,13 @@ def parse_vmd_boneframe(raw) -> list:
 				phys_off = True
 			# store them all on the list
 			# create a list to hold all the boneframe data, then append it onto the return-list
-			this_boneframe = [bname_str, f, xp, yp, zp, xrot, yrot, zrot, phys_off, x_ax, y_ax, z_ax, r_ax, x_ay, y_ay,
-							  z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by]
+			interp_list = [x_ax, y_ax, z_ax, r_ax, x_ay, y_ay, z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by]
+			this_boneframe = VmdBoneFrame(name=bname_str,
+										  f=f,
+										  pos=[xp,yp,zp],
+										  rot=[xrot,yrot,zrot],
+										  phys_off=phys_off,
+										  interp=interp_list)
 			boneframe_list.append(this_boneframe)
 			# display progress printouts
 			core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
@@ -216,7 +341,7 @@ def parse_vmd_boneframe(raw) -> list:
 	
 	return boneframe_list
 
-def parse_vmd_morphframe(raw) -> list:
+def parse_vmd_morphframe(raw:bytearray) -> List[VmdMorphFrame]:
 	# get all the morph-frames, store in a list of lists
 	morphframe_list = []
 	# is there enough file left to read a single number?
@@ -232,7 +357,7 @@ def parse_vmd_morphframe(raw) -> list:
 		try:
 			# unpack the morphframe
 			(mname_str, f, v) = core.my_unpack(fmt_morphframe, raw)
-			morphframe_list.append([mname_str, f, v])
+			morphframe_list.append(VmdMorphFrame(name=mname_str, f=f, val=v))
 			
 			# display progress printouts
 			core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
@@ -246,7 +371,7 @@ def parse_vmd_morphframe(raw) -> list:
 	
 	return morphframe_list
 
-def parse_vmd_camframe(raw) -> list:
+def parse_vmd_camframe(raw:bytearray) -> List[VmdCamFrame]:
 	camframe_list = []
 	# is there enough file left to read a single number?
 	if (len(raw) - core.get_readfrom_byte()) < struct.calcsize(fmt_number):
@@ -263,10 +388,16 @@ def parse_vmd_camframe(raw) -> list:
 			 x_ax, x_bx, x_ay, x_by, y_ax, y_bx, y_ay, y_by, z_ax, z_bx, z_ay, z_by, r_ax, r_bx, r_ay, r_by,
 			 dist_ax, dist_bx, dist_ay, dist_by, ang_ax, ang_bx, ang_ay, ang_by,
 			 fov, per) = core.my_unpack(fmt_camframe, raw)
-			# dont forget radians to degrees
-			this_camframe = [f, d, xp, yp, zp, math.degrees(xr), math.degrees(yr), math.degrees(zr), x_ax, x_bx, x_ay,
-							 x_by, y_ax, y_bx, y_ay, y_by, z_ax, z_bx, z_ay, z_by, r_ax, r_bx, r_ay, r_by, dist_ax,
-							 dist_bx, dist_ay, dist_by, ang_ax, ang_bx, ang_ay, ang_by, fov, per]
+			
+			interp_list = [x_ax, x_bx, x_ay, x_by, y_ax, y_bx, y_ay, y_by, z_ax, z_bx, z_ay, z_by,
+						   r_ax, r_bx, r_ay, r_by, dist_ax, dist_bx, dist_ay, dist_by, ang_ax, ang_bx, ang_ay, ang_by]
+			this_camframe = VmdCamFrame(f=f,
+										dist=d,
+										pos=[xp,yp,zp],
+										rot=[math.degrees(j) for j in (xr,yr,zr)],  # angle comes in as radians, convert radians to degrees
+										interp=interp_list,
+										fov=fov,
+										perspective=per)
 			camframe_list.append(this_camframe)
 			# display progress printouts
 			core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
@@ -280,7 +411,7 @@ def parse_vmd_camframe(raw) -> list:
 
 	return camframe_list
 
-def parse_vmd_lightframe(raw) -> list:
+def parse_vmd_lightframe(raw:bytearray) -> List[VmdLightFrame]:
 	lightframe_list = []
 	# is there enough file left to read a single number?
 	if (len(raw) - core.get_readfrom_byte()) < struct.calcsize(fmt_number):
@@ -293,10 +424,10 @@ def parse_vmd_lightframe(raw) -> list:
 	for i in range(lightframe_ct):
 		try:
 			(f, r, g, b, x, y, z) = core.my_unpack(fmt_lightframe, raw)
-			# the r g b actually come back as floats, representing (int)/256
-			# i wanna put them in the textformat as ints tho
-			this_lightframe = [f, round(r * 256), round(g * 256), round(b * 256), x, y, z]
-			lightframe_list.append(this_lightframe)
+			# the r g b actually come back as floats [0.0-1.0), representing (int)/256, i'll convert them back to ints
+			lightframe_list.append(VmdLightFrame(f=f,
+												 color=[round(j*256) for j in (r,g,b)],
+												 pos=[x,y,z]))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("frame=", i)
@@ -307,7 +438,7 @@ def parse_vmd_lightframe(raw) -> list:
 
 	return lightframe_list
 
-def parse_vmd_shadowframe(raw) -> list:
+def parse_vmd_shadowframe(raw:bytearray) -> List[VmdShadowFrame]:
 	shadowframe_list = []
 	# is there enough file left to read a single number?
 	if (len(raw) - core.get_readfrom_byte()) < struct.calcsize(fmt_number):
@@ -324,7 +455,7 @@ def parse_vmd_shadowframe(raw) -> list:
 			v = round(10000 - (v * 100000))
 			# stored as 0.0 to 0.1 ??? why would it use this range!? also its range-inverted
 			# [0,9999] -> [0.1, 0.0]
-			shadowframe_list.append([f, m, v])
+			shadowframe_list.append(VmdShadowFrame(f=f, mode=m, val=v))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("frame=", i)
@@ -334,7 +465,7 @@ def parse_vmd_shadowframe(raw) -> list:
 			raise RuntimeError()
 	return shadowframe_list
 
-def parse_vmd_ikdispframe(raw) -> list:
+def parse_vmd_ikdispframe(raw:bytearray) -> List[VmdIkdispFrame]:
 	ikdispframe_list = []
 	# is there enough file left to read a single number?
 	if (len(raw) - core.get_readfrom_byte()) < struct.calcsize(fmt_number):
@@ -348,14 +479,11 @@ def parse_vmd_ikdispframe(raw) -> list:
 	for i in range(ikdispframe_ct):
 		try:
 			(f, disp, numbones) = core.my_unpack(fmt_ikdispframe, raw)
-			# want to print it to file in the old way tho
-			maybe_ik_bones = []
+			ikbones = []
 			for j in range(numbones):
-				#(ikname, enable)
-				templist = core.my_unpack(fmt_ikframe, raw)
-				maybe_ik_bones.append(templist)
-			this_ikdisp = [f, disp, maybe_ik_bones]
-			ikdispframe_list.append(this_ikdisp)
+				(ikname, enable) = core.my_unpack(fmt_ikframe, raw)
+				ikbones.append(VmdIkbone(name=ikname, enable=enable))
+			ikdispframe_list.append(VmdIkdispFrame(f=f, disp=disp, ikbones=ikbones))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("frame=",i)
@@ -369,25 +497,25 @@ def parse_vmd_ikdispframe(raw) -> list:
 # pipeline functions for WRITING
 ########################################################################################################################
 
-def encode_vmd_header(nice) -> bytearray:
+def encode_vmd_header(nice:VmdHeader) -> bytearray:
 	output = bytearray()
-	core.MY_PRINT_FUNC("...model name   = JP:'%s'" % nice[1])
+	core.MY_PRINT_FUNC("...model name   = JP:'%s'" % nice.modelname)
 	##################################
 	# header data
 	# first, version: if ver==1, then use "Vocaloid Motion Data file", if ver==2, then use "Vocaloid Motion Data 0002"
-	if nice[0] == 2:
-		writeme = ["Vocaloid Motion Data 0002", nice[1]]
+	if nice.version == 2:
+		writeme = ["Vocaloid Motion Data 0002", nice.modelname]
 		output += core.my_pack(fmt_header + fmt_modelname_new, writeme)
-	elif nice[0] == 1:
-		writeme = ["Vocaloid Motion Data file", nice[1]]
+	elif nice.version == 1:
+		writeme = ["Vocaloid Motion Data file", nice.modelname]
 		output += core.my_pack(fmt_header + fmt_modelname_old, writeme)
 	else:
-		core.MY_PRINT_FUNC("ERR: unsupported VMD version value", nice[0])
+		core.MY_PRINT_FUNC("ERR: unsupported VMD version value", nice.version)
 		raise ValueError
 	
 	return output
 
-def encode_vmd_boneframe(nice) -> bytearray:
+def encode_vmd_boneframe(nice:List[VmdBoneFrame]) -> bytearray:
 	output = bytearray()
 	#############################
 	# bone frames
@@ -398,27 +526,28 @@ def encode_vmd_boneframe(nice) -> bytearray:
 	for i, frame in enumerate(nice):
 		# assemble the boneframe
 		# first, gotta convert from euler to quaternion!
-		euler = frame[5:8]  # x y z
+		euler = frame.rot  # x y z
 		(w, x, y, z) = core.euler_to_quaternion(euler)  # w x y z
 		quat = [x, y, z, w]  # x y z w
 		# then, do the part that isn't the interpolation curve (first 9 values in binary, 8 things in frame), save as frame
 		try:
 			# now encode/pack/append the non-interp, non-phys portion
-			output += core.my_pack(fmt_boneframe_no_interpcurve, frame[0:5] + quat)
+			packme = [frame.name, frame.f, *frame.pos, *quat]
+			# packme.extend(frame.pos)
+			# packme.extend(quat)
+			output += core.my_pack(fmt_boneframe_no_interpcurve, packme)
 			# then, create one line of the interpolation curve (last 16 values of frame obj)
-			interp = core.my_pack(fmt_boneframe_interpcurve_oneline, frame[-16:])
+			interp = core.my_pack(fmt_boneframe_interpcurve_oneline, frame.interp)
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
 			core.MY_PRINT_FUNC("section=boneframe")
 			core.MY_PRINT_FUNC("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
 			raise RuntimeError()
-		# returns bytes, convert to bytearray for easier appending into this
-		interp = bytearray(interp)
 		# do the dumb copy-and-shift thing to rebuild the original 4-line structure of redundant bytes
 		interp += interp[1:] + bytes(1) + interp[2:] + bytes(2) + interp[3:] + bytes(3)
 		# now overwrite the odd missing bytes with physics enable/disable data
-		if frame[8] is True:
+		if frame.phys_off is True:
 			interp[2] = 99
 			interp[3] = 15
 		else:
@@ -431,7 +560,7 @@ def encode_vmd_boneframe(nice) -> bytearray:
 
 	return output
 
-def encode_vmd_morphframe(nice) -> bytearray:
+def encode_vmd_morphframe(nice:List[VmdMorphFrame]) -> bytearray:
 	output = bytearray()
 	###########################################
 	# morph frames
@@ -441,7 +570,7 @@ def encode_vmd_morphframe(nice) -> bytearray:
 	# then, all the actual frames
 	for i, frame in enumerate(nice):
 		try:
-			output += core.my_pack(fmt_morphframe, frame)
+			output += core.my_pack(fmt_morphframe, [frame.name, frame.f, frame.val])
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
@@ -453,7 +582,7 @@ def encode_vmd_morphframe(nice) -> bytearray:
 		core.print_progress_oneline(ENCODE_PERCENT_BONE + (ENCODE_PERCENT_MORPH * i / len(nice)))
 	return output
 
-def encode_vmd_camframe(nice) -> bytearray:
+def encode_vmd_camframe(nice:List[VmdCamFrame]) -> bytearray:
 	output = bytearray()
 	###########################################
 	# cam frames
@@ -462,10 +591,10 @@ def encode_vmd_camframe(nice) -> bytearray:
 	output += core.my_pack(fmt_number, len(nice))
 	# then, all the actual frames
 	for i, frame in enumerate(nice):
-		# degrees to radians
-		xyz_rads = [math.radians(frame[5]), math.radians(frame[6]), math.radians(frame[7])]
+		xyz_rads = [math.radians(j) for j in frame.rot]  # degrees to radians
 		try:
-			output += core.my_pack(fmt_camframe, frame[:5] + xyz_rads + frame[8:])
+			packme = [frame.f, frame.dist, *frame.pos, *xyz_rads, *frame.interp, frame.fov, frame.perspective]
+			output += core.my_pack(fmt_camframe, packme)
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
@@ -477,7 +606,7 @@ def encode_vmd_camframe(nice) -> bytearray:
 		core.print_progress_oneline(i / len(nice))
 	return output
 
-def encode_vmd_lightframe(nice) -> bytearray:
+def encode_vmd_lightframe(nice:List[VmdLightFrame]) -> bytearray:
 	output = bytearray()
 	###########################################
 	# light frames
@@ -486,13 +615,10 @@ def encode_vmd_lightframe(nice) -> bytearray:
 	output += core.my_pack(fmt_number, len(nice))
 	# then, all the actual frames
 	for i,frame in enumerate(nice):
-		# the RGB come in as ints, but are actually stored as floats
-		# convert them back to floats for packing
-		frame[1] = frame[1] / 256
-		frame[2] = frame[2] / 256
-		frame[3] = frame[3] / 256
+		# the RGB come in as ints, but are actually stored as floats... convert them back to floats for packing
+		colors = [j / 256 for j in frame.color]
 		try:
-			output += core.my_pack(fmt_lightframe, frame)
+			output += core.my_pack(fmt_lightframe, [frame.f, *colors, *frame.pos])
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
@@ -501,7 +627,7 @@ def encode_vmd_lightframe(nice) -> bytearray:
 			raise RuntimeError()
 	return output
 
-def encode_vmd_shadowframe(nice) -> bytearray:
+def encode_vmd_shadowframe(nice:List[VmdShadowFrame]) -> bytearray:
 	output = bytearray()
 	###########################################
 	# shadow frames
@@ -512,9 +638,9 @@ def encode_vmd_shadowframe(nice) -> bytearray:
 	for i,frame in enumerate(nice):
 		# the shadow value comes in as an int, but it actually stored as a float
 		# convert it back to its natural form for packing
-		frame[2] = (10000 - frame[2]) / 100000
+		val = (10000 - frame.val) / 100000
 		try:
-			output += core.my_pack(fmt_shadowframe, frame)
+			output += core.my_pack(fmt_shadowframe, [frame.f, frame.mode, val])
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
@@ -524,7 +650,7 @@ def encode_vmd_shadowframe(nice) -> bytearray:
 
 	return output
 
-def encode_vmd_ikdispframe(nice) -> bytearray:
+def encode_vmd_ikdispframe(nice:List[VmdIkdispFrame]) -> bytearray:
 	output = bytearray()
 	###########################################
 	# disp/ik frames
@@ -535,10 +661,10 @@ def encode_vmd_ikdispframe(nice) -> bytearray:
 	for i, frame in enumerate(nice):
 		try:
 			# pack the first 3 args with the "ikdispframe" template
-			output += core.my_pack(fmt_ikdispframe, frame[0:2] + [len(frame[2])])
+			output += core.my_pack(fmt_ikdispframe, [frame.f, frame.disp, len(frame.ikbones)])
 			# for each ikbone listed in the template:
-			for z in frame[2]:
-				output += core.my_pack(fmt_ikframe, z)
+			for z in frame.ikbones:
+				output += core.my_pack(fmt_ikframe, [z.name, z.enable])
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
@@ -549,53 +675,54 @@ def encode_vmd_ikdispframe(nice) -> bytearray:
 	return output
 
 
-def parse_vmd_bonemorphdicts(boneframes: list, morphframes: list, moreinfo=False) -> (dict, dict):
+def parse_vmd_used_dict(frames: List[Union[VmdBoneFrame,VmdMorphFrame]], frametype="", moreinfo=False) -> dict:
 	"""
-	Generate two dictionaries where keys are bones/morphs that are "actually used" and values are # of times they are used.
+	Generate a dictionary where keys are bones/morphs that are "actually used" and values are # of times they are used.
 	"Actually used" means the first frame with a nonzero value and each frame after that. (ignore leading repeated zeros)
-	:param moreinfo: print extra info and stuff
-	:param boneframes: vmd[1]
-	:param morphframes: vmd[2]
-	:return: tuple(bonedict, morphdict)
-	"""
-	bonedict = {}
-	morphdict = {}
-	# 1, ensure frames are in sorted order
-	boneframes_sorted = sorted(boneframes, key=core.get2nd)
-	morphframes_sorted = sorted(morphframes, key=core.get2nd)
-	boneset = set()  # set of everything that exists, used or not
-	morphset = set()
-	# 2, iterate over items and count all instances except first if first has no value
-	for bone in boneframes_sorted:
-		# bname_str = bone[0]
-		# f = bone[1]
-		# xp, yp, zp = bone[2:5]
-		# xrot, yrot, zrot = bone[5:8]
-		boneset.add(bone[0])
-		if bone[0] not in bonedict:  # if this has not been used before,
-			if bone[2:5] == [0, 0, 0] and bone[5:8] == [0.0, 0.0, 0.0]:  # if it is not used now,
-				continue  # do not count it.
-		core.increment_occurance_dict(bonedict, bone[0])  # if it has been used before or is used now, count it.
-	for morph in morphframes_sorted:
-		morphset.add(morph[0])
-		if morph[0] not in morphdict:  # if this has not been used before,
-			if morph[2] == 0.0:  # if it is not used now,
-				continue  # do not count it.
-		core.increment_occurance_dict(morphdict, morph[0])  # if it has been used before or is used now, count it.
-	# 3, if there are any "used" items then print a statement saying so
-	if len(bonedict) > 0:
-		if moreinfo: core.MY_PRINT_FUNC("...unique bones, used/total = %d / %d" % (len(bonedict), len(boneset)))
-	if len(morphdict) > 0:
-		if moreinfo: core.MY_PRINT_FUNC("...unique morphs, used/total= %d / %d" % (len(morphdict), len(morphset)))
 	
-	return bonedict, morphdict
+	:param frames: list of VmdBoneFrame obj or VmdMorphFrame obj
+	:param frametype: str "bone" or str "morph" to indicate which kind of frames are being processed
+	:param moreinfo: print extra info and stuff
+	:return: dict of {name: used_ct} that only includes names of "actually used" bones/morphs
+	"""
+	if frametype == "bone":
+		t = True
+	elif frametype == "morph":
+		t = False
+	else:
+		core.MY_PRINT_FUNC("parse_vmd_used_dict invalid mode '%s' given" % frametype)
+		raise RuntimeError()
+	
+	bonedict = {}
+	# 1, ensure frames are in sorted order
+	frames_sorted = sorted(frames, key=lambda x: x.f)
+	boneset = set()  # set of everything that exists, used or not
+	# 2, iterate over items and count all instances except first if first has no value
+	for bone in frames_sorted:
+		boneset.add(bone.name)
+		if bone.name not in bonedict:  # if this has not been used before,
+			if t is False:
+				if bone.val == 0.0:  # if it is not used now,
+					continue  # do not count it.
+			else:
+				if list(bone.pos) == [0.0,0.0,0.0] and list(bone.rot) == [0.0,0.0,0.0]:  # if it is not used now,
+					continue  # do not count it.
+		core.increment_occurance_dict(bonedict, bone.name)  # if it has been used before or is used now, count it.
+	# 3, if there are any "used" items then print a statement saying so
+	if len(bonedict) > 0 and moreinfo:
+		if t is False:
+			core.MY_PRINT_FUNC("...unique morphs, used/total= %d / %d" % (len(bonedict), len(boneset)))
+		else:
+			core.MY_PRINT_FUNC("...unique bones, used/total = %d / %d" % (len(bonedict), len(boneset)))
+
+	return bonedict
 
 
 ########################################################################################################################
 # primary functions: read_vmd() and write_vmd()
 ########################################################################################################################
 
-def read_vmd(vmd_filename: str, getdict=False, moreinfo=False):
+def read_vmd(vmd_filename: str, moreinfo=False) -> Vmd:
 	global VMD_MOREINFO
 	VMD_MOREINFO = moreinfo
 	vmd_filename_clean = core.get_clean_basename(vmd_filename) + ".vmd"
@@ -622,10 +749,6 @@ def read_vmd(vmd_filename: str, getdict=False, moreinfo=False):
 	E = parse_vmd_lightframe(vmd_bytes)
 	F = parse_vmd_shadowframe(vmd_bytes)
 	G = parse_vmd_ikdispframe(vmd_bytes)
-	if getdict:
-		bonedict, morphdict = parse_vmd_bonemorphdicts(B, C, moreinfo=moreinfo)
-	else:
-		bonedict = morphdict = None  # just so pycharm shuts up
 	if VMD_MOREINFO: core.print_failed_decodes()
 	
 	bytes_remain = len(vmd_bytes) - core.get_readfrom_byte()
@@ -639,26 +762,24 @@ def read_vmd(vmd_filename: str, getdict=False, moreinfo=False):
 			core.MY_PRINT_FUNC("The file may be corrupt or maybe it contains unknown/unsupported data formats")
 			core.MY_PRINT_FUNC(leftover)
 	
+	core.MY_PRINT_FUNC("Done parsing VMD file '%s'" % vmd_filename_clean)
+	
+	vmd = Vmd(A, B, C, D, E, F, G)
 	# this is where sorting happens, if it happens
 	if GUARANTEE_FRAMES_SORTED:
 		# bones & morphs: primarily sorted by NAME, with FRAME# as tiebreaker. the second sort is the primary one.
-		B.sort(key=core.get2nd)
-		B.sort(key=core.get1st)
-		C.sort(key=core.get2nd)
-		C.sort(key=core.get1st)
+		vmd.boneframes.sort(key=lambda x: x.f)  # frame#
+		vmd.boneframes.sort(key=lambda x: x.name)  # name
+		vmd.morphframes.sort(key=lambda x: x.f)
+		vmd.morphframes.sort(key=lambda x: x.name)
 		# all of these only sort by frame number.
-		D.sort(key=core.get1st)
-		E.sort(key=core.get1st)
-		F.sort(key=core.get1st)
-		G.sort(key=core.get1st)
-	
-	core.MY_PRINT_FUNC("Done parsing VMD file '%s'" % vmd_filename_clean)
-	if getdict:
-		return [A, B, C, D, E, F, G], bonedict, morphdict
-	else:
-		return [A, B, C, D, E, F, G]
+		vmd.camframes.sort(key=lambda x: x.f)  # frame#
+		vmd.lightframes.sort(key=lambda x: x.f)
+		vmd.shadowframes.sort(key=lambda x: x.f)
+		vmd.ikdispframes.sort(key=lambda x: x.f)
+	return vmd
 
-def write_vmd(vmd_filename: str, vmd: list, moreinfo=False) -> None:
+def write_vmd(vmd_filename: str, vmd: Vmd, moreinfo=False):
 	global VMD_MOREINFO
 	VMD_MOREINFO = moreinfo
 	vmd_filename_clean = core.get_clean_basename(vmd_filename) + ".vmd"
@@ -671,22 +792,23 @@ def write_vmd(vmd_filename: str, vmd: list, moreinfo=False) -> None:
 	# this is where sorting happens, if it happens
 	if GUARANTEE_FRAMES_SORTED:
 		# bones & morphs: primarily sorted by NAME, with FRAME# as tiebreaker. the second sort is the primary one.
-		vmd[1].sort(key=core.get2nd)
-		vmd[1].sort(key=core.get1st)
-		vmd[2].sort(key=core.get2nd)
-		vmd[2].sort(key=core.get1st)
+		vmd.boneframes.sort(key=lambda x: x.f)  # frame#
+		vmd.boneframes.sort(key=lambda x: x.name)  # name
+		vmd.morphframes.sort(key=lambda x: x.f)
+		vmd.morphframes.sort(key=lambda x: x.name)
 		# all of these only sort by frame number.
-		vmd[3].sort(key=core.get1st)
-		vmd[4].sort(key=core.get1st)
-		vmd[5].sort(key=core.get1st)
-		vmd[6].sort(key=core.get1st)
+		vmd.camframes.sort(key=lambda x: x.f)  # frame#
+		vmd.lightframes.sort(key=lambda x: x.f)
+		vmd.shadowframes.sort(key=lambda x: x.f)
+		vmd.ikdispframes.sort(key=lambda x: x.f)
 	
 	global ENCODE_PERCENT_BONE
 	global ENCODE_PERCENT_MORPH
 	# cam is not included cuz a file contains only bone+morph OR cam
-	total_bone = len(vmd[1]) * ENCODE_FACTOR_BONE
-	total_morph = len(vmd[2]) * ENCODE_FACTOR_MORPH
+	total_bone = len(vmd.boneframes) * ENCODE_FACTOR_BONE
+	total_morph = len(vmd.morphframes) * ENCODE_FACTOR_MORPH
 	ALLENCODE = total_bone + total_morph
+	if ALLENCODE == 0: ALLENCODE = 1  # just a bandaid to avoid zero-div error when writing empty VMD
 	ENCODE_PERCENT_BONE = total_bone / ALLENCODE
 	ENCODE_PERCENT_MORPH = total_morph / ALLENCODE
 	
@@ -694,13 +816,13 @@ def write_vmd(vmd_filename: str, vmd: list, moreinfo=False) -> None:
 	# assume the object is perfect, no sanity-checking needed, it will all be done when parsing the text input
 	output_bytes = bytearray()
 	
-	output_bytes += encode_vmd_header(vmd[0])
-	output_bytes += encode_vmd_boneframe(vmd[1])
-	output_bytes += encode_vmd_morphframe(vmd[2])
-	output_bytes += encode_vmd_camframe(vmd[3])
-	output_bytes += encode_vmd_lightframe(vmd[4])
-	output_bytes += encode_vmd_shadowframe(vmd[5])
-	output_bytes += encode_vmd_ikdispframe(vmd[6])
+	output_bytes += encode_vmd_header(vmd.header)
+	output_bytes += encode_vmd_boneframe(vmd.boneframes)
+	output_bytes += encode_vmd_morphframe(vmd.morphframes)
+	output_bytes += encode_vmd_camframe(vmd.camframes)
+	output_bytes += encode_vmd_lightframe(vmd.lightframes)
+	output_bytes += encode_vmd_shadowframe(vmd.shadowframes)
+	output_bytes += encode_vmd_ikdispframe(vmd.ikdispframes)
 	
 	# done encoding!!
 	
@@ -714,7 +836,7 @@ def write_vmd(vmd_filename: str, vmd: list, moreinfo=False) -> None:
 	core.write_bytes_to_binfile(vmd_filename, output_bytes)
 	core.MY_PRINT_FUNC("Done writing VMD file '%s'" % vmd_filename_clean)
 	# done with everything!
-	return None
+	return
 
 ########################################################################################################################
 # self-test section when this file is executed
@@ -748,7 +870,7 @@ def main():
 ########################################################################################################################
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/13/2020 - v4.62")
 	if DEBUG:
 		main()
 	else:

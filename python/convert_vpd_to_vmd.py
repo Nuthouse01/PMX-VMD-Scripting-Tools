@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/11/2020 - v4.61
+# Nuthouse01 - 07/13/2020 - v4.62
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -27,7 +27,7 @@ except ImportError as eee:
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
-DEBUG = False
+DEBUG = True
 
 
 
@@ -35,11 +35,12 @@ DEBUG = False
 # MAIN & functions
 ########################################################################################################################
 
-def convert_vpd_to_vmd(vpd_path: str, moreinfo=True) -> None:
+def convert_vpd_to_vmd(vpd_path: str, moreinfo=True):
 	"""
 	Read a VPD pose file from disk, convert it, and write to disk as a VMD motion file.
 	The resulting VMD will be empty except for bone/morph frames at time=0.
 	The output will have the same path and basename, but the opposite file extension.
+	
 	:param vpd_path: filepath to input vpd, absolute or relative to CWD
 	:param moreinfo: default false. if true, get extra printouts with more info about stuff.
 	"""
@@ -51,14 +52,15 @@ def convert_vpd_to_vmd(vpd_path: str, moreinfo=True) -> None:
 	# write the output VMD file
 	vmdlib.write_vmd(vmd_outpath, vmd, moreinfo=moreinfo)
 	# done!
-	return None
+	return
 
 
-def convert_vmd_to_vpd(vmd_path: str, moreinfo=True) -> None:
+def convert_vmd_to_vpd(vmd_path: str, moreinfo=True):
 	"""
 	Read a VMD motion file from disk, convert it, and write to disk as a VPD pose file.
 	All frames of the VMD are ignored except for frames at time=0.
 	The output will have the same path and basename, but the opposite file extension.
+	
 	:param vmd_path: filepath to input vmd, absolute or relative to CWD
 	:param moreinfo: default false. if true, get extra printouts with more info about stuff.
 	"""
@@ -70,7 +72,7 @@ def convert_vmd_to_vpd(vmd_path: str, moreinfo=True) -> None:
 	# write the output VPD file
 	vpdlib.write_vpd(vpd_outpath, vmd, moreinfo=moreinfo)
 	# done!
-	return None
+	return
 
 
 helptext = '''=================================================
@@ -102,7 +104,7 @@ def main(moreinfo=False):
 ########################################################################################################################
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/11/2020 - v4.61")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/13/2020 - v4.62")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

@@ -1,21 +1,23 @@
-# Nuthouse01 - 07/11/2020 - v4.61
+# Nuthouse01 - 07/13/2020 - v4.62
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import morph_hide
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import morph_hide
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = None
+		core = pmxlib = morph_hide = None
 
 
 
@@ -44,32 +46,16 @@ def main(moreinfo=True):
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	
-	while True:
-		# any input is considered valid
-		s = core.MY_GENERAL_INPUT_FUNC(lambda x: True,
-									   ["Please specify the target morph: morph #, JP name, or EN name (names are case sensitive)",
-									   "Empty input will quit the script"])
-		# if empty, leave & do nothing
-		if s == "":
-			target_index = -1
-			break
-		# then get the morph index from this
-		# search JP names first
-		target_index = core.my_sublist_find(pmx[6], 0, s, getindex=True)
-		if target_index is not None: break  # did i find a match?
-		# search EN names next
-		target_index = core.my_sublist_find(pmx[6], 1, s, getindex=True)
-		if target_index is not None: break  # did i find a match?
-		# try to cast to int next
-		try:
-			target_index = int(s)
-			if 0 <= target_index < len(pmx[6]): break  # is this within the proper bounds?
-			else: core.MY_PRINT_FUNC("valid morph indexes are 0-'%d'" % (len(pmx[6])-1))
-		except ValueError:
-			pass
-		core.MY_PRINT_FUNC("unable to find matching morph for '%s'" % s)
+	core.MY_PRINT_FUNC("")
+	# valid input is any string that can matched aginst a morph idx
+	s = core.MY_GENERAL_INPUT_FUNC(lambda x: morph_hide.get_morphidx_from_name(x, pmx) is not None,
+								   ["Please specify the target morph: morph #, JP name, or EN name (names are case sensitive).",
+									"Empty input will quit the script."])
+	# do it again, cuz the lambda only returns true/false
+	target_index = morph_hide.get_morphidx_from_name(s, pmx)
 	
-	if target_index == -1:
+	# when given empty text, done!
+	if target_index == -1 or target_index is None:
 		core.MY_PRINT_FUNC("quitting")
 		return None
 	
@@ -130,7 +116,7 @@ def main(moreinfo=True):
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 07/11/2020 - v4.61")
+	print("Nuthouse01 - 07/13/2020 - v4.62")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README
-Created by Nuthouse01 - 07/11/2020 - v4.61
+Created by Nuthouse01 - 07/13/2020 - v4.62
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!
 
@@ -214,6 +214,13 @@ The following files should be included with this README:
 * img/screenshot1.png
 
 #### Changelog:
+
+    v4.62:
+    bugfix: fixed incorrect behavior in new bezier code
+    replace VMD list-of-lists structure with simple custom classes, now things are accessed via named fields instead of indexes
+        probably introduced a few bugs with this, i'll find them eventually
+    made "specify morph" popups more intelligent in morph_hide, morph_invert, morph_scale scripts
+    even more type-checking stuff
 
     v4.61:
     bugfix: in "model_compatability_check", catch errors due to bad chars in names instead of crashing outright
