@@ -123,6 +123,8 @@ class VmdHeader(object):
 	def __init__(self, version, modelname):
 		self.version = version
 		self.modelname = modelname
+	def __str__(self) -> str:
+		return "[%d, %s]" % (self.version, self.modelname)
 		
 class VmdBoneFrame(object):
 	def __init__(self, name:str="", f:int=0, pos:List[float]=None, rot:List[float]=None,
@@ -140,6 +142,8 @@ class VmdBoneFrame(object):
 		self.interp = interp  # 16x int [0-127], see readme for interp explanation
 	def list(self) -> list:
 		return [self.name, self.f, *self.pos, *self.rot, self.phys_off, *self.interp]
+	def __str__(self) -> str:
+		return str(self.list())
 		
 class VmdMorphFrame(object):
 	def __init__(self, name:str="", f:int=0, val:float=0.0):
@@ -148,6 +152,8 @@ class VmdMorphFrame(object):
 		self.val = val
 	def list(self) -> list:
 		return [self.name, self.f, self.val]
+	def __str__(self) -> str:
+		return str(self.list())
 
 class VmdCamFrame(object):
 	def __init__(self, f:int=0, dist:float=0.0, pos:List[float]=None, rot:List[float]=None, interp:List[int]=None,
@@ -166,6 +172,8 @@ class VmdCamFrame(object):
 		self.perspective = perspective
 	def list(self) -> list:
 		return [self.f, self.dist, *self.pos, *self.rot, *self.interp, self.fov, self.perspective]
+	def __str__(self) -> str:
+		return str(self.list())
 
 class VmdLightFrame(object):
 	def __init__(self, f:int=0, color:List[int]=None, pos:List[float]=None):
@@ -176,6 +184,8 @@ class VmdLightFrame(object):
 		self.pos = pos  # X Y Z
 	def list(self) -> list:
 		return [self.f, *self.color, *self.pos]
+	def __str__(self) -> str:
+		return str(self.list())
 
 class VmdShadowFrame(object):
 	def __init__(self, f:int=0, mode:int=0, val:int=0):
@@ -184,6 +194,8 @@ class VmdShadowFrame(object):
 		self.val = val  # int [0-9999]
 	def list(self) -> list:
 		return [self.f, self.mode, self.val]
+	def __str__(self) -> str:
+		return str(self.list())
 
 class VmdIkbone(object):
 	def __init__(self, name:str="", enable:bool=False):
@@ -191,6 +203,8 @@ class VmdIkbone(object):
 		self.enable = enable
 	def list(self) -> list:
 		return [self.name, self.enable]
+	def __str__(self) -> str:
+		return str(self.list())
 
 class VmdIkdispFrame(object):
 	def __init__(self, f:int=0, disp:bool=True, ikbones:List[VmdIkbone]=None):
@@ -204,6 +218,8 @@ class VmdIkdispFrame(object):
 			ret.append(ik.name)
 			ret.append(ik.enable)
 		return ret
+	def __str__(self) -> str:
+		return str(self.list())
 
 
 # creates object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
