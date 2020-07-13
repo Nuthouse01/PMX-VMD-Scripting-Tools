@@ -281,7 +281,7 @@ def parse_vmd_header(raw:bytearray) -> VmdHeader:
 	
 	core.MY_PRINT_FUNC("...model name   = JP:'%s'" % modelname)
 	
-	return VmdHeader(version, modelname)
+	return VmdHeader(version=version, modelname=modelname)
 
 def parse_vmd_boneframe(raw:bytearray) -> List[VmdBoneFrame]:
 	# get all the bone-frames, store in a list of lists
@@ -322,7 +322,12 @@ def parse_vmd_boneframe(raw:bytearray) -> List[VmdBoneFrame]:
 			# store them all on the list
 			# create a list to hold all the boneframe data, then append it onto the return-list
 			interp_list = [x_ax, y_ax, z_ax, r_ax, x_ay, y_ay, z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by]
-			this_boneframe = VmdBoneFrame(bname_str, f, [xp,yp,zp], [xrot,yrot,zrot], phys_off, interp_list)
+			this_boneframe = VmdBoneFrame(name=bname_str,
+										  f=f,
+										  pos=[xp,yp,zp],
+										  rot=[xrot,yrot,zrot],
+										  phys_off=phys_off,
+										  interp=interp_list)
 			boneframe_list.append(this_boneframe)
 			# display progress printouts
 			core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
@@ -352,7 +357,7 @@ def parse_vmd_morphframe(raw:bytearray) -> List[VmdMorphFrame]:
 		try:
 			# unpack the morphframe
 			(mname_str, f, v) = core.my_unpack(fmt_morphframe, raw)
-			morphframe_list.append(VmdMorphFrame(mname_str, f, v))
+			morphframe_list.append(VmdMorphFrame(name=mname_str, f=f, val=v))
 			
 			# display progress printouts
 			core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
@@ -384,10 +389,15 @@ def parse_vmd_camframe(raw:bytearray) -> List[VmdCamFrame]:
 			 dist_ax, dist_bx, dist_ay, dist_by, ang_ax, ang_bx, ang_ay, ang_by,
 			 fov, per) = core.my_unpack(fmt_camframe, raw)
 			
-			rot = [math.degrees(j) for j in (xr,yr,zr)]  # angle comes in as radians, convert radians to degrees
 			interp_list = [x_ax, x_bx, x_ay, x_by, y_ax, y_bx, y_ay, y_by, z_ax, z_bx, z_ay, z_by,
 						   r_ax, r_bx, r_ay, r_by, dist_ax, dist_bx, dist_ay, dist_by, ang_ax, ang_bx, ang_ay, ang_by]
-			this_camframe = VmdCamFrame(f, d, [xp,yp,zp], rot, interp_list, fov, per)
+			this_camframe = VmdCamFrame(f=f,
+										dist=d,
+										pos=[xp,yp,zp],
+										rot=[math.degrees(j) for j in (xr,yr,zr)],  # angle comes in as radians, convert radians to degrees
+										interp=interp_list,
+										fov=fov,
+										perspective=per)
 			camframe_list.append(this_camframe)
 			# display progress printouts
 			core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
@@ -415,8 +425,9 @@ def parse_vmd_lightframe(raw:bytearray) -> List[VmdLightFrame]:
 		try:
 			(f, r, g, b, x, y, z) = core.my_unpack(fmt_lightframe, raw)
 			# the r g b actually come back as floats [0.0-1.0), representing (int)/256, i'll convert them back to ints
-			colors = [round(j*256) for j in (r,g,b)]
-			lightframe_list.append(VmdLightFrame(f, colors, [x,y,z]))
+			lightframe_list.append(VmdLightFrame(f=f,
+												 color=[round(j*256) for j in (r,g,b)],
+												 pos=[x,y,z]))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("frame=", i)
@@ -444,7 +455,7 @@ def parse_vmd_shadowframe(raw:bytearray) -> List[VmdShadowFrame]:
 			v = round(10000 - (v * 100000))
 			# stored as 0.0 to 0.1 ??? why would it use this range!? also its range-inverted
 			# [0,9999] -> [0.1, 0.0]
-			shadowframe_list.append(VmdShadowFrame(f, m, v))
+			shadowframe_list.append(VmdShadowFrame(f=f, mode=m, val=v))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("frame=", i)
@@ -471,8 +482,8 @@ def parse_vmd_ikdispframe(raw:bytearray) -> List[VmdIkdispFrame]:
 			ikbones = []
 			for j in range(numbones):
 				(ikname, enable) = core.my_unpack(fmt_ikframe, raw)
-				ikbones.append(VmdIkbone(ikname, enable))
-			ikdispframe_list.append(VmdIkdispFrame(f, disp, ikbones))
+				ikbones.append(VmdIkbone(name=ikname, enable=enable))
+			ikdispframe_list.append(VmdIkdispFrame(f=f, disp=disp, ikbones=ikbones))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("frame=",i)
