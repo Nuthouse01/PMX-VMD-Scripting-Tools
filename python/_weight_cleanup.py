@@ -2,6 +2,9 @@
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
+# first, system imports
+from typing import List, Tuple
+
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
 	from . import nuthouse01_core as core
@@ -48,7 +51,14 @@ def showprompt():
 	return pmx, input_filename_pmx
 
 
-def normalize_weights(pmx):
+def normalize_weights(pmx: List[list]) -> int:
+	"""
+	Normalize weights for verts in the PMX object. Also "clean" the weights by removing bones with 0 weight, reducing
+	weight type to lowest possible, and sorting them by greatest weight. Return the # of vertices that were modified.
+	
+	:param pmx: PMX list-of-lists object
+	:return: int, # of vertices that were modified
+	"""
 	# number of vertices fixed
 	weight_fix = 0
 	
@@ -81,9 +91,6 @@ def normalize_weights(pmx):
 				weight_fix += 1
 				vert[9] = 0  # set to BDEF1
 				vert[10] = [w[1]]
-			# elif w[2] < 0.5:  # firstbone has less weight than secondbone, reorder
-			# 	weight_fix += 1
-			# 	vert[10] = [w[1], w[0], 1 - w[2]]
 			continue
 		elif weighttype == 2 or weighttype == 4:  # BDEF4/QDEF
 			# qdef: check for dupes and also normalize
@@ -165,9 +172,14 @@ def normalize_weights(pmx):
 	# how many did I change? printing is handled outside
 	return weight_fix
 
-
-
-def normalize_normals(pmx):
+def normalize_normals(pmx: List[list]) -> Tuple[int,List[int]]:
+	"""
+	Normalize normal vectors for each vertex in the PMX object. Return # of verts that were modified, and also a list
+	of all vert indexes that have 0,0,0 normals and need special handling.
+	
+	:param pmx: PMX list-of-lists object
+	:return: # verts modified + list of all vert idxs that have 0,0,0 normals
+	"""
 	norm_fix = 0
 	
 	normbad = []
@@ -184,7 +196,18 @@ def normalize_normals(pmx):
 	# printing is handled outside
 	return norm_fix, normbad
 
-def repair_invalid_normals(pmx, normbad):
+def repair_invalid_normals(pmx: List[list], normbad: List[int]) -> int:
+	"""
+	Repair all 0,0,0 normals in the model by averaging the normal vector for each face that vertex is a member of.
+	It is theoretically possible for a vertex to be a member in two faces with exactly opposite normals, and therefore
+	the average would be zero; in this case one of the faces is arbitrarily chosen and its normal is used. Therefore,
+	after this function all invalid normals are guaranteed to be fixed.
+	Returns the number of times this fallback method was used.
+	
+	:param pmx: PMX list-of-lists object
+	:param normbad: list of vertex indices so I don't need to walk all vertices again
+	:return: # times fallback method was used
+	"""
 	normbad_err = 0
 	# create a list in parallel with the faces list for holding the perpendicular normal to each face
 	facenorm_list = [list() for i in pmx[2]]
@@ -262,7 +285,7 @@ def repair_invalid_normals(pmx, normbad):
 
 # TODO: rename this script & this function
 def weight_cleanup(pmx, moreinfo=False):
-
+	
 	#############################
 	# part 1: fix all the weights, get an answer for how many i changed
 	weight_fix = normalize_weights(pmx)
@@ -270,7 +293,7 @@ def weight_cleanup(pmx, moreinfo=False):
 	if weight_fix:
 		core.MY_PRINT_FUNC("Fixed weights for {} / {} = {:.1%} of all vertices".format(
 			weight_fix, len(pmx[1]), weight_fix/len(pmx[1])))
-
+	
 	#############################
 	# part 2: normalize all normals that aren't invalid, also count how many are invalid
 	# also build 'normbad' to identify all verts w/ 0,0,0 normals so I can get a progress % in following step
@@ -288,7 +311,7 @@ def weight_cleanup(pmx, moreinfo=False):
 			len(normbad), len(pmx[1]), len(normbad) / len(pmx[1])))
 		if normbad_err and moreinfo:
 			core.MY_PRINT_FUNC("WARNING: used fallback vertex repair method for %d vertices" % normbad_err)
-		
+	
 	if weight_fix == 0 and norm_fix == 0 and len(normbad) == 0:
 		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
