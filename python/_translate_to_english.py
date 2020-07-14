@@ -141,7 +141,7 @@ def check_translate_budget(num_proposed: int) -> bool:
 			i += 1
 	# then interpret the file: how many requests happened in the past <timeframe>
 	requests_in_timeframe = sum([entry[1] for entry in record])
-	core.MY_PRINT_FUNC("You have used {} / {} translation requests within the last {:.4} hrs".format(
+	core.MY_PRINT_FUNC("... you have used {} / {} translation requests within the last {:.4} hrs...".format(
 		int(requests_in_timeframe), int(TRANSLATE_BUDGET_MAX_REQUESTS), TRANSLATE_BUDGET_TIMEFRAME))
 	# make the decision
 	if (requests_in_timeframe + num_proposed) <= TRANSLATE_BUDGET_MAX_REQUESTS:
@@ -338,7 +338,7 @@ def google_translate(in_list: Union[List[str],str], strategy=1) -> Union[List[st
 	num_calls = len(jp_chunks_combined) if use_chunk_strat else len(pretrans_combined)
 	global _DISABLE_INTERNET_TRANSLATE
 	if check_translate_budget(num_calls) and not _DISABLE_INTERNET_TRANSLATE:
-		core.MY_PRINT_FUNC("Making %d requests to Google Translate web API..." % num_calls)
+		core.MY_PRINT_FUNC("... making %d requests to Google Translate web API..." % num_calls)
 	else:
 		# no need to print failing statement, the function already does
 		core.MY_PRINT_FUNC("Just copying JP -> EN while Google Translate is disabled")
@@ -378,6 +378,10 @@ def google_translate(in_list: Union[List[str],str], strategy=1) -> Union[List[st
 	
 	# last, reattach the indents and suffixes
 	outlist = [i + b + s for i, b, s in zip(indents, outlist, suffixes)]
+	
+	if not _DISABLE_INTERNET_TRANSLATE:
+		# if i did use internet translate, print this line when done
+		core.MY_PRINT_FUNC("... done!")
 	
 	# return
 	if input_is_str: return outlist[0]  # if original input was a single string, then de-listify
@@ -520,7 +524,7 @@ def translate_to_english(pmx, moreinfo=False):
 	# actually do google translate
 	num_items = len(translate_notdone) + (newcommentsource != 0)
 	if num_items:
-		core.MY_PRINT_FUNC("Identified %d items that need Internet translation..." % num_items)
+		core.MY_PRINT_FUNC("... identified %d items that need Internet translation..." % num_items)
 		try:
 			google_results = google_translate([item.jp_old for item in translate_notdone])
 			# determine if each item passed or not, update the en_new and trans_type fields
