@@ -109,7 +109,7 @@ def main(moreinfo=True):
 			# then do the "remapping" on all existing bone references, to make space for inserting 4 bones
 			# don't delete any bones, just remap them
 			bone_shiftmap = ([shoulder_idx+1], [-4])
-			pmx = apply_bone_remapping(pmx, [], bone_shiftmap)
+			apply_bone_remapping(pmx, [], bone_shiftmap)
 			# new bones will be inserted AFTER shoulder_idx
 			# newarm_idx = shoulder_idx+1
 			# newelbow_idx = shoulder_idx+2
@@ -174,7 +174,7 @@ def main(moreinfo=True):
 		# build the remap thing
 		bone_shiftmap = delme_list_to_rangemap(bone_dellist)
 		# do the actual delete & shift
-		pmx = apply_bone_remapping(pmx, bone_dellist, bone_shiftmap)
+		apply_bone_remapping(pmx, bone_dellist, bone_shiftmap)
 		
 		# delete dispframe for hand ik
 		# first, does the frame already exist?
