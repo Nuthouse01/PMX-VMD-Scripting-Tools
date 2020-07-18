@@ -169,7 +169,7 @@ bone_dict =  {
 "腰キャンセル": "waist_cancel",
 "足": "leg",  # standard leg-bones
 "ひざ": "knee",
-"足首": "foot",
+"足首": "foot",  # "ankle" is technically a more accurate translation but w/e this is standard name
 "つま先": "toe",
 "足D": "leg_D",      # "left/right thigh_D"
 "ひざD": "knee_D",   # "left/right knee_D"
@@ -343,7 +343,8 @@ words_dict = {
 "裙": "skirt",  # chinese for "skirt"
 "輪": "ring",  # was "round", better translation is ring/loop/circle maybe?
 "武器": "weapon",
-"釦": "button",
+"ボタン": "button",  # phonetically "botan"
+"釦": "button",  # phonetically "botan"
 "連動": "interlock",
 "捩": "twist",
 "捻り": "twist",
@@ -380,6 +381,7 @@ words_dict = {
 "表情": "expression",
 "襟": "collar",
 "頂点": "vertex",
+"テクスチャ": "texture",
 "骨": "bone",
 "式": "model",
 "甲": "armor",
@@ -387,6 +389,8 @@ words_dict = {
 "胴": "torso",
 "マーク": "mark",
 "ネック": "neck",
+"ｽｰﾂ": "suit",
+"スーツ": "suit",
 
 
 # modifiers
@@ -564,6 +568,7 @@ prefix_dict_ord = dict({(ord(k), v) for k, v in prefix_dict.items()})
 
 odd_punctuation_dict = {
 "　": " ",  # x3000, just a fullwidth space aka "ideographic space"
+"、": ",",  # x3001, some sorta fullwidth comma
 "〈": "<",  # x3008
 "〉": ">",  # x3009
 "《": "<",  # x300a
