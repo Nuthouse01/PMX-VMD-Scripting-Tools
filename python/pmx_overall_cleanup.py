@@ -84,6 +84,8 @@ def find_toolong_bonemorph(pmx):
 			if len(mb) > 15:
 				toolong_list_bone.append("%d[%d]" % (d, len(mb)))
 		except UnicodeEncodeError as e:
+			core.MY_PRINT_FUNC("Bone %d" % d)
+			# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
 			newerrstr = "%s: '%s' codec cannot encode char '%s' within string '%s'" % (
 				e.__class__.__name__, e.encoding, e.reason[e.start:e.end], e.reason)
 			core.MY_PRINT_FUNC(newerrstr)
@@ -95,6 +97,8 @@ def find_toolong_bonemorph(pmx):
 			if len(mb) > 15:
 				toolong_list_morph.append("%d[%d]" % (d, len(mb)))
 		except UnicodeEncodeError as e:
+			core.MY_PRINT_FUNC("Morph %d" % d)
+			# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
 			newerrstr = "%s: '%s' codec cannot encode char '%s' within string '%s'" % (
 				e.__class__.__name__, e.encoding, e.reason[e.start:e.end], e.reason)
 			core.MY_PRINT_FUNC(newerrstr)
@@ -119,11 +123,13 @@ def find_jointless_physbodies(pmx):
 	for d,body in enumerate(pmx[8]):
 		# if this is a physics body (not a bone body)
 		if body[20] != 0:
-			# look for any joint that has this body as the dependent
-			f = core.my_sublist_find(pmx[9], 4, d)
+			# NOTE: what I previously thought was wrong, if A=phys and B=bonebody then A is still successfully anchored
+			# look for any joint that has this body as the parent (body A)
+			if any(d == joint[3] for joint in pmx[9]): continue
+			# look for any joint that has this body as the dependent (body B)
+			if any(d == joint[4] for joint in pmx[9]): continue
 			# if not found, then this body is unattached
-			if f is None:
-				retme.append(d)
+			retme.append(d)
 	return retme
 
 
