@@ -119,18 +119,35 @@ def find_shadowy_materials(pmx):
 def find_jointless_physbodies(pmx):
 	# check for rigidbodies with physics enabled that are NOT the dependent-body of any joint
 	# these will just wastefully roll around on the floor draining processing power
-	retme = []
-	for d,body in enumerate(pmx[8]):
-		# if this is a physics body (not a bone body)
-		if body[20] != 0:
-			# NOTE: what I previously thought was wrong, if A=phys and B=bonebody then A is still successfully anchored
-			# look for any joint that has this body as the parent (body A)
-			if any(d == joint[3] for joint in pmx[9]): continue
-			# look for any joint that has this body as the dependent (body B)
-			if any(d == joint[4] for joint in pmx[9]): continue
-			# if not found, then this body is unattached
-			retme.append(d)
+	
+	# NEW IDEA: complete overkill but whatever whos gonna stop me
+	# do a recursive space-filling algorithm starting from each bone body walking along joints
+	# then I can find each body that is bone or linked to bone
+	# which lets me determine which ones are NOT linked!
+	
+	def recursively_walk_along_joints(target, known_anchors):
+		if target in known_anchors or target == -1:
+			# stop condition: if this RB idx is already known to be anchored, i have already ran recursion from this node. don't do it again.
+			# also abort if the target is -1 which means invalid RB
+			return
+		# if not already in the set, but recursion is being called on this, then this bone is an "anchor" and should be added.
+		known_anchors.add(target)
+		# now, get all joints which include this RB
+		linked_joints = [joint for joint in pmx[9] if (joint[3] == target) or (joint[4] == target)]
+		for joint in linked_joints:
+			# walk to every body this joint is connected to
+			if joint[3] != target: recursively_walk_along_joints(joint[3], known_anchors)
+			if joint[4] != target: recursively_walk_along_joints(joint[4], known_anchors)
+		return
+	
+	bonebodies = [d for d,body in enumerate(pmx[8]) if body[20] == 0]
+	anchorbodies = set()
+	for bod in bonebodies:
+		recursively_walk_along_joints(bod, anchorbodies)
+	# now, see which body indices are not in the anchored set!
+	retme = [i for i in range(len(pmx[8])) if i not in anchorbodies]
 	return retme
+	
 
 
 ########################################################################################################################
