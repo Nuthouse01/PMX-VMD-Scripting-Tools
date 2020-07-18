@@ -218,9 +218,10 @@ def identify_unused_bones(pmx: list, moreinfo: bool) -> List[int]:
 	
 	# print neat stuff
 	if moreinfo:
-		core.MY_PRINT_FUNC("Bones: total=%d, true_used=%d, parents=%d, tails=%d, unused=%d" %
-						   (len(pmx[5]), len(true_used_bones), len(parent_used_bones)-len(true_used_bones),
-							len(final_used_bones)-len(parent_used_bones), len(unused_bones_list)))
+		if unused_bones_list:
+			core.MY_PRINT_FUNC("Bones: total=%d, true_used=%d, parents=%d, tails=%d, unused=%d" %
+							   (len(pmx[5]), len(true_used_bones), len(parent_used_bones)-len(true_used_bones),
+								len(final_used_bones)-len(parent_used_bones), len(unused_bones_list)))
 		# debug aid
 		if PRINT_VERTICES_CONTROLLED_BY_EACH_BONE:
 			core.MY_PRINT_FUNC("Number of vertices controlled by each bone:")
