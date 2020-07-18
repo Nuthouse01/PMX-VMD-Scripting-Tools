@@ -35,6 +35,10 @@ DEBUG = True
 PREFER_EXISTING_ENGLISH_NAME = True
 
 
+# these english names will be treated as tho they do not exist and overwritten no matter what:
+FORBIDDEN_ENGLISH_NAMES = ["en", "d"]
+
+
 # MikuMikuDance can display JP characters just fine in the "model info" popup when you load a model
 # also I've seen one or two models that have the JP model info blank and all important info in the EN model info
 # so I decided to default to not translating the model info section, only copy JP->EN if EN is blank
@@ -57,13 +61,13 @@ DISABLE_INTERNET_TRANSLATE = False
 # tho in testing, sometimes translations produce different results if on their own vs in a newline list... oh well
 # or sometimes they lose newlines during translation
 # more lines per request = riskier, but uses less of your transaction budget
-TRANSLATE_MAX_LINES_PER_REQUEST = 5
+TRANSLATE_MAX_LINES_PER_REQUEST = 15
 # how many requests are permitted per timeframe, to avoid the lockout
 # true limit is ~100 so enforce limit of 80 just to be safe
 TRANSLATE_BUDGET_MAX_REQUESTS = 80
 # how long (hours) is the timeframe to protect
 # true timeframe is ~1 hr so enforce limit of ~1.2hr just to be safe
-TRANSLATE_BUDGET_TIMEFRAME = 1.2
+TRANSLATE_BUDGET_TIMEFRAME = 1.0
 
 
 
@@ -251,8 +255,9 @@ def easy_translate(jp:str, en:str, specific_dict=None) -> Tuple[str, int]:
 	:param specific_dict: optional dict for use in exact-matching
 	:return: tuple(newENname, translate_type)
 	"""
-	# first, if en name is already good (not blank and not JP), just keep it
-	if PREFER_EXISTING_ENGLISH_NAME and en and not en.isspace() and not translation_tools.needs_translate(en):
+	# first, if en name is already good (not blank and not JP and not a known exception), just keep it
+	if PREFER_EXISTING_ENGLISH_NAME and en and not en.isspace() and en.lower() not in FORBIDDEN_ENGLISH_NAMES \
+			and not translation_tools.needs_translate(en):
 		return en, 0
 	
 	# do pretranslate here: better for exact matching against morphs that have sad/sad_L/sad_R etc
@@ -513,7 +518,8 @@ def translate_to_english(pmx, moreinfo=False):
 		# if i chose to anti-prefer the existing EN name, then it is still preferred over google and should be checked here
 		for item in translate_notdone:
 			# first, if en name is already good (not blank and not JP), just keep it
-			if item.en_old and not item.en_old.isspace() and not translation_tools.needs_translate(item.en_old):
+			if item.en_old and not item.en_old.isspace() and item.en_old.lower() not in FORBIDDEN_ENGLISH_NAMES \
+					and not translation_tools.needs_translate(item.en_old):
 				item.en_new = item.en_old
 				item.trans_type = 0
 		# transfer the newly-done things over to the translate_maps list
