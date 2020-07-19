@@ -22,17 +22,21 @@ symbols_dict = {
 "╲": "\\",  # x2572 "box drawing" section. NOTE backslash isn't MMD supported, find something better!
 "╳": "X",  # x2573 "box drawing" section.
 "×": "x",  # x0215 multiply symbol
-"↑": "^", # x2191, NOTE: backslashes work poorly so /\ doesn't work right
-"↓": "v", # x2193, NOTE: backslashes work poorly so \/ doesn't work right
+"↑": "|^|", # x2191, NOTE: backslashes work poorly so /\ doesn't work right
+"↓": "|v|", # x2193, NOTE: backslashes work poorly so \/ doesn't work right
 "→": "->", # x2192
 "←": "<-", # x2190
 "ω": "w", # "omega"
 "□": "box",  #x25a1
-"■": "box",  #x25a0   less common than above
-"▲": "^ open",  #x25b2
-"△": "^ open",  #x25b3   less common than above
+"■": "box",  #x25a0
 "∧": "^",  #x2227 "logical and"
+"▲": "^ open",  #x25b2
+"△": "^ open",  #x25b3
 "∨": "V",  #x2228 "logical or"
+"▼": "V open",  #0x25bc
+"▽": "V open",  #0x25bd
+"★": "*",  #x2605
+"☆": "*",  #x2606
 "〜": "~",  # x301C wave dash, not a "fullwidth tilde"
 "○": "O",  #x25cb
 "◯": "O",  #x25ef
@@ -249,6 +253,8 @@ words_dict = {
 "タイツ": "tights",
 "あほ毛": "ahoge",  # the cutesy little hair curl on top
 "アホ毛": "ahoge",
+"おさげ": "pigtail",
+"お下げ": "pigtail",
 "腰": "waist",
 "舌": "tongue",
 "胸": "breast",  # translates to "chest" or "breast"
@@ -646,6 +652,7 @@ jp_re = re.compile(jp_pattern)
 needstranslate_pattern += "\u2190-\u21ff"  # "arrows" block
 needstranslate_pattern += "\u2500-\u257f"  # "box drawing" block, used as indentation sometimes
 needstranslate_pattern += "\u25a0-\u25ff"  # "geometric shapes", common morphs ▲ △ □ ■ come from here
+needstranslate_pattern += "\u2600-\u26ff"  # "misc symbols", ★ and ☆ come from here but everything else is irrelevant
 needstranslate_pattern += "\uff01-\uff65"  # "halfwidth and fullwidth forms" fullwidth latin and punctuation aka ０１２３ＩＫ
 needstranslate_pattern += "".join(symbols_dict.keys())  # add "symbol dict" just in case there are some outlyers... some overlap with ranges but w/e
 needstranslate_pattern = "[" + needstranslate_pattern + "]"
@@ -672,13 +679,12 @@ def is_latin(text:str) -> bool:
 def is_jp(text:str) -> bool:
 	""" is jp/cn and needs translation and can be plausibly translated """
 	m = jp_re.search(text)
-	# print(bool(m), str(text))
 	return bool(m)
 
 def needs_translate(text:str) -> bool:
 	""" won't display right in MMD, either is jp/cn or is wierd unicode symbols """
-	m = needstranslate_re.search(text)
-	# print(bool(m), str(text))
+	# m = needstranslate_re.search(text)
+	m = not is_latin(text)
 	return bool(m)
 
 def pre_translate(in_list: Union[List[str],str]) -> Union[Tuple[str,str,str],Tuple[List[str],List[str],List[str]]]:
