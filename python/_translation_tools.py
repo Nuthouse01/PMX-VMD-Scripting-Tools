@@ -34,7 +34,7 @@ symbols_dict = {
 "∧": "^",  #x2227 "logical and"
 "∨": "V",  #x2228 "logical or"
 "〜": "~",  # x301C wave dash, not a "fullwidth tilde"
-"○": "o",  #x25cb
+"○": "O",  #x25cb
 "◯": "O",  #x25ef
 "〇": "O",  # x3007
 }
@@ -236,17 +236,18 @@ words_dict = {
 "ビキニ": "bikini",
 "もみあげ": "sideburn",
 "ｺｯﾁﾐﾝﾅ": "camera eyes",  # phonetically "Kotchiminna", might informally translate to "this guy" or "everyone" i guess? functionally same as "camera eyes" tho
-"こっちみんな": "camera eyes", # phonetically "Kotchiminna", google translates to "don't look at me" maybe like "not my fault"?
+"こっちみんな": "camera eyes",  # phonetically "Kotchiminna", google translates to "don't look at me" maybe like "not my fault"?
 "尻尾": "tail",
-"おっぱい": "boobs", # literally "oppai"
+"おっぱい": "boobs",  # literally "oppai"
 "ヘッドセット": "headset",
-"ヘッドホン": "headphone",
+"ヘッドホン": "headphone",  # phonetically "heddoHon"
+"ヘッドフォン": "headphone",  # phonetically "heddoFon"
 "センター": "center",
 "グルーブ": "groove",
 "上半身": "upper body",
 "下半身": "lower body",
 "タイツ": "tights",
-"あほ毛": "ahoge", # the cutesy little hair curl on top
+"あほ毛": "ahoge",  # the cutesy little hair curl on top
 "アホ毛": "ahoge",
 "腰": "waist",
 "舌": "tongue",
@@ -257,6 +258,7 @@ words_dict = {
 "ブラ": "bra",
 "耳": "ear",  # phonetically "mimi"
 "みみ": "ear",  # phonetically "mimi"
+"閉じ": "close",
 "開く": "open",
 "開け": "open",
 "開き": "open",
@@ -273,6 +275,7 @@ words_dict = {
 "目": "eye",
 "眼": "eye",
 "瞳": "pupil",
+"瞳孔": "pupil",
 "着地": "landing",
 "水着": "swimsuit",
 "服": "clothes",
@@ -297,6 +300,7 @@ words_dict = {
 "靴": "shoe",  # phonetically "kutsu"
 "くつ": "shoe",  # phonetically "kutsu"
 "顔": "face",
+"額": "forehead",
 "ほほ": "cheek",  # phonetically "hoho"
 "頬": "cheek",  # phonetically "hoho"
 "あご": "chin",
@@ -365,6 +369,7 @@ words_dict = {
 "獣": "animal",
 "くち": "mouth",  # phonetically "kuchi"
 "口": "mouth",  # phonetically "kuchi"
+"唇": "lip",
 "まぶた": "eyelid",  # phonetically "mabuta"
 "瞼": "eyelid",  # phonetically "mabuta"
 "まつげ": "eyelash",  # phonetically "matsuge"
@@ -374,6 +379,8 @@ words_dict = {
 "まゆ": "brow",
 "眉毛": "brow",
 "眉": "brow",
+"発光": "glow",
+"発": "emit",
 "光": "light",
 "かげ": "shadow",  # phonetically "kage"
 "影": "shadow",  # phonetically "kage"
@@ -388,9 +395,12 @@ words_dict = {
 "鎧": "armor",
 "胴": "torso",
 "マーク": "mark",
+"ﾏｰｸ": "mark",
 "ネック": "neck",
 "ｽｰﾂ": "suit",
 "スーツ": "suit",
+"フード": "hood",  # phonetically "fudo" so it could mean "food" but more models will have sweatshirts with hoods than will have food
+"支": "support",
 
 
 # modifiers
@@ -428,8 +438,11 @@ words_dict = {
 "基": "base",  # either group or base
 "錘": "weight",
 "操作": "control",  # more closely translates to "operation" but w/e
+"制御": "control",
+"特殊": "special",
 
 # morphs
+"ジグザグ": "zigzag",
 "ぺろっ": "tongue out",  # phonetically "perrow"
 "べー": "beeeeh",  # another way of doing "tongue out"
 "持ち": "hold",  # perhaps grab? holding? 手持ち = handheld
@@ -516,6 +529,7 @@ words_dict = {
 "蒼": "blue",
 "金": "gold",
 "銀": "silver",
+"色": "color",
 "汗": "sweat",
 "円": "circle",
 "表": "front", # not sure about this one, front as in outward-facing geometry, opposite of backward-facing geometry. literally means "table" tho lol
@@ -569,20 +583,26 @@ prefix_dict_ord = dict({(ord(k), v) for k, v in prefix_dict.items()})
 odd_punctuation_dict = {
 "　": " ",  # x3000, just a fullwidth space aka "ideographic space"
 "、": ",",  # x3001, some sorta fullwidth comma
+"。": ".",  # x3002
 "〈": "<",  # x3008
 "〉": ">",  # x3009
 "《": "<",  # x300a
 "》": ">",  # x300b
 "「": '"',  # x300c
 "」": '"',  # x300d
-"｢": '"',  # xff62
-"｣": '"',  # xff63
 "『": '"', # x300e
 "』": '"', # x300f
 "【": "[",  # x3010
 "】": "]",  # x3011
 "・": "-",  # x30fb, could map to 00B7 but i don't think MMD would display that either
 "〜": "~",  # x301C wave dash, not a "fullwidth tilde"
+"｟": "(",  # xff5f
+"｠": ")",  # xff60
+"｡": ".",  #xff61
+"｢": '"',  # xff62
+"｣": '"',  # xff63
+"､": ",",  # xff64
+"･": "-",  # xff65
 }
 # note: "ー" = "katakana/hiragana prolonged sound mark" = 0x30fc should !!!NOT!!! be treated as punctuation cuz it shows up in several "words"
 
@@ -617,7 +637,7 @@ jp_pattern += "\u3000-\u303f"  # "cjk symbols and punctuation" block, fullwidth 
 jp_pattern += "\u3400-\u4dbf"  # "cjk unified ideographs extension A"
 jp_pattern += "\u4e00-\u9fff"  # "cjk unified ideographs"
 jp_pattern += "\uf900-\ufaff"  # "cjk compatability ideographs"
-jp_pattern += "\uff01-\uffee"  # "halfwidth and fullwidth forms" AKA ０１２３ＩＫ followed by halfwidth katakana and other stuff
+jp_pattern += "\uff66-\uffee"  # "halfwidth and fullwidth forms" halfwidth katakana and other stuff
 needstranslate_pattern = jp_pattern  # copy this stuff, "needstranslate" is a superset of "is_jp"
 jp_pattern = "[" + jp_pattern + "]"
 jp_re = re.compile(jp_pattern)
@@ -625,6 +645,7 @@ jp_re = re.compile(jp_pattern)
 needstranslate_pattern += "\u2190-\u21ff"  # "arrows" block
 needstranslate_pattern += "\u2500-\u257f"  # "box drawing" block, used as indentation sometimes
 needstranslate_pattern += "\u25a0-\u25ff"  # "geometric shapes", common morphs ▲ △ □ ■ come from here
+needstranslate_pattern += "\uff01-\uff65"  # "halfwidth and fullwidth forms" fullwidth latin and punctuation aka ０１２３ＩＫ
 needstranslate_pattern += "".join(symbols_dict.keys())  # add "symbol dict" just in case there are some outlyers... some overlap with ranges but w/e
 needstranslate_pattern = "[" + needstranslate_pattern + "]"
 needstranslate_re = re.compile(needstranslate_pattern)
