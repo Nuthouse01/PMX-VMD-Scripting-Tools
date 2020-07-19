@@ -611,15 +611,19 @@ def translate_to_english(pmx, moreinfo=False):
 	# next, print info!
 	core.MY_PRINT_FUNC("Translated {} / {} = {:.1%} english fields in the model".format(
 		total_changed, total_fields, total_changed / total_fields))
-	if moreinfo:
+	if moreinfo or type_fail:
 		# give full breakdown of each source
 		core.MY_PRINT_FUNC("Total fields={}, nochange={}, copy={}, exactmatch={}, piecewise={}, Google={}, fail={}".format(
 			total_fields, len(type_good), len(type_copy), len(type_exact), len(type_local), len(type_google), len(type_fail)))
 		#########
 		# now print the table of before/after/etc
-		# hide good/copyJP/exactmatch cuz those are uninteresting and guaranteed to be safe
-		# only show piecewise and google translations and fails
-		maps_printme = [item for item in translate_maps if item.trans_type > 2 or item.trans_type == -1]
+		if moreinfo:
+			# hide good/copyJP/exactmatch cuz those are uninteresting and guaranteed to be safe
+			# only show piecewise and google translations and fails
+			maps_printme = [item for item in translate_maps if item.trans_type > 2 or item.trans_type == -1]
+		else:
+			# if moreinfo not enabled, only show fails
+			maps_printme = type_fail
 		if maps_printme:
 			# first, SORT THE LIST! print items in PMXE order
 			maps_printme.sort(key=lambda x: x.idx)
