@@ -23,6 +23,14 @@ except ImportError as eee:
 # but if launched in a new window it exits immediately so you can't read it.
 DEBUG = False
 
+# "全ての親": "motherbone",
+# "操作中心": "view cnt",
+# "センター": "center",
+# "グルーブ": "groove",
+# "腰": "waist",
+
+centerframebones = ["操作中心", "センター", "グルーブ", "腰"]
+
 
 # if MMD has 256+ morphs among all display groups, it will crash
 MAX_MORPHS_IN_DISPLAY = 250
@@ -39,6 +47,13 @@ This will also ensure that "motherbone" is only bone in "root" frame, add any mo
 
 iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_dispframe.pmx"
 '''
+
+def my_sublist_find(searchme, condition, getindex=True):
+	# in a list, find the first item that passes the given criteria
+	for d,row in enumerate(searchme):
+		if condition(row) is True:
+			return d if getindex else row
+	return None
 
 
 def showhelp():
@@ -59,26 +74,52 @@ def dispframe_fix(pmx, moreinfo=False):
 	# facial group: "表情"/"Exp"
 	
 	fix_root = 0
+	fix_center = 0
 	hidden_morphs_removed = 0
 	duplicate_entries_removed = 0
 	empty_groups_removed = 0
 	
 	# find the ID# for motherbone... if not found, use whatever is at 0
-	motherid = core.my_sublist_find(pmx[5], 0, "全ての親", getindex=True)
+	motherid = my_sublist_find(pmx[5], lambda x: x[0] == "全ての親")
 	if motherid is None:
 		motherid = 0
 	
 	# ensure that "motherbone" and nothing else is in the root:
+	oldrootid = -100
 	for d,frame in enumerate(pmx[7]):
 		# only operate on the root group
 		if frame[0] == "Root" and frame[1] == "Root" and frame[2]:
 			newframelist = [[0,motherid]]
 			if frame[3] != newframelist:
+				oldrootid = frame[3][0][1]
 				frame[3] = newframelist
 				fix_root += 1
 			break
-	if fix_root:
+	if fix_root and moreinfo:
 		core.MY_PRINT_FUNC("fixing root group")
+	
+	# fix the contents of the "center"/"センター" group
+	# first, find it, or if it does not exist, make it
+	centerid = my_sublist_find(pmx[7], lambda x: x[0] == "センター")
+	if centerid is None:
+		centerid = 2
+		pmx[7].insert(2, ["センター", "Center", 0, []])
+		fix_center += 1
+	# if i set "motherbone" to be root, then remove it from center
+	if fix_root:
+		removeme = my_sublist_find(pmx[7][centerid][3], lambda x: x[1] == motherid)
+		if removeme is not None:
+			pmx[7][centerid][3].pop(removeme)
+	# ensure center contains the proper semistandard contents: view/center/groove/waist
+	# find bone IDs for each of these desired bones
+	centerframeboneids = [my_sublist_find(pmx[5], lambda x: x[0] == name) for name in centerframebones]
+	for boneid in centerframeboneids:
+		if boneid is None: continue  # if this bone does not exist, skip
+		if any(item[1]==boneid for item in pmx[7][centerid][3]): continue  # if this bone already in center, skip
+		pmx[7][centerid][3].append([0,boneid])  # add an item for this bone to the group
+		if boneid != oldrootid: fix_center += 1  # do not count moving a bone from root to center
+	if fix_center and moreinfo:
+		core.MY_PRINT_FUNC("fixing center group")
 	
 	displayed_morphs = set()
 	displayed_bones = set()
@@ -96,7 +137,7 @@ def dispframe_fix(pmx, moreinfo=False):
 				if not 1 <= panel <= 4:
 					frame[3].pop(i)
 					hidden_morphs_removed += 1
-				# if this is already in the set of used morphs, delete it
+				# if this is valid but already in the set of used morphs, delete it
 				elif item[1] in displayed_morphs:
 					frame[3].pop(i)
 					duplicate_entries_removed += 1
@@ -116,21 +157,20 @@ def dispframe_fix(pmx, moreinfo=False):
 	
 	if hidden_morphs_removed:
 		core.MY_PRINT_FUNC("removed %d hidden morphs (cause of crashes)" % hidden_morphs_removed)
-		core.MY_PRINT_FUNC("!!! Warning: do not add 'hidden' morphs to the display group! MMD will crash!")
-	if duplicate_entries_removed:
+		# core.MY_PRINT_FUNC("!!! Warning: do not add 'hidden' morphs to the display group! MMD will crash!")
+	if duplicate_entries_removed and moreinfo:
 		core.MY_PRINT_FUNC("removed %d duplicate bones or morphs" % duplicate_entries_removed)
 		
 	# have identified which bones/morphs are displayed: now identify which ones are NOT
 	undisplayed_bones = []
 	for d,bone in enumerate(pmx[5]):
 		# if this bone is already displayed, skip
-		if d in displayed_bones:
-			continue
-		# if this bone is visible and is enabled, add it to the set
-		if bone[10] and bone[11]:
-			undisplayed_bones.append(d)
+		if d in displayed_bones: continue
+		# if this bone is visible and is enabled, add it to the list
+		if bone[10] and bone[11]: undisplayed_bones.append(d)
 	if undisplayed_bones:
-		core.MY_PRINT_FUNC("added %d undisplayed bones to new group 'morebones'" % len(undisplayed_bones))
+		if moreinfo:
+			core.MY_PRINT_FUNC("added %d undisplayed bones to new group 'morebones'" % len(undisplayed_bones))
 		# add a new frame to hold all bones
 		newframelist = [[0, x] for x in undisplayed_bones]
 		newframe = ["morebones","morebones",0,newframelist]
@@ -140,14 +180,13 @@ def dispframe_fix(pmx, moreinfo=False):
 	undisplayed_morphs = []
 	for d,morph in enumerate(pmx[6]):
 		# if this morph is already displayed, skip
-		if d in displayed_morphs:
-			continue
-		# if this morph is not a hidden group, add it to the set
-		if 1 <= morph[2] <= 4:
-			undisplayed_morphs.append(d)
+		if d in displayed_morphs: continue
+		# if this morph is not a hidden group, add it to the list
+		if 1 <= morph[2] <= 4: undisplayed_morphs.append(d)
 	if undisplayed_morphs:
+		if moreinfo:
+			core.MY_PRINT_FUNC("added %d undisplayed morphs to Facials group" % len(undisplayed_morphs))
 		newframelist = [[1, x] for x in undisplayed_morphs]
-		core.MY_PRINT_FUNC("added %d undisplayed morphs to Facials group" % len(undisplayed_morphs))
 		# find morphs group and only add to it
 		for frame in pmx[7]:
 			if frame[0] == "表情" and frame[1] == "Exp" and frame[2]:
@@ -155,10 +194,9 @@ def dispframe_fix(pmx, moreinfo=False):
 				frame[3] += newframelist
 				break
 	
-	# check if there are too many morphs... if so, trim and remake "displayed morphs"
+	# check if there are too many morphs among all groups... if so, trim and remake "displayed morphs"
 	total_num_morphs = 0
 	for frame in pmx[7]:
-		# find the facials group
 		i = 0
 		while i < len(frame[3]):
 			item = frame[3][i]
@@ -188,15 +226,15 @@ def dispframe_fix(pmx, moreinfo=False):
 			empty_groups_removed += 1
 		else:
 			i += 1
-	if empty_groups_removed:
+	if empty_groups_removed and moreinfo:
 		core.MY_PRINT_FUNC("removed %d empty groups" % empty_groups_removed)
 		
-	overall = num_morphs_over_limit + empty_groups_removed + len(undisplayed_bones) + len(undisplayed_morphs) + duplicate_entries_removed + hidden_morphs_removed + fix_root
+	overall = num_morphs_over_limit + fix_center + empty_groups_removed + len(undisplayed_bones) + len(undisplayed_morphs) + duplicate_entries_removed + hidden_morphs_removed + fix_root
 	if overall == 0:
 		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
-		
-	# print("Fixed %d things related to display pane groups" % overall)
+	
+	core.MY_PRINT_FUNC("Fixed %d things related to display pane groups" % overall)
 	return pmx, True
 
 def end(pmx, input_filename_pmx):
