@@ -401,6 +401,7 @@ words_dict = {
 "スーツ": "suit",
 "フード": "hood",  # phonetically "fudo" so it could mean "food" but more models will have sweatshirts with hoods than will have food
 "支": "support",
+"支え": "support",
 
 
 # modifiers
