@@ -639,6 +639,7 @@ strip_pattern = "(^[\\s_.-]+)|([\\s_.-]+$)"
 strip_re = re.compile(strip_pattern)
 
 # TODO: maybe instead of finding unusal jap chars, i should just find anything not basic ASCII alphanumeric characters?
+# https://www.compart.com/en/unicode/block
 jp_pattern = "\u3040-\u30ff"  # "hiragana" block + "katakana" block
 jp_pattern += "\u3000-\u303f"  # "cjk symbols and punctuation" block, fullwidth space, brackets, etc etc
 jp_pattern += "\u3400-\u4dbf"  # "cjk unified ideographs extension A"
