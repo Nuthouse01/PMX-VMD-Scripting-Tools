@@ -215,6 +215,15 @@ The following files should be included with this README:
 
 #### Changelog: 
 
+    v4.63:
+    tweak printouts in a couple places
+    more commenting & typechecking stuff
+    translation: force translation when english names are just "en" or "D"
+    translation: tighten criteria for "good" english names to highlight any funny unicode symbols and junk
+        this means more names will be marked as "untranslateable" since google doesn't know how to deal with the symbols either
+    pmx cleanup: fix false warnings in jointless rigidbody detection
+    display frame cleanup: will now make "center" group follow semistandard conventions
+    
     v4.62:
     bugfix: fixed incorrect behavior in new bezier code
     replace VMD list-of-lists structure with simple custom classes, now things are accessed via named fields instead of indexes
