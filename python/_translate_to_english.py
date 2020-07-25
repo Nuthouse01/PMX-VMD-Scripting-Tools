@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/13/2020 - v4.62
+# Nuthouse01 - 07/24/2020 - v4.63
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -35,6 +35,10 @@ DEBUG = True
 PREFER_EXISTING_ENGLISH_NAME = True
 
 
+# these english names will be treated as tho they do not exist and overwritten no matter what:
+FORBIDDEN_ENGLISH_NAMES = ["en", "d"]
+
+
 # MikuMikuDance can display JP characters just fine in the "model info" popup when you load a model
 # also I've seen one or two models that have the JP model info blank and all important info in the EN model info
 # so I decided to default to not translating the model info section, only copy JP->EN if EN is blank
@@ -57,13 +61,13 @@ DISABLE_INTERNET_TRANSLATE = False
 # tho in testing, sometimes translations produce different results if on their own vs in a newline list... oh well
 # or sometimes they lose newlines during translation
 # more lines per request = riskier, but uses less of your transaction budget
-TRANSLATE_MAX_LINES_PER_REQUEST = 5
+TRANSLATE_MAX_LINES_PER_REQUEST = 15
 # how many requests are permitted per timeframe, to avoid the lockout
 # true limit is ~100 so enforce limit of 80 just to be safe
 TRANSLATE_BUDGET_MAX_REQUESTS = 80
 # how long (hours) is the timeframe to protect
 # true timeframe is ~1 hr so enforce limit of ~1.2hr just to be safe
-TRANSLATE_BUDGET_TIMEFRAME = 1.2
+TRANSLATE_BUDGET_TIMEFRAME = 1.0
 
 
 
@@ -141,7 +145,7 @@ def check_translate_budget(num_proposed: int) -> bool:
 			i += 1
 	# then interpret the file: how many requests happened in the past <timeframe>
 	requests_in_timeframe = sum([entry[1] for entry in record])
-	core.MY_PRINT_FUNC("You have used {} / {} translation requests within the last {:.4} hrs".format(
+	core.MY_PRINT_FUNC("... you have used {} / {} translation requests within the last {:.4} hrs...".format(
 		int(requests_in_timeframe), int(TRANSLATE_BUDGET_MAX_REQUESTS), TRANSLATE_BUDGET_TIMEFRAME))
 	# make the decision
 	if (requests_in_timeframe + num_proposed) <= TRANSLATE_BUDGET_MAX_REQUESTS:
@@ -251,8 +255,9 @@ def easy_translate(jp:str, en:str, specific_dict=None) -> Tuple[str, int]:
 	:param specific_dict: optional dict for use in exact-matching
 	:return: tuple(newENname, translate_type)
 	"""
-	# first, if en name is already good (not blank and not JP), just keep it
-	if PREFER_EXISTING_ENGLISH_NAME and en and not en.isspace() and not translation_tools.needs_translate(en):
+	# first, if en name is already good (not blank and not JP and not a known exception), just keep it
+	if PREFER_EXISTING_ENGLISH_NAME and en and not en.isspace() and en.lower() not in FORBIDDEN_ENGLISH_NAMES \
+			and not translation_tools.needs_translate(en):
 		return en, 0
 	
 	# do pretranslate here: better for exact matching against morphs that have sad/sad_L/sad_R etc
@@ -338,7 +343,7 @@ def google_translate(in_list: Union[List[str],str], strategy=1) -> Union[List[st
 	num_calls = len(jp_chunks_combined) if use_chunk_strat else len(pretrans_combined)
 	global _DISABLE_INTERNET_TRANSLATE
 	if check_translate_budget(num_calls) and not _DISABLE_INTERNET_TRANSLATE:
-		core.MY_PRINT_FUNC("Making %d requests to Google Translate web API..." % num_calls)
+		core.MY_PRINT_FUNC("... making %d requests to Google Translate web API..." % num_calls)
 	else:
 		# no need to print failing statement, the function already does
 		core.MY_PRINT_FUNC("Just copying JP -> EN while Google Translate is disabled")
@@ -378,6 +383,10 @@ def google_translate(in_list: Union[List[str],str], strategy=1) -> Union[List[st
 	
 	# last, reattach the indents and suffixes
 	outlist = [i + b + s for i, b, s in zip(indents, outlist, suffixes)]
+	
+	if not _DISABLE_INTERNET_TRANSLATE:
+		# if i did use internet translate, print this line when done
+		core.MY_PRINT_FUNC("... done!")
 	
 	# return
 	if input_is_str: return outlist[0]  # if original input was a single string, then de-listify
@@ -509,7 +518,8 @@ def translate_to_english(pmx, moreinfo=False):
 		# if i chose to anti-prefer the existing EN name, then it is still preferred over google and should be checked here
 		for item in translate_notdone:
 			# first, if en name is already good (not blank and not JP), just keep it
-			if item.en_old and not item.en_old.isspace() and not translation_tools.needs_translate(item.en_old):
+			if item.en_old and not item.en_old.isspace() and item.en_old.lower() not in FORBIDDEN_ENGLISH_NAMES \
+					and not translation_tools.needs_translate(item.en_old):
 				item.en_new = item.en_old
 				item.trans_type = 0
 		# transfer the newly-done things over to the translate_maps list
@@ -520,7 +530,7 @@ def translate_to_english(pmx, moreinfo=False):
 	# actually do google translate
 	num_items = len(translate_notdone) + (newcommentsource != 0)
 	if num_items:
-		core.MY_PRINT_FUNC("Identified %d items that need Internet translation..." % num_items)
+		core.MY_PRINT_FUNC("... identified %d items that need Internet translation..." % num_items)
 		try:
 			google_results = google_translate([item.jp_old for item in translate_notdone])
 			# determine if each item passed or not, update the en_new and trans_type fields
@@ -601,15 +611,19 @@ def translate_to_english(pmx, moreinfo=False):
 	# next, print info!
 	core.MY_PRINT_FUNC("Translated {} / {} = {:.1%} english fields in the model".format(
 		total_changed, total_fields, total_changed / total_fields))
-	if moreinfo:
+	if moreinfo or type_fail:
 		# give full breakdown of each source
 		core.MY_PRINT_FUNC("Total fields={}, nochange={}, copy={}, exactmatch={}, piecewise={}, Google={}, fail={}".format(
 			total_fields, len(type_good), len(type_copy), len(type_exact), len(type_local), len(type_google), len(type_fail)))
 		#########
 		# now print the table of before/after/etc
-		# hide good/copyJP/exactmatch cuz those are uninteresting and guaranteed to be safe
-		# only show piecewise and google translations and fails
-		maps_printme = [item for item in translate_maps if item.trans_type > 2 or item.trans_type == -1]
+		if moreinfo:
+			# hide good/copyJP/exactmatch cuz those are uninteresting and guaranteed to be safe
+			# only show piecewise and google translations and fails
+			maps_printme = [item for item in translate_maps if item.trans_type > 2 or item.trans_type == -1]
+		else:
+			# if moreinfo not enabled, only show fails
+			maps_printme = type_fail
 		if maps_printme:
 			# first, SORT THE LIST! print items in PMXE order
 			maps_printme.sort(key=lambda x: x.idx)
@@ -651,7 +665,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/13/2020 - v4.62")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")
 	if DEBUG:
 		main()
 	else:

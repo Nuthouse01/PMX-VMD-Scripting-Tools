@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/13/2020 - v4.62
+# Nuthouse01 - 07/24/2020 - v4.63
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -84,6 +84,8 @@ def find_toolong_bonemorph(pmx):
 			if len(mb) > 15:
 				toolong_list_bone.append("%d[%d]" % (d, len(mb)))
 		except UnicodeEncodeError as e:
+			core.MY_PRINT_FUNC("Bone %d" % d)
+			# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
 			newerrstr = "%s: '%s' codec cannot encode char '%s' within string '%s'" % (
 				e.__class__.__name__, e.encoding, e.reason[e.start:e.end], e.reason)
 			core.MY_PRINT_FUNC(newerrstr)
@@ -95,6 +97,8 @@ def find_toolong_bonemorph(pmx):
 			if len(mb) > 15:
 				toolong_list_morph.append("%d[%d]" % (d, len(mb)))
 		except UnicodeEncodeError as e:
+			core.MY_PRINT_FUNC("Morph %d" % d)
+			# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
 			newerrstr = "%s: '%s' codec cannot encode char '%s' within string '%s'" % (
 				e.__class__.__name__, e.encoding, e.reason[e.start:e.end], e.reason)
 			core.MY_PRINT_FUNC(newerrstr)
@@ -115,16 +119,35 @@ def find_shadowy_materials(pmx):
 def find_jointless_physbodies(pmx):
 	# check for rigidbodies with physics enabled that are NOT the dependent-body of any joint
 	# these will just wastefully roll around on the floor draining processing power
-	retme = []
-	for d,body in enumerate(pmx[8]):
-		# if this is a physics body (not a bone body)
-		if body[20] != 0:
-			# look for any joint that has this body as the dependent
-			f = core.my_sublist_find(pmx[9], 4, d)
-			# if not found, then this body is unattached
-			if f is None:
-				retme.append(d)
+	
+	# NEW IDEA: complete overkill but whatever whos gonna stop me
+	# do a recursive space-filling algorithm starting from each bone body walking along joints
+	# then I can find each body that is bone or linked to bone
+	# which lets me determine which ones are NOT linked!
+	
+	def recursively_walk_along_joints(target, known_anchors):
+		if target in known_anchors or target == -1:
+			# stop condition: if this RB idx is already known to be anchored, i have already ran recursion from this node. don't do it again.
+			# also abort if the target is -1 which means invalid RB
+			return
+		# if not already in the set, but recursion is being called on this, then this bone is an "anchor" and should be added.
+		known_anchors.add(target)
+		# now, get all joints which include this RB
+		linked_joints = [joint for joint in pmx[9] if (joint[3] == target) or (joint[4] == target)]
+		for joint in linked_joints:
+			# walk to every body this joint is connected to
+			if joint[3] != target: recursively_walk_along_joints(joint[3], known_anchors)
+			if joint[4] != target: recursively_walk_along_joints(joint[4], known_anchors)
+		return
+	
+	bonebodies = [d for d,body in enumerate(pmx[8]) if body[20] == 0]
+	anchorbodies = set()
+	for bod in bonebodies:
+		recursively_walk_along_joints(bod, anchorbodies)
+	# now, see which body indices are not in the anchored set!
+	retme = [i for i in range(len(pmx[8])) if i not in anchorbodies]
 	return retme
+	
 
 
 ########################################################################################################################
@@ -289,7 +312,7 @@ def main(moreinfo=False):
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/13/2020 - v4.62")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

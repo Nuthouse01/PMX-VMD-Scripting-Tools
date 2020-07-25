@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/13/2020 - v4.62
+# Nuthouse01 - 07/24/2020 - v4.63
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -109,7 +109,7 @@ def main(moreinfo=True):
 			# then do the "remapping" on all existing bone references, to make space for inserting 4 bones
 			# don't delete any bones, just remap them
 			bone_shiftmap = ([shoulder_idx+1], [-4])
-			pmx = apply_bone_remapping(pmx, [], bone_shiftmap)
+			apply_bone_remapping(pmx, [], bone_shiftmap)
 			# new bones will be inserted AFTER shoulder_idx
 			# newarm_idx = shoulder_idx+1
 			# newelbow_idx = shoulder_idx+2
@@ -174,7 +174,7 @@ def main(moreinfo=True):
 		# build the remap thing
 		bone_shiftmap = delme_list_to_rangemap(bone_dellist)
 		# do the actual delete & shift
-		pmx = apply_bone_remapping(pmx, bone_dellist, bone_shiftmap)
+		apply_bone_remapping(pmx, bone_dellist, bone_shiftmap)
 		
 		# delete dispframe for hand ik
 		# first, does the frame already exist?
@@ -193,7 +193,7 @@ def main(moreinfo=True):
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/13/2020 - v4.62")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/13/2020 - v4.62
+# Nuthouse01 - 07/24/2020 - v4.63
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -92,15 +92,19 @@ def showprompt():
 	
 
 def identify_unused_bones(pmx: list, moreinfo: bool) -> List[int]:
-	#############################
-	# THE PLAN:
-	# 1. get bones used by a rigidbody
-	# 2. get bones that have weight on at least 1 vertex
-	# 3. mark "exception" bones, done here so parents of exception bones are kept too
-	# 4. inheritance, aka "bones used by bones", recursively climb the tree & get all bones the "true" used bones depend on
-	# 5. tails
-	# 6. invert to get set of unused
+	"""
+	Process the PMX and return a list of all unused bone indicies in the model.
+	1. get bones used by a rigidbody.
+	2. get bones that have weight on at least 1 vertex.
+	3. mark "exception" bones, done here so parents of exception bones are kept too.
+	4. inheritance, aka "bones used by bones", recursively climb the tree & get all bones the "true" used bones depend on.
+	5. tails or point-ats.
+	6. invert used to get set of unused.
 
+	:param pmx: PMX list-of-lists object
+	:param moreinfo: print extra info for debug or whatever
+	:return: list of bone indices that are not used
+	"""
 	# python set: no duplicates! .add(newbone), "in", .discard(delbone)
 	# true_used_bones is set of BONE INDEXES
 	true_used_bones = set()  # exception bones + rigidbody bones + vertex bones
@@ -214,9 +218,10 @@ def identify_unused_bones(pmx: list, moreinfo: bool) -> List[int]:
 	
 	# print neat stuff
 	if moreinfo:
-		core.MY_PRINT_FUNC("Bones: total=%d, true_used=%d, parents=%d, tails=%d, unused=%d" %
-						   (len(pmx[5]), len(true_used_bones), len(parent_used_bones)-len(true_used_bones),
-							len(final_used_bones)-len(parent_used_bones), len(unused_bones_list)))
+		if unused_bones_list:
+			core.MY_PRINT_FUNC("Bones: total=%d, true_used=%d, parents=%d, tails=%d, unused=%d" %
+							   (len(pmx[5]), len(true_used_bones), len(parent_used_bones)-len(true_used_bones),
+								len(final_used_bones)-len(parent_used_bones), len(unused_bones_list)))
 		# debug aid
 		if PRINT_VERTICES_CONTROLLED_BY_EACH_BONE:
 			core.MY_PRINT_FUNC("Number of vertices controlled by each bone:")
@@ -228,26 +233,24 @@ def identify_unused_bones(pmx: list, moreinfo: bool) -> List[int]:
 	
 
 def apply_bone_remapping(pmx, bone_dellist: List[int], bone_shiftmap: Tuple[List[int],List[int]]):
-	# where are all places bones are used in the model?
+	"""
+	Given a list of bones to delete, delete them, and update the indices for all references to all remaining bones.
+	PMX is modified in-place. Behavior is undefined if the dellist bones are still in use somewhere!
+	References include: vertex weight, bone morph, display frame, rigidbody anchor, bone tail, bone partial inherit,
+	bone IK target, bone IK link.
 	
-	# !vertex weight
-	# 	vertices will have 0 weight, and have thier now-invalid index set to 0
-	# !morph bone: delete that entry
-	# !dispframes: delete that entry
-	# rigidbody anchor: remap only
-	# !bone point-at target: set to -1 ? set to offset 0,0,0 ?
-	# bone partial append: remap only
-	# bone external parent: remap only
-	# bone ik stuff: remap only
-	
+	:param pmx: PMX list-of-lists object
+	:param bone_dellist: list of bone indices to delete
+	:param bone_shiftmap: created by delme_list_to_rangemap() before calling
+	"""
 	# acutally delete the bones
 	for f in reversed(bone_dellist):
 		pmx[5].pop(f)
-
+	
 	core.print_progress_oneline(0 / 5)
 	# VERTICES:
 	# just remap the bones that have weight
-	# any references to bones being deleted will definitely have 0 weight
+	# any references to bones being deleted will definitely have 0 weight, and therefore it doesn't matter what they reference afterwards
 	for d, vert in enumerate(pmx[1]):
 		weighttype = vert[9]
 		weights = vert[10]
@@ -340,16 +343,13 @@ def apply_bone_remapping(pmx, bone_dellist: List[int], bone_shiftmap: Tuple[List
 				bone[15] = 0
 			else:
 				bone[16][0] = newval_from_range_map(bone[16][0], bone_shiftmap)
-		# # external parent: i don't think external parent cares about the values of bones INSIDE the model?
-		# if bone[21]:
-		# 	bone[22] = newval_from_range_map(bone[22], bone_shiftmap)
 		# ik stuff:
 		if bone[23]:
 			bone[24][0] = newval_from_range_map(bone[24][0], bone_shiftmap)
 			for iklink in bone[24][3]:
 				iklink[0] = newval_from_range_map(iklink[0], bone_shiftmap)
 	# done with bones
-	return pmx
+	return
 
 
 def prune_unused_bones(pmx, moreinfo=False):
@@ -368,7 +368,7 @@ def prune_unused_bones(pmx, moreinfo=False):
 			core.MY_PRINT_FUNC("bone #{:<3} JP='{}' / EN='{}'".format(d, pmx[5][d][0], pmx[5][d][1]))
 	
 	num_bones_before = len(pmx[5])
-	pmx = apply_bone_remapping(pmx, unused_list, delme_rangemap)
+	apply_bone_remapping(pmx, unused_list, delme_rangemap)
 	
 	# print("Done deleting unused bones")
 	core.MY_PRINT_FUNC("Found and deleted {} / {} = {:.1%} unused bones".format(
@@ -396,7 +396,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/13/2020 - v4.62")
+	core.MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")
 	if DEBUG:
 		main()
 	else:

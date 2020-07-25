@@ -22,19 +22,23 @@ symbols_dict = {
 "╲": "\\",  # x2572 "box drawing" section. NOTE backslash isn't MMD supported, find something better!
 "╳": "X",  # x2573 "box drawing" section.
 "×": "x",  # x0215 multiply symbol
-"↑": "^", # x2191, NOTE: backslashes work poorly so /\ doesn't work right
-"↓": "v", # x2193, NOTE: backslashes work poorly so \/ doesn't work right
+"↑": "|^|", # x2191, NOTE: backslashes work poorly so /\ doesn't work right
+"↓": "|v|", # x2193, NOTE: backslashes work poorly so \/ doesn't work right
 "→": "->", # x2192
 "←": "<-", # x2190
 "ω": "w", # "omega"
 "□": "box",  #x25a1
-"■": "box",  #x25a0   less common than above
-"▲": "^ open",  #x25b2
-"△": "^ open",  #x25b3   less common than above
+"■": "box",  #x25a0
 "∧": "^",  #x2227 "logical and"
+"▲": "^ open",  #x25b2
+"△": "^ open",  #x25b3
 "∨": "V",  #x2228 "logical or"
+"▼": "V open",  #0x25bc
+"▽": "V open",  #0x25bd
+"★": "*",  #x2605
+"☆": "*",  #x2606
 "〜": "~",  # x301C wave dash, not a "fullwidth tilde"
-"○": "o",  #x25cb
+"○": "O",  #x25cb
 "◯": "O",  #x25ef
 "〇": "O",  # x3007
 }
@@ -169,7 +173,7 @@ bone_dict =  {
 "腰キャンセル": "waist_cancel",
 "足": "leg",  # standard leg-bones
 "ひざ": "knee",
-"足首": "foot",
+"足首": "foot",  # "ankle" is technically a more accurate translation but w/e this is standard name
 "つま先": "toe",
 "足D": "leg_D",      # "left/right thigh_D"
 "ひざD": "knee_D",   # "left/right knee_D"
@@ -236,18 +240,21 @@ words_dict = {
 "ビキニ": "bikini",
 "もみあげ": "sideburn",
 "ｺｯﾁﾐﾝﾅ": "camera eyes",  # phonetically "Kotchiminna", might informally translate to "this guy" or "everyone" i guess? functionally same as "camera eyes" tho
-"こっちみんな": "camera eyes", # phonetically "Kotchiminna", google translates to "don't look at me" maybe like "not my fault"?
+"こっちみんな": "camera eyes",  # phonetically "Kotchiminna", google translates to "don't look at me" maybe like "not my fault"?
 "尻尾": "tail",
-"おっぱい": "boobs", # literally "oppai"
+"おっぱい": "boobs",  # literally "oppai"
 "ヘッドセット": "headset",
-"ヘッドホン": "headphone",
+"ヘッドホン": "headphone",  # phonetically "heddoHon"
+"ヘッドフォン": "headphone",  # phonetically "heddoFon"
 "センター": "center",
 "グルーブ": "groove",
 "上半身": "upper body",
 "下半身": "lower body",
 "タイツ": "tights",
-"あほ毛": "ahoge", # the cutesy little hair curl on top
+"あほ毛": "ahoge",  # the cutesy little hair curl on top
 "アホ毛": "ahoge",
+"おさげ": "pigtail",
+"お下げ": "pigtail",
 "腰": "waist",
 "舌": "tongue",
 "胸": "breast",  # translates to "chest" or "breast"
@@ -257,6 +264,7 @@ words_dict = {
 "ブラ": "bra",
 "耳": "ear",  # phonetically "mimi"
 "みみ": "ear",  # phonetically "mimi"
+"閉じ": "close",
 "開く": "open",
 "開け": "open",
 "開き": "open",
@@ -273,6 +281,7 @@ words_dict = {
 "目": "eye",
 "眼": "eye",
 "瞳": "pupil",
+"瞳孔": "pupil",
 "着地": "landing",
 "水着": "swimsuit",
 "服": "clothes",
@@ -297,6 +306,7 @@ words_dict = {
 "靴": "shoe",  # phonetically "kutsu"
 "くつ": "shoe",  # phonetically "kutsu"
 "顔": "face",
+"額": "forehead",
 "ほほ": "cheek",  # phonetically "hoho"
 "頬": "cheek",  # phonetically "hoho"
 "あご": "chin",
@@ -343,7 +353,8 @@ words_dict = {
 "裙": "skirt",  # chinese for "skirt"
 "輪": "ring",  # was "round", better translation is ring/loop/circle maybe?
 "武器": "weapon",
-"釦": "button",
+"ボタン": "button",  # phonetically "botan"
+"釦": "button",  # phonetically "botan"
 "連動": "interlock",
 "捩": "twist",
 "捻り": "twist",
@@ -364,6 +375,7 @@ words_dict = {
 "獣": "animal",
 "くち": "mouth",  # phonetically "kuchi"
 "口": "mouth",  # phonetically "kuchi"
+"唇": "lip",
 "まぶた": "eyelid",  # phonetically "mabuta"
 "瞼": "eyelid",  # phonetically "mabuta"
 "まつげ": "eyelash",  # phonetically "matsuge"
@@ -373,6 +385,8 @@ words_dict = {
 "まゆ": "brow",
 "眉毛": "brow",
 "眉": "brow",
+"発光": "glow",
+"発": "emit",
 "光": "light",
 "かげ": "shadow",  # phonetically "kage"
 "影": "shadow",  # phonetically "kage"
@@ -380,13 +394,20 @@ words_dict = {
 "表情": "expression",
 "襟": "collar",
 "頂点": "vertex",
+"テクスチャ": "texture",
 "骨": "bone",
 "式": "model",
 "甲": "armor",
 "鎧": "armor",
 "胴": "torso",
 "マーク": "mark",
+"ﾏｰｸ": "mark",
 "ネック": "neck",
+"ｽｰﾂ": "suit",
+"スーツ": "suit",
+"フード": "hood",  # phonetically "fudo" so it could mean "food" but more models will have sweatshirts with hoods than will have food
+"支": "support",
+"支え": "support",
 
 
 # modifiers
@@ -424,8 +445,11 @@ words_dict = {
 "基": "base",  # either group or base
 "錘": "weight",
 "操作": "control",  # more closely translates to "operation" but w/e
+"制御": "control",
+"特殊": "special",
 
 # morphs
+"ジグザグ": "zigzag",
 "ぺろっ": "tongue out",  # phonetically "perrow"
 "べー": "beeeeh",  # another way of doing "tongue out"
 "持ち": "hold",  # perhaps grab? holding? 手持ち = handheld
@@ -512,6 +536,7 @@ words_dict = {
 "蒼": "blue",
 "金": "gold",
 "銀": "silver",
+"色": "color",
 "汗": "sweat",
 "円": "circle",
 "表": "front", # not sure about this one, front as in outward-facing geometry, opposite of backward-facing geometry. literally means "table" tho lol
@@ -564,20 +589,27 @@ prefix_dict_ord = dict({(ord(k), v) for k, v in prefix_dict.items()})
 
 odd_punctuation_dict = {
 "　": " ",  # x3000, just a fullwidth space aka "ideographic space"
+"、": ",",  # x3001, some sorta fullwidth comma
+"。": ".",  # x3002
 "〈": "<",  # x3008
 "〉": ">",  # x3009
 "《": "<",  # x300a
 "》": ">",  # x300b
 "「": '"',  # x300c
 "」": '"',  # x300d
-"｢": '"',  # xff62
-"｣": '"',  # xff63
 "『": '"', # x300e
 "』": '"', # x300f
 "【": "[",  # x3010
 "】": "]",  # x3011
 "・": "-",  # x30fb, could map to 00B7 but i don't think MMD would display that either
 "〜": "~",  # x301C wave dash, not a "fullwidth tilde"
+"｟": "(",  # xff5f
+"｠": ")",  # xff60
+"｡": ".",  #xff61
+"｢": '"',  # xff62
+"｣": '"',  # xff63
+"､": ",",  # xff64
+"･": "-",  # xff65
 }
 # note: "ー" = "katakana/hiragana prolonged sound mark" = 0x30fc should !!!NOT!!! be treated as punctuation cuz it shows up in several "words"
 
@@ -607,12 +639,13 @@ strip_pattern = "(^[\\s_.-]+)|([\\s_.-]+$)"
 strip_re = re.compile(strip_pattern)
 
 # TODO: maybe instead of finding unusal jap chars, i should just find anything not basic ASCII alphanumeric characters?
+# https://www.compart.com/en/unicode/block
 jp_pattern = "\u3040-\u30ff"  # "hiragana" block + "katakana" block
 jp_pattern += "\u3000-\u303f"  # "cjk symbols and punctuation" block, fullwidth space, brackets, etc etc
 jp_pattern += "\u3400-\u4dbf"  # "cjk unified ideographs extension A"
 jp_pattern += "\u4e00-\u9fff"  # "cjk unified ideographs"
 jp_pattern += "\uf900-\ufaff"  # "cjk compatability ideographs"
-jp_pattern += "\uff01-\uffee"  # "halfwidth and fullwidth forms" AKA ０１２３ＩＫ followed by halfwidth katakana and other stuff
+jp_pattern += "\uff66-\uffee"  # "halfwidth and fullwidth forms" halfwidth katakana and other stuff
 needstranslate_pattern = jp_pattern  # copy this stuff, "needstranslate" is a superset of "is_jp"
 jp_pattern = "[" + jp_pattern + "]"
 jp_re = re.compile(jp_pattern)
@@ -620,6 +653,8 @@ jp_re = re.compile(jp_pattern)
 needstranslate_pattern += "\u2190-\u21ff"  # "arrows" block
 needstranslate_pattern += "\u2500-\u257f"  # "box drawing" block, used as indentation sometimes
 needstranslate_pattern += "\u25a0-\u25ff"  # "geometric shapes", common morphs ▲ △ □ ■ come from here
+needstranslate_pattern += "\u2600-\u26ff"  # "misc symbols", ★ and ☆ come from here but everything else is irrelevant
+needstranslate_pattern += "\uff01-\uff65"  # "halfwidth and fullwidth forms" fullwidth latin and punctuation aka ０１２３ＩＫ
 needstranslate_pattern += "".join(symbols_dict.keys())  # add "symbol dict" just in case there are some outlyers... some overlap with ranges but w/e
 needstranslate_pattern = "[" + needstranslate_pattern + "]"
 needstranslate_re = re.compile(needstranslate_pattern)
@@ -645,13 +680,12 @@ def is_latin(text:str) -> bool:
 def is_jp(text:str) -> bool:
 	""" is jp/cn and needs translation and can be plausibly translated """
 	m = jp_re.search(text)
-	# print(bool(m), str(text))
 	return bool(m)
 
 def needs_translate(text:str) -> bool:
 	""" won't display right in MMD, either is jp/cn or is wierd unicode symbols """
-	m = needstranslate_re.search(text)
-	# print(bool(m), str(text))
+	# m = needstranslate_re.search(text)
+	m = not is_latin(text)
 	return bool(m)
 
 def pre_translate(in_list: Union[List[str],str]) -> Union[Tuple[str,str,str],Tuple[List[str],List[str],List[str]]]:
@@ -869,6 +903,6 @@ def local_translate(in_list: Union[List[str],str]) -> Union[List[str],str]:
 # 		numpass, numtotal, numpass / numtotal))
 #
 # if __name__ == '__main__':
-# 	core.MY_PRINT_FUNC("Nuthouse01 - 07/13/2020 - v4.62")
+# 	core.MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")
 # 	main()
 #
