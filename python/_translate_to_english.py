@@ -176,9 +176,9 @@ def check_translate_budget(num_proposed: int) -> bool:
 	
 ################################################################################################################
 
-def combine_translate_requests(jp_list: List[str]) -> List[str]:
+def packetize_translate_requests(jp_list: List[str]) -> List[str]:
 	"""
-	Split/join a massive list of items to translate into fewer requests which each contain many separated by newlines.
+	Group/join a massive list of items to translate into fewer requests which each contain many separated by newlines.
 	options: TRANSLATE_MAX_LINES_PER_REQUEST.
 	
 	:param jp_list: list of each JP name, names must not include newlines
@@ -193,9 +193,9 @@ def combine_translate_requests(jp_list: List[str]) -> List[str]:
 		start_idx += TRANSLATE_MAX_LINES_PER_REQUEST
 	return retme
 
-def unpack_translate_requests(list_after: List[str]) -> List[str]:
+def unpacketize_translate_requests(list_after: List[str]) -> List[str]:
 	"""
-	Opposite of combine_translate_requests(). Breaks each string at newlines and flattens result into one long list.
+	Opposite of packetize_translate_requests(). Breaks each string at newlines and flattens result into one long list.
 	
 	:param list_after: list of newline-joined strings
 	:return: list of strings not containing newlines
@@ -289,8 +289,7 @@ def google_translate(in_list: Union[List[str],str], strategy=1) -> Union[List[st
 	
 	use_chunk_strat = True if strategy == 1 else False
 	
-	# in_list -> pretrans
-	# in_list -> jp_chunks -> jp_chunks_combined -> results_combined -> results
+	# in_list -> pretrans -> jp_chunks_set -> jp_chunks -> jp_chunks_packets -> results_packets -> results
 	# jp_chunks + results -> google_dict
 	# pretrans + google_dict -> outlist
 	
@@ -298,7 +297,7 @@ def google_translate(in_list: Union[List[str],str], strategy=1) -> Union[List[st
 	indents, bodies, suffixes = translation_tools.pre_translate(in_list)
 	
 	# 2. identify chunks
-	jp_chunks = set()
+	jp_chunks_set = set()
 	# idea: walk & look for transition from en to jp?
 	for s in bodies:  # for every string to translate,
 		rstart = 0
@@ -312,61 +311,63 @@ def google_translate(in_list: Union[List[str],str], strategy=1) -> Union[List[st
 				rstart = i
 			# if it was jp and is now latin, then this is the end of a range (not including here). save it!
 			elif is_latin and not prev_islatin:
-				jp_chunks.add(s[rstart:i])
+				jp_chunks_set.add(s[rstart:i])
 			prev_islatin = is_latin
 		# now outside the loop... if i ended with a non-latin char, grab the final range & add that too
 		if not is_latin:
-			jp_chunks.add(s[rstart:len(s)])
+			jp_chunks_set.add(s[rstart:len(s)])
 	
-	# 3. organize/collect chunks
-	jp_chunks = list(jp_chunks)
+	# 3. remove chunks I can already solve
+	# maybe localtrans can solve one chunk but not the whole string?
+	# chunks are guaranteed to not be PART OF compound words. but they are probably compound words themselves.
+	# run local trans on each chunk individually, and if it succeeds, then DON'T send it to google.
 	localtrans_dict = dict()
-	# remove the chunks that can already be translated
-	# chunks are guaranteed to not be PART OF compound words, probably. but they are probably compound words themselves.
-	# so any exact matches with my words-dict should be valid!
-	jp_chunks_localtrans = translation_tools.piecewise_translate(jp_chunks, translation_tools.words_dict)
-	# results are chunk+trans: split into (where trans failed) (where trans passed)
-	# use "is_jp"->fail and not "needs_translate" so I am only sending actual JP stuff to Google and not unicode arrows or whatever
-	trans_fail, trans_pass = core.my_list_partition(zip(jp_chunks, jp_chunks_localtrans), lambda x: translation_tools.is_jp(x[1]))
-	# new: since I add the entire words_dict later, and that means this will be translated the same way later, no reason to add it here
-	# for chunk, trans in trans_pass:
-	# 	# if it passed, no need to ask google what they mean cuz I already have a good translation
-	# 	localtrans_dict[chunk] = trans
-	jp_chunks = [j[0] for j in trans_fail]  # rebuild the jp_chunks list for the ones that failed
-	
-	# 4. combine them into fewer requests
-	jp_chunks_combined = combine_translate_requests(jp_chunks)
-	pretrans_combined = combine_translate_requests(bodies)
-	if strategy == 2:    use_chunk_strat = (len(jp_chunks_combined) < len(pretrans_combined))
+	jp_chunks = []
+	for chunk in list(jp_chunks_set):
+		trans = translation_tools.piecewise_translate(chunk, translation_tools.words_dict)
+		if translation_tools.is_jp(trans):
+			# if the localtrans failed, then the chunk needs to be sent to google later
+			jp_chunks.append(chunk)
+		else:
+			# if it passed, no need to ask google what they mean cuz I already have a good translation for this chunk
+			# this will be added to the dict way later
+			localtrans_dict[chunk] = trans
+		
+	# 4. packetize them into fewer requests (and if auto, choose whether to use chunks or not)
+	jp_chunks_packets = packetize_translate_requests(jp_chunks)
+	jp_bodies_packets = packetize_translate_requests(bodies)
+	if strategy == 2:    use_chunk_strat = (len(jp_chunks_packets) < len(jp_bodies_packets))
 	
 	# 5. check the translate budget to see if I can afford this
-	num_calls = len(jp_chunks_combined) if use_chunk_strat else len(pretrans_combined)
+	if use_chunk_strat: num_calls = len(jp_chunks_packets)
+	else:               num_calls = len(jp_bodies_packets)
+	
 	global _DISABLE_INTERNET_TRANSLATE
 	if check_translate_budget(num_calls) and not _DISABLE_INTERNET_TRANSLATE:
 		core.MY_PRINT_FUNC("... making %d requests to Google Translate web API..." % num_calls)
 	else:
 		# no need to print failing statement, the function already does
+		# don't quit early, run thru the same full structure & eventually return a copy of the JP names
 		core.MY_PRINT_FUNC("Just copying JP -> EN while Google Translate is disabled")
 		_DISABLE_INTERNET_TRANSLATE = True
-	# don't quit early, run thru the same full structure & eventually return a copy of the JP names
 	
 	# 6. send chunks to Google
-	results_combined = []
+	results_packets = []
 	if use_chunk_strat:
-		for d, combined in enumerate(jp_chunks_combined):
-			core.print_progress_oneline(d / len(jp_chunks_combined))
-			r = _single_google_translate(combined)
-			results_combined.append(r)
+		for d, packet in enumerate(jp_chunks_packets):
+			core.print_progress_oneline(d / len(jp_chunks_packets))
+			r = _single_google_translate(packet)
+			results_packets.append(r)
 		
 		# 7. assemble Google responses & re-associate with the chunks
-		results = unpack_translate_requests(results_combined)  # unpack so they align once more
+		# order of inputs "jp_chunks" matches order of outputs "results"
+		results = unpacketize_translate_requests(results_packets)  # unpack
 		google_dict = dict(zip(jp_chunks, results))  # build dict
 		
-		print("#items=", len(in_list), "#chunks=", len(jp_chunks), "#requests=", len(jp_chunks_combined))
+		print("#items=", len(in_list), "#chunks=", len(jp_chunks), "#requests=", len(jp_chunks_packets))
 		print(google_dict)
 		
 		google_dict.update(localtrans_dict)  # add dict entries from things that succeeded localtrans
-		# google_dict.update(translation_tools.symbols_dict)  # add various non-jp symbols i do know how to translate
 		google_dict.update(translation_tools.words_dict)  # add the full-blown words dict to the chunk-translate results
 		# dict->list->sort->dict: sort the longest chunks first, VERY CRITICAL so things don't get undershadowed!!!
 		google_dict = dict(sorted(list(google_dict.items()), reverse=True, key=lambda x: len(x[0])))
@@ -375,22 +376,22 @@ def google_translate(in_list: Union[List[str],str], strategy=1) -> Union[List[st
 		outlist = translation_tools.piecewise_translate(bodies, google_dict)
 	else:
 		# old style: just translate the strings directly and return their results
-		for d, combined in enumerate(pretrans_combined):
-			core.print_progress_oneline(d / len(pretrans_combined))
-			r = _single_google_translate(combined)
-			results_combined.append(r)
-		outlist = unpack_translate_requests(results_combined)
+		for d, packet in enumerate(jp_bodies_packets):
+			core.print_progress_oneline(d / len(jp_bodies_packets))
+			r = _single_google_translate(packet)
+			results_packets.append(r)
+		outlist = unpacketize_translate_requests(results_packets)
 	
 	# last, reattach the indents and suffixes
-	outlist = [i + b + s for i, b, s in zip(indents, outlist, suffixes)]
+	outlist_final = [i + b + s for i, b, s in zip(indents, outlist, suffixes)]
 	
 	if not _DISABLE_INTERNET_TRANSLATE:
 		# if i did use internet translate, print this line when done
 		core.MY_PRINT_FUNC("... done!")
 	
 	# return
-	if input_is_str: return outlist[0]  # if original input was a single string, then de-listify
-	else:			return outlist  # otherwise return as a list
+	if input_is_str: return outlist_final[0]  # if original input was a single string, then de-listify
+	else:            return outlist_final  # otherwise return as a list
 
 ################################################################################################################
 
@@ -573,6 +574,9 @@ def translate_to_english(pmx, moreinfo=False):
 	# done translating!!!!!
 	###########################################
 	
+	# just for sanity check, discard anything where old name == new name and type > 0
+	# therefore keep the opposite
+	translate_maps = [m for m in translate_maps if not (m.en_old == m.en_new and m.trans_type > 0)]
 	# now, determine if i actually changed anything at all before bothering to try applying stuff
 	type_fail, temp = 		core.my_list_partition(translate_maps, lambda x: x.trans_type == -1)
 	type_good, temp = 		core.my_list_partition(temp, lambda x: x.trans_type == 0)

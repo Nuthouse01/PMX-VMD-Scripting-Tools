@@ -98,7 +98,7 @@ morph_dict = {
 "はちゅ目縦潰れ": "O.O height",
 "はちゅ目横潰れ": "O.O width",
 "ハイライト消し": "highlight off",
-"瞳小": "pupil small", # "pupil"
+"瞳小": "scared", # "pupil"
 "恐ろしい子!": "white eye", # literally "scary child!" who the hell thought that was a good name?
 "ぺろっ": "tongue out",  # phonetically "perrow"
 "べー": "beeeeh", # another way of doing "tongue out" but google likes to turn this into 'base'
@@ -114,7 +114,6 @@ morph_dict = {
 "前": "brow fwd",
 "涙": "tears",
 "ん": "hmm", # wtf is this translation
-"ー": "--", # not sure what to do with this, often used to mean continuation of a sound/syllable...
 }
 
 # add the symbols into the morph dict
@@ -262,12 +261,14 @@ words_dict = {
 "乳首": "nipple",
 "乳輪": "areola",
 "ブラ": "bra",
+"ブラジャー": "bra",
 "耳": "ear",  # phonetically "mimi"
 "みみ": "ear",  # phonetically "mimi"
 "閉じ": "close",
 "開く": "open",
 "開け": "open",
 "開き": "open",
+"オープン": "open",  # phonetically "opun"
 "髪の毛": "hair", # this literally means hair of hair??? odd
 "毛": "hair",
 "髪": "hair",
@@ -303,8 +304,9 @@ words_dict = {
 "ハイライト": "highlight",
 "ﾊｲﾗｲﾄ": "highlight",
 "艶": "gloss",
-"靴": "shoe",  # phonetically "kutsu"
-"くつ": "shoe",  # phonetically "kutsu"
+"靴下": "socks",
+"靴": "shoes",  # phonetically "kutsu"
+"くつ": "shoes",  # phonetically "kutsu"
 "顔": "face",
 "額": "forehead",
 "ほほ": "cheek",  # phonetically "hoho"
@@ -342,7 +344,8 @@ words_dict = {
 "頭": "head",
 "帽子": "hat",
 "金属": "metal",
-"紐": "string",  # or cord
+"紐": "string",  # phonetically "himo", string or cord
+"ひも": "string",  # phonetically "himo", string or cord
 "ダミー": "dummy",
 "ﾀﾞﾐ": "dummy",
 "半": "half",
@@ -372,6 +375,7 @@ words_dict = {
 "犬": "dog",
 "猫": "cat",  # phonetically "neko"
 "ねこ": "cat",  # phonetically "neko"
+"ネコ": "cat",  # phonetically "neko"
 "獣": "animal",
 "くち": "mouth",  # phonetically "kuchi"
 "口": "mouth",  # phonetically "kuchi"
@@ -453,9 +457,11 @@ words_dict = {
 "ぺろっ": "tongue out",  # phonetically "perrow"
 "べー": "beeeeh",  # another way of doing "tongue out"
 "持ち": "hold",  # perhaps grab? holding? 手持ち = handheld
+"ホールド": "hold",  # phonetically "horudo"
 "ずらし": "shift",
 "短": "short",
 "長": "long",
+"長い": "long",
 
 "穏やか": "calm",
 "螺旋": "spiral",
@@ -523,6 +529,7 @@ words_dict = {
 "にやり": "grin",
 "ニヤリ": "grin",  # these 2 are phonetically the same, "niyari"
 "にっこり": "smile",
+"キッス": "kiss",
 "ムッ": "upset",
 "照れ": "blush",
 "赤面": "blush",
@@ -675,6 +682,7 @@ DEBUG = False
 # not 100% confident this is right, there are probably other characters that can display just fine in MMD like accents
 # TODO: check for other chars that can display in MMD just fine, try accents maybe
 def is_latin(text:str) -> bool:
+	""" will display perfectly in EN MMD version """
 	return all(ord(c) < 128 for c in text)
 
 def is_jp(text:str) -> bool:
