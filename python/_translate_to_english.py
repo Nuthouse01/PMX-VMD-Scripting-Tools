@@ -35,6 +35,11 @@ DEBUG = True
 PREFER_EXISTING_ENGLISH_NAME = True
 
 
+# by default, do not display copyJP/exactmatch modifications
+# if this is true, they will also be shown
+SHOW_ALL_CHANGED_FIELDS = False
+
+
 # these english names will be treated as tho they do not exist and overwritten no matter what:
 FORBIDDEN_ENGLISH_NAMES = ["en", "d"]
 
@@ -574,9 +579,11 @@ def translate_to_english(pmx, moreinfo=False):
 	# done translating!!!!!
 	###########################################
 	
-	# just for sanity check, discard anything where old name == new name and type > 0
-	# therefore keep the opposite
-	translate_maps = [m for m in translate_maps if not (m.en_old == m.en_new and m.trans_type > 0)]
+	# sanity check: if old result matches new result, then force type to be nochange
+	# only relevant if PREFER_EXISTING_ENGLISH_NAME = False
+	for m in translate_maps:
+		if m.en_old == m.en_new and m.trans_type not in (-1, 0):
+			m.trans_type = 0
 	# now, determine if i actually changed anything at all before bothering to try applying stuff
 	type_fail, temp = 		core.my_list_partition(translate_maps, lambda x: x.trans_type == -1)
 	type_good, temp = 		core.my_list_partition(temp, lambda x: x.trans_type == 0)
@@ -624,7 +631,10 @@ def translate_to_english(pmx, moreinfo=False):
 		if moreinfo:
 			# hide good/copyJP/exactmatch cuz those are uninteresting and guaranteed to be safe
 			# only show piecewise and google translations and fails
-			maps_printme = [item for item in translate_maps if item.trans_type > 2 or item.trans_type == -1]
+			if SHOW_ALL_CHANGED_FIELDS:
+				maps_printme = [item for item in translate_maps if item.trans_type != 0]
+			else:
+				maps_printme = [item for item in translate_maps if item.trans_type > 2 or item.trans_type == -1]
 		else:
 			# if moreinfo not enabled, only show fails
 			maps_printme = type_fail
