@@ -73,6 +73,8 @@ morph_dict = {
 "しいたけ": "star eyes", # "shiitake"
 "ハート目": "heart eyes",
 "ハート": "heart eyes",
+"はぁと目": "heart eyes",
+"はぁと": "heart eyes",
 "ぐるぐる": "dizzy eyes", # perhaps "spinny"
 "ぐる": "dizzy eyes", # perhaps "spinny"
 "グルグル": "dizzy eyes", # perhaps "spinny"
@@ -99,7 +101,7 @@ morph_dict = {
 "はちゅ目横潰れ": "O.O width",
 "ハイライト消し": "highlight off",
 "瞳小": "scared", # "pupil"
-"恐ろしい子!": "white eye", # literally "scary child!" who the hell thought that was a good name?
+"恐ろしい子!": "white eyes", # literally "scary child!" who the hell thought that was a good name?
 "ぺろっ": "tongue out",  # phonetically "perrow"
 "べー": "beeeeh", # another way of doing "tongue out" but google likes to turn this into 'base'
 "あ": "a",
@@ -112,6 +114,7 @@ morph_dict = {
 "上": "brow up", # "go up"
 "下": "brow down", # "go down"
 "前": "brow fwd",
+"後": "brow back",
 "涙": "tears",
 "ん": "hmm", # wtf is this translation
 }
@@ -200,6 +203,7 @@ frame_dict = {
 "物理-その他": "Physics - Other",
 "その他-物理": "Other - Physics",
 "服": "Clothes",
+"胸": "Breasts",
 "猫耳": "Nekomimi",
 "ねこ耳": "Nekomimi",
 "獣耳": "Kemonomimi",
