@@ -159,6 +159,7 @@ symbols_dict = {
 "★": "*",  #x2605
 "☆": "*",  #x2606
 "〜": "~",  # x301C wave dash, not a "fullwidth tilde"
+"～": "~",  # xff5e "fullwidth tilde" causes some issues
 "○": "O",  #x25cb
 "◯": "O",  #x25ef
 "〇": "O",  # x3007
@@ -169,11 +170,13 @@ symbols_dict = {
 morph_dict = {
 "ω□": "w open",  # without this entry it translates to "w box", and i dont like that
 "まばたき": "blink",
-"笑い": "happy", # pmxe translates to "smile" but this is an eye morph
+"笑い": "laughing", # "warai" = laugh/laughing/laughter pmxe translates to "smile" but this is an eye morph
 "ウィンク": "wink",
+# "ウィンク右": "wink_R",  # not acutally possible cuz of pretranslate
 "ウィンク2": "wink2",
 "ウィンク右2": "wink2_R",
 "ｳｨﾝｸ": "wink",
+# "ｳｨﾝｸ右": "wink_R",  # not acutally possible cuz of pretranslate
 "ｳｨﾝｸ2": "wink2",
 "ｳｨﾝｸ右2": "wink2_R",
 "ジト目": "doubt",
@@ -205,8 +208,8 @@ morph_dict = {
 "ｺｯﾁﾐﾝﾅ": "camera eyes",  # phonetically "Kotchiminna", might informally translate to "this guy" or "everyone" i guess? functionally same as "camera eyes" tho
 "こっちみんな": "camera eyes", # phonetically "Kotchiminna", google translates to "don't look at me" maybe like "not my fault"?
 "はぅ": ">.<",
-"にやり": "grin",
-"ニヤリ": "grin",  # these 2 are phonetically the same, "niyari"
+"にやり": "grin",  # phonetically "niyari", not totally sure how this is different from "smile"
+"ニヤリ": "grin",  # phonetically "niyari"
 "にっこり": "smile",  # phonetically "nikkori"
 "スマイル": "smile",  # phonetically "sumairu" aka engrish for "smile"
 "ムッ": "upset",
@@ -736,6 +739,7 @@ odd_punctuation_dict = {
 "】": "]",  # x3011
 "・": "-",  # x30fb, could map to 00B7 but i don't think MMD would display that either
 "〜": "~",  # x301C wave dash, not a "fullwidth tilde"
+"～": "~",  # xff5e "fullwidth tilde" causes some issues
 "｟": "(",  # xff5f
 "｠": ")",  # xff60
 "｡": ".",  #xff61
