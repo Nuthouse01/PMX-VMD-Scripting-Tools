@@ -31,7 +31,8 @@ dest_1_str =   input("  dest point 1: ")
 moveme_2_str = input("moveme point 2: ")
 dest_2_str =   input("  dest point 2: ")
 
-DIMENSIONS = 2
+DIMENSIONS = 3
+CHECK_ROTATION = False
 
 points_str = [moveme_1_str, moveme_2_str, dest_1_str, dest_2_str]
 points = []
@@ -60,7 +61,7 @@ moveme_delta = [from1[i] - from2[i] for i in range(DIMENSIONS)]
 dest_delta =   [dest1[i] - dest2[i] for i in range(DIMENSIONS)]
 
 
-if DIMENSIONS == 2:
+if DIMENSIONS == 2 and CHECK_ROTATION:
 	# check if any rotation is needed!
 	moveme_angle = math.atan2(moveme_delta[1], moveme_delta[0])
 	dest_angle = math.atan2(dest_delta[1], dest_delta[0])
