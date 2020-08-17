@@ -15,11 +15,13 @@
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_vmd_parser as vmdlib
+	from . import nuthouse01_vmd_struct as vmdstruct
 	from . import nuthouse01_pmx_parser as pmxlib
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_vmd_parser as vmdlib
+		import nuthouse01_vmd_struct as vmdstruct
 		import nuthouse01_pmx_parser as pmxlib
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
@@ -27,7 +29,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = vmdlib = pmxlib = None
+		core = vmdlib = vmdstruct = pmxlib = None
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
@@ -402,26 +404,27 @@ def main(moreinfo=True):
 	
 	if INCLUDE_IK_ENABLE_FRAME:
 		# create a single ikdispframe that enables the ik bones at frame 0
-		ikbones = [vmdlib.VmdIkbone(name=jp_rightfoot_ik, enable=True),
-		           vmdlib.VmdIkbone(name=jp_righttoe_ik, enable=True),
-		           vmdlib.VmdIkbone(name=jp_leftfoot_ik, enable=True),
-		           vmdlib.VmdIkbone(name=jp_lefttoe_ik, enable=True)]
-		ikdispframe_list = [vmdlib.VmdIkdispFrame(f=0,disp=True,ikbones=ikbones)]
+		ikbones = [vmdstruct.VmdIkbone(name=jp_rightfoot_ik, enable=True),
+				   vmdstruct.VmdIkbone(name=jp_righttoe_ik, enable=True),
+				   vmdstruct.VmdIkbone(name=jp_leftfoot_ik, enable=True),
+				   vmdstruct.VmdIkbone(name=jp_lefttoe_ik, enable=True)]
+		ikdispframe_list = [vmdstruct.VmdIkdispFrame(f=0, disp=True, ikbones=ikbones)]
 	else:
 		ikdispframe_list = []
 		core.MY_PRINT_FUNC("Warning: IK following will NOT be enabled when this VMD is loaded, you will need enable it manually!")
 	
 	# convert old-style bonelist ikframe_list to new object format
-	ikframe_list = [vmdlib.VmdBoneFrame(name=r[0],f=r[1],pos=r[2:5],rot=r[5:8],phys_off=r[8],interp=r[9:]) for r in ikframe_list]
+	ikframe_list = [vmdstruct.VmdBoneFrame(name=r[0], f=r[1], pos=r[2:5], rot=r[5:8], phys_off=r[8], interp=r[9:]) for r in ikframe_list]
 	# build actual VMD object
-	nicelist_out = vmdlib.Vmd(vmdlib.VmdHeader(2,"SEMISTANDARD-IK-BONES--------"),
-					          ikframe_list,		# bone
-					          [],				# morph
-					          [],				# cam
-					          [],				# light
-					          [],				# shadow
-					          ikdispframe_list	# ikdisp
-							  )
+	nicelist_out = vmdstruct.Vmd(
+		vmdstruct.VmdHeader(2, "SEMISTANDARD-IK-BONES--------"),
+		ikframe_list,  # bone
+		[],  # morph
+		[],  # cam
+		[],  # light
+		[],  # shadow
+		ikdispframe_list  # ikdisp
+		)
 	
 	
 	# write out

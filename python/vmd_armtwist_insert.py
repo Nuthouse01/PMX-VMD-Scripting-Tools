@@ -12,21 +12,23 @@ import math
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
-	from . import nuthouse01_vmd_parser as vmdlib
-	from . import nuthouse01_pmx_parser as pmxlib
 	from . import nuthouse01_core as core
+	from . import nuthouse01_vmd_parser as vmdlib
+	from . import nuthouse01_vmd_struct as vmdstruct
+	from . import nuthouse01_pmx_parser as pmxlib
 except ImportError as eee:
 	try:
-		import nuthouse01_vmd_parser as vmdlib
-		import nuthouse01_pmx_parser as pmxlib
 		import nuthouse01_core as core
+		import nuthouse01_vmd_parser as vmdlib
+		import nuthouse01_vmd_struct as vmdstruct
+		import nuthouse01_pmx_parser as pmxlib
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = vmdlib = pmxlib = None
+		core = vmdlib = vmdstruct = pmxlib = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -222,13 +224,13 @@ def main(moreinfo=True):
 					# interpolate from prev to this by amount Y
 					interp_quat = core.my_slerp(prevframequat, thisframequat, y)
 					# begin building the new frame
-					newframe = vmdlib.VmdBoneFrame(name=this.name,  # same name
-												   f=interp_framenum,  # overwrite frame num
-												   pos=list(this.pos),  # same pos (but make a copy)
-												   rot=list(core.quaternion_to_euler(interp_quat)),  # overwrite euler angles
-												   phys_off=this.phys_off,  # same phys_off
-												   interp=list(core.bone_interpolation_default_linear)  # overwrite interpolation
-												   )
+					newframe = vmdstruct.VmdBoneFrame(name=this.name,  # same name
+																		 f=interp_framenum,  # overwrite frame num
+																		 pos=list(this.pos),  # same pos (but make a copy)
+																		 rot=list(core.quaternion_to_euler(interp_quat)),  # overwrite euler angles
+																		 phys_off=this.phys_off,  # same phys_off
+																		 interp=list(core.bone_interpolation_default_linear)  # overwrite interpolation
+																		 )
 					newframelist.append(newframe)
 				# overwrite thisframe interp curve with default too
 				this.interp = list(core.bone_interpolation_default_linear) # overwrite custom interpolation
@@ -274,13 +276,13 @@ def main(moreinfo=True):
 			# create & store new twistbone frame
 			# name=twistbone, framenum=copy, XYZpos=copy, XYZrot=new, phys=copy, interp16=copy
 			new_twistbone_euler = core.quaternion_to_euler(twist)
-			newframe = vmdlib.VmdBoneFrame(name=twistbone,
-										   f=frame.f,
-										   pos=list(frame.pos),
-										   rot=list(new_twistbone_euler),
-										   phys_off=frame.phys_off,
-										   interp=list(frame.interp)
-										   )
+			newframe = vmdstruct.VmdBoneFrame(name=twistbone,
+																 f=frame.f,
+																 pos=list(frame.pos),
+																 rot=list(new_twistbone_euler),
+																 phys_off=frame.phys_off,
+																 interp=list(frame.interp)
+																 )
 			new_twistbone_frames.append(newframe)
 			# print progress updates
 			curr_progress += 1

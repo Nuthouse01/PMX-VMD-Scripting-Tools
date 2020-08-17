@@ -10,17 +10,19 @@ import re
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_vmd_parser as vmdlib
+	from . import nuthouse01_vmd_struct as vmdstruct
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_vmd_parser as vmdlib
+		import nuthouse01_vmd_struct as vmdstruct
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = vmdlib = None
+		core = vmdlib = vmdstruct = None
 
 ########################################################################################################################
 # constants & options
@@ -57,7 +59,7 @@ f4_re = re.compile(f4_pattern)
 # primary functions: read_vpd() and write_vpd()
 ########################################################################################################################
 
-def read_vpd(vpd_filepath: str, moreinfo=False) -> vmdlib.Vmd:
+def read_vpd(vpd_filepath: str, moreinfo=False) -> vmdstruct.Vmd:
 	"""
 	Read a VPD text file and convert it to a VMD object with all boneframes and morphframes at time=0.
 	
@@ -164,12 +166,12 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> vmdlib.Vmd:
 			# finish the bone-obj and add to VMD structure
 			# this_boneframe = [bname_str, f, xp, yp, zp, xrot, yrot, zrot, phys_off, x_ax, y_ax, z_ax, r_ax, x_ay, y_ay,
 			# 				  z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by]
-			newframe = vmdlib.VmdBoneFrame(name=temp_name,
-										   f=0,
-										   pos=temp_pos,
-										   rot=list(temp_rot),
-										   phys_off=False,
-										   interp=list(core.bone_interpolation_default_linear))
+			newframe = vmdstruct.VmdBoneFrame(name=temp_name,
+																 f=0,
+																 pos=temp_pos,
+																 rot=list(temp_rot),
+																 phys_off=False,
+																 interp=list(core.bone_interpolation_default_linear))
 			vmd_boneframes.append(newframe)
 			if len(vmd_boneframes) == num_bones:	parse_state = 30  # if i got all the bones i expected, move to morphs
 			else:									parse_state = 20  # otherwise, get another bone
@@ -203,9 +205,9 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> vmdlib.Vmd:
 				raise RuntimeError()
 			# finish the morph-obj and add to VMD structure
 			# morphframe_list.append([mname_str, f, v])
-			newframe = vmdlib.VmdMorphFrame(name=temp_name,
-											f=0,
-											val=temp_value)
+			newframe = vmdstruct.VmdMorphFrame(name=temp_name,
+																  f=0,
+																  val=temp_value)
 			vmd_morphframes.append(newframe)
 			parse_state = 30  # loop morphs until end-of-file
 		
@@ -222,16 +224,17 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> vmdlib.Vmd:
 	
 	# after hitting end-of-file, assemble the parts of the final returnable VMD-list thing
 	# builds object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
-	vmd_retme = vmdlib.Vmd(vmdlib.VmdHeader(version=2, modelname=temp_title),
-						   vmd_boneframes,
-						   vmd_morphframes,
-						   list(), list(), list(), list())
+	vmd_retme = vmdstruct.Vmd(
+		vmdstruct.VmdHeader(version=2, modelname=temp_title),
+		vmd_boneframes,
+		vmd_morphframes,
+		list(), list(), list(), list())
 	
 	core.MY_PRINT_FUNC("Done reading VPD file '%s'" % cleanname)
 	
 	return vmd_retme
 
-def write_vpd(vpd_filepath: str, vmd: vmdlib.Vmd, moreinfo=False):
+def write_vpd(vpd_filepath: str, vmd: vmdstruct.Vmd, moreinfo=False):
 	"""
 	Grab all bone/morph frames at time=0 in a VMD object and write them to a properly-formatted VPD text file.
 	
