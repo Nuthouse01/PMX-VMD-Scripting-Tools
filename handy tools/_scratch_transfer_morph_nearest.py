@@ -42,7 +42,7 @@ def main():
 		if s == "": break
 		
 		# find the morph with the matching name
-		source_morph = core.my_sublist_find(source_pmx[6], 0, s)
+		source_morph = core.my_list_search(source_pmx[6], lambda x: x[0] == s, getitem=True)
 		if source_morph is None:
 			print("err: could not find that name, try again")
 			continue

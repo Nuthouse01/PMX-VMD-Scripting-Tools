@@ -48,12 +48,6 @@ This will also ensure that "motherbone" is only bone in "root" frame, add any mo
 iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_dispframe.pmx"
 '''
 
-def my_sublist_find(searchme, condition, getindex=True):
-	# in a list, find the first item that passes the given criteria
-	for d,row in enumerate(searchme):
-		if condition(row) is True:
-			return d if getindex else row
-	return None
 
 
 def showhelp():
@@ -80,7 +74,7 @@ def dispframe_fix(pmx, moreinfo=False):
 	empty_groups_removed = 0
 	
 	# find the ID# for motherbone... if not found, use whatever is at 0
-	motherid = my_sublist_find(pmx[5], lambda x: x[0] == "全ての親")
+	motherid = core.my_list_search(pmx[5], lambda x: x[0] == "全ての親")
 	if motherid is None:
 		motherid = 0
 	
@@ -100,19 +94,19 @@ def dispframe_fix(pmx, moreinfo=False):
 	
 	# fix the contents of the "center"/"センター" group
 	# first, find it, or if it does not exist, make it
-	centerid = my_sublist_find(pmx[7], lambda x: x[0] == "センター")
+	centerid = core.my_list_search(pmx[7], lambda x: x[0] == "センター")
 	if centerid is None:
 		centerid = 2
 		pmx[7].insert(2, ["センター", "Center", 0, []])
 		fix_center += 1
 	# if i set "motherbone" to be root, then remove it from center
 	if fix_root:
-		removeme = my_sublist_find(pmx[7][centerid][3], lambda x: x[1] == motherid)
+		removeme = core.my_list_search(pmx[7][centerid][3], lambda x: x[1] == motherid)
 		if removeme is not None:
 			pmx[7][centerid][3].pop(removeme)
 	# ensure center contains the proper semistandard contents: view/center/groove/waist
 	# find bone IDs for each of these desired bones
-	centerframeboneids = [my_sublist_find(pmx[5], lambda x: x[0] == name) for name in centerframebones]
+	centerframeboneids = [core.my_list_search(pmx[5], lambda x: x[0] == name) for name in centerframebones]
 	for boneid in centerframeboneids:
 		if boneid is None: continue  # if this bone does not exist, skip
 		if any(item[1]==boneid for item in pmx[7][centerid][3]): continue  # if this bone already in center, skip

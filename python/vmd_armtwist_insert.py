@@ -137,7 +137,7 @@ def main(moreinfo=True):
 	# fallback plan: find the arm-to-elbow and elbow-to-wrist unit vectors and use those
 	for i in range(len(jp_twistbones)):
 		# jp bone name is at index 0
-		r = core.my_sublist_find(realbones, 0, jp_twistbones[i])
+		r = core.my_list_search(realbones, lambda x: x[0] == jp_twistbones[i], getitem=True)
 		if r is None:
 			core.MY_PRINT_FUNC("ERROR1: twist bone '{}'({}) cannot be found model, unable to continue. Ensure they use the correct semistandard names, or edit the script to change the JP names it is looking for.".format(jp_twistbones[i], eng_twistbones[i]))
 			raise RuntimeError()
@@ -146,11 +146,11 @@ def main(moreinfo=True):
 			twistbone_axes.append(r[18])
 		else:
 			# i can infer local axis by angle from arm-to-elbow or elbow-to-wrist
-			start = core.my_sublist_find(realbones, 0, jp_sourcebones[i])
+			start = core.my_list_search(realbones, lambda x: x[0] == jp_sourcebones[i], getitem=True)
 			if start is None:
 				core.MY_PRINT_FUNC("ERROR2: semistandard bone '%s' is missing from the model, unable to infer axis of rotation" % jp_sourcebones[i])
 				raise RuntimeError()
-			end = core.my_sublist_find(realbones, 0, jp_pointat_bones[i])
+			end = core.my_list_search(realbones, lambda x: x[0] == jp_pointat_bones[i], getitem=True)
 			if end is None:
 				core.MY_PRINT_FUNC("ERROR3: semistandard bone '%s' is missing from the model, unable to infer axis of rotation" % jp_pointat_bones[i])
 				raise RuntimeError()

@@ -118,7 +118,7 @@ def main():
 			
 			# # inputs will be the bones to be removed AND their current endpoints, must distinguish between them
 			# # if a bone's parent is found within the input list, then it is an endpoint, skip it
-			# if core.my_sublist_find(rawlist_bone, 1, line[13]) is not None:
+			# if core.my_list_search(rawlist_bone, 1, line[13]) is not None:
 			# 	continue
 
 			# if it is set to "offset" mode instead of "link" then skip it
@@ -130,7 +130,7 @@ def main():
 				continue
 				
 			# this bone is linked to some other bone. find the other bone it is pointing at
-			target = core.my_sublist_find(rawlist_bone, 1, line[15])
+			target = core.my_list_search(rawlist_bone, lambda x: x[1] == line[15], getitem=True)
 			if target is None:
 				# jp name + eng name
 				print("Warning, bone '{}/{}' is linking to a bone that isn't included in the input file, skipping".format(line[1], line[2]))

@@ -124,10 +124,10 @@ def main(moreinfo=True):
 			break
 		# then get the morph index from this
 		# search JP names first
-		dest_idx = core.my_sublist_find(pmx[5], 0, s, getindex=True)
+		dest_idx = core.my_list_search(pmx[5], lambda x: x[0] == s)
 		if dest_idx is not None: break  # did i find a match?
 		# search EN names next
-		dest_idx = core.my_sublist_find(pmx[5], 1, s, getindex=True)
+		dest_idx = core.my_list_search(pmx[5], lambda x: x[1] == s)
 		if dest_idx is not None: break  # did i find a match?
 		# try to cast to int next
 		try:
@@ -158,10 +158,10 @@ def main(moreinfo=True):
 			break
 		# then get the morph index from this
 		# search JP names first
-		source_idx = core.my_sublist_find(pmx[5], 0, s, getindex=True)
+		source_idx = core.my_list_search(pmx[5], lambda x: x[0] == s)
 		if source_idx is not None: break  # did i find a match?
 		# search EN names next
-		source_idx = core.my_sublist_find(pmx[5], 1, s, getindex=True)
+		source_idx = core.my_list_search(pmx[5], lambda x: x[1] == s)
 		if source_idx is not None: break  # did i find a match?
 		# try to cast to int next
 		try:

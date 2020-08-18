@@ -370,26 +370,26 @@ def main(moreinfo=True):
 			# 1. first, validate that start/end exist, these are required
 			# NOTE: remember to prepend 'side' before all jp names!
 			start_jp = side+boneset[0]
-			start_idx = core.my_sublist_find(pmx[5], 0, start_jp, getindex=True)
+			start_idx = core.my_list_search(pmx[5], lambda x: x[0] == start_jp)
 			if start_idx is None:
 				core.MY_PRINT_FUNC("ERROR: standard bone '%s' not found in model, this is required!" % start_jp)
 				continue
 			end_jp = side+boneset[1]
-			end_idx = core.my_sublist_find(pmx[5], 0, end_jp, getindex=True)
+			end_idx = core.my_list_search(pmx[5], lambda x: x[0] == end_jp)
 			if end_idx is None:
 				core.MY_PRINT_FUNC("ERROR: standard bone '%s' not found in model, this is required!" % end_jp)
 				continue
 			
 			# 2. determine whether the 'preferredparent' exists and therefore what to acutally use as the parent
 			parent_jp = side+boneset[2]
-			parent_idx = core.my_sublist_find(pmx[5], 0, parent_jp, getindex=True)
+			parent_idx = core.my_list_search(pmx[5], lambda x: x[0] == parent_jp)
 			if parent_idx is None:
 				parent_idx = start_idx
 			
 			# 3. attempt to collapse known armtwist rig names onto 'parent' so that the base case is further automated
 			# for each bonename in boneset[3], if it exists, collapse onto boneidx parent_idx
 			for bname in boneset[3]:
-				rig_idx = core.my_sublist_find(pmx[5], 0, side+bname, getindex=True)
+				rig_idx = core.my_list_search(pmx[5], lambda x: x[0] == side+bname)
 				if rig_idx is None: continue  # if not found, try the next
 				# when it is found, what 'factor' do i use?
 				# print(side+bname)

@@ -40,10 +40,10 @@ def get_morphidx_from_name(s: str, p):
 	if s == "": return -1
 	# then get the morph index from this
 	# search JP names first
-	t = core.my_sublist_find(p[6], 0, s, getindex=True)
+	t = core.my_list_search(p[6], lambda x: x[0] == s)
 	if t is not None: return t
 	# search EN names next
-	t = core.my_sublist_find(p[6], 1, s, getindex=True)
+	t = core.my_list_search(p[6], lambda x: x[1] == s)
 	if t is not None: return t
 	# try to cast to int next
 	try:

@@ -120,7 +120,7 @@ def build_bonechain(allbones, endbone):
 	nextbone = endbone
 	buildme = []
 	while True:
-		r = core.my_sublist_find(allbones, 0, nextbone)
+		r = core.my_list_search(allbones, lambda x: x[0] == nextbone, getitem=True)
 		if r is None:
 			core.MY_PRINT_FUNC("ERROR: unable to find '" + nextbone + "' in input file, unable to build parentage chain")
 			raise RuntimeError()

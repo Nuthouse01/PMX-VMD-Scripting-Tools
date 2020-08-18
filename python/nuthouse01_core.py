@@ -136,14 +136,12 @@ def get2nd(x):
 	return x[1]
 
 # todo: revise this to be more generic & take a lambda
-def my_sublist_find(searchme, sublist_idx, matchme, getindex=False):
-	# in a list of lists, find the list with the specified value at the specified sub-index
+P = TypeVar('P')
+def my_list_search(searchme: Iterable[P], condition: Callable[[P],bool], getitem=False):
+	# in a list of things, find the first thing where the condition is true
 	for d,row in enumerate(searchme):
-		if row[sublist_idx] == matchme:
-			if getindex:
-				return d
-			else:
-				return row
+		if condition(row):
+			return row if getitem else d
 	return None
 
 T = TypeVar('T')      # Declare type variable so I can say "whatever input type is, it matches the output type"

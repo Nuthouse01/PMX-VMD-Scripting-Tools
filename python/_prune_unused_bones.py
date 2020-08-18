@@ -144,7 +144,7 @@ def identify_unused_bones(pmx: list, moreinfo: bool) -> List[int]:
 	# third: mark the "exception" bones as "used" if they are in the model
 	for protect in BONES_TO_PROTECT:
 		# get index from JP name
-		i = core.my_sublist_find(pmx[5], 0, protect, getindex=True)
+		i = core.my_list_search(pmx[5], lambda x: x[0] == protect)
 		if i is not None:
 			true_used_bones.add(i)
 	

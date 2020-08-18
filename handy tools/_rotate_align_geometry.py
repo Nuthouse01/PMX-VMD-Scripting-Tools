@@ -110,13 +110,13 @@ def main():
 	# text input 2 point IDs, to indicate the two points to align to x=0
 	prime_vertex_one = input("Prime vertex ID #1: ")
 	prime_points = []
-	v1 = core.my_sublist_find(rawlist_vertex, 1, int(prime_vertex_one))
+	v1 = core.my_list_search(rawlist_vertex, lambda x: x[1] == int(prime_vertex_one), getitem=True)
 	if v1 is None:
 		core.pause_and_quit("Err: unable to find '" + prime_vertex_one + "' in vertex CSV, unable to operate")
 	prime_points.append(copy.copy(v1))
 	
 	prime_vertex_two = input("Prime vertex ID #2: ")
-	v2 = core.my_sublist_find(rawlist_vertex, 1, int(prime_vertex_two))
+	v2 = core.my_list_search(rawlist_vertex, lambda x: x[1] == int(prime_vertex_two), getitem=True)
 	if v2 is None:
 		core.pause_and_quit("Err: unable to find '" + prime_vertex_two + "' in vertex CSV, unable to operate")
 	prime_points.append(copy.copy(v2))

@@ -77,12 +77,12 @@ def main(moreinfo=True):
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	
 	# detect whether arm ik exists
-	r = core.my_sublist_find(pmx[5], 0, jp_r + jp_newik, getindex=True)
+	r = core.my_list_search(pmx[5], lambda x: x[0] == jp_r + jp_newik)
 	if r is None:
-		r = core.my_sublist_find(pmx[5], 0, jp_r + jp_newik2, getindex=True)
-	l = core.my_sublist_find(pmx[5], 0, jp_l + jp_newik, getindex=True)
+		r = core.my_list_search(pmx[5], lambda x: x[0] == jp_r + jp_newik2)
+	l = core.my_list_search(pmx[5], lambda x: x[0] == jp_l + jp_newik)
 	if l is None:
-		l = core.my_sublist_find(pmx[5], 0, jp_l + jp_newik2, getindex=True)
+		l = core.my_list_search(pmx[5], lambda x: x[0] == jp_l + jp_newik2)
 	
 	# decide whether to create or remove arm ik
 	if r is None and l is None:
@@ -98,7 +98,7 @@ def main(moreinfo=True):
 			# even if i insert into the list, this will still be a valid reference i think
 			bones = []
 			for n in [jp_arm, jp_elbow, jp_wrist]:
-				i = core.my_sublist_find(pmx[5], 0, side + n)
+				i = core.my_list_search(pmx[5], lambda x: x[0] == side + n, getitem=True)
 				if i is None:
 					core.MY_PRINT_FUNC("ERROR1: semistandard bone '%s' is missing from the model, unable to create attached arm IK" % (side + n))
 					raise RuntimeError()
@@ -133,7 +133,7 @@ def main(moreinfo=True):
 			# copy the wrist to make the IK bone
 			en_suffix = "_L" if side == jp_l else "_R"
 			# get index of "upperbody" to use as parent of hand IK bone
-			ikpar = core.my_sublist_find(pmx[5], 0, jp_upperbody, getindex=True)
+			ikpar = core.my_list_search(pmx[5], lambda x: x[0] == jp_upperbody)
 			if ikpar is None:
 				core.MY_PRINT_FUNC("ERROR1: semistandard bone '%s' is missing from the model, unable to create attached arm IK" % jp_upperbody)
 				raise RuntimeError()
@@ -147,7 +147,7 @@ def main(moreinfo=True):
 			
 			# then add to dispframe
 			# first, does the frame already exist?
-			f = core.my_sublist_find(pmx[7], 0, jp_newik)
+			f = core.my_list_search(pmx[7], lambda x: x[0] == jp_newik, getitem=True)
 			if f is None:
 				# need to create the new dispframe! easy
 				newframe = [jp_newik, en_newik, 0, [[0, shoulder_idx + 4]]]
@@ -178,7 +178,7 @@ def main(moreinfo=True):
 		
 		# delete dispframe for hand ik
 		# first, does the frame already exist?
-		f = core.my_sublist_find(pmx[7], 0, jp_newik, getindex=True)
+		f = core.my_list_search(pmx[7], lambda x: x[0] == jp_newik)
 		if f is not None:
 			# frame already exists, delete it
 			pmx[7].pop(f)
