@@ -29,6 +29,9 @@ class _BasePmx(ABC):
 	def __str__(self) -> str: return str(self.list())
 	@abstractmethod
 	def list(self) -> list: pass
+	def __eq__(self, other):
+		if type(self) != type(other): return False
+		return self.list() == other.list()
 
 
 class PmxHeader(_BasePmx):
@@ -55,12 +58,17 @@ class PmxVertex(_BasePmx):
 				 edgescale: float,
 				 weighttype: int,
 				 weight: List[float],
-				 weight_sdef: List[float]=None,
+				 weight_sdef: List[List[float]]=None,
 				 addl_vec4s: List[List[float]]=None,
 				 ):
 		assert len(pos) == 3
 		assert len(norm) == 3
 		assert len(uv) == 2
+		if weighttype == 3 and weight_sdef is not None:
+			assert len(weight_sdef) == 3
+		if addl_vec4s is None: addl_vec4s = []
+		for av in addl_vec4s:
+			assert len(av) == 4
 		self.pos = pos
 		self.norm = norm
 		self.uv = uv
@@ -73,12 +81,7 @@ class PmxVertex(_BasePmx):
 		# 4 = qdef =  [b1, b2, b3, b4, b1w, b2w, b3w, b4w]  (only in pmx v2.1)
 		self.weighttype = weighttype
 		self.weight = weight
-		if weighttype == 3 and weight_sdef is not None:
-			assert len(weight_sdef) == 3
 		self.weight_sdef = weight_sdef
-		if addl_vec4s is None: addl_vec4s = []
-		for av in addl_vec4s:
-			assert len(av) == 4
 		self.addl_vec4s = addl_vec4s
 	def list(self) -> list:
 		return [self.pos, self.norm, self.uv, self.edgescale,
@@ -95,7 +98,7 @@ class PmxMaterial(_BasePmx):
 				 specRGB: List[float],
 				 ambRGB: List[float],
 				 alpha: float, specpower: float,
-				 edgeRGB: List[float], edgeA: float, edgesize: float,
+				 edgeRGB: List[float], edgealpha: float, edgesize: float,
 				 tex_idx: int,
 				 sph_idx: int, sph_mode: int,
 				 toon_idx: int, toon_mode: int,
@@ -103,19 +106,20 @@ class PmxMaterial(_BasePmx):
 				 faces_ct: int,
 				 flaglist: List[bool],
 				 ):
-		self.name_jp = name_jp
-		self.name_en = name_en
 		assert len(diffRGB) == 3
 		assert len(specRGB) == 3
 		assert len(ambRGB) == 3
+		assert len(edgeRGB) == 3
+		assert len(flaglist) == 8
+		self.name_jp = name_jp
+		self.name_en = name_en
 		self.diffRGB = diffRGB
 		self.specRGB = specRGB
 		self.ambRGB = ambRGB
 		self.alpha = alpha
 		self.specpower = specpower
-		assert len(edgeRGB) == 3
 		self.edgeRGB = edgeRGB
-		self.edgealpha = edgeA
+		self.edgealpha = edgealpha
 		self.edgesize = edgesize
 		self.tex_idx = tex_idx
 		self.sph_idx = sph_idx
@@ -126,7 +130,6 @@ class PmxMaterial(_BasePmx):
 		self.toon_mode = toon_mode
 		self.comment = comment
 		self.faces_ct = faces_ct
-		assert len(flaglist) == 8
 		# flaglist = [no_backface_culling, cast_ground_shadow, cast_shadow, receive_shadow, use_edge, vertex_color,
 		# 			draw_as_points, draw_as_lines]
 		self.flaglist = flaglist
@@ -139,11 +142,11 @@ class PmxMaterial(_BasePmx):
 
 class PmxBoneIkLink(_BasePmx):
 	def __init__(self, idx: int, limit_min: List[float]=None, limit_max: List[float]=None):
-		self.idx = idx
 		if limit_min is not None:
 			assert len(limit_min) == 3
 		if limit_max is not None:
 			assert len(limit_max) == 3
+		self.idx = idx
 		self.limit_min = limit_min
 		self.limit_max = limit_max
 	def list(self) -> list:
@@ -166,7 +169,7 @@ class PmxBone(_BasePmx):
 				 has_enabled: bool,
 				 has_ik: bool,
 				 tail_type: bool,
-				 tail,  # NOTE: either int or list of 3 float, but always exists, never None
+				 tail: Union[int, List[float]],  # NOTE: either int or list of 3 float, but always exists, never None
 				 inherit_rot: bool,
 				 inherit_trans: bool,
 				 has_fixedaxis: bool,
@@ -184,9 +187,19 @@ class PmxBone(_BasePmx):
 				 ik_angle: float=None,
 				 ik_links: List[PmxBoneIkLink]=None,
 				 ):
+		assert len(pos) == 3
+		if tail_type:
+			assert isinstance(tail, int)
+		else:
+			assert len(tail) == 3
+		if has_fixedaxis and fixedaxis is not None:
+			assert len(fixedaxis) == 3
+		if has_localaxis and localaxis_x is not None:
+			assert len(localaxis_x) == 3
+		if has_localaxis and localaxis_z is not None:
+			assert len(localaxis_z) == 3
 		self.name_jp = name_jp
 		self.name_en = name_en
-		assert len(pos) == 3
 		self.pos = pos
 		self.parent_idx = parent_idx
 		self.deform_layer = deform_layer
@@ -196,10 +209,6 @@ class PmxBone(_BasePmx):
 		self.has_visible = has_visible
 		self.has_enabled = has_enabled
 		self.has_ik = has_ik
-		if tail_type:
-			assert isinstance(tail, int)
-		else:
-			assert len(tail) == 3
 		# tail_type: true = point-at mode, false = offset mode
 		self.tail_type = tail_type
 		self.tail = tail
@@ -211,13 +220,7 @@ class PmxBone(_BasePmx):
 		
 		self.inherit_parent_idx = inherit_parent_idx
 		self.inherit_ratio = inherit_ratio
-		if has_fixedaxis and fixedaxis is not None:
-			assert len(fixedaxis) == 3
 		self.fixedaxis = fixedaxis
-		if has_localaxis and localaxis_x is not None:
-			assert len(localaxis_x) == 3
-		if has_localaxis and localaxis_z is not None:
-			assert len(localaxis_z) == 3
 		self.localaxis_x = localaxis_x
 		self.localaxis_z = localaxis_z
 		self.externalparent = externalparent
@@ -233,48 +236,48 @@ class PmxBone(_BasePmx):
 				self.has_fixedaxis, self.fixedaxis,
 				self.has_localaxis, self.localaxis_x, self.localaxis_z,
 				self.has_externalparent, self.externalparent,
-				self.has_ik, self.ik_target_idx, self.ik_numloops, self.ik_angle, [i.list() for i in self.ik_links],
+				self.has_ik, self.ik_target_idx, self.ik_numloops, self.ik_angle,
+				None if self.ik_links is None else [i.list() for i in self.ik_links],
 				]
 
 
 class PmxMorphItemGroup(_BasePmx):
-	def __init__(self, idx: int, value: float):
-		self.morph_idx = idx
+	def __init__(self, morph_idx: int, value: float):
+		self.morph_idx = morph_idx
 		self.value = value
 	def list(self) -> list:
 		return [self.morph_idx, self.value]
 	
 class PmxMorphItemVertex(_BasePmx):
-	def __init__(self, idx: int, move: List[float]):
-		self.vert_idx = idx
+	def __init__(self, vert_idx: int, move: List[float]):
 		assert len(move) == 3
+		self.vert_idx = vert_idx
 		self.move = move
 	def list(self) -> list:
 		return [self.vert_idx, self.move]
 	
 class PmxMorphItemBone(_BasePmx):
-	def __init__(self, idx: int, move: List[float], rot: List[float]):
-		self.bone_idx = idx
+	def __init__(self, bone_idx: int, move: List[float], rot: List[float]):
 		assert len(move) == 3
-		self.move = move
 		assert len(rot) == 3
-		# TODO: convert bone rotation quat to euler when unpacking!
+		self.bone_idx = bone_idx
+		self.move = move
 		self.rot = rot
 	def list(self) -> list:
 		return [self.bone_idx, self.move, self.rot]
 
 
 class PmxMorphItemUV(_BasePmx):
-	def __init__(self, idx: int, move: List[float]):
-		self.vert_idx = idx
+	def __init__(self, vert_idx: int, move: List[float]):
 		assert len(move) == 4
+		self.vert_idx = vert_idx
 		self.move = move
 	def list(self) -> list:
 		return [self.vert_idx, self.move]
 
 
 class PmxMorphItemMaterial(_BasePmx):
-	def __init__(self, idx: int, is_add: int,
+	def __init__(self, mat_idx: int, is_add: int,
 				 diffRGB: List[float],
 				 specRGB: List[float],
 				 ambRGB: List[float],
@@ -287,23 +290,23 @@ class PmxMorphItemMaterial(_BasePmx):
 				 sphRGBA: List[float],
 				 toonRGBA: List[float],
 				 ):
-		self.mat_idx = idx
-		self.is_add = is_add
 		assert len(diffRGB) == 3
 		assert len(specRGB) == 3
 		assert len(ambRGB) == 3
+		assert len(edgeRGB) == 3
+		assert len(texRGBA) == 4
+		assert len(sphRGBA) == 4
+		assert len(toonRGBA) == 4
+		self.mat_idx = mat_idx
+		self.is_add = is_add
 		self.diffRGB = diffRGB
 		self.specRGB = specRGB
 		self.ambRGB = ambRGB
 		self.alpha = alpha
 		self.specpower = specpower
-		assert len(edgeRGB) == 3
 		self.edgeRGB = edgeRGB
 		self.edgealpha = edgealpha
 		self.edgesize = edgesize
-		assert len(texRGBA) == 4
-		assert len(sphRGBA) == 4
-		assert len(toonRGBA) == 4
 		self.texRGBA = texRGBA
 		self.sphRGBA = sphRGBA
 		self.toonRGBA = toonRGBA
@@ -319,20 +322,20 @@ class PmxMorphItemMaterial(_BasePmx):
 
 
 class PmxMorphItemFlip(_BasePmx):
-	def __init__(self, idx: int, value: float):
-		self.morph_idx = idx
+	def __init__(self, morph_idx: int, value: float):
+		self.morph_idx = morph_idx
 		self.value = value
 	def list(self) -> list:
 		return [self.morph_idx, self.value]
 
 
 class PmxMorphItemImpulse(_BasePmx):
-	def __init__(self, idx: int, is_local: bool, move: List[float], rot: List[float]):
-		self.rb_idx = idx
-		self.is_local = is_local
+	def __init__(self, rb_idx: int, is_local: bool, move: List[float], rot: List[float]):
 		assert len(move) == 3
-		self.move = move
 		assert len(rot) == 3
+		self.rb_idx = rb_idx
+		self.is_local = is_local
+		self.move = move
 		self.rot = rot
 	def list(self) -> list:
 		return [self.rb_idx, self.is_local, self.move, self.rot]
@@ -340,7 +343,6 @@ class PmxMorphItemImpulse(_BasePmx):
 
 class PmxMorph(_BasePmx):
 	# thismorph = [name_jp, name_en, panel, morphtype, these_items]
-	# todo: is it feasible to make classes for each type of "morph item"?
 	def __init__(self,
 				 name_jp: str, name_en: str,
 				 panel: int,
@@ -409,12 +411,12 @@ class PmxRigidBody(_BasePmx):
 				 phys_repel: float=0.0,
 				 phys_friction: float=0.0,
 				 ):
-		self.name_jp = name_jp
-		self.name_en = name_en
-		self.bone_idx = bone_idx
 		assert len(pos) == 3
 		assert len(rot) == 3
 		assert len(size) == 3
+		self.name_jp = name_jp
+		self.name_en = name_en
+		self.bone_idx = bone_idx
 		self.pos = pos
 		self.rot = rot
 		self.size = size
@@ -455,25 +457,25 @@ class PmxJoint(_BasePmx):
 				 rotmax: List[float],
 				 rotspring: List[float],
 				 ):
+		assert len(pos) == 3
+		assert len(rot) == 3
+		assert len(posmin) == 3
+		assert len(posmax) == 3
+		assert len(posspring) == 3
+		assert len(rotmin) == 3
+		assert len(rotmax) == 3
+		assert len(rotspring) == 3
 		self.name_jp = name_jp
 		self.name_en = name_en
 		# jointtype: 0=spring6DOF, all others are v2.1 only!!!! 1=6dof, 2=p2p, 3=conetwist, 4=slider, 5=hinge
 		self.jointtype = jointtype
 		self.rb1_idx = rb1_idx
 		self.rb2_idx = rb2_idx
-		assert len(pos) == 3
-		assert len(rot) == 3
 		self.pos = pos
 		self.rot = rot
-		assert len(posmin) == 3
-		assert len(posmax) == 3
-		assert len(posspring) == 3
 		self.movemin = posmin
 		self.movemax = posmax
 		self.movespring = posspring
-		assert len(rotmin) == 3
-		assert len(rotmax) == 3
-		assert len(rotspring) == 3
 		self.rotmin = rotmin
 		self.rotmax = rotmax
 		self.rotspring = rotspring
@@ -495,10 +497,10 @@ class PmxSoftBody(_BasePmx):
 	# 			srhr_cl, skhr_cl, sshr_cl, sr_splt_cl, sk_splt_cl, ss_splt_cl,
 	# 			v_it, p_it, d_it, c_it, mat_lst, mat_ast, mat_vst, anchors_list, vertex_pin_list]
 	def __init__(self, name_jp, name_en, shape, idx_mat, group, nocollide_mask, flags,
-				b_link_create_dist, num_clusters, total_mass, collision_marign, aerodynamics_model,
-				vcf, dp, dg, lf, pr, vc, df, mt, rch, kch, sch, ah,
-				srhr_cl, skhr_cl, sshr_cl, sr_splt_cl, sk_splt_cl, ss_splt_cl,
-				v_it, p_it, d_it, c_it, mat_lst, mat_ast, mat_vst, anchors_list, vertex_pin_list):
+				 b_link_create_dist, num_clusters, total_mass, collision_margin, aerodynamics_model,
+				 vcf, dp, dg, lf, pr, vc, df, mt, rch, kch, sch, ah,
+				 srhr_cl, skhr_cl, sshr_cl, sr_splt_cl, sk_splt_cl, ss_splt_cl,
+				 v_it, p_it, d_it, c_it, mat_lst, mat_ast, mat_vst, anchors_list, vertex_pin_list):
 		self.name_jp = name_jp
 		self.name_en = name_en
 		self.shape = shape
@@ -509,7 +511,7 @@ class PmxSoftBody(_BasePmx):
 		self.b_link_create_dist = b_link_create_dist
 		self.num_clusters = num_clusters
 		self.total_mass = total_mass
-		self.collision_margin = collision_marign
+		self.collision_margin = collision_margin
 		self.aerodynamics_model = aerodynamics_model
 		self.vcf = vcf
 		self.dp = dp
@@ -564,6 +566,9 @@ class Pmx(_BasePmx):
 				 joints: List[PmxJoint],
 				 sbodies: List[PmxSoftBody]=None
 				 ):
+		if sbodies is None:
+			assert header.ver == 2.0
+			sbodies = []
 		self.header = header
 		self.verts = verts
 		self.faces = faces
@@ -574,10 +579,7 @@ class Pmx(_BasePmx):
 		self.frames = frames
 		self.rigidbodies = rbodies
 		self.joints = joints
-		if sbodies is None:
-			self.softbodies = []
-		else:
-			self.softbodies = sbodies
+		self.softbodies = sbodies
 	def list(self) -> list:
 		return [self.header.list(),						#0
 				[i.list() for i in self.verts],			#1

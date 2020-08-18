@@ -173,6 +173,8 @@ MAXDIFFERENCE = 0
 def recursively_compare(A,B):
 	global MAXDIFFERENCE
 	# return 1/true if it FAILS, return 0/false if it MATCHES
+	if hasattr(A, "list"): A = A.list()
+	if hasattr(B, "list"): B = B.list()
 	if isinstance(A, float) and isinstance(B, float):
 		# for floats specifically, replace exact compare with approximate compare
 		diff = abs(A-B)
