@@ -500,7 +500,8 @@ class PmxSoftBody(_BasePmx):
 				 b_link_create_dist, num_clusters, total_mass, collision_margin, aerodynamics_model,
 				 vcf, dp, dg, lf, pr, vc, df, mt, rch, kch, sch, ah,
 				 srhr_cl, skhr_cl, sshr_cl, sr_splt_cl, sk_splt_cl, ss_splt_cl,
-				 v_it, p_it, d_it, c_it, mat_lst, mat_ast, mat_vst, anchors_list, vertex_pin_list):
+				 v_it, p_it, d_it, c_it, mat_lst, mat_ast, mat_vst,
+				 anchors_list: List[List[int]], vertex_pin_list: List[int]):
 		self.name_jp = name_jp
 		self.name_en = name_en
 		self.shape = shape
