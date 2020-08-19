@@ -59,45 +59,40 @@ def main(moreinfo=True):
 		core.MY_PRINT_FUNC("quitting")
 		return None
 	
-	morphtype = pmx[6][target_index][3]
+	morphtype = pmx.morphs[target_index].morphtype
 	# 1=vert
 	# 3=UV
 	# 8=material
-	core.MY_PRINT_FUNC("Found {} morph #{}: '{}' / '{}'".format(mtype_dict[morphtype], target_index, pmx[6][target_index][0], pmx[6][target_index][1]))
+	core.MY_PRINT_FUNC("Found {} morph #{}: '{}' / '{}'".format(
+		mtype_dict[morphtype], target_index, pmx.morphs[target_index].name_jp, pmx.morphs[target_index].name_en))
 	
 	if morphtype == 1: # vertex
 		# for each item in this morph:
-		for d, item in enumerate(pmx[6][target_index][4]):
+		for d, item in enumerate(pmx.morphs[target_index].items):
 			# apply the offset
-			pmx[1][item[0]][0] += item[1]
-			pmx[1][item[0]][1] += item[2]
-			pmx[1][item[0]][2] += item[3]
+			pmx.verts[item.vert_idx].pos[0] += item.move[0]
+			pmx.verts[item.vert_idx].pos[1] += item.move[1]
+			pmx.verts[item.vert_idx].pos[2] += item.move[2]
 			# invert the morph
-			item[1] *= -1
-			item[2] *= -1
-			item[3] *= -1
+			item.move = [m * -1 for m in item.move]
 	elif morphtype == 3: # UV
-		for d, item in enumerate(pmx[6][target_index][4]):
+		for d, item in enumerate(pmx.morphs[target_index].items):
 			# (vert_idx, A, B, C, D)
 			# apply the offset
-			pmx[1][item[0]][6] += item[1]
-			pmx[1][item[0]][7] += item[2]
+			pmx.verts[item.vert_idx].uv[0] += item.move[0]
+			pmx.verts[item.vert_idx].uv[1] += item.move[1]
 			# invert the morph
-			item[1] *= -1
-			item[2] *= -1
+			item.move = [m * -1 for m in item.move]
 	elif morphtype in (4,5,6,7): # UV1 UV2 UV3 UV4
 		whichuv = morphtype - 4
-		for d, item in enumerate(pmx[6][target_index][4]):
+		for d, item in enumerate(pmx.morphs[target_index].items):
 			# apply the offset
-			pmx[1][item[0]][8][whichuv][0] += item[1]
-			pmx[1][item[0]][8][whichuv][1] += item[2]
-			pmx[1][item[0]][8][whichuv][2] += item[3]
-			pmx[1][item[0]][8][whichuv][3] += item[4]
+			pmx.verts[item.vert_idx].addl_vec4s[whichuv][0] += item.move[0]
+			pmx.verts[item.vert_idx].addl_vec4s[whichuv][1] += item.move[1]
+			pmx.verts[item.vert_idx].addl_vec4s[whichuv][2] += item.move[2]
+			pmx.verts[item.vert_idx].addl_vec4s[whichuv][3] += item.move[3]
 			# invert the morph
-			item[1] *= -1
-			item[2] *= -1
-			item[3] *= -1
-			item[4] *= -1
+			item.move = [m * -1 for m in item.move]
 	elif morphtype == 8: # material
 		core.MY_PRINT_FUNC("WIP")
 		core.MY_PRINT_FUNC("quitting")

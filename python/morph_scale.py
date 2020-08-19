@@ -67,8 +67,9 @@ def main(moreinfo=True):
 		return None
 	
 	# determine the morph type
-	morphtype = pmx[6][target_index][3]
-	core.MY_PRINT_FUNC("Found {} morph #{}: '{}' / '{}'".format(mtype_dict[morphtype], target_index, pmx[6][target_index][0], pmx[6][target_index][1]))
+	morphtype = pmx.morphs[target_index].morphtype
+	core.MY_PRINT_FUNC("Found {} morph #{}: '{}' / '{}'".format(
+		mtype_dict[morphtype], target_index, pmx.morphs[target_index].name_jp, pmx.morphs[target_index].name_en))
 	
 	# if it is a bone morph, ask for translation/rotation/both
 	bone_mode = 0
@@ -93,56 +94,38 @@ def main(moreinfo=True):
 	
 	# important values: target_index, factor, morphtype, bone_mode
 	# first create the new morph that is a copy of current
-	newmorph = copy.deepcopy(pmx[6][target_index])
+	newmorph = copy.deepcopy(pmx.morphs[target_index])
 	# then modify the names
 	name_suffix = "*" + (str(factor)[0:6])
-	newmorph[0] += name_suffix
-	newmorph[1] += name_suffix
+	newmorph.name_jp += name_suffix
+	newmorph.name_en += name_suffix
 	# now scale the actual values
 	if morphtype == 2:  # bone
 		# bone_mode: 1 = motion(translation), 2 = rotation, 3 = both
-		# (bone_idx, transX, transY, transZ, rotX, rotY, rotZ, rotW)
 		if bone_mode in (2,3):  # if ==2 or ==3, then do rotation
-			for d, item in enumerate(newmorph[4]):
-				# to scale quaternions, i guess scaling in euclid-space is good enough? assuming all resulting components are <180
-				quat = [item[7]] + item[4:7]
-				euler = core.quaternion_to_euler(quat)
-				euler = [e * factor for e in euler]
-				newquat = core.euler_to_quaternion(euler)
-				item[4:7] = newquat[1:4]
-				item[7] = newquat[0]
+			for d, item in enumerate(newmorph.items):
+				# i guess scaling in euclid-space is good enough? assuming all resulting components are <180
+				# most bone morphs only rotate around one axis anyways
+				item.rot = [e * factor for e in item.rot]
 		if bone_mode in (1,3):  # if ==1 or ==3, then do translation
-			for d, item in enumerate(newmorph[4]):
+			for d, item in enumerate(newmorph.items):
 				# scale the morph XYZ
-				item[1] *= factor
-				item[2] *= factor
-				item[3] *= factor
+				item.move = [m * factor for m in item.move]
 	elif morphtype == 1:  # vertex
 		# for each item in this morph:
-		for d, item in enumerate(newmorph[4]):
+		for d, item in enumerate(newmorph.items):
 			# scale the morph XYZ
-			item[1] *= factor
-			item[2] *= factor
-			item[3] *= factor
-	elif morphtype == 3:  # UV
-		for d, item in enumerate(newmorph[4]):
-			# (vert_idx, A, B, C, D)
+			item.move = [m * factor for m in item.move]
+	elif morphtype in (3, 4, 5, 6, 7):  # UV  UV1 UV2 UV3 UV4
+		for d, item in enumerate(newmorph.items):
 			# scale the morph UV
-			item[1] *= factor
-			item[2] *= factor
-	elif morphtype in (4, 5, 6, 7):  # UV1 UV2 UV3 UV4
-		for d, item in enumerate(newmorph[4]):
-			# scale the morph UV
-			item[1] *= factor
-			item[2] *= factor
-			item[3] *= factor
-			item[4] *= factor
+			item.move = [m * factor for m in item.move]
 	else:
 		core.MY_PRINT_FUNC("Unhandled morph type")
 		core.MY_PRINT_FUNC("quitting")
 		return None
 	
-	pmx[6].append(newmorph)
+	pmx.morphs.append(newmorph)
 	
 	# write out
 	output_filename_pmx = input_filename_pmx[0:-4] + ("_%dscal.pmx" % target_index)
