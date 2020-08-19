@@ -14,9 +14,7 @@
 ########################################################################################################################
 
 import re
-from typing import List, Union, Tuple
-
-
+from typing import List, Tuple, TypeVar
 
 # dictionary for translating halfwitdth katakana to fullwidth katakana
 # i have no plans to actually use this but now it exists
@@ -826,13 +824,14 @@ def needs_translate(text:str) -> bool:
 	m = not is_latin(text)
 	return bool(m)
 
-def pre_translate(in_list: Union[List[str],str]) -> Union[Tuple[str,str,str],Tuple[List[str],List[str],List[str]]]:
+STR_OR_STRLIST = TypeVar("STR_OR_STRLIST", str, List[str])
+def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLIST, STR_OR_STRLIST]:
 	"""
 	Handle common translation things like prefixes, suffixes, fullwidth alphanumeric characters, indents,
 	and some types of punctuation. Returns 3-ple of EN indent, JP body, EN suffix. This way the translate can work on
 	the important stuff and ignore the chaff.
 	:param in_list: list of JP strings, or a single JP string
-	:return: list of indent/body/suffix tuples, or a single tuple
+	:return: tuple of indent/body/suffix lists, or a single tuple
 	"""
 	# input str breakdown: (indent) (L/R prefix) (padding) (((body))) (padding) (L/R suffix)
 	
@@ -907,7 +906,7 @@ def pre_translate(in_list: Union[List[str],str]) -> Union[Tuple[str,str,str],Tup
 	else:			return indent_list, body_list, suffix_list	# otherwise return as a list
 
 
-def piecewise_translate(in_list: Union[List[str],str], in_dict: dict) -> Union[List[str],str]:
+def piecewise_translate(in_list: STR_OR_STRLIST, in_dict: dict) -> STR_OR_STRLIST:
 	"""
 	Apply piecewise translation to inputs when given a mapping dict.
 	Mapping dict will usually be the builtin comprehensive 'words_dict' or some results found from Google Translate.
@@ -959,7 +958,7 @@ def piecewise_translate(in_list: Union[List[str],str], in_dict: dict) -> Union[L
 	else:				return outlist		# otherwise return as a list
 
 
-def local_translate(in_list: Union[List[str],str]) -> Union[List[str],str]:
+def local_translate(in_list: STR_OR_STRLIST) -> STR_OR_STRLIST:
 	"""
 	Simple wrapper func to run both pre_translate and local_translate using words_dict.
 	With DEBUG=True, it prints before/after.

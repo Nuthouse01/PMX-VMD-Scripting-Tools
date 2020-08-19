@@ -3,23 +3,25 @@
 #####################
 
 # first, system imports
-from typing import List, Tuple, Union
+from typing import List, Tuple, TypeVar
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = None
+		core = pmxlib = pmxstruct = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -37,8 +39,8 @@ iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_vertprun
 '''
 
 
-
-def newval_from_range_map(v: Union[int,List[int]], range_map: Tuple[List[int],List[int]]) -> Union[int,List[int]]:
+INT_OR_INTLIST = TypeVar("INT_OR_INTLIST", int, List[int])
+def newval_from_range_map(v: INT_OR_INTLIST, range_map: Tuple[List[int], List[int]]) -> INT_OR_INTLIST:
 	"""
 	Given a rangemap from delme_list_to_rangemap(), determine the resulting index for an input or set of inputs.
 	If v is a list, it must be in ascending sorted order. Returns same type as v type.
@@ -118,7 +120,7 @@ def showprompt():
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=True)
 	return pmx, input_filename_pmx
 
-def prune_unused_vertices(pmx, moreinfo=False):
+def prune_unused_vertices(pmx: pmxstruct.Pmx, moreinfo=False):
 	#############################
 	# ready for logic
 
@@ -135,21 +137,19 @@ def prune_unused_vertices(pmx, moreinfo=False):
 	
 	# build set of USED vertices
 	used_verts = set()
-	for face in pmx[2]:
+	for face in pmx.faces:
 		used_verts.add(face[0])
 		used_verts.add(face[1])
 		used_verts.add(face[2])
 	# build set of ALL vertices
-	all_verts = []
-	all_verts.extend(range(len(pmx[1])))
-	all_verts = set(all_verts)
+	all_verts = set(list(range(len(pmx.verts))))
 	# derive set of UNUSED vertices
 	unused_verts = all_verts.difference(used_verts)
 	# convert to ordered list
 	delme_verts = sorted(list(unused_verts))
 	
 	numdeleted = len(delme_verts)
-	prevtotal = len(pmx[1])
+	prevtotal = len(pmx.verts)
 	if numdeleted == 0:
 		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
@@ -161,13 +161,13 @@ def prune_unused_vertices(pmx, moreinfo=False):
 	
 	# need to update places that reference vertices: faces, morphs, softbody
 	# first get the total # of iterations I need to do, for progress purposes: #faces + sum of len of all UV and vert morphs
-	totalwork = len(pmx[2]) + sum([len(m[4]) for m in pmx[6] if (m[3] == 1 or 3 <= m[3] <= 7)])
+	totalwork = len(pmx.faces) + sum([len(m.items) for m in pmx.morphs if (m.morphtype in (1,3,4,5,6,7))])
 	
 	# faces:
 	d = 0
-	for d,face in enumerate(pmx[2]):
-		# vertices in a face are not guaranteed sorted, and changing their order is a Very Bad Idea
-		# therefore they must be handled individually
+	for d,face in enumerate(pmx.faces):
+		# vertices in a face are not guaranteed sorted, and sorting them is a Very Bad Idea
+		# therefore they must be remapped individually
 		face[0] = newval_from_range_map(face[0], delme_range)
 		face[1] = newval_from_range_map(face[1], delme_range)
 		face[2] = newval_from_range_map(face[2], delme_range)
@@ -178,18 +178,17 @@ def prune_unused_vertices(pmx, moreinfo=False):
 	
 	# morphs:
 	orphan_vertex_references = 0
-	for morph in pmx[6]:
+	for morph in pmx.morphs:
 		# if not a vertex morph or UV morph, skip it
-		if not (3 <= morph[3] <= 7) and morph[3] != 1:
-			continue
-		lenbefore = len(morph[4])
+		if not morph.morphtype in (1,3,4,5,6,7): continue
+		lenbefore = len(morph.items)
 		# it is plausible that vertex/uv morphs could reference orphan vertices, so I should check for and delete those
 		i = 0
-		while i < len(morph[4]):
+		while i < len(morph.items):
 			# if the vertex being manipulated is in the list of verts being deleted,
-			if core.binary_search_isin(morph[4][i][0], delme_verts):
+			if core.binary_search_isin(morph.items[i].vert_idx, delme_verts):
 				# delete it here too
-				morph[4].pop(i)
+				morph.items.pop(i)
 				orphan_vertex_references += 1
 			else:
 				# otherwise, remap it
@@ -197,15 +196,15 @@ def prune_unused_vertices(pmx, moreinfo=False):
 				i += 1
 		
 		# morphs usually contain vertexes in sorted order, but not guaranteed!!! MAKE it sorted, nobody will mind
-		morph[4].sort(key=lambda x: x[0])
+		morph.items.sort(key=lambda x: x.vert_idx)
 		
 		# separate the vertices from the morph entries into a list of their own, for more efficient remapping
-		vertlist = [x[0] for x in morph[4]]
+		vertlist = [x.vert_idx for x in morph.items]
 		# remap
 		remappedlist = newval_from_range_map(vertlist, delme_range)
 		# write the remapped values back into where they came from
-		for x, newval in zip(morph[4], remappedlist):
-			x[0] = newval
+		for x, newval in zip(morph.items, remappedlist):
+			x.vert_idx = newval
 		# display progress printouts
 		d += lenbefore
 		core.print_progress_oneline(d / totalwork)
@@ -213,20 +212,52 @@ def prune_unused_vertices(pmx, moreinfo=False):
 	# core.MY_PRINT_FUNC("Done updating vertex references in morphs")
 	
 	# softbody: probably not relevant but eh
-	for soft in pmx[10]:
-		# assemble the vertices from the morph entries into a list of their own, for more efficient remapping
-		# todo: delete anchors and pins in the "delme" list, as well as remapping
-		anchorlist = [x[1] for x in soft[37]]
+	for soft in pmx.softbodies:
+		# anchors
+		# first, delete any references to delme verts in the anchors
+		i = 0
+		while i < len(soft.anchors_list):
+			# if the vertex referenced is in the list of verts being deleted,
+			if core.binary_search_isin(soft.anchors_list[i][1], delme_verts):
+				# delete it here too
+				soft.anchors_list.pop(i)
+			else:
+				# otherwise, remap it
+				# but don't remap it here, wait until I'm done deleting vertices and then tackle them all at once
+				i += 1
+		
+		#  MAKE it sorted, nobody will mind
+		soft.anchors_list.sort(key=lambda x: x[1])
+		# extract the vert indices into a list of their town
+		anchorlist = [x[1] for x in soft.anchors_list]
+		# remap
 		newanchorlist = newval_from_range_map(anchorlist, delme_range)
 		# write the remapped values back into where they came from
-		for x, newval in zip(soft[37], newanchorlist):
+		for x, newval in zip(soft.anchors_list, newanchorlist):
 			x[1] = newval
-		soft[38] = newval_from_range_map(soft[38], delme_range)
+		
+		# vertex pins
+		# first, delete any references to delme verts
+		i = 0
+		while i < len(soft.vertex_pin_list):
+			# if the vertex referenced is in the list of verts being deleted,
+			if core.binary_search_isin(soft.vertex_pin_list[i], delme_verts):
+				# delete it here too
+				soft.vertex_pin_list.pop(i)
+			else:
+				# otherwise, remap it
+				# but don't remap it here, wait until I'm done deleting vertices and then tackle them all at once
+				i += 1
+		#  MAKE it sorted, nobody will mind
+		soft.anchors_list.sort()
+		# remap
+		soft.vertex_pin_list = newval_from_range_map(soft.vertex_pin_list, delme_range)
+		# done with softbodies!
 		
 	# now, finally, actually delete the vertices from the vertex list
 	delme_verts.reverse()
 	for f in delme_verts:
-		pmx[1].pop(f)
+		pmx.verts.pop(f)
 	
 	core.MY_PRINT_FUNC("Identified and deleted {} / {} = {:.1%} vertices for being unused".format(
 		numdeleted, prevtotal, numdeleted/prevtotal))
