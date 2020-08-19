@@ -191,7 +191,7 @@ def dispframe_fix(pmx: pmxstruct.Pmx, moreinfo=False):
 		newframelist = [[1, x] for x in undisplayed_morphs]
 		# find morphs group and only add to it
 		# should ALWAYS be at index 1 but whatever might as well be extra safe
-		idx = core.my_list_search(pmx.frames, lambda x: x.name_jp == "表情" and frame.name_en == "Exp" and frame.is_special)
+		idx = core.my_list_search(pmx.frames, lambda x: (x.name_jp == "表情" and x.name_en == "Exp" and x.is_special))
 		if idx is not None:
 			# concatenate to end of item list
 			pmx.frames[idx].items += newframelist

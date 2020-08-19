@@ -80,10 +80,10 @@ def apply_morph_remapping(pmx: pmxstruct.Pmx, morph_dellist, morph_shiftmap):
 		i = 0
 		while i < len(morph.items):
 			# if this is one of the morphs being deleted, delete it here too. otherwise remap.
-			if core.binary_search_isin(morph.items[i][0], morph_dellist):
+			if core.binary_search_isin(morph.items[i].morph_idx, morph_dellist):
 				morph.items.pop(i)
 			else:
-				morph.items[i][0] = newval_from_range_map(morph.items[i][0], morph_shiftmap)
+				morph.items[i].morph_idx = newval_from_range_map(morph.items[i].morph_idx, morph_shiftmap)
 				i += 1
 	return pmx
 

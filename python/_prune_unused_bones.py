@@ -288,10 +288,10 @@ def apply_bone_remapping(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shift
 		i = 0
 		while i < len(morph.items):
 			# if the bone being manipulated is in the list of bones being deleted, delete it here too. otherwise remap.
-			if core.binary_search_isin(morph.items[i][0], bone_dellist):
+			if core.binary_search_isin(morph.items[i].bone_idx, bone_dellist):
 				morph.items.pop(i)
 			else:
-				morph.items[i][0] = newval_from_range_map(morph.items[i][0], bone_shiftmap)
+				morph.items[i].bone_idx = newval_from_range_map(morph.items[i].bone_idx, bone_shiftmap)
 				i += 1
 	# done with morphs
 	
