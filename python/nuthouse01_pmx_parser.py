@@ -268,7 +268,7 @@ def parse_pmx_bones(raw: bytearray) -> List[pmxstruct.PmxBone]:
 	retme = []
 	for d in range(i):
 		(name_jp, name_en, posX, posY, posZ, parent_idx, deform_layer, flags1, flags2) = core.my_unpack("t t 3f" + IDX_BONE + "i 2B", raw)
-		print(name_jp, name_en)
+		# print(name_jp, name_en)
 		tail_type =              bool(flags1 & (1<<0))
 		rotateable =             bool(flags1 & (1<<1))
 		translateable =          bool(flags1 & (1<<2))
