@@ -5,11 +5,13 @@
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 	from . import morph_hide
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 		import morph_hide
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
@@ -17,7 +19,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = morph_hide = None
+		core = pmxlib = pmxstruct = morph_hide = None
 
 
 
@@ -68,6 +70,7 @@ def main(moreinfo=True):
 	
 	if morphtype == 1: # vertex
 		# for each item in this morph:
+		item:pmxstruct.PmxMorphItemVertex  # type annotation for pycharm
 		for d, item in enumerate(pmx.morphs[target_index].items):
 			# apply the offset
 			pmx.verts[item.vert_idx].pos[0] += item.move[0]
@@ -76,6 +79,7 @@ def main(moreinfo=True):
 			# invert the morph
 			item.move = [m * -1 for m in item.move]
 	elif morphtype == 3: # UV
+		item:pmxstruct.PmxMorphItemUV  # type annotation for pycharm
 		for d, item in enumerate(pmx.morphs[target_index].items):
 			# (vert_idx, A, B, C, D)
 			# apply the offset
@@ -85,6 +89,7 @@ def main(moreinfo=True):
 			item.move = [m * -1 for m in item.move]
 	elif morphtype in (4,5,6,7): # UV1 UV2 UV3 UV4
 		whichuv = morphtype - 4
+		item:pmxstruct.PmxMorphItemUV  # type annotation for pycharm
 		for d, item in enumerate(pmx.morphs[target_index].items):
 			# apply the offset
 			pmx.verts[item.vert_idx].addl_vec4s[whichuv][0] += item.move[0]

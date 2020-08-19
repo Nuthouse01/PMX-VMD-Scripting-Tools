@@ -6,11 +6,13 @@
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 	from ._prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 		from _prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
@@ -18,7 +20,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = None
+		core = pmxlib = pmxstruct = None
 		newval_from_range_map = delme_list_to_rangemap = None
 
 
@@ -50,39 +52,38 @@ The default threshold is 0.0003 units. Trust me it really is imperceptible.
 iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_winnow.pmx"
 '''
 
-def apply_morph_remapping(pmx, morph_dellist, morph_shiftmap):
+def apply_morph_remapping(pmx: pmxstruct.Pmx, morph_dellist, morph_shiftmap):
 	# actually delete the morphs from the list
 	for f in reversed(morph_dellist):
-		pmx[6].pop(f)
+		pmx.morphs.pop(f)
 	
 	# frames:
-	for d, frame in enumerate(pmx[7]):
+	for d, frame in enumerate(pmx.frames):
 		i = 0
-		while i < len(frame[3]):
-			item = frame[3][i]
+		while i < len(frame.items):
+			item = frame.items[i]
 			# if this item is a bone, skip it
 			if not item[0]:
 				i += 1
 			else:
 				# if this is one of the morphs being deleted, delete it here too. otherwise remap.
 				if core.binary_search_isin(item[1], morph_dellist):
-					frame[3].pop(i)
+					frame.items.pop(i)
 				else:
 					item[1] = newval_from_range_map(item[1], morph_shiftmap)
 					i += 1
 	
 	# group/flip morphs:
-	for d, morph in enumerate(pmx[6]):
+	for d, morph in enumerate(pmx.morphs):
 		# group/flip = 0/9
-		if morph[3] not in (0, 9):
-			continue
+		if morph.morphtype not in (0, 9): continue
 		i = 0
-		while i < len(morph[4]):
+		while i < len(morph.items):
 			# if this is one of the morphs being deleted, delete it here too. otherwise remap.
-			if core.binary_search_isin(morph[4][i][0], morph_dellist):
-				morph[4].pop(i)
+			if core.binary_search_isin(morph.items[i][0], morph_dellist):
+				morph.items.pop(i)
 			else:
-				morph[4][i][0] = newval_from_range_map(morph[4][i][0], morph_shiftmap)
+				morph.items[i][0] = newval_from_range_map(morph.items[i][0], morph_shiftmap)
 				i += 1
 	return pmx
 
@@ -100,7 +101,7 @@ def showprompt():
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=True)
 	return pmx, input_filename_pmx
 
-def morph_winnow(pmx, moreinfo=False):
+def morph_winnow(pmx: pmxstruct.Pmx, moreinfo=False):
 	total_num_verts = 0
 	total_vert_dropped = 0
 	total_morphs_affected = 0
@@ -108,31 +109,32 @@ def morph_winnow(pmx, moreinfo=False):
 	morphs_now_empty = []
 	
 	# for each morph:
-	for d,morph in enumerate(pmx[6]):
+	for d,morph in enumerate(pmx.morphs):
 		# if not a vertex morph, skip it
-		if morph[3] != 1:
-			continue
+		if morph.morphtype != 1: continue
 		# for each vert in this vertex morph:
 		i = 0
 		this_vert_dropped = 0  # lines dropped from this morph
-		total_num_verts += len(morph[4])
-		while i < len(morph[4]):
-			vert = morph[4][i]
+		total_num_verts += len(morph.items)
+		while i < len(morph.items):
+			vert = morph.items[i]
+			vert:pmxstruct.PmxMorphItemVertex
 			# determine if it is worth keeping or deleting
 			# first, calculate euclidian distance
-			length = core.my_euclidian_distance(vert[1:4])
+			length = core.my_euclidian_distance(vert.move)
 			if length < WINNOW_THRESHOLD:
-				morph[4].pop(i)
+				morph.items.pop(i)
 				this_vert_dropped += 1
 			else:
 				i += 1
-		if len(morph[4]) == 0:
+		if len(morph.items) == 0:
 			# mark newly-emptied vertex morphs for later removal
 			morphs_now_empty.append(d)
 		# increment tracking variables
 		if this_vert_dropped != 0:
 			if moreinfo:
-				core.MY_PRINT_FUNC("morph #{:<3} JP='{}' / EN='{}', removed {} vertices".format(d, morph[0], morph[1], this_vert_dropped))
+				core.MY_PRINT_FUNC("morph #{:<3} JP='{}' / EN='{}', removed {} vertices".format(
+					d, morph.name_jp, morph.name_en, this_vert_dropped))
 			total_morphs_affected += 1
 			total_vert_dropped += this_vert_dropped
 	

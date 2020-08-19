@@ -2,21 +2,26 @@
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
+# first, import system stuff
+import copy
+
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = None
+		core = pmxlib = pmxstruct = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -29,9 +34,19 @@ PRINT_AFFECTED_MORPHS = False
 
 # TODO: reconsider whether zeroing out tex/toon/alpha is really necessary/helpful/correct... YYB doesn't do it
 # opacity, edge size, edge alpha, tex, toon, sph
-template =          [0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0]
-# the above template multiplies everything by 0, below the same result by subtracting 1 from everthing
-template_minusone = [1, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0, -1]
+# template =          [0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0]
+template = pmxstruct.PmxMorphItemMaterial(
+	mat_idx=999, is_add=0, diffRGB=[1,1,1], specRGB=[1,1,1],ambRGB=[1,1,1], specpower=1, edgeRGB=[1,1,1], 
+	alpha=0, edgealpha=0, edgesize=0, texRGBA=[1,1,1,0], sphRGBA=[1,1,1,0], toonRGBA=[1,1,1,0]
+)
+# the above template multiplies everything by 0, 
+# this gets the same result by subtracting 1 from everthing
+# template_minusone = [1, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0, -1]
+template_minusone = pmxstruct.PmxMorphItemMaterial(
+	mat_idx=999, is_add=1, diffRGB=[0,0,0], specRGB=[0,0,0],ambRGB=[0,0,0], specpower=0, edgeRGB=[0,0,0],
+	alpha=-1, edgealpha=-1, edgesize=-1, texRGBA=[0,0,0,-1], sphRGBA=[0,0,0,-1], toonRGBA=[0,0,0,-1]
+)
+
 
 helptext = '''====================
 alphamorph_correct:
@@ -56,41 +71,40 @@ def showprompt():
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=True)
 	return pmx, input_filename_pmx
 
-def alphamorph_correct(pmx, moreinfo=False):
+def alphamorph_correct(pmx: pmxstruct.Pmx, moreinfo=False):
 	num_fixed = 0
 	total_morphs_affected = 0
 	
 	# for each morph:
-	for d,morph in enumerate(pmx[6]):
+	for d,morph in enumerate(pmx.morphs):
 		# if not a material morph, skip it
-		if morph[3] != 8:
-			continue
+		if morph.morphtype != 8: continue
 		this_num_fixed = 0
 		# for each material in this material morph:
-		for mat in morph[4]:
-			# (mat_idx, is_add, diffR, diffG, diffB, diffA, specR, specG, specB, specpower, ambR, ambG, ambB, edgeR,
-			# edgeG, edgeB, edgeA, edgesize, texR, texG, texB, texA, sphR, sphG, sphB, sphA, toonR, toonG, toonB, toonA)
-			# is_add=1, diffA(opacity)=5, edgeA=16, edgesize=17, texA=21, sphA=25, toonA=29
-			
+		for dd,matitem in enumerate(morph.items):
+			matitem:pmxstruct.PmxMorphItemMaterial  # type annotation for pycharm
 			# if (mult opacity by 0) OR (add -1 to opacity), then this item is (trying to) hide the target material
-			if (mat[1]==0 and mat[5]==0) or (mat[1]==1 and mat[5]==-1):
+			if (not matitem.is_add and matitem.alpha == 0) or (matitem.is_add and matitem.alpha == -1):
 				# then replace the entire set of material-morph parameters
 				# opacity, edge size, edge alpha, tex, toon, sph
-				# if the target material is initially transparent, replace with add-negative-1
-				if mat[0] != -1 and pmx[4][mat[0]][5] == 0:
-					if mat[1:] != template_minusone:  # if it is not already good,
-						mat[1:] = template_minusone  # rewrite the morph
-						this_num_fixed += 1
-				# if the target material is initally opaque, or targeting the whole model, replace with mult-by-0
+				if matitem.mat_idx != -1 and pmx.materials[matitem.mat_idx].alpha == 0:
+					# if the target material is initially transparent, replace with add-negative-1
+					t = template_minusone
 				else:
-					if mat[1:] != template:  # if it is not already good,
-						mat[1:] = template  # rewrite the morph
-						this_num_fixed += 1
+					# if the target material is initally opaque, or targeting the whole model, replace with mult-by-0
+					t = template
+				if matitem.list()[1:] != t.list()[1:]:  # if it is not already good,
+					newitem = copy.deepcopy(t)
+					newitem.mat_idx = matitem.mat_idx
+					morph.items[dd] = newitem  # replace the morph with the template
+					this_num_fixed += 1
+					
 		if this_num_fixed != 0:
 			total_morphs_affected += 1
 			num_fixed += this_num_fixed
 			if moreinfo:
-				core.MY_PRINT_FUNC("morph #{:<3} JP='{}' / EN='{}', fixed {} items".format(d, morph[0], morph[1], this_num_fixed))
+				core.MY_PRINT_FUNC("morph #{:<3} JP='{}' / EN='{}', fixed {} items".format(
+					d, morph.name_jp, morph.name_en, this_num_fixed))
 	
 	if num_fixed:
 		core.MY_PRINT_FUNC("Fixed %d 'hide' morphs" % total_morphs_affected)
@@ -98,34 +112,34 @@ def alphamorph_correct(pmx, moreinfo=False):
 
 	# identify materials that start transparent but still have edging
 	mats_fixed = 0
-	for d,mat in enumerate(pmx[4]):
+	for d,mat in enumerate(pmx.materials):
 		# if opacity is zero AND edge is enabled AND edge has nonzero opacity AND edge has nonzero size
-		if mat[5] == 0 and mat[13][4] and mat[17] != 0 and mat[18] != 0:
-			edgeA = mat[17]
-			edgeSize = mat[18]
+		if mat.alpha == 0 and mat.flaglist[4] and mat.edgealpha != 0 and mat.edgesize != 0:
 			this_num_edgefixed = 0
 			# THEN check for any material morphs that add opacity to this material
-			for d2,morph in enumerate(pmx[6]):
+			for d2,morph in enumerate(pmx.morphs):
 				# if not a material morph, skip it
-				if morph[3] != 8:
-					continue
+				if morph.morphtype != 8: continue
 				# for each material in this material morph:
-				for item in morph[4]:
-					# if it is operating on the right material, and adding, and opacity > 0:
-					if item[0] == d and item[1] == 1 and item[5] > 0:
+				for matitem in morph.items:
+					# if not operating on the right material, skip it
+					if matitem.mat_idx != d: continue
+					# if adding and opacity > 0:
+					if matitem.is_add == 1 and matitem.alpha > 0:
 						# set it to add the edge amounts from the material
-						item[16] = edgeA
-						item[17] = edgeSize
+						matitem.edgealpha = mat.edgealpha
+						matitem.edgesize =  mat.edgesize
 						this_num_edgefixed += 1
 			# done looping over morphs
 			# if it modified any locations, zero out the edge params in the material
 			if this_num_edgefixed != 0:
-				mat[17] = 0
-				mat[18] = 0
+				mat.edgealpha = 0
+				mat.edgesize = 0
 				num_fixed += this_num_edgefixed
 				mats_fixed += 1
 				if moreinfo:
-					core.MY_PRINT_FUNC("mat #{:<3} JP='{}' / EN='{}', fixed {} appear morphs".format(d, mat[0], mat[1], this_num_edgefixed))
+					core.MY_PRINT_FUNC("mat #{:<3} JP='{}' / EN='{}', fixed {} appear morphs".format(
+						d, mat.name_jp, mat.name_en, this_num_edgefixed))
 	
 	if mats_fixed:
 		core.MY_PRINT_FUNC("Removed edging from %d initially hidden materials" % mats_fixed)

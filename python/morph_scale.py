@@ -8,11 +8,13 @@ import copy
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 	from . import morph_hide
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 		import morph_hide
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
@@ -20,7 +22,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = morph_hide = None
+		core = pmxlib = pmxstruct = morph_hide = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -101,6 +103,7 @@ def main(moreinfo=True):
 	newmorph.name_en += name_suffix
 	# now scale the actual values
 	if morphtype == 2:  # bone
+		item:pmxstruct.PmxMorphItemBone  # type annotation for pycharm
 		# bone_mode: 1 = motion(translation), 2 = rotation, 3 = both
 		if bone_mode in (2,3):  # if ==2 or ==3, then do rotation
 			for d, item in enumerate(newmorph.items):
@@ -112,11 +115,13 @@ def main(moreinfo=True):
 				# scale the morph XYZ
 				item.move = [m * factor for m in item.move]
 	elif morphtype == 1:  # vertex
+		item:pmxstruct.PmxMorphItemVertex  # type annotation for pycharm
 		# for each item in this morph:
 		for d, item in enumerate(newmorph.items):
 			# scale the morph XYZ
 			item.move = [m * factor for m in item.move]
 	elif morphtype in (3, 4, 5, 6, 7):  # UV  UV1 UV2 UV3 UV4
+		item:pmxstruct.PmxMorphItemUV  # type annotation for pycharm
 		for d, item in enumerate(newmorph.items):
 			# scale the morph UV
 			item.move = [m * factor for m in item.move]

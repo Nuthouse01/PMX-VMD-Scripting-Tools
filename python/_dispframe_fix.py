@@ -6,17 +6,19 @@
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = None
+		core = pmxlib = pmxstruct = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -63,7 +65,7 @@ def showprompt():
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=True)
 	return pmx, input_filename_pmx
 
-def dispframe_fix(pmx, moreinfo=False):
+def dispframe_fix(pmx: pmxstruct.Pmx, moreinfo=False):
 	# root group: "Root"/"Root"
 	# facial group: "表情"/"Exp"
 	
@@ -74,19 +76,20 @@ def dispframe_fix(pmx, moreinfo=False):
 	empty_groups_removed = 0
 	
 	# find the ID# for motherbone... if not found, use whatever is at 0
-	motherid = core.my_list_search(pmx[5], lambda x: x[0] == "全ての親")
+	motherid = core.my_list_search(pmx.bones, lambda x: x.name_jp == "全ての親")
 	if motherid is None:
 		motherid = 0
 	
 	# ensure that "motherbone" and nothing else is in the root:
 	oldrootid = -100
-	for d,frame in enumerate(pmx[7]):
+	for d,frame in enumerate(pmx.frames):
 		# only operate on the root group
-		if frame[0] == "Root" and frame[1] == "Root" and frame[2]:
+		if frame.name_jp == "Root" and frame.name_en == "Root" and frame.is_special:
 			newframelist = [[0,motherid]]
-			if frame[3] != newframelist:
-				oldrootid = frame[3][0][1]
-				frame[3] = newframelist
+			if frame.items != newframelist:
+				oldrootid = frame.items[0][1]
+				# if the itemslist is not exactly only motherbone, make it exactly only motherbone
+				frame.items = newframelist
 				fix_root += 1
 			break
 	if fix_root and moreinfo:
@@ -94,24 +97,29 @@ def dispframe_fix(pmx, moreinfo=False):
 	
 	# fix the contents of the "center"/"センター" group
 	# first, find it, or if it does not exist, make it
-	centerid = core.my_list_search(pmx[7], lambda x: x[0] == "センター")
+	centerid = core.my_list_search(pmx.frames, lambda x: x.name_jp == "センター")
 	if centerid is None:
 		centerid = 2
-		pmx[7].insert(2, ["センター", "Center", 0, []])
+		newframe = pmxstruct.PmxFrame(name_jp="センター", name_en="Center", is_special=False, items=[])
+		pmx.frames.insert(2, newframe)
 		fix_center += 1
 	# if i set "motherbone" to be root, then remove it from center
 	if fix_root:
-		removeme = core.my_list_search(pmx[7][centerid][3], lambda x: x[1] == motherid)
+		removeme = core.my_list_search(pmx.frames[centerid].items, lambda x: x[1] == motherid)
 		if removeme is not None:
-			pmx[7][centerid][3].pop(removeme)
+			pmx.frames[centerid].items.pop(removeme)
 	# ensure center contains the proper semistandard contents: view/center/groove/waist
 	# find bone IDs for each of these desired bones
-	centerframeboneids = [core.my_list_search(pmx[5], lambda x: x[0] == name) for name in centerframebones]
+	centerframeboneids = [core.my_list_search(pmx.bones, lambda x: x.name_jp == name) for name in centerframebones]
 	for boneid in centerframeboneids:
-		if boneid is None: continue  # if this bone does not exist, skip
-		if any(item[1]==boneid for item in pmx[7][centerid][3]): continue  # if this bone already in center, skip
-		pmx[7][centerid][3].append([0,boneid])  # add an item for this bone to the group
-		if boneid != oldrootid: fix_center += 1  # do not count moving a bone from root to center
+		# if this bone does not exist, skip
+		if boneid is None: continue
+		# if this bone already in center, skip
+		if any(item[1]==boneid for item in pmx.frames[centerid].items): continue
+		# add an item for this bone to the group
+		pmx.frames[centerid].items.append([0,boneid])
+		# do not count moving a bone from root to center
+		if boneid != oldrootid: fix_center += 1
 	if fix_center and moreinfo:
 		core.MY_PRINT_FUNC("fixing center group")
 	
@@ -120,20 +128,20 @@ def dispframe_fix(pmx, moreinfo=False):
 	# build sets of all bones/morphs that are in the panels
 	# delete bones that are in the panels more than once
 	# remove all morphs that are group 0
-	for d,frame in enumerate(pmx[7]):  # for each display group,
+	for d,frame in enumerate(pmx.frames):  # for each display group,
 		i = 0
-		while i < len(frame[3]):  # for each item in that display group,
-			item = frame[3][i]
+		while i < len(frame.items):  # for each item in that display group,
+			item = frame.items[i]
 			if item[0]:  # if it is a morph
 				# figure out what panel of this morph is
-				panel = pmx[6][item[1]][2]
-				# if this is an invalid panel #, delete it here
+				panel = pmx.morphs[item[1]].panel
+				# if this is an invalid panel #, delete it
 				if not 1 <= panel <= 4:
-					frame[3].pop(i)
+					frame.items.pop(i)
 					hidden_morphs_removed += 1
 				# if this is valid but already in the set of used morphs, delete it
 				elif item[1] in displayed_morphs:
-					frame[3].pop(i)
+					frame.items.pop(i)
 					duplicate_entries_removed += 1
 				# otherwise, add it to set of used morphs
 				else:
@@ -142,7 +150,7 @@ def dispframe_fix(pmx, moreinfo=False):
 			else:  # if it is a bone
 				# if this is already in the set of used bones, delete it
 				if item[1] in displayed_bones:
-					frame[3].pop(i)
+					frame.items.pop(i)
 					duplicate_entries_removed += 1
 				# otherwise, add it to set of used bones
 				else:
@@ -157,52 +165,53 @@ def dispframe_fix(pmx, moreinfo=False):
 		
 	# have identified which bones/morphs are displayed: now identify which ones are NOT
 	undisplayed_bones = []
-	for d,bone in enumerate(pmx[5]):
+	for d,bone in enumerate(pmx.bones):
 		# if this bone is already displayed, skip
 		if d in displayed_bones: continue
 		# if this bone is visible and is enabled, add it to the list
-		if bone[10] and bone[11]: undisplayed_bones.append(d)
+		if bone.has_visible and bone.has_enabled: undisplayed_bones.append(d)
 	if undisplayed_bones:
 		if moreinfo:
 			core.MY_PRINT_FUNC("added %d undisplayed bones to new group 'morebones'" % len(undisplayed_bones))
 		# add a new frame to hold all bones
 		newframelist = [[0, x] for x in undisplayed_bones]
-		newframe = ["morebones","morebones",0,newframelist]
-		pmx[7].append(newframe)
+		newframe = pmxstruct.PmxFrame(name_jp="morebones", name_en="morebones", is_special=False, items=newframelist)
+		pmx.frames.append(newframe)
 	
 	# build list of which morphs are NOT shown
 	undisplayed_morphs = []
-	for d,morph in enumerate(pmx[6]):
+	for d,morph in enumerate(pmx.morphs):
 		# if this morph is already displayed, skip
 		if d in displayed_morphs: continue
-		# if this morph is not a hidden group, add it to the list
-		if 1 <= morph[2] <= 4: undisplayed_morphs.append(d)
+		# if this morph is in a valid panel, add it to the list
+		if 1 <= morph.panel <= 4: undisplayed_morphs.append(d)
 	if undisplayed_morphs:
 		if moreinfo:
 			core.MY_PRINT_FUNC("added %d undisplayed morphs to Facials group" % len(undisplayed_morphs))
 		newframelist = [[1, x] for x in undisplayed_morphs]
 		# find morphs group and only add to it
-		for frame in pmx[7]:
-			if frame[0] == "表情" and frame[1] == "Exp" and frame[2]:
-				# concatenate to end of list
-				frame[3] += newframelist
-				break
+		# should ALWAYS be at index 1 but whatever might as well be extra safe
+		idx = core.my_list_search(pmx.frames, lambda x: x.name_jp == "表情" and frame.name_en == "Exp" and frame.is_special)
+		if idx is not None:
+			# concatenate to end of item list
+			pmx.frames[idx].items += newframelist
+		else:
+			core.MY_PRINT_FUNC("ERROR: unable to find semistandard 'expressions' display frame")
 	
 	# check if there are too many morphs among all groups... if so, trim and remake "displayed morphs"
 	total_num_morphs = 0
-	for frame in pmx[7]:
+	for frame in pmx.frames:
 		i = 0
-		while i < len(frame[3]):
-			item = frame[3][i]
+		while i < len(frame.items):
 			# if this is a bone, skip it
-			if not item[0]:
+			if not frame.items[i][0]:
 				i += 1
 			else:
 				# if it is a morph, count it
 				total_num_morphs += 1
 				# if i have already counted too many morphs, pop it
 				if total_num_morphs > MAX_MORPHS_IN_DISPLAY:
-					frame[3].pop(i)
+					frame.items.pop(i)
 				else:
 					i += 1
 	num_morphs_over_limit = max(total_num_morphs - MAX_MORPHS_IN_DISPLAY, 0)
@@ -212,11 +221,11 @@ def dispframe_fix(pmx, moreinfo=False):
 		
 	# delete any groups that are empty
 	i = 0
-	while i < len(pmx[7]):
-		frame = pmx[7][i]
+	while i < len(pmx.frames):
+		frame = pmx.frames[i]
 		# if it is empty AND it is not "special" then delete it
-		if frame[2] == 0 and len(frame[3]) == 0:
-			pmx[7].pop(i)
+		if len(frame.items) == 0 and not frame.is_special:
+			pmx.frames.pop(i)
 			empty_groups_removed += 1
 		else:
 			i += 1
