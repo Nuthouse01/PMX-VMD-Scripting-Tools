@@ -20,7 +20,7 @@ from sys import platform, version_info, version
 # between 3.4 and 3.6, who knows
 from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
 
-if version_info < (3, 4):
+if version_info < (3, 6):
 	print("Your version of Python is too old to run this script, please update!")
 	print("Your current version = " + version)
 	print("...press ENTER to exit...")
