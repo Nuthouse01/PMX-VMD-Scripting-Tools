@@ -6,6 +6,7 @@
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 	from . import _alphamorph_correct
 	from . import _bonedeform_fix
 	from . import _morph_winnow
@@ -20,6 +21,7 @@ except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 		import _alphamorph_correct
 		import _bonedeform_fix
 		import _morph_winnow
@@ -36,7 +38,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = None
+		core = pmxlib = pmxstruct = None
 		_alphamorph_correct = _morph_winnow = _prune_unused_vertices = _prune_invalid_faces = _translate_to_english = None
 		_weight_cleanup = _uniquify_names = _prune_unused_bones = _dispframe_fix = _bonedeform_fix = None
 
@@ -51,38 +53,38 @@ MAX_WARNING_LIST = 15
 
 
 
-def find_crashing_joints(pmx):
+def find_crashing_joints(pmx: pmxstruct.Pmx):
 	# check for invalid joints that would crash MMD, this is such a small operation that it shouldn't get its own file
 	# return a list of the joints that are bad
 	retme = []
-	for d,joint in enumerate(pmx[9]):
-		if joint[3] == -1 or joint[4] == -1:
+	for d,joint in enumerate(pmx.joints):
+		if joint.rb1_idx == -1 or joint.rb2_idx == -1:
 			retme.append(d)
 	return retme
 
-def find_boneless_bonebodies(pmx):
+def find_boneless_bonebodies(pmx: pmxstruct.Pmx):
 	# check for rigidbodies that aren't attached to any bones, this usually doesn't cause crashes but is definitely a mistake
 	retme = []
-	for d,body in enumerate(pmx[8]):
+	for d,body in enumerate(pmx.rigidbodies):
 		# if this is a bone body
-		if body[20] == 0:
+		if body.phys_mode == 0:
 			# if there is no bone associated with it
-			if body[2] == -1:
+			if body.bone_idx == -1:
 				retme.append(d)
 	return retme
 
-def find_toolong_bonemorph(pmx):
+def find_toolong_bonemorph(pmx: pmxstruct.Pmx):
 	# check for morphs with JP names that are too long and will not be successfully saved/loaded with VMD files
 	# for each morph, convert from string to bytes encoding to determine its length
 	# also checks that bone/morph names can be stored in shift_jis for VMD usage
 	core.set_encoding("shift_jis")
 	toolong_list_bone = []
 	failct = 0
-	for d,m in enumerate(pmx[5]):
+	for d,b in enumerate(pmx.bones):
 		try:
-			mb = core.encode_string_with_escape(m[0])
-			if len(mb) > 15:
-				toolong_list_bone.append("%d[%d]" % (d, len(mb)))
+			bb = core.encode_string_with_escape(b.name_jp)
+			if len(bb) > 15:
+				toolong_list_bone.append("%d[%d]" % (d, len(bb)))
 		except UnicodeEncodeError as e:
 			core.MY_PRINT_FUNC("Bone %d" % d)
 			# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
@@ -91,9 +93,9 @@ def find_toolong_bonemorph(pmx):
 			core.MY_PRINT_FUNC(newerrstr)
 			failct += 1
 	toolong_list_morph = []
-	for d,m in enumerate(pmx[6]):
+	for d,m in enumerate(pmx.morphs):
 		try:
-			mb = core.encode_string_with_escape(m[0])
+			mb = core.encode_string_with_escape(m.name_jp)
 			if len(mb) > 15:
 				toolong_list_morph.append("%d[%d]" % (d, len(mb)))
 		except UnicodeEncodeError as e:
@@ -107,16 +109,16 @@ def find_toolong_bonemorph(pmx):
 		core.MY_PRINT_FUNC("WARNING: found %d JP names that cannot be encoded with SHIFT-JIS, this will cause MMD to behave strangely. Please replace the bad characters in the strings printed above!" % failct)
 	return toolong_list_bone, toolong_list_morph
 
-def find_shadowy_materials(pmx):
+def find_shadowy_materials(pmx: pmxstruct.Pmx):
 	# identify materials that start transparent but still have edging
 	retme = []
-	for d,mat in enumerate(pmx[4]):
+	for d,mat in enumerate(pmx.materials):
 		# opacity is zero AND edge is enabled AND edge has nonzero opacity AND edge has nonzero size 
-		if mat[5] == 0 and mat[13][4] and mat[17] != 0 and mat[18] != 0:
+		if mat.alpha == 0 and mat.flaglist[4] and mat.edgealpha != 0 and mat.edgesize != 0:
 			retme.append(d)
 	return retme
 
-def find_jointless_physbodies(pmx):
+def find_jointless_physbodies(pmx: pmxstruct.Pmx):
 	# check for rigidbodies with physics enabled that are NOT the dependent-body of any joint
 	# these will just wastefully roll around on the floor draining processing power
 	
@@ -125,7 +127,7 @@ def find_jointless_physbodies(pmx):
 	# then I can find each body that is bone or linked to bone
 	# which lets me determine which ones are NOT linked!
 	
-	def recursively_walk_along_joints(target, known_anchors):
+	def recursively_walk_along_joints(target: int, known_anchors: set):
 		if target in known_anchors or target == -1:
 			# stop condition: if this RB idx is already known to be anchored, i have already ran recursion from this node. don't do it again.
 			# also abort if the target is -1 which means invalid RB
@@ -133,19 +135,19 @@ def find_jointless_physbodies(pmx):
 		# if not already in the set, but recursion is being called on this, then this bone is an "anchor" and should be added.
 		known_anchors.add(target)
 		# now, get all joints which include this RB
-		linked_joints = [joint for joint in pmx[9] if (joint[3] == target) or (joint[4] == target)]
+		linked_joints = [j for j in pmx.joints if (j.rb1_idx == target) or (j.rb2_idx == target)]
 		for joint in linked_joints:
 			# walk to every body this joint is connected to
-			if joint[3] != target: recursively_walk_along_joints(joint[3], known_anchors)
-			if joint[4] != target: recursively_walk_along_joints(joint[4], known_anchors)
+			if joint.rb1_idx != target: recursively_walk_along_joints(joint.rb1_idx, known_anchors)
+			if joint.rb2_idx != target: recursively_walk_along_joints(joint.rb2_idx, known_anchors)
 		return
 	
-	bonebodies = [d for d,body in enumerate(pmx[8]) if body[20] == 0]
-	anchorbodies = set()
+	bonebodies = [d for d,body in enumerate(pmx.rigidbodies) if body.phys_mode == 0]
+	anchored_bodies = set()
 	for bod in bonebodies:
-		recursively_walk_along_joints(bod, anchorbodies)
+		recursively_walk_along_joints(bod, anchored_bodies)
 	# now, see which body indices are not in the anchored set!
-	retme = [i for i in range(len(pmx[8])) if i not in anchorbodies]
+	retme = [i for i in range(len(pmx.rigidbodies)) if i not in anchored_bodies]
 	return retme
 	
 
