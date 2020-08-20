@@ -10,6 +10,8 @@
 # NOTE: if you are taking positions from one model and forcing them onto another model, it's not gonna be a perfect solution
 # scaling or manual adjustment will probably be required, which kinda defeats the whole point of this script...
 
+# first system imports
+from typing import List
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -17,19 +19,21 @@ try:
 	from . import nuthouse01_vmd_parser as vmdlib
 	from . import nuthouse01_vmd_struct as vmdstruct
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_vmd_parser as vmdlib
 		import nuthouse01_vmd_struct as vmdstruct
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = vmdlib = vmdstruct = pmxlib = None
+		core = vmdlib = vmdstruct = pmxlib = pmxstruct = None
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
@@ -116,20 +120,20 @@ def rotate3d(origin, angle_quat, point_in):
 	return point
 
 
-def build_bonechain(allbones, endbone):
+def build_bonechain(allbones: List[pmxstruct.PmxBone], endbone: str) -> List[Bone]:
 	nextbone = endbone
 	buildme = []
 	while True:
-		r = core.my_list_search(allbones, lambda x: x[0] == nextbone, getitem=True)
+		r = core.my_list_search(allbones, lambda x: x.name_jp == nextbone, getitem=True)
 		if r is None:
 			core.MY_PRINT_FUNC("ERROR: unable to find '" + nextbone + "' in input file, unable to build parentage chain")
 			raise RuntimeError()
 		# 0 = bname, 5 = parent index, 234 = xyz position
-		nextbone = allbones[r[5]][0]
-		newrow = Bone(r[0], r[2], r[3], r[4])
+		nextbone = allbones[r.parent_idx].name_jp
+		newrow = Bone(r.name_jp, r.pos[0], r.pos[1], r.pos[2])
 		buildme.append(newrow)
 		# if parent index is -1, that means there is no parent. so we reached root. so break.
-		if r[5] == -1:
+		if r.parent_idx == -1:
 			break
 	buildme.reverse()
 	return buildme
@@ -155,7 +159,7 @@ def main(moreinfo=True):
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	# get bones
-	realbones = pmx[5]
+	realbones = pmx.bones
 	# then, make 2 lists: one starting from jp_righttoe, one starting from jp_lefttoe
 	# start from each "toe" bone (names are known), go parent-find-parent-find until reaching no-parent
 	bonechain_r = build_bonechain(realbones, jp_righttoe)
