@@ -40,10 +40,10 @@ def main(moreinfo=True):
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
-	realbones = pmx[5]		# get bones
-	realmorphs = pmx[6]		# get morphs
-	modelname_jp = pmx[0][1]
-	modelname_en = pmx[0][2]
+	realbones = pmx.bones		# get bones
+	realmorphs = pmx.morphs		# get morphs
+	modelname_jp = pmx.header.name_jp
+	modelname_en = pmx.header.name_en
 	
 	bonelist_out = [
 		["modelname_jp", "'" + modelname_jp + "'"],
@@ -57,8 +57,8 @@ def main(moreinfo=True):
 	]
 
 	# in both lists, idx0 = name_jp, idx1 = name_en
-	bonelist_pairs = [a[0:2] for a in realbones]
-	morphlist_pairs = [a[0:2] for a in realmorphs]
+	bonelist_pairs =  [[a.name_jp, a.name_en] for a in realbones]
+	morphlist_pairs = [[a.name_jp, a.name_en] for a in realmorphs]
 	bonelist_out += bonelist_pairs
 	morphlist_out += morphlist_pairs
 	
