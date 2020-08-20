@@ -2,16 +2,21 @@
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
+# first import system stuff
+from typing import List
+
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 	from ._prune_unused_bones import apply_bone_remapping
 	from ._prune_unused_vertices import delme_list_to_rangemap
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 		from _prune_unused_bones import apply_bone_remapping
 		from _prune_unused_vertices import delme_list_to_rangemap
 	except ImportError as eee:
@@ -20,7 +25,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = apply_bone_remapping = delme_list_to_rangemap = None
+		core = pmxlib = pmxstruct = apply_bone_remapping = delme_list_to_rangemap = None
 
 
 
@@ -77,12 +82,12 @@ def main(moreinfo=True):
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	
 	# detect whether arm ik exists
-	r = core.my_list_search(pmx[5], lambda x: x[0] == jp_r + jp_newik)
+	r = core.my_list_search(pmx.bones, lambda x: x.name_jp == jp_r + jp_newik)
 	if r is None:
-		r = core.my_list_search(pmx[5], lambda x: x[0] == jp_r + jp_newik2)
-	l = core.my_list_search(pmx[5], lambda x: x[0] == jp_l + jp_newik)
+		r = core.my_list_search(pmx.bones, lambda x: x.name_jp == jp_r + jp_newik2)
+	l = core.my_list_search(pmx.bones, lambda x: x.name_jp == jp_l + jp_newik)
 	if l is None:
-		l = core.my_list_search(pmx[5], lambda x: x[0] == jp_l + jp_newik2)
+		l = core.my_list_search(pmx.bones, lambda x: x.name_jp == jp_l + jp_newik2)
 	
 	# decide whether to create or remove arm ik
 	if r is None and l is None:
@@ -97,14 +102,15 @@ def main(moreinfo=True):
 			# first find all 3 arm bones
 			# even if i insert into the list, this will still be a valid reference i think
 			bones = []
+			bones: List[pmxstruct.PmxBone]
 			for n in [jp_arm, jp_elbow, jp_wrist]:
-				i = core.my_list_search(pmx[5], lambda x: x[0] == side + n, getitem=True)
+				i = core.my_list_search(pmx.bones, lambda x: x.name_jp == side + n, getitem=True)
 				if i is None:
 					core.MY_PRINT_FUNC("ERROR1: semistandard bone '%s' is missing from the model, unable to create attached arm IK" % (side + n))
 					raise RuntimeError()
 				bones.append(i)
 			# get parent of arm bone
-			shoulder_idx = bones[0][5]
+			shoulder_idx = bones[0].parent_idx
 			
 			# then do the "remapping" on all existing bone references, to make space for inserting 4 bones
 			# don't delete any bones, just remap them
@@ -118,43 +124,63 @@ def main(moreinfo=True):
 			
 			# make copies of the 3 armchain bones
 			for i, b in enumerate(bones):
-				newarm = b[0:5] + [shoulder_idx + i] + b[6:8]  # copy names/pos, parent, copy deform layer
-				newarm += [1, 0, 0, 0]  # rotateable, not translateable, not visible, not enabled(?)
-				newarm += [1, [shoulder_idx + 2 + i], 0, 0, [], 0, []]  # tail type, no inherit, no fixed axis,
-				newarm += b[19:21] + [0, [], 0, []]  # copy local axis, no ext parent, no ik
-				newarm[0] += jp_ikchainsuffix  # add suffix to jp name
-				newarm[1] += jp_ikchainsuffix  # add suffix to en name
-				pmx[5].insert(shoulder_idx + 1 + i, newarm)
+				b: pmxstruct.PmxBone
+				
+				# newarm = b[0:5] + [shoulder_idx + i] + b[6:8]  # copy names/pos, parent, copy deform layer
+				# newarm += [1, 0, 0, 0]  # rotateable, not translateable, not visible, not enabled(?)
+				# newarm += [1, [shoulder_idx + 2 + i], 0, 0, [], 0, []]  # tail type, no inherit, no fixed axis,
+				# newarm += b[19:21] + [0, [], 0, []]  # copy local axis, no ext parent, no ik
+				# newarm[0] += jp_ikchainsuffix  # add suffix to jp name
+				# newarm[1] += jp_ikchainsuffix  # add suffix to en name
+				newarm = pmxstruct.PmxBone(
+					name_jp=b.name_jp + jp_ikchainsuffix, name_en=b.name_en + jp_ikchainsuffix, pos=b.pos,
+					parent_idx=b.parent_idx, deform_layer=b.deform_layer, deform_after_phys=b.deform_after_phys,
+					has_rotate=True, has_translate=False, has_visible=False, has_enabled=True,
+					tail_type=True, tail=shoulder_idx + 2 + i, inherit_rot=False, inherit_trans=False,
+					has_fixedaxis=False, has_localaxis=b.has_localaxis, localaxis_x=b.localaxis_x, localaxis_z=b.localaxis_z,
+					has_externalparent=False, has_ik=False,
+				)
+				pmx.bones.insert(shoulder_idx + 1 + i, newarm)
 				# then change the existing arm/elbow (not the wrist) to inherit rot from them
 				if i != 2:
-					b[14] = 1
-					b[16] = [shoulder_idx + 1 + i, 1]
+					b.inherit_rot = True
+					b.inherit_parent_idx = shoulder_idx + 1 + i
+					b.inherit_ratio = 1
 			
 			# copy the wrist to make the IK bone
 			en_suffix = "_L" if side == jp_l else "_R"
 			# get index of "upperbody" to use as parent of hand IK bone
-			ikpar = core.my_list_search(pmx[5], lambda x: x[0] == jp_upperbody)
+			ikpar = core.my_list_search(pmx.bones, lambda x: x.name_jp == jp_upperbody)
 			if ikpar is None:
 				core.MY_PRINT_FUNC("ERROR1: semistandard bone '%s' is missing from the model, unable to create attached arm IK" % jp_upperbody)
 				raise RuntimeError()
 			
-			newik = [side + jp_newik, en_newik + en_suffix] + bones[2][2:5] + [ikpar]  # new names, copy pos, new par
-			newik += bones[2][6:8] + [1, 1, 1, 1]  + [0, [0,1,0]] # copy deform layer, rot/trans/vis/en, tail type
-			newik += [0, 0, [], 0, [], 0, [], 0, []]  # no inherit, no fixed axis, no local axis, no ext parent, yes IK
-			# add the ik info: [is_ik, [target, loops, anglelimit, [[link_idx, []]], [link_idx, []]]] ] ]
-			newik += [1, [shoulder_idx+3, newik_loops, newik_angle, [[shoulder_idx+2,[]],[shoulder_idx+1,[]]] ] ]
-			pmx[5].insert(shoulder_idx + 4, newik)
+			# newik = [side + jp_newik, en_newik + en_suffix] + bones[2][2:5] + [ikpar]  # new names, copy pos, new par
+			# newik += bones[2][6:8] + [1, 1, 1, 1]  + [0, [0,1,0]] # copy deform layer, rot/trans/vis/en, tail type
+			# newik += [0, 0, [], 0, [], 0, [], 0, []]  # no inherit, no fixed axis, no local axis, no ext parent, yes IK
+			# # add the ik info: [is_ik, [target, loops, anglelimit, [[link_idx, []]], [link_idx, []]]] ] ]
+			# newik += [1, [shoulder_idx+3, newik_loops, newik_angle, [[shoulder_idx+2,[]],[shoulder_idx+1,[]]] ] ]
+			newik = pmxstruct.PmxBone(
+				name_jp=side + jp_newik, name_en=en_newik + en_suffix, pos=bones[2].pos,
+				parent_idx=ikpar, deform_layer=bones[2].deform_layer, deform_after_phys=bones[2].deform_after_phys,
+				has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
+				tail_type=False, tail=[0,1,0], inherit_rot=False, inherit_trans=False,
+				has_fixedaxis=False, has_localaxis=False, has_externalparent=False, has_ik=True,
+				ik_target_idx=shoulder_idx+3, ik_numloops=newik_loops, ik_angle=newik_angle,
+				ik_links=[pmxstruct.PmxBoneIkLink(idx=shoulder_idx+2), pmxstruct.PmxBoneIkLink(idx=shoulder_idx+1)]
+			)
+			pmx.bones.insert(shoulder_idx + 4, newik)
 			
 			# then add to dispframe
 			# first, does the frame already exist?
-			f = core.my_list_search(pmx[7], lambda x: x[0] == jp_newik, getitem=True)
+			f = core.my_list_search(pmx.frames, lambda x: x.name_jp == jp_newik, getitem=True)
 			if f is None:
 				# need to create the new dispframe! easy
-				newframe = [jp_newik, en_newik, 0, [[0, shoulder_idx + 4]]]
-				pmx[7].append(newframe)
+				newframe = pmxstruct.PmxFrame(name_jp=jp_newik, name_en=en_newik, is_special=False, items=[[0, shoulder_idx + 4]])
+				pmx.frames.append(newframe)
 			else:
 				# frame already exists, also easy
-				f[3].append([0, shoulder_idx + 4])
+				f.items.append([0, shoulder_idx + 4])
 	else:
 		# remove IK branch
 		core.MY_PRINT_FUNC(">>>> Removing arm IK <<<")
@@ -167,9 +193,9 @@ def main(moreinfo=True):
 		bone_dellist = []
 		for b in [r, l]:
 			bone_dellist.append(b) # this IK bone
-			bone_dellist.append(pmx[5][r][24][0]) # the target of the bone
-			for v in pmx[5][r][24][3]:
-				bone_dellist.append(v[0]) # each link along the bone
+			bone_dellist.append(pmx.bones[b].ik_target_idx) # the target of the bone
+			for v in pmx.bones[b].ik_links:
+				bone_dellist.append(v.idx) # each link along the bone
 		bone_dellist.sort()
 		# build the remap thing
 		bone_shiftmap = delme_list_to_rangemap(bone_dellist)
@@ -178,10 +204,10 @@ def main(moreinfo=True):
 		
 		# delete dispframe for hand ik
 		# first, does the frame already exist?
-		f = core.my_list_search(pmx[7], lambda x: x[0] == jp_newik)
+		f = core.my_list_search(pmx.frames, lambda x: x.name_jp == jp_newik)
 		if f is not None:
 			# frame already exists, delete it
-			pmx[7].pop(f)
+			pmx.frames.pop(f)
 		
 		pass
 	
