@@ -135,17 +135,15 @@ def get1st(x):
 def get2nd(x):
 	return x[1]
 
-# todo: revise this to be more generic & take a lambda
-P = TypeVar('P')
-def my_list_search(searchme: Iterable[P], condition: Callable[[P],bool], getitem=False):
+THING = TypeVar('THING')      # Declare type variable so I can say "whatever input type is, it matches the output type"
+def my_list_search(searchme: Iterable[THING], condition: Callable[[THING], bool], getitem=False):
 	# in a list of things, find the first thing where the condition is true
 	for d,row in enumerate(searchme):
 		if condition(row):
 			return row if getitem else d
 	return None
 
-T = TypeVar('T')      # Declare type variable so I can say "whatever input type is, it matches the output type"
-def my_list_partition(l: Iterable[T], condition: Callable[[T],bool]) -> Tuple[List[T],List[T]]:
+def my_list_partition(l: Iterable[THING], condition: Callable[[THING], bool]) -> Tuple[List[THING], List[THING]]:
 	"""
 	Split one list into two NEW lists based on a condition. Kinda like a list comprehension but it produces 2 results.
 	

@@ -45,7 +45,7 @@ except ImportError as eee:
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
-DEBUG = True
+DEBUG = False
 
 
 # when this is true, it also prints a list of the number of vertices controlled by each bone. not recommended.

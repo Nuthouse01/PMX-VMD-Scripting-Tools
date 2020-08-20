@@ -31,7 +31,7 @@ except ImportError as eee:
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
-DEBUG = True
+DEBUG = False
 
 # by default encode files with utf-16
 # utf-8 might make files very slightly smaller but i haven't tested it
