@@ -4,6 +4,7 @@
 
 
 import copy
+from typing import Union, List
 
 try:
 	from . import nuthouse01_core as core
@@ -49,6 +50,80 @@ mtype_dict = {0:"group", 1:"vertex", 2:"bone", 3:"UV",
 			  8:"material", 9:"flip", 10:"impulse"}
 
 
+def morph_scale(morph: pmxstruct.PmxMorph, scale: Union[List[float], float], bone_mode=0) -> bool:
+	# return false if it somehow has an invalid morph type, return true otherwise
+	
+	# independent x/y/z scale for bone & vertex morphs
+	# UV and UV# morphs have independent x/y/z/w
+	# material morphs only use one value
+	
+	# accept scale as either int/float or list of 3 int/float
+	if isinstance(scale,int) or isinstance(scale,float):
+		scale = [scale] * 4
+	if len(scale) < 4:
+		scale.extend([1] * (4 - len(scale)))
+
+	if morph.morphtype == 2:  # bone
+		# bone_mode: 1 = motion(translation), 2 = rotation, 3 = both
+		if bone_mode in (2,3):  # if ==2 or ==3, then do rotation
+			for d, item in enumerate(morph.items):
+				item: pmxstruct.PmxMorphItemBone  # type annotation for pycharm
+				# i guess scaling in euclid-space is good enough? assuming all resulting components are <180
+				# most bone morphs only rotate around one axis anyways
+				item.rot = [x * s for x,s in zip(item.rot, scale)]
+		if bone_mode in (1,3):  # if ==1 or ==3, then do translation
+			for d, item in enumerate(morph.items):
+				item: pmxstruct.PmxMorphItemBone  # type annotation for pycharm
+				# scale the morph XYZ
+				item.move = [x * s for x,s in zip(item.move, scale)]
+	elif morph.morphtype == 1:  # vertex
+		# for each item in this morph:
+		for d, item in enumerate(morph.items):
+			item: pmxstruct.PmxMorphItemVertex  # type annotation for pycharm
+			# scale the morph XYZ
+			item.move = [x * s for x, s in zip(item.move, scale)]
+	elif morph.morphtype in (3, 4, 5, 6, 7):  # UV  UV1 UV2 UV3 UV4
+		for d, item in enumerate(morph.items):
+			item: pmxstruct.PmxMorphItemUV  # type annotation for pycharm
+			# scale the morph UV
+			item.move = [x * s for x, s in zip(item.move, scale)]
+	elif morph.morphtype == 8:  # material
+		core.MY_PRINT_FUNC("material morph is WIP")
+		for d, item in enumerate(morph.items):
+			item: pmxstruct.PmxMorphItemMaterial  # type annotation for pycharm
+			if item.is_add:
+				# to scale additive morphs, just scale like normal
+				item.alpha *=     scale[0]
+				item.specpower *= scale[0]
+				item.edgealpha *= scale[0]
+				item.edgesize *=  scale[0]
+				item.diffRGB =  [d * scale[0] for d in item.diffRGB]
+				item.specRGB =  [d * scale[0] for d in item.specRGB]
+				item.ambRGB =   [d * scale[0] for d in item.ambRGB]
+				item.edgeRGB =  [d * scale[0] for d in item.edgeRGB]
+				item.texRGBA =  [d * scale[0] for d in item.texRGBA]
+				item.toonRGBA = [d * scale[0] for d in item.toonRGBA]
+				item.sphRGBA =  [d * scale[0] for d in item.sphRGBA]
+			else:
+				# but to scale multiplicative morphs, scale around 1! meaning subtract 1, then scale, then add 1
+				item.alpha = ((item.alpha - 1) * scale[0]) + 1
+				item.specpower = ((item.specpower - 1) * scale[0]) + 1
+				item.edgealpha = ((item.edgealpha - 1) * scale[0]) + 1
+				item.edgesize = ((item.edgesize - 1) * scale[0]) + 1
+				item.diffRGB =  [((d - 1) * scale[0]) + 1 for d in item.diffRGB]
+				item.specRGB =  [((d - 1) * scale[0]) + 1 for d in item.specRGB]
+				item.ambRGB =   [((d - 1) * scale[0]) + 1 for d in item.ambRGB]
+				item.edgeRGB =  [((d - 1) * scale[0]) + 1 for d in item.edgeRGB]
+				item.texRGBA =  [((d - 1) * scale[0]) + 1 for d in item.texRGBA]
+				item.toonRGBA = [((d - 1) * scale[0]) + 1 for d in item.toonRGBA]
+				item.sphRGBA =  [((d - 1) * scale[0]) + 1 for d in item.sphRGBA]
+	else:
+		core.MY_PRINT_FUNC("Unhandled morph type")
+		return False
+	return True
+
+
+
 def main(moreinfo=True):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
@@ -58,8 +133,8 @@ def main(moreinfo=True):
 	core.MY_PRINT_FUNC("")
 	# valid input is any string that can matched aginst a morph idx
 	s = core.MY_GENERAL_INPUT_FUNC(lambda x: morph_hide.get_morphidx_from_name(x, pmx) is not None,
-								   ["Please specify the target morph: morph #, JP name, or EN name (names are case sensitive).",
-									"Empty input will quit the script."])
+	   ["Please specify the target morph: morph #, JP name, or EN name (names are case sensitive).",
+		"Empty input will quit the script."])
 	# do it again, cuz the lambda only returns true/false
 	target_index = morph_hide.get_morphidx_from_name(s, pmx)
 	
@@ -77,8 +152,8 @@ def main(moreinfo=True):
 	bone_mode = 0
 	if morphtype == 2:
 		bone_mode = core.MY_SIMPLECHOICE_FUNC((1,2,3),
-											  ["Bone morph detected: do you want to scale the motion(translation), rotation, or both?",
-											   "1 = motion(translation), 2 = rotation, 3 = both"])
+			["Bone morph detected: do you want to scale the motion(translation), rotation, or both?",
+			 "1 = motion(translation), 2 = rotation, 3 = both"])
 	
 	# ask for factor: keep looping this prompt until getting a valid float
 	def is_float(x):
@@ -96,40 +171,22 @@ def main(moreinfo=True):
 	
 	# important values: target_index, factor, morphtype, bone_mode
 	# first create the new morph that is a copy of current
-	newmorph = copy.deepcopy(pmx.morphs[target_index])
-	# then modify the names
-	name_suffix = "*" + (str(factor)[0:6])
-	newmorph.name_jp += name_suffix
-	newmorph.name_en += name_suffix
-	# now scale the actual values
-	if morphtype == 2:  # bone
-		item:pmxstruct.PmxMorphItemBone  # type annotation for pycharm
-		# bone_mode: 1 = motion(translation), 2 = rotation, 3 = both
-		if bone_mode in (2,3):  # if ==2 or ==3, then do rotation
-			for d, item in enumerate(newmorph.items):
-				# i guess scaling in euclid-space is good enough? assuming all resulting components are <180
-				# most bone morphs only rotate around one axis anyways
-				item.rot = [e * factor for e in item.rot]
-		if bone_mode in (1,3):  # if ==1 or ==3, then do translation
-			for d, item in enumerate(newmorph.items):
-				# scale the morph XYZ
-				item.move = [m * factor for m in item.move]
-	elif morphtype == 1:  # vertex
-		item:pmxstruct.PmxMorphItemVertex  # type annotation for pycharm
-		# for each item in this morph:
-		for d, item in enumerate(newmorph.items):
-			# scale the morph XYZ
-			item.move = [m * factor for m in item.move]
-	elif morphtype in (3, 4, 5, 6, 7):  # UV  UV1 UV2 UV3 UV4
-		item:pmxstruct.PmxMorphItemUV  # type annotation for pycharm
-		for d, item in enumerate(newmorph.items):
-			# scale the morph UV
-			item.move = [m * factor for m in item.move]
+	if SCALE_MORPH_IN_PLACE:
+		newmorph = pmx.morphs[target_index]
 	else:
-		core.MY_PRINT_FUNC("Unhandled morph type")
+		newmorph = copy.deepcopy(pmx.morphs[target_index])
+		# then modify the names
+		name_suffix = "*" + (str(factor)[0:6])
+		newmorph.name_jp += name_suffix
+		newmorph.name_en += name_suffix
+	# now scale the actual values
+	
+	r = morph_scale(newmorph, factor, bone_mode)
+	
+	if not r:
 		core.MY_PRINT_FUNC("quitting")
 		return None
-	
+		
 	pmx.morphs.append(newmorph)
 	
 	# write out

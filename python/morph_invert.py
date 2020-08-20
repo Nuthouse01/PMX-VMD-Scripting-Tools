@@ -7,19 +7,21 @@ try:
 	from . import nuthouse01_pmx_parser as pmxlib
 	from . import nuthouse01_pmx_struct as pmxstruct
 	from . import morph_hide
+	from . import morph_scale
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
 		import nuthouse01_pmx_struct as pmxstruct
 		import morph_hide
+		import morph_scale
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = pmxstruct = morph_hide = None
+		core = pmxlib = pmxstruct = morph_hide = morph_scale = None
 
 
 
@@ -51,8 +53,8 @@ def main(moreinfo=True):
 	core.MY_PRINT_FUNC("")
 	# valid input is any string that can matched aginst a morph idx
 	s = core.MY_GENERAL_INPUT_FUNC(lambda x: morph_hide.get_morphidx_from_name(x, pmx) is not None,
-								   ["Please specify the target morph: morph #, JP name, or EN name (names are case sensitive).",
-									"Empty input will quit the script."])
+		["Please specify the target morph: morph #, JP name, or EN name (names are case sensitive).",
+		 "Empty input will quit the script."])
 	# do it again, cuz the lambda only returns true/false
 	target_index = morph_hide.get_morphidx_from_name(s, pmx)
 	
@@ -77,7 +79,7 @@ def main(moreinfo=True):
 			pmx.verts[item.vert_idx].pos[1] += item.move[1]
 			pmx.verts[item.vert_idx].pos[2] += item.move[2]
 			# invert the morph
-			item.move = [m * -1 for m in item.move]
+			morph_scale.morph_scale(pmx.morphs[target_index], -1)
 	elif morphtype == 3: # UV
 		item:pmxstruct.PmxMorphItemUV  # type annotation for pycharm
 		for d, item in enumerate(pmx.morphs[target_index].items):
@@ -86,7 +88,7 @@ def main(moreinfo=True):
 			pmx.verts[item.vert_idx].uv[0] += item.move[0]
 			pmx.verts[item.vert_idx].uv[1] += item.move[1]
 			# invert the morph
-			item.move = [m * -1 for m in item.move]
+			morph_scale.morph_scale(pmx.morphs[target_index], -1)
 	elif morphtype in (4,5,6,7): # UV1 UV2 UV3 UV4
 		whichuv = morphtype - 4
 		item:pmxstruct.PmxMorphItemUV  # type annotation for pycharm
@@ -97,9 +99,14 @@ def main(moreinfo=True):
 			pmx.verts[item.vert_idx].addl_vec4s[whichuv][2] += item.move[2]
 			pmx.verts[item.vert_idx].addl_vec4s[whichuv][3] += item.move[3]
 			# invert the morph
-			item.move = [m * -1 for m in item.move]
+			morph_scale.morph_scale(pmx.morphs[target_index], -1)
 	elif morphtype == 8: # material
 		core.MY_PRINT_FUNC("WIP")
+		# todo
+		# to invert a material morph means inverting the material's visible/notvisible state as well as flipping the morph
+		# hide morph add -> show morph add
+		# hide morph mult -> show morph add
+		# show morph add -> hide morph mult
 		core.MY_PRINT_FUNC("quitting")
 		return None
 	else:

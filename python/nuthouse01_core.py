@@ -268,7 +268,7 @@ def prompt_user_choice(options: Sequence[int], explain_info=None) -> int:
 # global variable holding a function pointer that i can overwrite with a different function pointer when in GUI mode
 MY_SIMPLECHOICE_FUNC = prompt_user_choice
 
-def general_input(valid_check: Callable, explain_info=None) -> str:
+def general_input(valid_check: Callable[[str], bool], explain_info=None) -> str:
 	"""
 	CONSOLE FUNCTION: Prompt for string input & continue prompting until given function 'valid_check' returns True.
 	'valid_check' should probably print some kind of error whenever it returns False, explaining why input isn't valid.
