@@ -8,7 +8,7 @@
 # read a VMD, convert rotation on arm/wrist bones around axis of "armtwist" into rotation around "armtwist"
 
 
-import math
+# import math
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -223,13 +223,14 @@ def main(moreinfo=True):
 					# interpolate from prev to this by amount Y
 					interp_quat = core.my_slerp(prevframequat, thisframequat, y)
 					# begin building the new frame
-					newframe = vmdstruct.VmdBoneFrame(name=this.name,  # same name
-																		 f=interp_framenum,  # overwrite frame num
-																		 pos=list(this.pos),  # same pos (but make a copy)
-																		 rot=list(core.quaternion_to_euler(interp_quat)),  # overwrite euler angles
-																		 phys_off=this.phys_off,  # same phys_off
-																		 interp=list(core.bone_interpolation_default_linear)  # overwrite interpolation
-																		 )
+					newframe = vmdstruct.VmdBoneFrame(
+						name=this.name,  # same name
+						f=interp_framenum,  # overwrite frame num
+						pos=list(this.pos),  # same pos (but make a copy)
+						rot=list(core.quaternion_to_euler(interp_quat)),  # overwrite euler angles
+						phys_off=this.phys_off,  # same phys_off
+						interp=list(core.bone_interpolation_default_linear)  # overwrite interpolation
+					)
 					newframelist.append(newframe)
 				# overwrite thisframe interp curve with default too
 				this.interp = list(core.bone_interpolation_default_linear) # overwrite custom interpolation
@@ -275,13 +276,14 @@ def main(moreinfo=True):
 			# create & store new twistbone frame
 			# name=twistbone, framenum=copy, XYZpos=copy, XYZrot=new, phys=copy, interp16=copy
 			new_twistbone_euler = core.quaternion_to_euler(twist)
-			newframe = vmdstruct.VmdBoneFrame(name=twistbone,
-																 f=frame.f,
-																 pos=list(frame.pos),
-																 rot=list(new_twistbone_euler),
-																 phys_off=frame.phys_off,
-																 interp=list(frame.interp)
-																 )
+			newframe = vmdstruct.VmdBoneFrame(
+				name=twistbone,
+				f=frame.f,
+				pos=list(frame.pos),
+				rot=list(new_twistbone_euler),
+				phys_off=frame.phys_off,
+				interp=list(frame.interp)
+			)
 			new_twistbone_frames.append(newframe)
 			# print progress updates
 			curr_progress += 1

@@ -202,12 +202,9 @@ def parse_vmd_boneframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdBoneF
 			# store them all on the list
 			# create a list to hold all the boneframe data, then append it onto the return-list
 			interp_list = [x_ax, y_ax, z_ax, r_ax, x_ay, y_ay, z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by]
-			this_boneframe = vmdstruct.VmdBoneFrame(name=bname_str,
-										  f=f,
-										  pos=[xp,yp,zp],
-										  rot=[xrot,yrot,zrot],
-										  phys_off=phys_off,
-										  interp=interp_list)
+			this_boneframe = vmdstruct.VmdBoneFrame(
+				name=bname_str, f=f, pos=[xp,yp,zp], rot=[xrot,yrot,zrot], phys_off=phys_off, interp=interp_list
+			)
 			boneframe_list.append(this_boneframe)
 			# display progress printouts
 			core.print_progress_oneline(core.get_readfrom_byte() / len(raw))

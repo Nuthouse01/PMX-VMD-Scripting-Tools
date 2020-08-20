@@ -5,6 +5,7 @@
 
 # first, system imports
 from typing import List
+from abc import ABC, abstractmethod
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -21,21 +22,39 @@ except ImportError as eee:
 		core = None
 
 
+# this is an abstract base class that all the PMX classes inherit
+# this lets them all get the __str__ method and forces them all to implement list()
+# it also lets me detect any of them by isinstance(x, _BasePmx)
+class _BaseVmd(ABC):
+	def __str__(self) -> str: return str(self.list())
+	@abstractmethod
+	def list(self) -> list: pass
+	def __eq__(self, other):
+		if type(self) != type(other): return False
+		return self.list() == other.list()
 
-class VmdHeader(object):
-	def __init__(self, version, modelname):
+
+# NOTE: for simplicity, all the list() members (except Vmd.list()) should return FLAT LISTS
+# that way they can be used to easily convert vmd to txt
+
+
+class VmdHeader(_BaseVmd):
+	def __init__(self, version: float, modelname: str):
 		self.version = version
 		self.modelname = modelname
-	def __str__(self) -> str:
-		return "[%d, %s]" % (self.version, self.modelname)
+	def list(self) -> list:
+		return [self.version, self.modelname]
 
 
-class VmdBoneFrame(object):
-	def __init__(self, name:str="", f:int=0, pos:List[float]=None, rot:List[float]=None,
-				 phys_off:bool=False, interp:List[int]=None):
-		if pos is None: pos = [0.0] * 3
-		if rot is None: rot = [0.0] * 3
-		if interp is None: interp = [0] * 16
+class VmdBoneFrame(_BaseVmd):
+	def __init__(self,
+				 name: str,
+				 f: int,
+				 pos: List[float],
+				 rot: List[float],
+				 phys_off: bool,
+				 interp: List[int],
+				 ):
 		self.name = name
 		self.f = f
 		self.pos = pos  # X Y Z
@@ -46,27 +65,31 @@ class VmdBoneFrame(object):
 		self.interp = interp  # 16x int [0-127], see readme for interp explanation
 	def list(self) -> list:
 		return [self.name, self.f, *self.pos, *self.rot, self.phys_off, *self.interp]
-	def __str__(self) -> str:
-		return str(self.list())
 
 
-class VmdMorphFrame(object):
-	def __init__(self, name:str="", f:int=0, val:float=0.0):
+class VmdMorphFrame(_BaseVmd):
+	def __init__(self,
+				 name: str,
+				 f: int,
+				 val: float,
+				 ):
 		self.name = name
 		self.f = f
 		self.val = val
 	def list(self) -> list:
 		return [self.name, self.f, self.val]
-	def __str__(self) -> str:
-		return str(self.list())
 
 
-class VmdCamFrame(object):
-	def __init__(self, f:int=0, dist:float=0.0, pos:List[float]=None, rot:List[float]=None, interp:List[int]=None,
-				 fov:int=0, perspective:bool=True):
-		if pos is None: pos = [0.0] * 3
-		if rot is None: rot = [0.0] * 3
-		if interp is None: interp = [0] * 24
+class VmdCamFrame(_BaseVmd):
+	def __init__(self,
+				 f: int,
+				 dist: float,
+				 pos: List[float],
+				 rot: List[float],
+				 interp: List[int],
+				 fov: int,
+				 perspective: bool,
+				 ):
 		self.f = f
 		self.dist = dist
 		self.pos = pos  # X Y Z float
@@ -78,64 +101,71 @@ class VmdCamFrame(object):
 		self.perspective = perspective
 	def list(self) -> list:
 		return [self.f, self.dist, *self.pos, *self.rot, *self.interp, self.fov, self.perspective]
-	def __str__(self) -> str:
-		return str(self.list())
 
 
-class VmdLightFrame(object):
-	def __init__(self, f:int=0, color:List[int]=None, pos:List[float]=None):
-		if color is None: color = [0] * 3
-		if pos is None: pos = [0.0] * 3
+class VmdLightFrame(_BaseVmd):
+	def __init__(self,
+				 f: int,
+				 color: List[int],
+				 pos: List[float]
+				 ):
 		self.f = f
 		self.color = color  # R G B int [0-255]
 		self.pos = pos  # X Y Z
 	def list(self) -> list:
 		return [self.f, *self.color, *self.pos]
-	def __str__(self) -> str:
-		return str(self.list())
 
 
-class VmdShadowFrame(object):
-	def __init__(self, f:int=0, mode:int=0, val:int=0):
+class VmdShadowFrame(_BaseVmd):
+	def __init__(self,
+				 f: int,
+				 mode: int,
+				 val: int
+				 ):
 		self.f = f
 		self.mode = mode  # int (0=off, 1=mode1, 2=mode2)
 		self.val = val  # int [0-9999]
 	def list(self) -> list:
 		return [self.f, self.mode, self.val]
-	def __str__(self) -> str:
-		return str(self.list())
 
 
-class VmdIkbone(object):
-	def __init__(self, name:str="", enable:bool=False):
+class VmdIkbone(_BaseVmd):
+	def __init__(self,
+				 name: str,
+				 enable: bool
+				 ):
 		self.name = name
 		self.enable = enable
 	def list(self) -> list:
 		return [self.name, self.enable]
-	def __str__(self) -> str:
-		return str(self.list())
 
 
-class VmdIkdispFrame(object):
-	def __init__(self, f:int=0, disp:bool=True, ikbones:List[VmdIkbone]=None):
-		if ikbones is None: ikbones = []
+class VmdIkdispFrame(_BaseVmd):
+	def __init__(self,
+				 f: int,
+				 disp: bool,
+				 ikbones: List[VmdIkbone]
+				 ):
 		self.f = f
 		self.disp = disp
 		self.ikbones = ikbones
 	def list(self) -> list:
 		ret = [self.f, self.disp]
 		for ik in self.ikbones:
-			ret.append(ik.name)
-			ret.append(ik.enable)
+			ret.extend(ik.list())
 		return ret
-	def __str__(self) -> str:
-		return str(self.list())
 
 
-class Vmd(object):
-	def __init__(self, header:VmdHeader, boneframes:List[VmdBoneFrame], morphframes:List[VmdMorphFrame],
-				 camframes:List[VmdCamFrame], lightframes:List[VmdLightFrame], shadowframes:List[VmdShadowFrame],
-				 ikdispframes:List[VmdIkdispFrame]):
+class Vmd(_BaseVmd):
+	def __init__(self,
+				 header: VmdHeader,
+				 boneframes: List[VmdBoneFrame],
+				 morphframes: List[VmdMorphFrame],
+				 camframes: List[VmdCamFrame],
+				 lightframes: List[VmdLightFrame],
+				 shadowframes: List[VmdShadowFrame],
+				 ikdispframes: List[VmdIkdispFrame]
+				 ):
 		# header = version, modelname
 		# self.version = version
 		# self.modelname = modelname
@@ -146,6 +176,15 @@ class Vmd(object):
 		self.lightframes = 	lightframes
 		self.shadowframes = shadowframes
 		self.ikdispframes = ikdispframes
+	def list(self) -> list:
+		return [self.header.list(),
+				[i.list() for i in self.boneframes],
+				[i.list() for i in self.morphframes],
+				[i.list() for i in self.camframes],
+				[i.list() for i in self.lightframes],
+				[i.list() for i in self.shadowframes],
+				[i.list() for i in self.ikdispframes],
+				]
 		
 if __name__ == '__main__':
 	core.MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")

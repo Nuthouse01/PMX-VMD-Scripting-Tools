@@ -166,12 +166,10 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> vmdstruct.Vmd:
 			# finish the bone-obj and add to VMD structure
 			# this_boneframe = [bname_str, f, xp, yp, zp, xrot, yrot, zrot, phys_off, x_ax, y_ax, z_ax, r_ax, x_ay, y_ay,
 			# 				  z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by]
-			newframe = vmdstruct.VmdBoneFrame(name=temp_name,
-																 f=0,
-																 pos=temp_pos,
-																 rot=list(temp_rot),
-																 phys_off=False,
-																 interp=list(core.bone_interpolation_default_linear))
+			newframe = vmdstruct.VmdBoneFrame(
+				name=temp_name, f=0, pos=temp_pos, rot=list(temp_rot), phys_off=False,
+				interp=list(core.bone_interpolation_default_linear)
+			)
 			vmd_boneframes.append(newframe)
 			if len(vmd_boneframes) == num_bones:	parse_state = 30  # if i got all the bones i expected, move to morphs
 			else:									parse_state = 20  # otherwise, get another bone
@@ -205,9 +203,7 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> vmdstruct.Vmd:
 				raise RuntimeError()
 			# finish the morph-obj and add to VMD structure
 			# morphframe_list.append([mname_str, f, v])
-			newframe = vmdstruct.VmdMorphFrame(name=temp_name,
-																  f=0,
-																  val=temp_value)
+			newframe = vmdstruct.VmdMorphFrame(name=temp_name, f=0, val=temp_value)
 			vmd_morphframes.append(newframe)
 			parse_state = 30  # loop morphs until end-of-file
 		
