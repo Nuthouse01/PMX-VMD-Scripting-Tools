@@ -9,15 +9,17 @@ from collections import defaultdict
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 	from ._weight_cleanup import normalize_weights
-	from .bone_merge_helpers import transfer_bone_weights
+	from .WIP_bone_merge_helpers import transfer_bone_weights
 	from ._translation_tools import local_translate
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 		from _weight_cleanup import normalize_weights
-		from bone_merge_helpers import transfer_bone_weights
+		from WIP_bone_merge_helpers import transfer_bone_weights
 		from _translation_tools import local_translate
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
@@ -25,7 +27,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = normalize_weights = transfer_bone_weights = local_translate = None
+		core = pmxlib = pmxstruct = normalize_weights = transfer_bone_weights = local_translate = None
 
 
 
@@ -154,13 +156,13 @@ NEW PLAN:
 11. write to file
 '''
 
-def calculate_percentiles(pmx, bone_arm, bone_elbow, bone_hasweight):
+def calculate_percentiles(pmx: pmxstruct.Pmx, bone_arm: int, bone_elbow: int, bone_hasweight: int):
 	retme_verts = []
 	retme_percents = []
 	retme_centers = []
 	
-	axis_start = pmx[5][bone_arm][2:5]
-	axis_end = pmx[5][bone_elbow][2:5]
+	axis_start = pmx.bones[bone_arm].pos
+	axis_end = pmx.bones[bone_elbow].pos
 	
 	# 1. determine the axis from arm to elbow
 	deltax, deltay, deltaz = [e - s for e, s in zip(axis_end, axis_start)]
@@ -177,9 +179,9 @@ def calculate_percentiles(pmx, bone_arm, bone_elbow, bone_hasweight):
 	# now have found theta_y and theta_z
 	
 	# 3. collect all vertices controlled by bone_hasweight
-	for d, vert in enumerate(pmx[1]):
-		weighttype = vert[9]
-		w = vert[10]
+	for d, vert in enumerate(pmx.verts):
+		weighttype = vert.weighttype
+		w = vert.weight
 		weightlen = weight_type_to_len[weighttype]
 		if bone_hasweight in w[0:weightlen]:
 			# if this vert is controlled by bone_hasweight, then it is relevant! save it!
@@ -221,7 +223,7 @@ def trim_dict(wdict):
 	return wdict
 
 # !!! how to divvy the weights !!! make this a function(pmx, arm#, arm[twist]#, elbow#) !!!
-def divvy_weights(pmx, vert_zip, axis_limits, bone_hasweight, bone_getsweight, bezier):
+def divvy_weights(pmx: pmxstruct.Pmx, vert_zip, axis_limits, bone_hasweight, bone_getsweight, bezier):
 	
 	# (verts, percentiles, centers) = vert_zip
 	# (axis_start, axis_end) = axis_limits # (for SDEF params only)
@@ -233,9 +235,10 @@ def divvy_weights(pmx, vert_zip, axis_limits, bone_hasweight, bone_getsweight, b
 		# 1. if % >= 1.0 means the vert is below the elbow... do nothing
 		if percentile >= 1.0: continue
 		
-		vert = pmx[1][vidx]
-		weighttype = vert[9]
-		w = vert[10]
+		vert = pmx.verts[vidx]
+		vert: pmxstruct.PmxVertex
+		weighttype = vert.weighttype
+		w = vert.weight
 		
 		# 2. % <= 0.0 means above shoulder, just replace arm with armYZ, don't change anything else
 		if percentile <= 0.0:
@@ -260,12 +263,14 @@ def divvy_weights(pmx, vert_zip, axis_limits, bone_hasweight, bone_getsweight, b
 		if len(wdict) == 1:
 			# 4. if this has 100% weight on HAS, then handle it the normal way: divide weights between HAS and GETS and save as SDEF
 			# blend ratio: replace HAS with (HAS = HAS*blend) + (GETS = HAS*(1-blend))
-			vert[9] = 3  # type = SDEF = (b1, b2, b1w, c1, c2, c3, r01, r02, r03, r11, r12, r13)
+			vert.weighttype = 3  # type = SDEF = (b1, b2, b1w, c1, c2, c3, r01, r02, r03, r11, r12, r13)
 			wnew = [bone_hasweight, bone_getsweight, bez_percentile]  # set the component bones and the blend ratio, dont worry about order
-			wnew.extend(center)				# c = center
-			wnew.extend(axis_limits[0])		# r0 = axis start = armbone
-			wnew.extend(axis_limits[1])		# r1 = axis end = elbowbone
-			vert[10] = wnew
+			vert.weight = wnew
+			# c = center
+			# r0 = axis start = armbone
+			# r1 = axis end = elbowbone
+			wsdefnew = [center, axis_limits[0], axis_limits[1]]
+			vert.weight_sdef = wsdefnew
 		else:
 			# 5. if this is a bleeder, it has weights from other 'helper' bones inside what i defined as the rotation-blend region
 			# decide how to handle it
@@ -274,12 +279,15 @@ def divvy_weights(pmx, vert_zip, axis_limits, bone_hasweight, bone_getsweight, b
 			
 			if BLEED_HANDLING_MODE == 1:
 				# A. overwrite/ignore: pretend it was not a bleeder, set to blended SDEF anyway
-				vert[9] = 3  # type = SDEF = (b1, b2, b1w, c1, c2, c3, r01, r02, r03, r11, r12, r13)
-				wnew = [bone_hasweight, bone_getsweight, bez_percentile]  # set the component bones and the blend ratio, dont worry about order
-				wnew.extend(center)  # c = center
-				wnew.extend(axis_limits[0])  # r0 = axis start = armbone
-				wnew.extend(axis_limits[1])  # r1 = axis end = elbowbone
-				vert[10] = wnew
+				vert.weighttype = 3  # type = SDEF = (b1, b2, b1w, c1, c2, c3, r01, r02, r03, r11, r12, r13)
+				wnew = [bone_hasweight, bone_getsweight,
+						bez_percentile]  # set the component bones and the blend ratio, dont worry about order
+				vert.weight = wnew
+				# c = center
+				# r0 = axis start = armbone
+				# r1 = axis end = elbowbone
+				wsdefnew = [center, axis_limits[0], axis_limits[1]]
+				vert.weight_sdef = wsdefnew
 				continue
 			if BLEED_HANDLING_MODE == 2:
 				# B. dont touch: do nothing! leave as-is!
@@ -316,10 +324,10 @@ def divvy_weights(pmx, vert_zip, axis_limits, bone_hasweight, bone_getsweight, b
 				for i in range(len(blend_vector)):
 					v[i] = blend_vector[i][0]
 					v[i + 4] = blend_vector[i][1]
-				vert[10] = v
+				vert.weight = v
 				if weighttype != 4:
 					# BDEF1 BDEF2 BDEF4 -> BDEF4, but QDEF stays QDEF
-					vert[9] = 2
+					vert.weighttype = 2
 			pass  # end bleeder section
 		pass  # end for-loop
 	
@@ -370,37 +378,37 @@ def main(moreinfo=True):
 			# 1. first, validate that start/end exist, these are required
 			# NOTE: remember to prepend 'side' before all jp names!
 			start_jp = side+boneset[0]
-			start_idx = core.my_list_search(pmx[5], lambda x: x[0] == start_jp)
+			start_idx = core.my_list_search(pmx.bones, lambda x: x.name_jp == start_jp)
 			if start_idx is None:
 				core.MY_PRINT_FUNC("ERROR: standard bone '%s' not found in model, this is required!" % start_jp)
 				continue
 			end_jp = side+boneset[1]
-			end_idx = core.my_list_search(pmx[5], lambda x: x[0] == end_jp)
+			end_idx = core.my_list_search(pmx.bones, lambda x: x.name_jp == end_jp)
 			if end_idx is None:
 				core.MY_PRINT_FUNC("ERROR: standard bone '%s' not found in model, this is required!" % end_jp)
 				continue
 			
 			# 2. determine whether the 'preferredparent' exists and therefore what to acutally use as the parent
 			parent_jp = side+boneset[2]
-			parent_idx = core.my_list_search(pmx[5], lambda x: x[0] == parent_jp)
+			parent_idx = core.my_list_search(pmx.bones, lambda x: x.name_jp == parent_jp)
 			if parent_idx is None:
 				parent_idx = start_idx
 			
 			# 3. attempt to collapse known armtwist rig names onto 'parent' so that the base case is further automated
 			# for each bonename in boneset[3], if it exists, collapse onto boneidx parent_idx
 			for bname in boneset[3]:
-				rig_idx = core.my_list_search(pmx[5], lambda x: x[0] == side+bname)
+				rig_idx = core.my_list_search(pmx.bones, lambda x: x.name_jp == side+bname)
 				if rig_idx is None: continue  # if not found, try the next
 				# when it is found, what 'factor' do i use?
 				# print(side+bname)
-				if pmx[5][rig_idx][14] and pmx[5][rig_idx][16][0] == parent_idx and pmx[5][rig_idx][16][1] != 0:
+				if pmx.bones[rig_idx].inherit_rot and pmx.bones[rig_idx].inherit_parent_idx == parent_idx and pmx.bones[rig_idx].inherit_ratio != 0:
 					# if using partial rot inherit AND inheriting from parent_idx AND ratio != 0, use that
 					# think this is good, if twistbones exist they should be children of preferred
-					f = pmx[5][rig_idx][16][1]
-				elif pmx[5][rig_idx][5] == parent_idx:
+					f = pmx.bones[rig_idx].inherit_ratio
+				elif pmx.bones[rig_idx].parent_idx == parent_idx:
 					# this should be just in case?
 					f = 1
-				elif pmx[5][rig_idx][5] == start_idx:
+				elif pmx.bones[rig_idx].parent_idx == start_idx:
 					# this should catch magic armtwist bones i previously created
 					f = 1
 				else:
@@ -417,42 +425,90 @@ def main(moreinfo=True):
 			
 			# 5. append 3 new bones to end of bonelist
 			# 	armYZ gets pos = start pos & parent = start parent
-			basename_jp = pmx[5][start_idx][0]
-			armYZ_new_idx = len(pmx[5])
-			armYZ = [basename_jp + yz_suffix, local_translate(basename_jp + yz_suffix)]  # name_jp,en
-			armYZ += pmx[5][start_idx][2:]					# copy the whole rest of the bone
-			armYZ[10:12] = [False, False]					# visible=false, enabled=false
-			armYZ[12:14] = [True, [armYZ_new_idx + 1]]		# tail type = tail, tail pointat = armYZend
-			armYZ[14:19] = [False, False, [], False, []]	# disable partial inherit + fixed axis
-			# local axis is copy
-			armYZ[21:25] = [False, [], False, []]			# disable ext parent + ik
+			basename_jp = pmx.bones[start_idx].name_jp
+			armYZ_new_idx = len(pmx.bones)
+			# armYZ = [basename_jp + yz_suffix, local_translate(basename_jp + yz_suffix)]  # name_jp,en
+			# armYZ += pmx[5][start_idx][2:]					# copy the whole rest of the bone
+			# armYZ[10:12] = [False, False]					# visible=false, enabled=false
+			# armYZ[12:14] = [True, [armYZ_new_idx + 1]]		# tail type = tail, tail pointat = armYZend
+			# armYZ[14:19] = [False, False, [], False, []]	# disable partial inherit + fixed axis
+			# # local axis is copy
+			# armYZ[21:25] = [False, [], False, []]			# disable ext parent + ik
+			armYZ = pmxstruct.PmxBone(
+				name_jp=basename_jp + yz_suffix,
+				name_en=local_translate(basename_jp + yz_suffix),
+				pos=pmx.bones[start_idx].pos,
+				parent_idx=pmx.bones[start_idx].parent_idx,
+				deform_layer=pmx.bones[start_idx].deform_layer,
+				deform_after_phys=pmx.bones[start_idx].deform_after_phys,
+				has_localaxis=True,
+				localaxis_x=pmx.bones[start_idx].localaxis_x, localaxis_z=pmx.bones[start_idx].localaxis_z,
+				tail_type=True, tail=armYZ_new_idx+1,
+				has_rotate=True, has_translate=True, has_visible=False, has_enabled=True,
+				has_ik=False, inherit_rot=False, inherit_trans=False, has_fixedaxis=False,
+				has_externalparent=False,
+			)
 			
 			# 	armYZend gets pos = end pos & parent = armYZ
-			armYZend = [basename_jp + yz_suffix + "先", local_translate(basename_jp + yz_suffix + "先")]  # name_jp,en
-			armYZend += pmx[5][end_idx][2:]					# copy the whole rest of the bone
-			armYZend[5] = armYZ_new_idx						# parent = armYZ
-			armYZend[10:12] = [False, False]				# visible=false, enabled=false
-			armYZend[12:14] = [True, [-1]]					# tail type = tail, tail pointat = none
-			armYZend[14:19] = [False, False, [], False, []]	# disable partial inherit + fixed axis
-			# local axis is copy
-			armYZend[21:25] = [False, [], False, []]		# disable ext parent + ik
+			# armYZend = [basename_jp + yz_suffix + "先", local_translate(basename_jp + yz_suffix + "先")]  # name_jp,en
+			# armYZend += pmx[5][end_idx][2:]					# copy the whole rest of the bone
+			# armYZend[5] = armYZ_new_idx						# parent = armYZ
+			# armYZend[10:12] = [False, False]				# visible=false, enabled=false
+			# armYZend[12:14] = [True, [-1]]					# tail type = tail, tail pointat = none
+			# armYZend[14:19] = [False, False, [], False, []]	# disable partial inherit + fixed axis
+			# # local axis is copy
+			# armYZend[21:25] = [False, [], False, []]		# disable ext parent + ik
+			armYZend = pmxstruct.PmxBone(
+				name_jp=basename_jp + yz_suffix + "先",
+				name_en=local_translate(basename_jp + yz_suffix + "先"),
+				pos=pmx.bones[end_idx].pos,
+				parent_idx=armYZ_new_idx,
+				deform_layer=pmx.bones[end_idx].deform_layer,
+				deform_after_phys=pmx.bones[end_idx].deform_after_phys,
+				has_localaxis=True,
+				localaxis_x=pmx.bones[end_idx].localaxis_x, localaxis_z=pmx.bones[end_idx].localaxis_z,
+				tail_type=True, tail=-1,
+				has_rotate=True, has_translate=True, has_visible=False, has_enabled=True,
+				has_ik=False, inherit_rot=False, inherit_trans=False, has_fixedaxis=False,
+				has_externalparent=False,
+			)
 
-			# 	elbowIK gets pos = end pos & parent = end parent
-			armYZIK = [basename_jp + yz_suffix + "IK", local_translate(basename_jp + yz_suffix + "IK")]  # name_jp,en
-			armYZIK += pmx[5][end_idx][2:]					# copy the whole rest of the bone
-			armYZIK[10:12] = [False, False]					# visible=false, enabled=false
-			armYZIK[12:14] = [True, [-1]]					# tail type = tail, tail pointat = none
-			armYZIK[14:19] = [False, False, [], False, []]	# disable partial inherit + fixed axis
-			# local axis is copy
-			armYZIK[21:23] = [False, []]					# disable ext parent
-			armYZIK[23] = True								# ik=true
-			# add the ik info: [target, loops, anglelimit, [[link_idx, []], [link_idx, []]] ]
-			armYZIK[24] = [armYZ_new_idx+1, newik_loops, newik_angle, [[armYZ_new_idx, []]]]
+
+			# # 	elbowIK gets pos = end pos & parent = end parent
+			# armYZIK = [basename_jp + yz_suffix + "IK", local_translate(basename_jp + yz_suffix + "IK")]  # name_jp,en
+			# armYZIK += pmx[5][end_idx][2:]					# copy the whole rest of the bone
+			# armYZIK[10:12] = [False, False]					# visible=false, enabled=false
+			# armYZIK[12:14] = [True, [-1]]					# tail type = tail, tail pointat = none
+			# armYZIK[14:19] = [False, False, [], False, []]	# disable partial inherit + fixed axis
+			# # local axis is copy
+			# armYZIK[21:23] = [False, []]					# disable ext parent
+			# armYZIK[23] = True								# ik=true
+			# # add the ik info: [target, loops, anglelimit, [[link_idx, []], [link_idx, []]] ]
+			# armYZIK[24] = [armYZ_new_idx+1, newik_loops, newik_angle, [[armYZ_new_idx, []]]]
+			armYZIK = pmxstruct.PmxBone(
+				name_jp=basename_jp + yz_suffix + "IK",
+				name_en=local_translate(basename_jp + yz_suffix + "IK"),
+				pos=pmx.bones[end_idx].pos,
+				parent_idx=pmx.bones[end_idx].parent_idx,
+				deform_layer=pmx.bones[end_idx].deform_layer,
+				deform_after_phys=pmx.bones[end_idx].deform_after_phys,
+				has_localaxis=True,
+				localaxis_x=pmx.bones[end_idx].localaxis_x, localaxis_z=pmx.bones[end_idx].localaxis_z,
+				tail_type=True, tail=-1,
+				has_rotate=True, has_translate=True, has_visible=False, has_externalparent=False,
+				has_enabled=True, inherit_rot=False, inherit_trans=False, has_fixedaxis=False,
+				has_ik=True,
+				ik_target_idx=armYZ_new_idx+1, ik_numloops=newik_loops, ik_angle=newik_angle,
+				ik_links=[pmxstruct.PmxBoneIkLink(idx=armYZ_new_idx)]
+			)
+
+			
+			
 			
 			# now append them to the bonelist
-			pmx[5].append(armYZ)
-			pmx[5].append(armYZend)
-			pmx[5].append(armYZIK)
+			pmx.bones.append(armYZ)
+			pmx.bones.append(armYZend)
+			pmx.bones.append(armYZIK)
 			
 			# 6. build the bezier curve
 			bezier_curve = core.MyBezier(boneset[4][0], boneset[4][1], resolution=50)
@@ -462,7 +518,8 @@ def main(moreinfo=True):
 			
 			if moreinfo:
 				core.MY_PRINT_FUNC("Blending between bones '{}'/'{}'=ZEROtwist and '{}'/'{}'=FULLtwist".format(
-					armYZ[0], armYZ[1], pmx[5][parent_idx][0], pmx[5][parent_idx][1]
+					armYZ.name_jp, armYZ.name_en,
+					pmx.bones[parent_idx].name_jp, pmx.bones[parent_idx].name_en
 				))
 				core.MY_PRINT_FUNC("   Found %d potentially relevant vertices" % len(verts))
 			
@@ -480,11 +537,11 @@ def main(moreinfo=True):
 			i_min_conserv = -1
 			i_max_conserv = len(verts)
 			for i_min_liberal in range(0, len(verts)):		# start at head and work down,
-				if pmx[1][verts[i_min_liberal]][9] == 0:  	# if the vertex is BDEF1 type,
+				if pmx.verts[verts[i_min_liberal]].weighttype == 0:  	# if the vertex is BDEF1 type,
 					break  									# then stop looking,
 			p_min_liberal = percentiles[i_min_liberal]		# and save the percentile it found.
 			for i_max_liberal in reversed(range(0, len(verts))): # start at tail and work up,
-				if pmx[1][verts[i_max_liberal]][9] == 0:  	# if the vertex is BDEF1 type,
+				if pmx.verts[verts[i_max_liberal]].weighttype == 0:  	# if the vertex is BDEF1 type,
 					break  									# then stop looking,
 			p_max_liberal = percentiles[i_max_liberal]		# and save the percentile it found.
 			# Y. lowest highest point mode
@@ -493,12 +550,12 @@ def main(moreinfo=True):
 			# where is the middle? use "bisect_left"
 			middle = core.bisect_left(percentiles, 0.5)
 			for i_min_conserv in reversed(range(middle - 1)): # start in middle, work toward head,
-				if pmx[1][verts[i_min_conserv]][9] != 0:  	# if the vertex is NOT BDEF1 type,
+				if pmx.verts[verts[i_min_conserv]].weighttype != 0:  	# if the vertex is NOT BDEF1 type,
 					break  									# then stop looking,
 			i_min_conserv += 1								# and step back 1 to find the last vert that was good BDEF1,
 			p_min_conserv = percentiles[i_min_conserv]		# and save the percentile it found.
 			for i_max_conserv in range(middle + 1, len(verts)):  # start in middle, work toward tail,
-				if pmx[1][verts[i_max_conserv]][9] != 0:	# if the vertex is NOT BDEF1 type,
+				if pmx.verts[verts[i_max_conserv]].weighttype != 0:	# if the vertex is NOT BDEF1 type,
 					break  									# then stop looking,
 			i_max_conserv -= 1								# and step back 1 to find the last vert that was good BDEF1,
 			p_max_conserv = percentiles[i_max_conserv]		# and save the percentile it found.
@@ -537,7 +594,7 @@ def main(moreinfo=True):
 			vert_zip = list(zip(verts, percentiles, centers))
 			num_modified, num_bleeders = divvy_weights(pmx=pmx,
 													  vert_zip=vert_zip,
-													  axis_limits=(pmx[5][start_idx][2:5], pmx[5][end_idx][2:5]),
+													  axis_limits=(pmx.bones[start_idx].pos, pmx.bones[end_idx].pos),
 													  bone_hasweight=parent_idx,
 													  bone_getsweight=armYZ_new_idx,
 													  bezier=bezier_curve)

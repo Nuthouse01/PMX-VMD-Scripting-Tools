@@ -6,11 +6,13 @@
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 	from ._weight_cleanup import normalize_weights
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 		from _weight_cleanup import normalize_weights
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
@@ -18,7 +20,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = normalize_weights = None
+		core = pmxlib = pmxstruct = normalize_weights = None
 
 
 
@@ -38,16 +40,16 @@ Output: model PMX file '[modelname]_weightmerge.pmx'
 
 
 # stage 1: script(function) to flatten/merge helper bones
-def transfer_bone_weights(pmx, to_bone, from_bone, scalefactor=1.0):
+def transfer_bone_weights(pmx: pmxstruct.Pmx, to_bone: int, from_bone: int, scalefactor=1.0):
 	# TODO: test this! ensure that this math is logically correct! not 100% convinced
 	if to_bone == from_bone: return
 	# !!! WARNING: result is not normal, need to normalize afterward !!!
 	# clamp just cuz
 	scalefactor = core.clamp(scalefactor, 0.0, 1.0)
 	# for each vertex, determine if that vert is controlled by from_bone
-	for d,vert in enumerate(pmx[1]):
-		weighttype = vert[9]
-		w = vert[10]
+	for d,vert in enumerate(pmx.verts):
+		weighttype = vert.weighttype
+		w = vert.weight
 		if weighttype == 0:
 			# BDEF1
 			if w[0] == from_bone: # match!
@@ -57,12 +59,12 @@ def transfer_bone_weights(pmx, to_bone, from_bone, scalefactor=1.0):
 					# TODO: rethink this? test this? not 100% convinced this is correct
 					# if the from_bone had 100% weight but only a .5 factor, then this should only move half as much as the to_bone
 					# the other half of the weight would come from the parent of the to_bone, i suppose?
-					to_bone_parent = pmx[5][to_bone][5]
+					to_bone_parent = pmx.bones[to_bone].parent_idx
 					if to_bone_parent == -1: # if to_bone is root and has no parent,
 						w[0] = to_bone
 					else: # if to_parent is valid, convert to BDEF2
-						vert[9] = 1
-						vert[10] = [to_bone, to_bone_parent, scalefactor]
+						vert.weighttype = 1
+						vert.weight = [to_bone, to_bone_parent, scalefactor]
 		elif weighttype in (1, 3):
 			# BDEF2, SDEF
 			# (b1, b2, b1w)
@@ -122,20 +124,20 @@ def main(moreinfo=True):
 		if s == "":
 			dest_idx = -1
 			break
-		# then get the morph index from this
+		# then get the bone index from this
 		# search JP names first
-		dest_idx = core.my_list_search(pmx[5], lambda x: x[0] == s)
+		dest_idx = core.my_list_search(pmx.bones, lambda x: x.name_jp == s)
 		if dest_idx is not None: break  # did i find a match?
 		# search EN names next
-		dest_idx = core.my_list_search(pmx[5], lambda x: x[1] == s)
+		dest_idx = core.my_list_search(pmx.bones, lambda x: x.name_en == s)
 		if dest_idx is not None: break  # did i find a match?
 		# try to cast to int next
 		try:
 			dest_idx = int(s)
-			if 0 <= dest_idx < len(pmx[5]):
+			if 0 <= dest_idx < len(pmx.bones):
 				break  # is this within the proper bounds?
 			else:
-				core.MY_PRINT_FUNC("valid bone indexes are 0-%d" % (len(pmx[5]) - 1))
+				core.MY_PRINT_FUNC("valid bone indexes are 0-%d" % (len(pmx.bones) - 1))
 		except ValueError:
 			pass
 		core.MY_PRINT_FUNC("unable to find matching bone for name '%s'" % s)
@@ -144,7 +146,7 @@ def main(moreinfo=True):
 		core.MY_PRINT_FUNC("quitting")
 		return None
 	
-	dest_tag = "bone #{} JP='{}' / EN='{}'".format(dest_idx, pmx[5][dest_idx][0], pmx[5][dest_idx][1])
+	dest_tag = "bone #{} JP='{}' / EN='{}'".format(dest_idx, pmx.bones[dest_idx].name_jp, pmx.bones[dest_idx].name_jp)
 	source_idx = 0
 	while True:
 		# any input is considered valid
@@ -158,18 +160,18 @@ def main(moreinfo=True):
 			break
 		# then get the morph index from this
 		# search JP names first
-		source_idx = core.my_list_search(pmx[5], lambda x: x[0] == s)
+		source_idx = core.my_list_search(pmx.bones, lambda x: x.name_jp == s)
 		if source_idx is not None: break  # did i find a match?
 		# search EN names next
-		source_idx = core.my_list_search(pmx[5], lambda x: x[1] == s)
+		source_idx = core.my_list_search(pmx.bones, lambda x: x.name_en == s)
 		if source_idx is not None: break  # did i find a match?
 		# try to cast to int next
 		try:
 			source_idx = int(s)
-			if 0 <= source_idx < len(pmx[5]):
+			if 0 <= source_idx < len(pmx.bones):
 				break  # is this within the proper bounds?
 			else:
-				core.MY_PRINT_FUNC("valid bone indexes are 0-%d" % (len(pmx[5]) - 1))
+				core.MY_PRINT_FUNC("valid bone indexes are 0-%d" % (len(pmx.bones) - 1))
 		except ValueError:
 			pass
 		core.MY_PRINT_FUNC("unable to find matching bone for name '%s'" % s)
@@ -180,16 +182,17 @@ def main(moreinfo=True):
 	
 	# print to confirm
 	core.MY_PRINT_FUNC("Merging bone #{} JP='{}' / EN='{}' ===> bone #{} JP='{}' / EN='{}'".format(
-		source_idx, pmx[5][source_idx][0], pmx[5][source_idx][1], dest_idx, pmx[5][dest_idx][0], pmx[5][dest_idx][1]
+		source_idx, pmx.bones[source_idx].name_jp, pmx.bones[source_idx].name_en,
+		dest_idx, pmx.bones[dest_idx].name_jp, pmx.bones[dest_idx].name_en
 	))
 	# now try to infer the merge factor
 	
 	f = 0.0
-	if pmx[5][source_idx][14] and pmx[5][source_idx][16][0] == dest_idx and pmx[5][source_idx][16][1] != 0:
+	if pmx.bones[source_idx].inherit_rot and pmx.bones[source_idx].inherit_parent_idx == dest_idx and pmx.bones[source_idx].inherit_ratio != 0:
 		# if using partial rot inherit AND inheriting from dest_idx AND ratio != 0, use that
 		# think this is good, if twistbones exist they should be children of preferred
-		f = pmx[5][source_idx][16][1]
-	elif pmx[5][source_idx][5] == dest_idx:
+		f = pmx.bones[source_idx].inherit_ratio
+	elif pmx.bones[source_idx].parent == dest_idx:
 		# if they have a direct parent-child relationship, then factor is 1
 		f = 1
 	else:
