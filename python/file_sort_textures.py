@@ -8,16 +8,18 @@ import re
 import shutil
 
 # second, wrap custom imports with a try-except to catch it if files are missing
-from typing import List
+from typing import List, Dict
 
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 	from ._prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 		from _prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
@@ -25,7 +27,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = None
+		core = pmxlib = pmxstruct = None
 		newval_from_range_map = delme_list_to_rangemap = None
 
 
@@ -174,7 +176,7 @@ def make_zipfile_backup(startpath: str, backup_suffix: str) -> bool:
 	return True
 
 
-def apply_file_renaming(pmx_dict: dict, filerecord_list: List[FileRecord], startpath: str):
+def apply_file_renaming(pmx_dict: Dict[str, pmxstruct.Pmx], filerecord_list: List[FileRecord], startpath: str):
 	"""
 	Apply all the renaming operations to files on the disk and in any PMX objects where they are used.
 	First, try to rename all files on disk. If any raise exceptions, those files will not be changed in PMXes.
@@ -209,12 +211,12 @@ def apply_file_renaming(pmx_dict: dict, filerecord_list: List[FileRecord], start
 			# then iterate over each PMX this file is used by,
 			for thispmx_name, thispmx_idx in p.used_pmx.items():
 				# acutally write the new name into the correct location within the correct pmx obj
-				pmx_dict[thispmx_name][3][thispmx_idx] = p.newname
+				pmx_dict[thispmx_name].textures[thispmx_idx] = p.newname
 	core.MY_PRINT_FUNC("...done renaming!")
 	return
 
 
-def combine_tex_reference(pmx: list, dupe_to_master_map: dict):
+def combine_tex_reference(pmx: pmxstruct.Pmx, dupe_to_master_map: Dict[int,int]):
 	"""
 	Update a PMX object by merging several of its texture entries.
 	Deciding which textures to merge is done outside this level.
@@ -229,25 +231,26 @@ def combine_tex_reference(pmx: list, dupe_to_master_map: dict):
 	idx_shift_map = delme_list_to_rangemap(dellist)
 	# second: delete the acutal textures from the actual texture list
 	for i in reversed(dellist):
-		pmx[3].pop(i)
+		pmx.textures.pop(i)
 	# third: iter over materials, use dupe_to_master_map to replace dupe with master and newval_from_range_map to account for dupe deletion
-	for mat in pmx[4]:
+	for mat in pmx.materials:
+		mat: pmxstruct.PmxMaterial
 		# no need to filter for -1s, because -1 isn't in the dupe_to_master_map and wont be changed by idx_shift_map
-		if mat[19] in dupe_to_master_map:  # tex id
-			mat[19] = dupe_to_master_map[mat[19]]
+		if mat.tex_idx in dupe_to_master_map:  # tex id
+			mat.tex_idx = dupe_to_master_map[mat.tex_idx]
 		# remap regardless of whether it is replaced with master or not
-		mat[19] = newval_from_range_map(mat[19], idx_shift_map)
-		if mat[20] in dupe_to_master_map:  # sph id
-			mat[20] = dupe_to_master_map[mat[20]]
-		mat[20] = newval_from_range_map(mat[20], idx_shift_map)
-		if mat[22] == 0:
-			if mat[23] in dupe_to_master_map:  # toon id
-				mat[23] = dupe_to_master_map[mat[23]]
-			mat[23] = newval_from_range_map(mat[23], idx_shift_map)
+		mat.tex_idx = newval_from_range_map(mat.tex_idx, idx_shift_map)
+		if mat.sph_idx in dupe_to_master_map:  # sph id
+			mat.sph_idx = dupe_to_master_map[mat.sph_idx]
+		mat.sph_idx = newval_from_range_map(mat.sph_idx, idx_shift_map)
+		if mat.toon_mode == 0:
+			if mat.toon_idx in dupe_to_master_map:  # toon id
+				mat.toon_idx = dupe_to_master_map[mat.toon_idx]
+			mat.toon_idx = newval_from_range_map(mat.toon_idx, idx_shift_map)
 	return
 
 
-def categorize_files(pmx_dict: dict, exist_files: List[str], moreinfo: bool) -> List[FileRecord]:
+def categorize_files(pmx_dict: Dict[str, pmxstruct.Pmx], exist_files: List[str], moreinfo: bool) -> List[FileRecord]:
 	"""
 	Categorize file usage and normalize cases and separators within PMX files and across PMX files.
 	First, normalize file uses within each PMX to match the exact case/separators used on disk.
@@ -269,7 +272,7 @@ def categorize_files(pmx_dict: dict, exist_files: List[str], moreinfo: bool) -> 
 		if DEBUG: print(pmxpath)
 		null_texture_dict = dict()
 		# for each texture,
-		for d, tex in enumerate(pmx[3]):
+		for d, tex in enumerate(pmx.textures):
 			# if it is just whitepace or empty, then queue it up to be nullified (mapped to -1 and deleted)
 			if tex == "" or tex.isspace():
 				null_texture_dict[d] = -1
@@ -277,7 +280,7 @@ def categorize_files(pmx_dict: dict, exist_files: List[str], moreinfo: bool) -> 
 			# if it matches an existing file, replace it with that clean existing file path
 			for ef in exist_files:
 				if os.path.normpath(tex.lower()) == ef.lower():
-					pmx[3][d] = ef
+					pmx.textures[d] = ef
 					break
 		if null_texture_dict:
 			num_nullify += len(null_texture_dict)
@@ -287,10 +290,10 @@ def categorize_files(pmx_dict: dict, exist_files: List[str], moreinfo: bool) -> 
 		# remove theoretical duplicates from the PMX... not likely but possible. cases can be different.
 		# compare each tex against each other tex to find which ones match
 		dupe_to_master_map = dict()
-		for dj, tj in enumerate(pmx[3]):
+		for dj, tj in enumerate(pmx.textures):
 			tjn = os.path.normpath(tj.lower())
-			for dk in range(dj + 1, len(pmx[3])):
-				tk = pmx[3][dk]
+			for dk in range(dj + 1, len(pmx.textures)):
+				tk = pmx.textures[dk]
 				# skip if no match
 				if os.path.normpath(tk.lower()) != tjn: continue
 				# if there is a match,then this is a dupe!
@@ -307,7 +310,7 @@ def categorize_files(pmx_dict: dict, exist_files: List[str], moreinfo: bool) -> 
 		
 		thispmx_recordlist = []
 		# now that they are unique, for each tex:
-		for d, tex in enumerate(pmx[3]):
+		for d, tex in enumerate(pmx.textures):
 			# create the actual "FileRecord" entry
 			record = FileRecord(tex, False)
 			# all I know about it so far is that it is used by this pmx file at this index
@@ -318,18 +321,19 @@ def categorize_files(pmx_dict: dict, exist_files: List[str], moreinfo: bool) -> 
 		# used files get sorted by HOW they are used... so go find that info now
 		# files are only used in materials pmx[4], and only tex=19/sph=20/toon=23 (only if 22==0)
 		# material > index > thispmx_recordlist
-		for mat in pmx[4]:
-			texid = mat[19]
+		for mat in pmx.materials:
+			mat: pmxstruct.PmxMaterial
+			texid = mat.tex_idx
 			# filter out -1 which means "no file reference"
 			if texid != -1:
 				thispmx_recordlist[texid].usage.add(FOLDER_TEX)
 				thispmx_recordlist[texid].numused += 1
-			sphid = mat[20]
+			sphid = mat.sph_idx
 			if sphid != -1:
 				thispmx_recordlist[sphid].usage.add(FOLDER_SPH)
 				thispmx_recordlist[sphid].numused += 1
-			if mat[22] == 0:
-				toonid = mat[23]
+			if mat.toon_mode == 0:
+				toonid = mat.toon_idx
 				if toonid != -1:
 					thispmx_recordlist[toonid].usage.add(FOLDER_TOON)
 					thispmx_recordlist[toonid].numused += 1
@@ -368,7 +372,7 @@ def categorize_files(pmx_dict: dict, exist_files: List[str], moreinfo: bool) -> 
 				if recordlist[dj].name != recordlist[dk].name:
 					num_unify_across_pmx += 1
 					for pmxpath, idx in recordlist[dj].used_pmx.items():
-						pmx_dict[pmxpath][3][idx] = recordlist[dj].name
+						pmx_dict[pmxpath].textures[idx] = recordlist[dj].name
 				recordlist.pop(dk)
 		# always inc dj
 		dj += 1
