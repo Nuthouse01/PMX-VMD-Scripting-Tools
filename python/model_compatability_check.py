@@ -53,9 +53,6 @@ def main(moreinfo=True):
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
-	realbones = pmx[5]		# get bones
-	realmorphs = pmx[6]		# get morphs
-	
 	# prompt VMD file name
 	core.MY_PRINT_FUNC("")
 	core.MY_PRINT_FUNC("Please enter name of VMD motion or VPD pose file to check compatability with:")
@@ -80,8 +77,7 @@ def main(moreinfo=True):
 	morphs_in_vmd = list(morphdict.keys())
 	
 	# build list of ALL morphs in the PMX
-	# first item of pmxmorph is the jp name
-	morphs_in_model = [pmxmorph[0] for pmxmorph in realmorphs]
+	morphs_in_model = [pmxmorph.name_jp for pmxmorph in pmx.morphs]
 	
 	# ensure that the VMD contains at least some morphs, to prevent zero-divide error
 	if len(morphs_in_vmd) == 0:
@@ -175,7 +171,7 @@ def main(moreinfo=True):
 	
 	# build list of ALL bones in the PMX
 	# first item of pmxbone is the jp name
-	bones_in_model = [pmxbone[0] for pmxbone in realbones]
+	bones_in_model = [pmxbone.name_jp for pmxbone in pmx.bones]
 	
 	# ensure that the VMD contains at least some bones, to prevent zero-divide error
 	if len(bones_in_vmd) == 0:
