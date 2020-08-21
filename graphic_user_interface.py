@@ -23,7 +23,7 @@ try:
 	from python import morph_hide
 	from python import morph_invert
 	from python import morph_scale
-	from python import pmx_overall_cleanup
+	from python import model_overall_cleanup
 	from python import file_sort_textures
 	from python import file_translate_names
 	from python import vmd_armtwist_insert
@@ -36,7 +36,7 @@ except ImportError as eee:
 	print("...press ENTER to exit...")
 	input()
 	exit()
-	convert_vmd_to_txt = pmx_overall_cleanup = file_sort_textures = model_compatability_check = None
+	convert_vmd_to_txt = model_overall_cleanup = file_sort_textures = model_compatability_check = None
 	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = bone_armik_addremove = None
 	core = morph_invert = morph_hide = morph_scale = file_translate_names = convert_vpd_to_vmd = None
 
@@ -244,7 +244,7 @@ class Application(tk.Frame):
 		self.helptext = ""
 		# list of all possible displayed names in the OptionMenu, with assoc helptext and mainfunc
 		self.all_script_list = [
-			("pmx_overall_cleanup.py",           pmx_overall_cleanup.helptext,           pmx_overall_cleanup.main),
+			("model_overall_cleanup.py",         model_overall_cleanup.helptext,         model_overall_cleanup.main),
 			("file_sort_textures.py",            file_sort_textures.helptext,            file_sort_textures.main),
 			("file_translate_names.py",          file_translate_names.helptext,          file_translate_names.main),
 			("morph_invert.py",                  morph_invert.helptext,                  morph_invert.main),

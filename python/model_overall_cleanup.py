@@ -155,7 +155,7 @@ def find_jointless_physbodies(pmx: pmxstruct.Pmx):
 ########################################################################################################################
 
 myhelptext = '''=================================================
-pmx_overall_cleanup:
+model_overall_cleanup:
 This file will run through a series of first-pass cleanup operations to detect/fix obvious issues in a model.
 This includes: translating missing english names, correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, fixing bone deformation order, and cleaning up display frames.
 This also scans for several issues that I can detect but not fix, such as improper joints that will crash MMD, and alerts you if it finds them.
