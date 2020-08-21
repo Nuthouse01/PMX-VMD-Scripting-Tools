@@ -16,7 +16,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = morph_hide = None
+		core = pmxlib = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -32,6 +32,24 @@ Output: PMX file '[modelname]_shift.pmx'
 '''
 
 
+# this func converts str to list of floats, returns None if it cannot
+def is_3float(x: str):
+	try:
+		xsplit = x.split(",")
+		# must be able to split it into 3 pieces after splitting on comma
+		if len(xsplit) != 3:
+			core.MY_PRINT_FUNC("Input must be 3 items")
+			return None
+		# each piece must be able to convert to float
+		ret = []
+		for xs in xsplit:
+			ret.append(float(xs))
+		return xsplit
+	except ValueError:
+		core.MY_PRINT_FUNC("Could not convert input to decimal numbers")
+		return None
+
+
 def main(moreinfo=True):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
@@ -41,22 +59,6 @@ def main(moreinfo=True):
 	# to shift the model by a set amount:
 	# first, ask user for X Y Z
 	
-	# this func converts str to list of floats, returns None if it cannot
-	def is_3float(x: str):
-		try:
-			xsplit = x.split(",")
-			# must be able to split it into 3 pieces after splitting on comma
-			if len(xsplit) != 3:
-				core.MY_PRINT_FUNC("Input must be 3 items")
-				return None
-			# each piece must be able to convert to float
-			ret = []
-			for xs in xsplit:
-				ret.append(float(xs))
-			return xsplit
-		except ValueError:
-			core.MY_PRINT_FUNC("Could not convert input to decimal numbers")
-			return None
 	# create the prompt popup
 	shift_str = core.MY_GENERAL_INPUT_FUNC(
 		lambda x: (is_3float(x) is not None),
