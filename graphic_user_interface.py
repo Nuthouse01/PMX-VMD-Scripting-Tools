@@ -10,26 +10,29 @@
 import threading
 import tkinter as tk
 import tkinter.filedialog as fdg
-import tkinter.scrolledtext as tkst
 import tkinter.font as tkfont
+import tkinter.scrolledtext as tkst
 from os import path
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
 	from python import nuthouse01_core as core
-	from python import make_ik_from_vmd
 	from python import bone_armik_addremove
-	from python import pmx_list_bone_morph_names
+	from python import bone_endpoint_addremove
+	from python import check_model_compatibility
+	from python import convert_vmd_to_txt
+	from python import convert_vpd_to_vmd
+	from python import file_sort_textures
+	from python import file_translate_names
+	from python import model_overall_cleanup
+	from python import model_scale
+	from python import model_shift
 	from python import morph_hide
 	from python import morph_invert
 	from python import morph_scale
-	from python import model_overall_cleanup
-	from python import file_sort_textures
-	from python import file_translate_names
+	from python import make_ik_from_vmd
+	from python import pmx_list_bone_morph_names
 	from python import vmd_armtwist_insert
-	from python import convert_vmd_to_txt
-	from python import convert_vpd_to_vmd
-	from python import check_model_compatibility
 except ImportError as eee:
 	print(eee.__class__.__name__, eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
@@ -39,6 +42,7 @@ except ImportError as eee:
 	convert_vmd_to_txt = model_overall_cleanup = file_sort_textures = check_model_compatibility = None
 	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = bone_armik_addremove = None
 	core = morph_invert = morph_hide = morph_scale = file_translate_names = convert_vpd_to_vmd = None
+	model_shift = model_scale = bone_endpoint_addremove = None
 
 ########################################################################################################################
 # constants & options
@@ -47,6 +51,27 @@ except ImportError as eee:
 # if true, calls stock "print" function whenever it prints to the GUI print-space.
 # when running from EXE, in noconsole mode, this does nothing at all.
 ALSO_PRINT_TO_CONSOLE = False
+
+# list of all possible displayed names in the dropdown list, with associated helptext and mainfunc
+# do I want to sort by usefulness? or do I want to group by categories? or maybe just alphabetical? idk
+all_script_list = [
+	("model_overall_cleanup.py",         model_overall_cleanup.helptext,         model_overall_cleanup.main),
+	("file_sort_textures.py",            file_sort_textures.helptext,            file_sort_textures.main),
+	("file_translate_names.py",          file_translate_names.helptext,          file_translate_names.main),
+	("morph_invert.py",                  morph_invert.helptext,                  morph_invert.main),
+	("morph_hide.py",                    morph_hide.helptext,                    morph_hide.main),
+	("morph_scale.py",                   morph_scale.helptext,                   morph_scale.main),
+	("check_model_compatibility.py",     check_model_compatibility.helptext,     check_model_compatibility.main),
+	("vmd_armtwist_insert.py",           vmd_armtwist_insert.helptext,           vmd_armtwist_insert.main),
+	("model_shift.py",                   model_shift.helptext,                   model_shift.main),
+	("model_scale.py",                   model_scale.helptext,                   model_scale.main),
+	("convert_vmd_to_txt.py",            convert_vmd_to_txt.helptext,            convert_vmd_to_txt.main),
+	("convert_vpd_to_vmd.py",            convert_vpd_to_vmd.helptext,            convert_vpd_to_vmd.main),
+	("make_ik_from_vmd.py",              make_ik_from_vmd.helptext,              make_ik_from_vmd.main),
+	("bone_armik_addremove.py",          bone_armik_addremove.helptext,          bone_armik_addremove.main),
+	("bone_endpoint_addremove.py",       bone_endpoint_addremove.helptext,       bone_endpoint_addremove.main),
+	("pmx_list_bone_morph_names.py",     pmx_list_bone_morph_names.helptext,     pmx_list_bone_morph_names.main),
+]
 
 
 # DO NOT TOUCH: mapping from MY_FILEPROMPT_FUNC filetype input to the info the gui filedialog needs
@@ -243,21 +268,7 @@ class Application(tk.Frame):
 		self.payload = None
 		self.helptext = ""
 		# list of all possible displayed names in the OptionMenu, with assoc helptext and mainfunc
-		self.all_script_list = [
-			("model_overall_cleanup.py",         model_overall_cleanup.helptext,         model_overall_cleanup.main),
-			("file_sort_textures.py",            file_sort_textures.helptext,            file_sort_textures.main),
-			("file_translate_names.py",          file_translate_names.helptext,          file_translate_names.main),
-			("morph_invert.py",                  morph_invert.helptext,                  morph_invert.main),
-			("morph_hide.py",                    morph_hide.helptext,                    morph_hide.main),
-			("morph_scale.py",                   morph_scale.helptext,                   morph_scale.main),
-			("check_model_compatibility.py",     check_model_compatibility.helptext,     check_model_compatibility.main),
-			("vmd_armtwist_insert.py",           vmd_armtwist_insert.helptext,           vmd_armtwist_insert.main),
-			("convert_vmd_to_txt.py",            convert_vmd_to_txt.helptext,            convert_vmd_to_txt.main),
-			("convert_vpd_to_vmd.py",            convert_vpd_to_vmd.helptext,            convert_vpd_to_vmd.main),
-			("make_ik_from_vmd.py",              make_ik_from_vmd.helptext,              make_ik_from_vmd.main),
-			("bone_armik_addremove.py",          bone_armik_addremove.helptext,          bone_armik_addremove.main),
-			("pmx_list_bone_morph_names.py",     pmx_list_bone_morph_names.helptext,     pmx_list_bone_morph_names.main),
-		]
+		self.all_script_list = all_script_list
 		
 		###############################################
 		# second, build the dropdown menu
