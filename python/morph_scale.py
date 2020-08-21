@@ -10,20 +10,18 @@ try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
 	from . import nuthouse01_pmx_struct as pmxstruct
-	from . import morph_hide
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
 		import nuthouse01_pmx_struct as pmxstruct
-		import morph_hide
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = pmxstruct = morph_hide = None
+		core = pmxlib = pmxstruct = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -48,6 +46,32 @@ Output: PMX file '[modelname]_[morph#]scal.pmx'
 mtype_dict = {0:"group", 1:"vertex", 2:"bone", 3:"UV",
 			  4:"UV1", 5:"UV2", 6:"UV3", 7:"UV4",
 			  8:"material", 9:"flip", 10:"impulse"}
+
+
+# function that takes a string & returns idx if it can match one, or None otherwise
+def get_idx_in_pmxsublist(s: str, pmxlist: List):
+	if s == "": return -1
+	# then get the morph index from this
+	# search JP names first
+	t = core.my_list_search(pmxlist, lambda x: x.name_jp.lower() == s.lower())
+	if t is not None: return t
+	# search EN names next
+	t = core.my_list_search(pmxlist, lambda x: x.name_en.lower() == s.lower())
+	if t is not None: return t
+	# try to cast to int next
+	try:
+		t = int(s)
+		if 0 <= t < len(pmxlist):
+			return t
+		else:
+			core.MY_PRINT_FUNC("valid indexes are [0-'%d']" % (len(pmxlist) - 1))
+			return None
+	except ValueError:
+		core.MY_PRINT_FUNC("unable to find matching item for input '%s'" % s)
+		return None
+
+
+
 
 
 def morph_scale(morph: pmxstruct.PmxMorph, scale: Union[List[float], float], bone_mode=0) -> bool:
@@ -135,11 +159,11 @@ def main(moreinfo=True):
 	
 	core.MY_PRINT_FUNC("")
 	# valid input is any string that can matched aginst a morph idx
-	s = core.MY_GENERAL_INPUT_FUNC(lambda x: morph_hide.get_morphidx_from_name(x, pmx) is not None,
-	   ["Please specify the target morph: morph #, JP name, or EN name (names are case sensitive).",
+	s = core.MY_GENERAL_INPUT_FUNC(lambda x: get_idx_in_pmxsublist(x, pmx.morphs) is not None,
+	   ["Please specify the target morph: morph #, JP name, or EN name (names are not case sensitive).",
 		"Empty input will quit the script."])
 	# do it again, cuz the lambda only returns true/false
-	target_index = morph_hide.get_morphidx_from_name(s, pmx)
+	target_index = get_idx_in_pmxsublist(s, pmx.morphs)
 	
 	# when given empty text, done!
 	if target_index == -1 or target_index is None:

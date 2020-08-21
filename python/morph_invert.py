@@ -6,14 +6,12 @@ try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
 	from . import nuthouse01_pmx_struct as pmxstruct
-	from . import morph_hide
 	from . import morph_scale
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
 		import nuthouse01_pmx_struct as pmxstruct
-		import morph_hide
 		import morph_scale
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
@@ -52,11 +50,11 @@ def main(moreinfo=True):
 	
 	core.MY_PRINT_FUNC("")
 	# valid input is any string that can matched aginst a morph idx
-	s = core.MY_GENERAL_INPUT_FUNC(lambda x: morph_hide.get_morphidx_from_name(x, pmx) is not None,
-		["Please specify the target morph: morph #, JP name, or EN name (names are case sensitive).",
-		 "Empty input will quit the script."])
+	s = core.MY_GENERAL_INPUT_FUNC(lambda x: morph_scale.get_idx_in_pmxsublist(x, pmx.morphs) is not None,
+	   ["Please specify the target morph: morph #, JP name, or EN name (names are not case sensitive).",
+		"Empty input will quit the script."])
 	# do it again, cuz the lambda only returns true/false
-	target_index = morph_hide.get_morphidx_from_name(s, pmx)
+	target_index = morph_scale.get_idx_in_pmxsublist(s, pmx.morphs)
 	
 	# when given empty text, done!
 	if target_index == -1 or target_index is None:
