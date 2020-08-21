@@ -44,7 +44,7 @@ def is_3float(x: str):
 		ret = []
 		for xs in xsplit:
 			ret.append(float(xs))
-		return xsplit
+		return ret
 	except ValueError:
 		core.MY_PRINT_FUNC("Could not convert input to decimal numbers")
 		return None
