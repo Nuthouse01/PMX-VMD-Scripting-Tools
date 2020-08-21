@@ -39,7 +39,7 @@ PRINT_MATCHING_ITEMS = False
 
 
 helptext = '''=================================================
-model_compatability_check:
+check_model_compatability:
 This tool will check for compabability between a given model (PMX) and a given dance motion (VMD) or pose (VPD).
 This means checking whether the model supports all the bones and/or morphs the VMD/VPD is trying to use.
 All bone/morph names are compared using the JP names.
