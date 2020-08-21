@@ -62,6 +62,10 @@ def main(moreinfo=True):
 	# use the same func to convert the input string
 	scale = model_shift.is_3float(scale_str)
 	
+	uniform_scale = (scale[0] == scale[1] == scale[2])
+	if not uniform_scale:
+		core.MY_PRINT_FUNC("Warning: when scaling by non-uniform amounts, rigidbody sizes will not be modified")
+	
 	####################
 	# what does it mean to scale the entire model?
 	# scale vertex position, sdef params
@@ -129,8 +133,16 @@ def main(moreinfo=True):
 		for i in range(3):
 			rb.pos[i] *= scale[i]
 		# rigid body size
-		for i in range(3):
-			rb.size[i] *= scale[i]
+		# NOTE: rigid body size is a special conundrum
+		# spheres have only one dimension, capsules have two, and only boxes have 3
+		# what's the "right" way to scale a sphere by 1,5,1? there isn't a right way!
+		# boxes and capsules can be rotated and stuff so their axes dont line up with world axes, too
+		# is it at least possible to rotate bodies so they are still aligned with their bones?
+		# eh, why even bother with any of that. 95% of the time full-model scale will be uniform scaling.
+		# only scale the rigidbody size if doing uniform scaling: that is guaranteed to be safe!
+		if uniform_scale:
+			for i in range(3):
+				rb.size[i] *= scale[i]
 
 	for j in pmx.joints:
 		# joint position
