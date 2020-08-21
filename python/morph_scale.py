@@ -51,6 +51,9 @@ mtype_dict = {0:"group", 1:"vertex", 2:"bone", 3:"UV",
 
 
 def morph_scale(morph: pmxstruct.PmxMorph, scale: Union[List[float], float], bone_mode=0) -> bool:
+	# note: this function allows for X/Y/Z dimensions to be scaled by different values, but the interface still only allows
+	# scaling all 3 by the same value.
+	# bone_mode: 1 = motion(translation), 2 = rotation, 3 = both
 	# return false if it somehow has an invalid morph type, return true otherwise
 	
 	# independent x/y/z scale for bone & vertex morphs
