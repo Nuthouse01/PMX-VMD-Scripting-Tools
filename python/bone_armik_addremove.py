@@ -35,7 +35,7 @@ except ImportError as eee:
 DEBUG = False
 
 helptext = '''=================================================
-pmx_arm_ik_addremove:
+bone_armik_addremove:
 This very simple script will generate "arm IK bones" if they do not exist, or delete them if they do exist.
 The output suffix will be "_IK" if it added IK, or "_noIK" if it removed them.
 '''

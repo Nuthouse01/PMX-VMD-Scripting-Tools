@@ -18,7 +18,7 @@ from os import path
 try:
 	from python import nuthouse01_core as core
 	from python import make_ik_from_vmd
-	from python import pmx_arm_ik_addremove
+	from python import bone_armik_addremove
 	from python import pmx_list_bone_morph_names
 	from python import morph_hide
 	from python import morph_invert
@@ -37,7 +37,7 @@ except ImportError as eee:
 	input()
 	exit()
 	convert_vmd_to_txt = pmx_overall_cleanup = file_sort_textures = model_compatability_check = None
-	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = pmx_arm_ik_addremove = None
+	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = bone_armik_addremove = None
 	core = morph_invert = morph_hide = morph_scale = file_translate_names = convert_vpd_to_vmd = None
 
 ########################################################################################################################
@@ -255,7 +255,7 @@ class Application(tk.Frame):
 			("convert_vmd_to_txt.py",            convert_vmd_to_txt.helptext,            convert_vmd_to_txt.main),
 			("convert_vpd_to_vmd.py",            convert_vpd_to_vmd.helptext,            convert_vpd_to_vmd.main),
 			("make_ik_from_vmd.py",              make_ik_from_vmd.helptext,              make_ik_from_vmd.main),
-			("pmx_arm_ik_addremove.py",          pmx_arm_ik_addremove.helptext,          pmx_arm_ik_addremove.main),
+			("bone_armik_addremove.py",          bone_armik_addremove.helptext,          bone_armik_addremove.main),
 			("pmx_list_bone_morph_names.py",     pmx_list_bone_morph_names.helptext,     pmx_list_bone_morph_names.main),
 		]
 		
