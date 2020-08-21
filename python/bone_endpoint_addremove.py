@@ -69,6 +69,9 @@ def main(moreinfo=True):
 		
 		if target_bone.tail_type:
 			core.MY_PRINT_FUNC("Was tailmode 'bonelink', changing to mode 'offset'")
+			if target_bone.tail == -1:
+				core.MY_PRINT_FUNC("Error: bone is not linked to anything, skipping")
+				continue
 			# find the location of the bone currently pointing at
 			endpos = pmx.bones[target_bone.tail].pos
 			# determine the equivalent offset vector
@@ -81,6 +84,9 @@ def main(moreinfo=True):
 			
 		else:
 			core.MY_PRINT_FUNC("Was tailmode 'offset', changing to mode 'bonelink' and adding new endpoint bone")
+			if target_bone.tail == [0,0,0]:
+				core.MY_PRINT_FUNC("Error: bone has offset of [0,0,0], skipping")
+				continue
 			# determine the position of the new endpoint bone
 			endpos = [target_bone.pos[i] + target_bone.tail[i] for i in range(3)]
 			# create the new bone
@@ -98,7 +104,7 @@ def main(moreinfo=True):
 			pmx.bones.append(newbone)
 			# done adding endpoint!
 			pass
-
+		
 		num_changed += 1
 		pass
 	
@@ -106,6 +112,7 @@ def main(moreinfo=True):
 		core.MY_PRINT_FUNC("Nothing was changed")
 		return None
 	
+	core.MY_PRINT_FUNC("")
 	
 	# write out
 	output_filename_pmx = input_filename_pmx[0:-4] + "_endpoints.pmx"
