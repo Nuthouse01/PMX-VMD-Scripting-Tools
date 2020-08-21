@@ -476,8 +476,8 @@ def parse_pmx_joints(raw: bytearray) -> List[pmxstruct.PmxJoint]:
 		# assemble the data into list for returning
 		thisjoint = pmxstruct.PmxJoint(name_jp=name_jp, name_en=name_en, jointtype=jointtype,
 			rb1_idx=rb1_idx, rb2_idx=rb2_idx, pos=[posX, posY, posZ], rot=[rotX, rotY, rotZ],
-			posmin=[posminX, posminY, posminZ], posmax=[posmaxX, posmaxY, posmaxZ],
-			posspring=[springposX, springposY, springposZ], rotmin=[rotminX, rotminY, rotminZ],
+			movemin=[posminX, posminY, posminZ], movemax=[posmaxX, posmaxY, posmaxZ],
+			movespring=[springposX, springposY, springposZ], rotmin=[rotminX, rotminY, rotminZ],
 			rotmax=[rotmaxX, rotmaxY, rotmaxZ], rotspring=[springrotX, springrotY, springrotZ]
 			)
 		retme.append(thisjoint)

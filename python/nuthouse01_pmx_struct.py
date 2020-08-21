@@ -445,23 +445,23 @@ class PmxJoint(_BasePmx):
 	# 			 rotX, rotY, rotZ, posminX, posminY, posminZ, posmaxX, posmaxY, posmaxZ,
 	# 			 rotminX, rotminY, rotminZ, rotmaxX, rotmaxY, rotmaxZ,
 	# 			 springposX, springposY, springposZ, springrotX, springrotY, springrotZ]
-	def __init__(self, 
+	def __init__(self,
 				 name_jp: str, name_en: str,
 				 jointtype: int, rb1_idx: int, rb2_idx: int,
 				 pos: List[float],
 				 rot: List[float],
-				 posmin: List[float],
-				 posmax: List[float],
-				 posspring: List[float],
+				 movemin: List[float],
+				 movemax: List[float],
+				 movespring: List[float],
 				 rotmin: List[float],
 				 rotmax: List[float],
 				 rotspring: List[float],
 				 ):
 		assert len(pos) == 3
 		assert len(rot) == 3
-		assert len(posmin) == 3
-		assert len(posmax) == 3
-		assert len(posspring) == 3
+		assert len(movemin) == 3
+		assert len(movemax) == 3
+		assert len(movespring) == 3
 		assert len(rotmin) == 3
 		assert len(rotmax) == 3
 		assert len(rotspring) == 3
@@ -473,9 +473,9 @@ class PmxJoint(_BasePmx):
 		self.rb2_idx = rb2_idx
 		self.pos = pos
 		self.rot = rot
-		self.movemin = posmin
-		self.movemax = posmax
-		self.movespring = posspring
+		self.movemin = movemin
+		self.movemax = movemax
+		self.movespring = movespring
 		self.rotmin = rotmin
 		self.rotmax = rotmax
 		self.rotspring = rotspring
