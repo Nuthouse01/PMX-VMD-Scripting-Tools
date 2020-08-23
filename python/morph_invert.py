@@ -77,7 +77,7 @@ def main(moreinfo=True):
 			pmx.verts[item.vert_idx].pos[1] += item.move[1]
 			pmx.verts[item.vert_idx].pos[2] += item.move[2]
 			# invert the morph
-			morph_scale.morph_scale(pmx.morphs[target_index], -1)
+		morph_scale.morph_scale(pmx.morphs[target_index], -1)
 	elif morphtype == 3: # UV
 		item:pmxstruct.PmxMorphItemUV  # type annotation for pycharm
 		for d, item in enumerate(pmx.morphs[target_index].items):
@@ -86,7 +86,7 @@ def main(moreinfo=True):
 			pmx.verts[item.vert_idx].uv[0] += item.move[0]
 			pmx.verts[item.vert_idx].uv[1] += item.move[1]
 			# invert the morph
-			morph_scale.morph_scale(pmx.morphs[target_index], -1)
+		morph_scale.morph_scale(pmx.morphs[target_index], -1)
 	elif morphtype in (4,5,6,7): # UV1 UV2 UV3 UV4
 		whichuv = morphtype - 4
 		item:pmxstruct.PmxMorphItemUV  # type annotation for pycharm
@@ -97,7 +97,7 @@ def main(moreinfo=True):
 			pmx.verts[item.vert_idx].addl_vec4s[whichuv][2] += item.move[2]
 			pmx.verts[item.vert_idx].addl_vec4s[whichuv][3] += item.move[3]
 			# invert the morph
-			morph_scale.morph_scale(pmx.morphs[target_index], -1)
+		morph_scale.morph_scale(pmx.morphs[target_index], -1)
 	elif morphtype == 8: # material
 		core.MY_PRINT_FUNC("WIP")
 		# todo
