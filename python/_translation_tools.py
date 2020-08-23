@@ -184,8 +184,9 @@ morph_dict = {
 "驚き": "surprise",
 "見開き": "wide eye",
 "悲しい": "sad low",
-"困る": "sadness",  # google translates to "troubled", but PMXE translates to "sadness"... maybe "worried" is best?
-"困った": "sadness",  # same as above
+"困る": "sadness",  # phonetically "komaru", google translates to "troubled", but PMXE translates to "sadness"... maybe "worried" is best?
+"困った": "sadness",  # phonetically "komaru", same as above
+"困り": "troubled",  # phonetically "komari"
 "動揺": "upset",
 "真面目": "serious",  # has the symbol for "eye" but is actually a brow morph, odd
 "怒り": "anger",
@@ -639,7 +640,9 @@ words_dict = {
 "驚き": "surprise",
 "見開き": "spread",  # something closer to "wide eyes" but google says it's "spread" so idk
 "悲しい": "sad low",
-"困る": "sadness",
+"困る": "sadness",  # phonetically "komaru", google translates to "troubled", but PMXE translates to "sadness"... maybe "worried" is best?
+"困った": "sadness",  # phonetically "komaru", same as above
+"困り": "troubled",  # phonetically "komari"
 "真面": "serious",
 "怒り": "anger",
 "怒": "anger",
