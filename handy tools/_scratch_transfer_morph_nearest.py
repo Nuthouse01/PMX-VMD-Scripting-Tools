@@ -5,13 +5,14 @@ try:
 	sys.path.append("../")
 	from python import nuthouse01_core as core
 	from python import nuthouse01_pmx_parser as pmxlib
+	from python import nuthouse01_pmx_struct as pmxstruct
 except ImportError as eee:
 	print(eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 	print("...press ENTER to exit...")
 	input()
 	exit()
-	core = pmxlib = None
+	core = pmxlib = pmxstruct = None
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
@@ -42,27 +43,32 @@ def main():
 		if s == "": break
 		
 		# find the morph with the matching name
-		source_morph = core.my_list_search(source_pmx[6], lambda x: x[0] == s, getitem=True)
-		if source_morph is None:
+		source_morph_idx = core.my_list_search(source_pmx.morphs, lambda x: x.name_jp == s)
+		if source_morph_idx is None:
 			print("err: could not find that name, try again")
 			continue
 		
 		# verify vertex morph
-		if source_morph[3] != 1:
+		source_morph = source_pmx.morphs[source_morph_idx]
+		if source_morph.morphtype != 1:
 			print("err: for now, only support vertex morphs")
 			continue
 		
-		newmorph = [source_morph[0], source_morph[1], source_morph[2], 1, []]
+		newmorph = pmxstruct.PmxMorph(name_jp = source_morph.name_jp,
+									  name_en = source_morph.name_en,
+									  panel = source_morph.panel,
+									  morphtype = source_morph.morphtype,
+									  items = [])
 		# have source, have dest, have morph
 		# begin iterating!
 		# for each vert ref in vertex morph, go to vert in source PMX to get position
 		#
 		already_used_verts = set()
 		
-		for morphitem in source_morph[4]:
-			vertid = morphitem[0]
-			vert = source_pmx[1][vertid]
-			vertpos = vert[0:3] # get vertex xyz
+		for asdf, morphitem in enumerate(source_morph.items):
+			core.print_progress_oneline(asdf / len(source_morph.items))
+			vertid = morphitem.vert_idx
+			vertpos = source_pmx.verts[vertid].pos # get vertex xyz
 			# find the vert or verts in dest_pmx that correspond to this vert in source_pmx
 			# problem: multiple vertices at the same location
 			# in most cases, all verts at a location will move the same amount... but not always? how to handle?
@@ -76,8 +82,8 @@ def main():
 			# find all verts within this dist threshold
 			matching_verts = []
 			dist_list = []
-			for d,v2 in enumerate(dest_pmx[1]):
-				dist = core.my_euclidian_distance([vertpos[i] - v2[i] for i in range(3)])
+			for d,v2 in enumerate(dest_pmx.verts):
+				dist = core.my_euclidian_distance([vertpos[i] - v2.pos[i] for i in range(3)])
 				dist_list.append(dist)
 				if dist < THRESHOLD:
 					matching_verts.append(d)
@@ -87,20 +93,21 @@ def main():
 			for v in matching_verts:
 				if v not in already_used_verts:
 					already_used_verts.add(v)
-					newmorph[4].append([v] + morphitem[1:4])
+					newitem = pmxstruct.PmxMorphItemVertex(vert_idx=v, move=morphitem.move)
+					newmorph.items.append(newitem)
 			
 			pass  # end of for-each-morphitem loop
 		
 		# done building the new morph, hopefully
 		# make the vertices sorted cuz i can
-		newmorph[4].sort(key=lambda x: x[0])
+		newmorph.items.sort(key=lambda x: x.vert_idx)
 		
-		if len(newmorph[4]) != len(source_morph[4]):
+		if len(newmorph.items) != len(source_morph.items):
 			print("warning: length mismatch! source has %d and new has %d, this requires closer attention" %
-				  (len(source_morph[4]), len(newmorph[4])))
+				  (len(source_morph.items), len(newmorph.items)))
 		
 		# add it to the dest pmx
-		dest_pmx[6].append(newmorph)
+		dest_pmx.morphs.append(newmorph)
 		
 		pass  # end of while-loop
 	
