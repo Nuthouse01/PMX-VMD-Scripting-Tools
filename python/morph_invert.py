@@ -1,23 +1,25 @@
-# Nuthouse01 - 07/24/2020 - v4.63
+# Nuthouse01 - 08/24/2020 - v5.00
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
-	from . import morph_hide
+	from . import nuthouse01_pmx_struct as pmxstruct
+	from . import morph_scale
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
-		import morph_hide
+		import nuthouse01_pmx_struct as pmxstruct
+		import morph_scale
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = morph_hide = None
+		core = pmxlib = pmxstruct = morph_hide = morph_scale = None
 
 
 
@@ -48,58 +50,61 @@ def main(moreinfo=True):
 	
 	core.MY_PRINT_FUNC("")
 	# valid input is any string that can matched aginst a morph idx
-	s = core.MY_GENERAL_INPUT_FUNC(lambda x: morph_hide.get_morphidx_from_name(x, pmx) is not None,
-								   ["Please specify the target morph: morph #, JP name, or EN name (names are case sensitive).",
-									"Empty input will quit the script."])
+	s = core.MY_GENERAL_INPUT_FUNC(lambda x: morph_scale.get_idx_in_pmxsublist(x, pmx.morphs) is not None,
+	   ["Please specify the target morph: morph #, JP name, or EN name (names are not case sensitive).",
+		"Empty input will quit the script."])
 	# do it again, cuz the lambda only returns true/false
-	target_index = morph_hide.get_morphidx_from_name(s, pmx)
+	target_index = morph_scale.get_idx_in_pmxsublist(s, pmx.morphs)
 	
 	# when given empty text, done!
 	if target_index == -1 or target_index is None:
 		core.MY_PRINT_FUNC("quitting")
 		return None
 	
-	morphtype = pmx[6][target_index][3]
+	morphtype = pmx.morphs[target_index].morphtype
 	# 1=vert
 	# 3=UV
 	# 8=material
-	core.MY_PRINT_FUNC("Found {} morph #{}: '{}' / '{}'".format(mtype_dict[morphtype], target_index, pmx[6][target_index][0], pmx[6][target_index][1]))
+	core.MY_PRINT_FUNC("Found {} morph #{}: '{}' / '{}'".format(
+		mtype_dict[morphtype], target_index, pmx.morphs[target_index].name_jp, pmx.morphs[target_index].name_en))
 	
 	if morphtype == 1: # vertex
 		# for each item in this morph:
-		for d, item in enumerate(pmx[6][target_index][4]):
+		item:pmxstruct.PmxMorphItemVertex  # type annotation for pycharm
+		for d, item in enumerate(pmx.morphs[target_index].items):
 			# apply the offset
-			pmx[1][item[0]][0] += item[1]
-			pmx[1][item[0]][1] += item[2]
-			pmx[1][item[0]][2] += item[3]
+			pmx.verts[item.vert_idx].pos[0] += item.move[0]
+			pmx.verts[item.vert_idx].pos[1] += item.move[1]
+			pmx.verts[item.vert_idx].pos[2] += item.move[2]
 			# invert the morph
-			item[1] *= -1
-			item[2] *= -1
-			item[3] *= -1
+		morph_scale.morph_scale(pmx.morphs[target_index], -1)
 	elif morphtype == 3: # UV
-		for d, item in enumerate(pmx[6][target_index][4]):
+		item:pmxstruct.PmxMorphItemUV  # type annotation for pycharm
+		for d, item in enumerate(pmx.morphs[target_index].items):
 			# (vert_idx, A, B, C, D)
 			# apply the offset
-			pmx[1][item[0]][6] += item[1]
-			pmx[1][item[0]][7] += item[2]
+			pmx.verts[item.vert_idx].uv[0] += item.move[0]
+			pmx.verts[item.vert_idx].uv[1] += item.move[1]
 			# invert the morph
-			item[1] *= -1
-			item[2] *= -1
+		morph_scale.morph_scale(pmx.morphs[target_index], -1)
 	elif morphtype in (4,5,6,7): # UV1 UV2 UV3 UV4
 		whichuv = morphtype - 4
-		for d, item in enumerate(pmx[6][target_index][4]):
+		item:pmxstruct.PmxMorphItemUV  # type annotation for pycharm
+		for d, item in enumerate(pmx.morphs[target_index].items):
 			# apply the offset
-			pmx[1][item[0]][8][whichuv][0] += item[1]
-			pmx[1][item[0]][8][whichuv][1] += item[2]
-			pmx[1][item[0]][8][whichuv][2] += item[3]
-			pmx[1][item[0]][8][whichuv][3] += item[4]
+			pmx.verts[item.vert_idx].addl_vec4s[whichuv][0] += item.move[0]
+			pmx.verts[item.vert_idx].addl_vec4s[whichuv][1] += item.move[1]
+			pmx.verts[item.vert_idx].addl_vec4s[whichuv][2] += item.move[2]
+			pmx.verts[item.vert_idx].addl_vec4s[whichuv][3] += item.move[3]
 			# invert the morph
-			item[1] *= -1
-			item[2] *= -1
-			item[3] *= -1
-			item[4] *= -1
+		morph_scale.morph_scale(pmx.morphs[target_index], -1)
 	elif morphtype == 8: # material
 		core.MY_PRINT_FUNC("WIP")
+		# todo
+		# to invert a material morph means inverting the material's visible/notvisible state as well as flipping the morph
+		# hide morph add -> show morph add
+		# hide morph mult -> show morph add
+		# show morph add -> hide morph mult
 		core.MY_PRINT_FUNC("quitting")
 		return None
 	else:
@@ -116,7 +121,7 @@ def main(moreinfo=True):
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 07/24/2020 - v4.63")
+	print("Nuthouse01 - 08/24/2020 - v5.00")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

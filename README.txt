@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README
-Created by Nuthouse01 - 07/24/2020 - v4.63
+Created by Nuthouse01 - 08/24/2020 - v5.00
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!
 
@@ -24,7 +24,7 @@ Don't try to claim this work as yours. That would be a profoundly dick move.
 ![Screenshot of console](https://raw.githubusercontent.com/Nuthouse01/PMX-VMD-Scripting-Tools/master/img/screenshot1.png)
 
 ### Purpose:
-##### pmx_overall_cleanup.py
+##### model_overall_cleanup.py
 This will perform a series of first-pass cleanup operations to generally improve any PMX model. This includes: translating missing english names (via Google Translate!), correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, cleaning up display frames, and detecting issues that might cause MMD to crash. These operations will reduce file size (sometimes massively!) and improve overall model health & usability.
 
 ##### file_sort_textures.py
@@ -33,8 +33,8 @@ This script is for organizing the texture imports used in a PMX model, to elimin
 ##### file_translate_names.py
 This is for translating JP names of files to English. Unlike the "file_sort_textures" script, this will attempt to rename ALL files within the tree, it will not restrict itself to only certain filetypes.
 
-##### model_compatability_check.py
-This script is to check if the model you are using is compatible with the VMD/VPD you wish to use. This will create a summary file that lists all important bones/morphs in the VMD/VPD file, and sorts them into two groups: ones that the model can support, and ones that it cannot support. If you are loading a motion designed for some different model (usually the case), and it seems to be playing wrong, it is very likely that there is a name mismatch.
+##### check_model_compatability.py
+This script is to check if the model you are using is compatible with the VMD/VPD you wish to use. This will display a summary that lists all the bones/morphs in the VMD/VPD file that are not supported by the model. If you are loading a motion designed for some different model (usually the case), and it seems to be playing wrong, it is very likely that there is a name mismatch.
 
 (For example, if a model's eye-smile morph is named "笑い" and the motion uses "笑顔" for eye-smile, that morph will not be applied to the model and it will look wrong when played.)
 
@@ -211,9 +211,32 @@ The following files should be included with this README:
 * graphic_user_interface.py
 * graphic_user_interface.exe
 * python/*.py
+* handy tools/*.py
 * img/screenshot1.png
 
 #### Changelog:
+
+    v5.00:
+    more words, always more words, so many words, words words words words
+    add new PMX structs so everything uses named fields & becomes more readable
+        all scripts updated to use new PMX class
+        probably introduced a few bugs with this, i'll find them eventually
+    increase required version to 3.6 so i can use variable type annotation
+    rename "pmx overall cleanup" -> "model overall cleanup"
+    rename "pmx armik addremove" -> "bone armik addremove"
+    rename "model compatability check" -> "check model compatability"
+    NEW: "model_shift" script to replace the buggy & broken PMXE plugin
+    NEW: "model_scale" script because why not
+    NEW: "bone_endpoint_addremove" to toggle between bonelink and offset modes
+    add new folder "handy tools", this will contain scripts and script fragments that come in handy for various tasks.
+        these will not be documented or incorporated into the GUI because they are too specific or too minor,
+        or require CSV files (from PMXE) as their inputs. use them only after inspecting them and learning what they do!
+    bugfix: printout bug in translate_to_english when PREFER_EXISTING_ENGLISH_NAME = False
+    bugfix: fix symmetry issue in add/remove arm IK script
+    bugfix: finally made "remove unused verts" script properly support softbodies
+    add half-katakana to full-katakana piecewise translation dict
+        (no plans to actually use it however)
+    moved vmd structs to separate file because the pmx structs are in a separate file
 
     v4.63:
     tweak printouts in a couple places

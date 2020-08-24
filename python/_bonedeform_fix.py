@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/24/2020 - v4.63
+# Nuthouse01 - 08/24/2020 - v5.00
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -6,17 +6,19 @@
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = None
+		core = pmxlib = pmxstruct = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -49,23 +51,23 @@ def showprompt():
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=True)
 	return pmx, input_filename_pmx
 
-def bonedeform_fix(pmx, moreinfo=False):
+def bonedeform_fix(pmx: pmxstruct.Pmx, moreinfo=False):
 	# make a parallel list of the deform layers for each bone so I can work there
 	# if I encounter a recursive relationship I will have not touched the acutal PMX and can err and return it unchanged
-	deforms = [p[6] for p in pmx[5]]
+	deforms = [p.deform_layer for p in pmx.bones]
 	
 	# make a list of the "ik master" for each bone
 	# it is possible for a bone to be controlled by multiple IK masters, actually every foot bone of every model is this way
-	ikmasters = [set() for x in pmx[5]]
+	ikmasters = [set() for x in pmx.bones]
 	
-	for d,bone in enumerate(pmx[5]):
+	for d,bone in enumerate(pmx.bones):
 		# find IK bones
-		if bone[23]:
+		if bone.has_ik:
 			# target uses me as master
-			ikmasters[bone[24][0]].add(d)
-			for link in bone[24][3]:
+			ikmasters[bone.ik_target_idx].add(d)
+			for link in bone.ik_links:
 				# links use me as master
-				ikmasters[link[0]].add(d)
+				ikmasters[link.idx].add(d)
 	
 	modified_bones = set()
 	
@@ -99,22 +101,22 @@ def bonedeform_fix(pmx, moreinfo=False):
 	while loops < 1000:
 		loops += 1
 		has_changed = False
-		for d,bone in enumerate(pmx[5]):
+		for d,bone in enumerate(pmx.bones):
 			# decide if this bone has a good deform layer!
 			is_good = True
 			# each bone must deform after its parent
-			if bone[5] != -1: # -1 is not a valid parent to check
-				is_good &= good_deform_relationship(d, bone[5])
+			if bone.parent_idx != -1: # -1 is not a valid parent to check
+				is_good &= good_deform_relationship(d, bone.parent_idx)
 			# each bone must deform after its partial inherit source, if it uses it
-			if (bone[14] or bone[15]) and bone[16][1] != 0 and bone[16][0] != -1:
-				is_good &= good_deform_relationship(d, bone[16][0])
+			if (bone.inherit_trans or bone.inherit_rot) and bone.inherit_ratio != 0 and bone.inherit_parent_idx != -1:
+				is_good &= good_deform_relationship(d, bone.inherit_parent_idx)
 			# each ik bone must deform after its target and IK chain
-			if bone[23]:
+			if bone.has_ik:
 				# target
-				is_good &= good_deform_relationship(d, bone[24][0])
-				for link in bone[24][3]:
+				is_good &= good_deform_relationship(d, bone.ik_target_idx)
+				for link in bone.ik_links:
 					# links
-					is_good &= good_deform_relationship(d, link[0])
+					is_good &= good_deform_relationship(d, link.idx)
 			# if the relationship is NOT good, then raise the deform layer of this bone
 			if not is_good:
 				has_changed = True
@@ -140,19 +142,21 @@ def bonedeform_fix(pmx, moreinfo=False):
 		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
 	
+	# if something did change,
 	if moreinfo:
-		deforms_orig = [p[6] for p in pmx[5]]
+		deforms_orig = [p.deform_layer for p in pmx.bones]
 		for d, (o, n) in enumerate(zip(deforms_orig, deforms)):
 			if o != n:
-				core.MY_PRINT_FUNC("bone #{:<3} JP='{}' / EN='{}', deform: {} --> {}".format(d, pmx[5][d][0], pmx[5][d][1], o, n))
+				core.MY_PRINT_FUNC("bone #{:<3} JP='{}' / EN='{}', deform: {} --> {}".format(
+					d, pmx.bones[d].name_jp, pmx.bones[d].name_en, o, n))
 
 	
 	core.MY_PRINT_FUNC("Modified deform order for {} / {} = {:.1%} bones".format(
-		len(modified_bones), len(pmx[5]), len(modified_bones) / len(pmx[5])))
+		len(modified_bones), len(pmx.bones), len(modified_bones) / len(pmx.bones)))
 
 	# now actually apply the changes stored in deforms
 	for d,v in enumerate(deforms):
-		pmx[5][d][6] = v
+		pmx.bones[d].deform_layer = v
 	
 	return pmx, True
 
@@ -173,7 +177,7 @@ def main():
 	core.pause_and_quit("Done with everything! Goodbye!")
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")
+	core.MY_PRINT_FUNC("Nuthouse01 - 08/24/2020 - v5.00")
 	if DEBUG:
 		main()
 	else:

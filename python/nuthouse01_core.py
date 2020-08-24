@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/24/2020 - v4.63
+# Nuthouse01 - 08/24/2020 - v5.00
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -20,7 +20,7 @@ from sys import platform, version_info, version
 # between 3.4 and 3.6, who knows
 from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
 
-if version_info < (3, 4):
+if version_info < (3, 6):
 	print("Your version of Python is too old to run this script, please update!")
 	print("Your current version = " + version)
 	print("...press ENTER to exit...")
@@ -135,19 +135,15 @@ def get1st(x):
 def get2nd(x):
 	return x[1]
 
-# todo: revise this to be more generic & take a lambda
-def my_sublist_find(searchme, sublist_idx, matchme, getindex=False):
-	# in a list of lists, find the list with the specified value at the specified sub-index
+THING = TypeVar('THING')      # Declare type variable so I can say "whatever input type is, it matches the output type"
+def my_list_search(searchme: Iterable[THING], condition: Callable[[THING], bool], getitem=False):
+	# in a list of things, find the first thing where the condition is true
 	for d,row in enumerate(searchme):
-		if row[sublist_idx] == matchme:
-			if getindex:
-				return d
-			else:
-				return row
+		if condition(row):
+			return row if getitem else d
 	return None
 
-T = TypeVar('T')      # Declare type variable so I can say "whatever input type is, it matches the output type"
-def my_list_partition(l: Iterable[T], condition: Callable[[T],bool]) -> Tuple[List[T],List[T]]:
+def my_list_partition(l: Iterable[THING], condition: Callable[[THING], bool]) -> Tuple[List[THING], List[THING]]:
 	"""
 	Split one list into two NEW lists based on a condition. Kinda like a list comprehension but it produces 2 results.
 	
@@ -173,6 +169,8 @@ MAXDIFFERENCE = 0
 def recursively_compare(A,B):
 	global MAXDIFFERENCE
 	# return 1/true if it FAILS, return 0/false if it MATCHES
+	if hasattr(A, "list"): A = A.list()
+	if hasattr(B, "list"): B = B.list()
 	if isinstance(A, float) and isinstance(B, float):
 		# for floats specifically, replace exact compare with approximate compare
 		diff = abs(A-B)
@@ -270,7 +268,7 @@ def prompt_user_choice(options: Sequence[int], explain_info=None) -> int:
 # global variable holding a function pointer that i can overwrite with a different function pointer when in GUI mode
 MY_SIMPLECHOICE_FUNC = prompt_user_choice
 
-def general_input(valid_check: Callable, explain_info=None) -> str:
+def general_input(valid_check: Callable[[str], bool], explain_info=None) -> str:
 	"""
 	CONSOLE FUNCTION: Prompt for string input & continue prompting until given function 'valid_check' returns True.
 	'valid_check' should probably print some kind of error whenever it returns False, explaining why input isn't valid.
@@ -1371,5 +1369,5 @@ def _pack_text(fmt: str, args: str) -> bytearray:
 		raise newerr
 
 if __name__ == '__main__':
-	MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")
+	MY_PRINT_FUNC("Nuthouse01 - 08/24/2020 - v5.00")
 	pause_and_quit("you are not supposed to directly run this file haha")

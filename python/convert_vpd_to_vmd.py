@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/24/2020 - v4.63
+# Nuthouse01 - 08/24/2020 - v5.00
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -27,7 +27,7 @@ except ImportError as eee:
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
-DEBUG = True
+DEBUG = False
 
 
 
@@ -104,7 +104,7 @@ def main(moreinfo=False):
 ########################################################################################################################
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")
+	core.MY_PRINT_FUNC("Nuthouse01 - 08/24/2020 - v5.00")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

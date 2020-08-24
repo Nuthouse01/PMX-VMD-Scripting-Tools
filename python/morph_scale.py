@@ -1,26 +1,27 @@
-# Nuthouse01 - 07/24/2020 - v4.63
+# Nuthouse01 - 08/24/2020 - v5.00
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
 
 import copy
+from typing import Union, List
 
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
-	from . import morph_hide
+	from . import nuthouse01_pmx_struct as pmxstruct
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
-		import morph_hide
+		import nuthouse01_pmx_struct as pmxstruct
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = morph_hide = None
+		core = pmxlib = pmxstruct = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -47,6 +48,109 @@ mtype_dict = {0:"group", 1:"vertex", 2:"bone", 3:"UV",
 			  8:"material", 9:"flip", 10:"impulse"}
 
 
+# function that takes a string & returns idx if it can match one, or None otherwise
+def get_idx_in_pmxsublist(s: str, pmxlist: List):
+	if s == "": return -1
+	# then get the morph index from this
+	# search JP names first
+	t = core.my_list_search(pmxlist, lambda x: x.name_jp.lower() == s.lower())
+	if t is not None: return t
+	# search EN names next
+	t = core.my_list_search(pmxlist, lambda x: x.name_en.lower() == s.lower())
+	if t is not None: return t
+	# try to cast to int next
+	try:
+		t = int(s)
+		if 0 <= t < len(pmxlist):
+			return t
+		else:
+			core.MY_PRINT_FUNC("valid indexes are [0-'%d']" % (len(pmxlist) - 1))
+			return None
+	except ValueError:
+		core.MY_PRINT_FUNC("unable to find matching item for input '%s'" % s)
+		return None
+
+
+
+
+
+def morph_scale(morph: pmxstruct.PmxMorph, scale: Union[List[float], float], bone_mode=0) -> bool:
+	# note: this function allows for X/Y/Z dimensions to be scaled by different values, but the interface still only allows
+	# scaling all 3 by the same value.
+	# bone_mode: 1 = motion(translation), 2 = rotation, 3 = both
+	# return false if it somehow has an invalid morph type, return true otherwise
+	
+	# independent x/y/z scale for bone & vertex morphs
+	# UV and UV# morphs have independent x/y/z/w
+	# material morphs only use one value
+	
+	# accept scale as either int/float or list of 3 int/float
+	if isinstance(scale,int) or isinstance(scale,float):
+		scale = [scale] * 4
+	if len(scale) < 4:
+		scale.extend([1] * (4 - len(scale)))
+
+	if morph.morphtype == 2:  # bone
+		# bone_mode: 1 = motion(translation), 2 = rotation, 3 = both
+		if bone_mode in (2,3):  # if ==2 or ==3, then do rotation
+			for d, item in enumerate(morph.items):
+				item: pmxstruct.PmxMorphItemBone  # type annotation for pycharm
+				# i guess scaling in euclid-space is good enough? assuming all resulting components are <180
+				# most bone morphs only rotate around one axis anyways
+				item.rot = [x * s for x,s in zip(item.rot, scale)]
+		if bone_mode in (1,3):  # if ==1 or ==3, then do translation
+			for d, item in enumerate(morph.items):
+				item: pmxstruct.PmxMorphItemBone  # type annotation for pycharm
+				# scale the morph XYZ
+				item.move = [x * s for x,s in zip(item.move, scale)]
+	elif morph.morphtype == 1:  # vertex
+		# for each item in this morph:
+		for d, item in enumerate(morph.items):
+			item: pmxstruct.PmxMorphItemVertex  # type annotation for pycharm
+			# scale the morph XYZ
+			item.move = [x * s for x, s in zip(item.move, scale)]
+	elif morph.morphtype in (3, 4, 5, 6, 7):  # UV  UV1 UV2 UV3 UV4
+		for d, item in enumerate(morph.items):
+			item: pmxstruct.PmxMorphItemUV  # type annotation for pycharm
+			# scale the morph UV
+			item.move = [x * s for x, s in zip(item.move, scale)]
+	elif morph.morphtype == 8:  # material
+		core.MY_PRINT_FUNC("material morph is WIP")
+		for d, item in enumerate(morph.items):
+			item: pmxstruct.PmxMorphItemMaterial  # type annotation for pycharm
+			if item.is_add:
+				# to scale additive morphs, just scale like normal
+				item.alpha *=     scale[0]
+				item.specpower *= scale[0]
+				item.edgealpha *= scale[0]
+				item.edgesize *=  scale[0]
+				item.diffRGB =  [d * scale[0] for d in item.diffRGB]
+				item.specRGB =  [d * scale[0] for d in item.specRGB]
+				item.ambRGB =   [d * scale[0] for d in item.ambRGB]
+				item.edgeRGB =  [d * scale[0] for d in item.edgeRGB]
+				item.texRGBA =  [d * scale[0] for d in item.texRGBA]
+				item.toonRGBA = [d * scale[0] for d in item.toonRGBA]
+				item.sphRGBA =  [d * scale[0] for d in item.sphRGBA]
+			else:
+				# but to scale multiplicative morphs, scale around 1! meaning subtract 1, then scale, then add 1
+				item.alpha = ((item.alpha - 1) * scale[0]) + 1
+				item.specpower = ((item.specpower - 1) * scale[0]) + 1
+				item.edgealpha = ((item.edgealpha - 1) * scale[0]) + 1
+				item.edgesize = ((item.edgesize - 1) * scale[0]) + 1
+				item.diffRGB =  [((d - 1) * scale[0]) + 1 for d in item.diffRGB]
+				item.specRGB =  [((d - 1) * scale[0]) + 1 for d in item.specRGB]
+				item.ambRGB =   [((d - 1) * scale[0]) + 1 for d in item.ambRGB]
+				item.edgeRGB =  [((d - 1) * scale[0]) + 1 for d in item.edgeRGB]
+				item.texRGBA =  [((d - 1) * scale[0]) + 1 for d in item.texRGBA]
+				item.toonRGBA = [((d - 1) * scale[0]) + 1 for d in item.toonRGBA]
+				item.sphRGBA =  [((d - 1) * scale[0]) + 1 for d in item.sphRGBA]
+	else:
+		core.MY_PRINT_FUNC("Unhandled morph type")
+		return False
+	return True
+
+
+
 def main(moreinfo=True):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
@@ -55,11 +159,11 @@ def main(moreinfo=True):
 	
 	core.MY_PRINT_FUNC("")
 	# valid input is any string that can matched aginst a morph idx
-	s = core.MY_GENERAL_INPUT_FUNC(lambda x: morph_hide.get_morphidx_from_name(x, pmx) is not None,
-								   ["Please specify the target morph: morph #, JP name, or EN name (names are case sensitive).",
-									"Empty input will quit the script."])
+	s = core.MY_GENERAL_INPUT_FUNC(lambda x: get_idx_in_pmxsublist(x, pmx.morphs) is not None,
+	   ["Please specify the target morph: morph #, JP name, or EN name (names are not case sensitive).",
+		"Empty input will quit the script."])
 	# do it again, cuz the lambda only returns true/false
-	target_index = morph_hide.get_morphidx_from_name(s, pmx)
+	target_index = get_idx_in_pmxsublist(s, pmx.morphs)
 	
 	# when given empty text, done!
 	if target_index == -1 or target_index is None:
@@ -67,15 +171,16 @@ def main(moreinfo=True):
 		return None
 	
 	# determine the morph type
-	morphtype = pmx[6][target_index][3]
-	core.MY_PRINT_FUNC("Found {} morph #{}: '{}' / '{}'".format(mtype_dict[morphtype], target_index, pmx[6][target_index][0], pmx[6][target_index][1]))
+	morphtype = pmx.morphs[target_index].morphtype
+	core.MY_PRINT_FUNC("Found {} morph #{}: '{}' / '{}'".format(
+		mtype_dict[morphtype], target_index, pmx.morphs[target_index].name_jp, pmx.morphs[target_index].name_en))
 	
 	# if it is a bone morph, ask for translation/rotation/both
 	bone_mode = 0
 	if morphtype == 2:
 		bone_mode = core.MY_SIMPLECHOICE_FUNC((1,2,3),
-											  ["Bone morph detected: do you want to scale the motion(translation), rotation, or both?",
-											   "1 = motion(translation), 2 = rotation, 3 = both"])
+			["Bone morph detected: do you want to scale the motion(translation), rotation, or both?",
+			 "1 = motion(translation), 2 = rotation, 3 = both"])
 	
 	# ask for factor: keep looping this prompt until getting a valid float
 	def is_float(x):
@@ -93,56 +198,23 @@ def main(moreinfo=True):
 	
 	# important values: target_index, factor, morphtype, bone_mode
 	# first create the new morph that is a copy of current
-	newmorph = copy.deepcopy(pmx[6][target_index])
-	# then modify the names
-	name_suffix = "*" + (str(factor)[0:6])
-	newmorph[0] += name_suffix
-	newmorph[1] += name_suffix
-	# now scale the actual values
-	if morphtype == 2:  # bone
-		# bone_mode: 1 = motion(translation), 2 = rotation, 3 = both
-		# (bone_idx, transX, transY, transZ, rotX, rotY, rotZ, rotW)
-		if bone_mode in (2,3):  # if ==2 or ==3, then do rotation
-			for d, item in enumerate(newmorph[4]):
-				# to scale quaternions, i guess scaling in euclid-space is good enough? assuming all resulting components are <180
-				quat = [item[7]] + item[4:7]
-				euler = core.quaternion_to_euler(quat)
-				euler = [e * factor for e in euler]
-				newquat = core.euler_to_quaternion(euler)
-				item[4:7] = newquat[1:4]
-				item[7] = newquat[0]
-		if bone_mode in (1,3):  # if ==1 or ==3, then do translation
-			for d, item in enumerate(newmorph[4]):
-				# scale the morph XYZ
-				item[1] *= factor
-				item[2] *= factor
-				item[3] *= factor
-	elif morphtype == 1:  # vertex
-		# for each item in this morph:
-		for d, item in enumerate(newmorph[4]):
-			# scale the morph XYZ
-			item[1] *= factor
-			item[2] *= factor
-			item[3] *= factor
-	elif morphtype == 3:  # UV
-		for d, item in enumerate(newmorph[4]):
-			# (vert_idx, A, B, C, D)
-			# scale the morph UV
-			item[1] *= factor
-			item[2] *= factor
-	elif morphtype in (4, 5, 6, 7):  # UV1 UV2 UV3 UV4
-		for d, item in enumerate(newmorph[4]):
-			# scale the morph UV
-			item[1] *= factor
-			item[2] *= factor
-			item[3] *= factor
-			item[4] *= factor
+	if SCALE_MORPH_IN_PLACE:
+		newmorph = pmx.morphs[target_index]
 	else:
-		core.MY_PRINT_FUNC("Unhandled morph type")
+		newmorph = copy.deepcopy(pmx.morphs[target_index])
+		# then modify the names
+		name_suffix = "*" + (str(factor)[0:6])
+		newmorph.name_jp += name_suffix
+		newmorph.name_en += name_suffix
+	# now scale the actual values
+	
+	r = morph_scale(newmorph, factor, bone_mode)
+	
+	if not r:
 		core.MY_PRINT_FUNC("quitting")
 		return None
-	
-	pmx[6].append(newmorph)
+		
+	pmx.morphs.append(newmorph)
 	
 	# write out
 	output_filename_pmx = input_filename_pmx[0:-4] + ("_%dscal.pmx" % target_index)
@@ -153,7 +225,7 @@ def main(moreinfo=True):
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 07/24/2020 - v4.63")
+	print("Nuthouse01 - 08/24/2020 - v5.00")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

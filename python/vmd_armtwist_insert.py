@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/24/2020 - v4.63
+# Nuthouse01 - 08/24/2020 - v5.00
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -8,25 +8,27 @@
 # read a VMD, convert rotation on arm/wrist bones around axis of "armtwist" into rotation around "armtwist"
 
 
-import math
+# import math
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
-	from . import nuthouse01_vmd_parser as vmdlib
-	from . import nuthouse01_pmx_parser as pmxlib
 	from . import nuthouse01_core as core
+	from . import nuthouse01_vmd_parser as vmdlib
+	from . import nuthouse01_vmd_struct as vmdstruct
+	from . import nuthouse01_pmx_parser as pmxlib
 except ImportError as eee:
 	try:
-		import nuthouse01_vmd_parser as vmdlib
-		import nuthouse01_pmx_parser as pmxlib
 		import nuthouse01_core as core
+		import nuthouse01_vmd_parser as vmdlib
+		import nuthouse01_vmd_struct as vmdstruct
+		import nuthouse01_pmx_parser as pmxlib
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = vmdlib = pmxlib = None
+		core = vmdlib = vmdstruct = pmxlib = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -128,32 +130,31 @@ def main(moreinfo=True):
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("")
 	# get bones
-	realbones = pmx[5]
+	realbones = pmx.bones
 	
 	twistbone_axes = []
 	# then, grab the "twist" bones & save their fixed-rotate axes, if they have them
 	# fallback plan: find the arm-to-elbow and elbow-to-wrist unit vectors and use those
 	for i in range(len(jp_twistbones)):
-		# jp bone name is at index 0
-		r = core.my_sublist_find(realbones, 0, jp_twistbones[i])
+		r = core.my_list_search(realbones, lambda x: x.name_jp == jp_twistbones[i], getitem=True)
 		if r is None:
 			core.MY_PRINT_FUNC("ERROR1: twist bone '{}'({}) cannot be found model, unable to continue. Ensure they use the correct semistandard names, or edit the script to change the JP names it is looking for.".format(jp_twistbones[i], eng_twistbones[i]))
 			raise RuntimeError()
-		if r[17] != 0:
+		if r.has_fixedaxis:
 			# this bone DOES have fixed-axis enabled! use the unit vector in r[18]
-			twistbone_axes.append(r[18])
+			twistbone_axes.append(r.fixedaxis)
 		else:
 			# i can infer local axis by angle from arm-to-elbow or elbow-to-wrist
-			start = core.my_sublist_find(realbones, 0, jp_sourcebones[i])
+			start = core.my_list_search(realbones, lambda x: x.name_jp == jp_sourcebones[i], getitem=True)
 			if start is None:
 				core.MY_PRINT_FUNC("ERROR2: semistandard bone '%s' is missing from the model, unable to infer axis of rotation" % jp_sourcebones[i])
 				raise RuntimeError()
-			end = core.my_sublist_find(realbones, 0, jp_pointat_bones[i])
+			end = core.my_list_search(realbones, lambda x: x.name_jp == jp_pointat_bones[i], getitem=True)
 			if end is None:
 				core.MY_PRINT_FUNC("ERROR3: semistandard bone '%s' is missing from the model, unable to infer axis of rotation" % jp_pointat_bones[i])
 				raise RuntimeError()
-			start_pos = start[2:5]
-			end_pos = end[2:5]
+			start_pos = start.pos
+			end_pos = end.pos
 			# now have both startpoint and endpoint! find the delta!
 			delta = [b - a for a,b in zip(start_pos, end_pos)]
 			# normalize to length of 1
@@ -222,13 +223,14 @@ def main(moreinfo=True):
 					# interpolate from prev to this by amount Y
 					interp_quat = core.my_slerp(prevframequat, thisframequat, y)
 					# begin building the new frame
-					newframe = vmdlib.VmdBoneFrame(name=this.name,  # same name
-												   f=interp_framenum,  # overwrite frame num
-												   pos=list(this.pos),  # same pos (but make a copy)
-												   rot=list(core.quaternion_to_euler(interp_quat)),  # overwrite euler angles
-												   phys_off=this.phys_off,  # same phys_off
-												   interp=list(core.bone_interpolation_default_linear)  # overwrite interpolation
-												   )
+					newframe = vmdstruct.VmdBoneFrame(
+						name=this.name,  # same name
+						f=interp_framenum,  # overwrite frame num
+						pos=list(this.pos),  # same pos (but make a copy)
+						rot=list(core.quaternion_to_euler(interp_quat)),  # overwrite euler angles
+						phys_off=this.phys_off,  # same phys_off
+						interp=list(core.bone_interpolation_default_linear)  # overwrite interpolation
+					)
 					newframelist.append(newframe)
 				# overwrite thisframe interp curve with default too
 				this.interp = list(core.bone_interpolation_default_linear) # overwrite custom interpolation
@@ -274,13 +276,14 @@ def main(moreinfo=True):
 			# create & store new twistbone frame
 			# name=twistbone, framenum=copy, XYZpos=copy, XYZrot=new, phys=copy, interp16=copy
 			new_twistbone_euler = core.quaternion_to_euler(twist)
-			newframe = vmdlib.VmdBoneFrame(name=twistbone,
-										   f=frame.f,
-										   pos=list(frame.pos),
-										   rot=list(new_twistbone_euler),
-										   phys_off=frame.phys_off,
-										   interp=list(frame.interp)
-										   )
+			newframe = vmdstruct.VmdBoneFrame(
+				name=twistbone,
+				f=frame.f,
+				pos=list(frame.pos),
+				rot=list(new_twistbone_euler),
+				phys_off=frame.phys_off,
+				interp=list(frame.interp)
+			)
 			new_twistbone_frames.append(newframe)
 			# print progress updates
 			curr_progress += 1
@@ -306,7 +309,7 @@ def main(moreinfo=True):
 	return None
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")
+	core.MY_PRINT_FUNC("Nuthouse01 - 08/24/2020 - v5.00")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

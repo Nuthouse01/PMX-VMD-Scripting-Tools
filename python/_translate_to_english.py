@@ -1,20 +1,22 @@
-# Nuthouse01 - 07/24/2020 - v4.63
+# Nuthouse01 - 08/24/2020 - v5.00
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
 # first, system imports
 from time import time
-from typing import List, Tuple, Union
+from typing import List, Tuple, TypeVar
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 	from . import _translation_tools as translation_tools
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 		import _translation_tools as translation_tools
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
@@ -22,17 +24,22 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = translation_tools = None
+		core = pmxlib = pmxstruct = translation_tools = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
-DEBUG = True
+DEBUG = False
 
 
 # by default, respect existing english names if they exist and are latin-only
 # if this is set False then local translate will supercede the existing en name result
 PREFER_EXISTING_ENGLISH_NAME = True
+
+
+# by default, do not display copyJP/exactmatch modifications
+# if this is true, they will also be shown
+SHOW_ALL_CHANGED_FIELDS = False
 
 
 # these english names will be treated as tho they do not exist and overwritten no matter what:
@@ -85,7 +92,7 @@ except ImportError as eee:
 	DISABLE_INTERNET_TRANSLATE = True
 
 
-category_dict = {0: "header", 4: "mat", 5: "bone", 6: "morph", 7: "disp"}
+category_dict = {0: "header", 4: "mat", 5: "bone", 6: "morph", 7: "frame"}
 type_dict = {-1: "FAIL", 0: "good", 1: "copyJP", 2: "exact", 3: "piece", 4: "google"}
 specificdict_dict = {0:None, 4:None,
 					 5:translation_tools.bone_dict,
@@ -176,9 +183,9 @@ def check_translate_budget(num_proposed: int) -> bool:
 	
 ################################################################################################################
 
-def combine_translate_requests(jp_list: List[str]) -> List[str]:
+def packetize_translate_requests(jp_list: List[str]) -> List[str]:
 	"""
-	Split/join a massive list of items to translate into fewer requests which each contain many separated by newlines.
+	Group/join a massive list of items to translate into fewer requests which each contain many separated by newlines.
 	options: TRANSLATE_MAX_LINES_PER_REQUEST.
 	
 	:param jp_list: list of each JP name, names must not include newlines
@@ -187,15 +194,15 @@ def combine_translate_requests(jp_list: List[str]) -> List[str]:
 	retme = []
 	start_idx = 0
 	while start_idx < len(jp_list):
-		sub_list = jp_list[start_idx:start_idx + TRANSLATE_MAX_LINES_PER_REQUEST]
+		sub_list = jp_list[start_idx : start_idx+TRANSLATE_MAX_LINES_PER_REQUEST]
 		bigstr = "\n".join(sub_list)
 		retme.append(bigstr)
 		start_idx += TRANSLATE_MAX_LINES_PER_REQUEST
 	return retme
 
-def unpack_translate_requests(list_after: List[str]) -> List[str]:
+def unpacketize_translate_requests(list_after: List[str]) -> List[str]:
 	"""
-	Opposite of combine_translate_requests(). Breaks each string at newlines and flattens result into one long list.
+	Opposite of packetize_translate_requests(). Breaks each string at newlines and flattens result into one long list.
 	
 	:param list_after: list of newline-joined strings
 	:return: list of strings not containing newlines
@@ -275,8 +282,8 @@ def easy_translate(jp:str, en:str, specific_dict=None) -> Tuple[str, int]:
 	# if none of these pass, return nothing & type -1 to signfiy it is still in progress
 	return "", -1
 
-
-def google_translate(in_list: Union[List[str],str], strategy=1) -> Union[List[str],str]:
+STR_OR_STRLIST = TypeVar("STR_OR_STRLIST", str, List[str])
+def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 	"""
 	Take a list of strings & get them all translated by asking Google. Can use per-line strategy or new 'chunkwise' strategy.
 	
@@ -289,8 +296,7 @@ def google_translate(in_list: Union[List[str],str], strategy=1) -> Union[List[st
 	
 	use_chunk_strat = True if strategy == 1 else False
 	
-	# in_list -> pretrans
-	# in_list -> jp_chunks -> jp_chunks_combined -> results_combined -> results
+	# in_list -> pretrans -> jp_chunks_set -> jp_chunks -> jp_chunks_packets -> results_packets -> results
 	# jp_chunks + results -> google_dict
 	# pretrans + google_dict -> outlist
 	
@@ -298,7 +304,7 @@ def google_translate(in_list: Union[List[str],str], strategy=1) -> Union[List[st
 	indents, bodies, suffixes = translation_tools.pre_translate(in_list)
 	
 	# 2. identify chunks
-	jp_chunks = set()
+	jp_chunks_set = set()
 	# idea: walk & look for transition from en to jp?
 	for s in bodies:  # for every string to translate,
 		rstart = 0
@@ -312,61 +318,63 @@ def google_translate(in_list: Union[List[str],str], strategy=1) -> Union[List[st
 				rstart = i
 			# if it was jp and is now latin, then this is the end of a range (not including here). save it!
 			elif is_latin and not prev_islatin:
-				jp_chunks.add(s[rstart:i])
+				jp_chunks_set.add(s[rstart:i])
 			prev_islatin = is_latin
 		# now outside the loop... if i ended with a non-latin char, grab the final range & add that too
 		if not is_latin:
-			jp_chunks.add(s[rstart:len(s)])
+			jp_chunks_set.add(s[rstart:len(s)])
 	
-	# 3. organize/collect chunks
-	jp_chunks = list(jp_chunks)
+	# 3. remove chunks I can already solve
+	# maybe localtrans can solve one chunk but not the whole string?
+	# chunks are guaranteed to not be PART OF compound words. but they are probably compound words themselves.
+	# run local trans on each chunk individually, and if it succeeds, then DON'T send it to google.
 	localtrans_dict = dict()
-	# remove the chunks that can already be translated
-	# chunks are guaranteed to not be PART OF compound words, probably. but they are probably compound words themselves.
-	# so any exact matches with my words-dict should be valid!
-	jp_chunks_localtrans = translation_tools.piecewise_translate(jp_chunks, translation_tools.words_dict)
-	# results are chunk+trans: split into (where trans failed) (where trans passed)
-	# use "is_jp"->fail and not "needs_translate" so I am only sending actual JP stuff to Google and not unicode arrows or whatever
-	trans_fail, trans_pass = core.my_list_partition(zip(jp_chunks, jp_chunks_localtrans), lambda x: translation_tools.is_jp(x[1]))
-	# new: since I add the entire words_dict later, and that means this will be translated the same way later, no reason to add it here
-	# for chunk, trans in trans_pass:
-	# 	# if it passed, no need to ask google what they mean cuz I already have a good translation
-	# 	localtrans_dict[chunk] = trans
-	jp_chunks = [j[0] for j in trans_fail]  # rebuild the jp_chunks list for the ones that failed
-	
-	# 4. combine them into fewer requests
-	jp_chunks_combined = combine_translate_requests(jp_chunks)
-	pretrans_combined = combine_translate_requests(bodies)
-	if strategy == 2:    use_chunk_strat = (len(jp_chunks_combined) < len(pretrans_combined))
+	jp_chunks = []
+	for chunk in list(jp_chunks_set):
+		trans = translation_tools.piecewise_translate(chunk, translation_tools.words_dict)
+		if translation_tools.is_jp(trans):
+			# if the localtrans failed, then the chunk needs to be sent to google later
+			jp_chunks.append(chunk)
+		else:
+			# if it passed, no need to ask google what they mean cuz I already have a good translation for this chunk
+			# this will be added to the dict way later
+			localtrans_dict[chunk] = trans
+		
+	# 4. packetize them into fewer requests (and if auto, choose whether to use chunks or not)
+	jp_chunks_packets = packetize_translate_requests(jp_chunks)
+	jp_bodies_packets = packetize_translate_requests(bodies)
+	if strategy == 2:    use_chunk_strat = (len(jp_chunks_packets) < len(jp_bodies_packets))
 	
 	# 5. check the translate budget to see if I can afford this
-	num_calls = len(jp_chunks_combined) if use_chunk_strat else len(pretrans_combined)
+	if use_chunk_strat: num_calls = len(jp_chunks_packets)
+	else:               num_calls = len(jp_bodies_packets)
+	
 	global _DISABLE_INTERNET_TRANSLATE
 	if check_translate_budget(num_calls) and not _DISABLE_INTERNET_TRANSLATE:
 		core.MY_PRINT_FUNC("... making %d requests to Google Translate web API..." % num_calls)
 	else:
 		# no need to print failing statement, the function already does
+		# don't quit early, run thru the same full structure & eventually return a copy of the JP names
 		core.MY_PRINT_FUNC("Just copying JP -> EN while Google Translate is disabled")
 		_DISABLE_INTERNET_TRANSLATE = True
-	# don't quit early, run thru the same full structure & eventually return a copy of the JP names
 	
 	# 6. send chunks to Google
-	results_combined = []
+	results_packets = []
 	if use_chunk_strat:
-		for d, combined in enumerate(jp_chunks_combined):
-			core.print_progress_oneline(d / len(jp_chunks_combined))
-			r = _single_google_translate(combined)
-			results_combined.append(r)
+		for d, packet in enumerate(jp_chunks_packets):
+			core.print_progress_oneline(d / len(jp_chunks_packets))
+			r = _single_google_translate(packet)
+			results_packets.append(r)
 		
 		# 7. assemble Google responses & re-associate with the chunks
-		results = unpack_translate_requests(results_combined)  # unpack so they align once more
+		# order of inputs "jp_chunks" matches order of outputs "results"
+		results = unpacketize_translate_requests(results_packets)  # unpack
 		google_dict = dict(zip(jp_chunks, results))  # build dict
 		
-		print("#items=", len(in_list), "#chunks=", len(jp_chunks), "#requests=", len(jp_chunks_combined))
+		print("#items=", len(in_list), "#chunks=", len(jp_chunks), "#requests=", len(jp_chunks_packets))
 		print(google_dict)
 		
 		google_dict.update(localtrans_dict)  # add dict entries from things that succeeded localtrans
-		# google_dict.update(translation_tools.symbols_dict)  # add various non-jp symbols i do know how to translate
 		google_dict.update(translation_tools.words_dict)  # add the full-blown words dict to the chunk-translate results
 		# dict->list->sort->dict: sort the longest chunks first, VERY CRITICAL so things don't get undershadowed!!!
 		google_dict = dict(sorted(list(google_dict.items()), reverse=True, key=lambda x: len(x[0])))
@@ -375,22 +383,22 @@ def google_translate(in_list: Union[List[str],str], strategy=1) -> Union[List[st
 		outlist = translation_tools.piecewise_translate(bodies, google_dict)
 	else:
 		# old style: just translate the strings directly and return their results
-		for d, combined in enumerate(pretrans_combined):
-			core.print_progress_oneline(d / len(pretrans_combined))
-			r = _single_google_translate(combined)
-			results_combined.append(r)
-		outlist = unpack_translate_requests(results_combined)
+		for d, packet in enumerate(jp_bodies_packets):
+			core.print_progress_oneline(d / len(jp_bodies_packets))
+			r = _single_google_translate(packet)
+			results_packets.append(r)
+		outlist = unpacketize_translate_requests(results_packets)
 	
 	# last, reattach the indents and suffixes
-	outlist = [i + b + s for i, b, s in zip(indents, outlist, suffixes)]
+	outlist_final = [i + b + s for i, b, s in zip(indents, outlist, suffixes)]
 	
 	if not _DISABLE_INTERNET_TRANSLATE:
 		# if i did use internet translate, print this line when done
 		core.MY_PRINT_FUNC("... done!")
 	
 	# return
-	if input_is_str: return outlist[0]  # if original input was a single string, then de-listify
-	else:			return outlist  # otherwise return as a list
+	if input_is_str: return outlist_final[0]  # if original input was a single string, then de-listify
+	else:            return outlist_final  # otherwise return as a list
 
 ################################################################################################################
 
@@ -437,7 +445,7 @@ class translate_entry:
 		return s
 
 
-def translate_to_english(pmx, moreinfo=False):
+def translate_to_english(pmx: pmxstruct.Pmx, moreinfo=False):
 	# for each category,
 	# 	for each name,
 	# 		check for type 0/1/2 (already good, copy JP, exact match in special dict)
@@ -455,48 +463,49 @@ def translate_to_english(pmx, moreinfo=False):
 	init_googletrans()
 	
 	# if JP model name is empty, give it something. same for comment
-	if pmx[0][1] == "":
-		pmx[0][1] = "model"
-	if pmx[0][3] == "":
-		pmx[0][3] = "comment"
+	if pmx.header.name_jp == "":
+		pmx.header.name_jp = "model"
+	if pmx.header.comment_jp == "":
+		pmx.header.comment_jp = "comment"
 	
 	translate_maps = []
 	
 	
 	# repeat the following for each category of visible names:
 	# materials=4, bones=5, morphs=6, dispframe=7
-	for cat_id in range(4, 8):
-		category = pmx[cat_id]
+	cat_id_list = list(range(4,8))
+	category_list = [pmx.materials, pmx.bones, pmx.morphs, pmx.frames]
+	for cat_id, category in zip(cat_id_list, category_list):
 		# for each entry:
 		for d, item in enumerate(category):
-			if cat_id == 7 and item[2]: continue  # skip "special" display frames
-			# jp=0,en=1
+			# skip "special" display frames
+			if isinstance(item, pmxstruct.PmxFrame) and item.is_special: continue
 			# strip away newline and return just in case, i saw a few examples where they showed up
-			item[0] = item[0].replace('\r','').replace('\n','')
-			item[1] = item[1].replace('\r','').replace('\n','')
+			item.name_jp = item.name_jp.replace('\r','').replace('\n','')
+			item.name_en = item.name_en.replace('\r','').replace('\n','')
 			# try to apply "easy" translate methods
-			newname, source = easy_translate(item[0], item[1], specificdict_dict[cat_id])
+			newname, source = easy_translate(item.name_jp, item.name_en, specificdict_dict[cat_id])
 			# build the "trans_entry" item from this result, regardless of pass/fail
-			newentry = translate_entry(item[0], item[1], cat_id, d, newname, source)
+			newentry = translate_entry(item.name_jp, item.name_en, cat_id, d, newname, source)
 			# store it
 			translate_maps.append(newentry)
 			
 	# model name is special cuz there's only one & its indexing is different
 	# but i'm doing the same stuff
-	pmx[0][1] = pmx[0][1].replace('\r', '').replace('\n', '')
-	pmx[0][2] = pmx[0][2].replace('\r', '').replace('\n', '')
+	pmx.header.name_jp = pmx.header.name_jp.replace('\r', '').replace('\n', '')
+	pmx.header.name_en = pmx.header.name_en.replace('\r', '').replace('\n', '')
 	# try to apply "easy" translate methods
-	newname, source = easy_translate(pmx[0][1], pmx[0][2], None)
+	newname, source = easy_translate(pmx.header.name_jp, pmx.header.name_en, None)
 	# build the "trans_entry" item from this result, regardless of pass/fail
-	newentry = translate_entry(pmx[0][1], pmx[0][2], 0, 2, newname, source)
+	newentry = translate_entry(pmx.header.name_jp, pmx.header.name_en, 0, 2, newname, source)
 	# store it
 	translate_maps.append(newentry)
 	
 	if TRANSLATE_MODEL_COMMENT:
 		# here, attempt to match model comment with type0 (already good) or type1 (copy JP)
-		newcomment, newcommentsource = easy_translate(pmx[0][3], pmx[0][4], None)
+		newcomment, newcommentsource = easy_translate(pmx.header.comment_jp, pmx.header.comment_en, None)
 	else:
-		newcomment = pmx[0][4]
+		newcomment = pmx.header.comment_en
 		newcommentsource = 0  # 0 means kept good aka nochange
 		
 	# now I have all the translateable items (except for model comment) collected in one list
@@ -545,11 +554,12 @@ def translate_to_english(pmx, moreinfo=False):
 					item.trans_type = 4
 			# grab the newly-done items and move them to the done list
 			translate_maps.extend(translate_notdone)
+			# comment!
 			if TRANSLATE_MODEL_COMMENT and newcommentsource == -1:  # -1 = pending, 0 = did nothing, 4 = did something
 				# if i am going to translate the comment, but was unable to do it earlier, then do it now
 				core.MY_PRINT_FUNC("Now translating model comment")
-				comment_clean = pmx[0][3].replace("\r", "")  # delete these \r chars, google doesnt want them
-				comment_clean = comment_clean.strip()
+				comment_clean = pmx.header.comment_jp.replace("\r", "")  # delete these \r chars, google doesnt want them
+				comment_clean = comment_clean.strip()  # trim leading/trailing whitespace too
 				########
 				# actually do google translate
 				if check_translate_budget(1):
@@ -557,7 +567,8 @@ def translate_to_english(pmx, moreinfo=False):
 					newcomment = newcomment.replace('\n', '\r\n')  # put back the /r/n, MMD needs them
 					newcommentsource = 4
 				else:
-					newcomment = pmx[0][4]
+					# no budget for just one more? oh well, no change
+					newcomment = pmx.header.comment_en
 					newcommentsource = 0
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
@@ -573,6 +584,11 @@ def translate_to_english(pmx, moreinfo=False):
 	# done translating!!!!!
 	###########################################
 	
+	# sanity check: if old result matches new result, then force type to be nochange
+	# only relevant if PREFER_EXISTING_ENGLISH_NAME = False
+	for m in translate_maps:
+		if m.en_old == m.en_new and m.trans_type not in (-1, 0):
+			m.trans_type = 0
 	# now, determine if i actually changed anything at all before bothering to try applying stuff
 	type_fail, temp = 		core.my_list_partition(translate_maps, lambda x: x.trans_type == -1)
 	type_good, temp = 		core.my_list_partition(temp, lambda x: x.trans_type == 0)
@@ -595,32 +611,45 @@ def translate_to_english(pmx, moreinfo=False):
 	# next, apply!
 	# comment
 	if TRANSLATE_MODEL_COMMENT and newcommentsource != 0:
-		pmx[0][4] = newcomment
+		pmx.header.comment_en = newcomment
 	# everything else: iterate over all entries, write when anything has type != 0
-	# even write when type=-1=fail, because it's the best I've got
-	# if its being translated thats cuz old_en is bad, so im not making it any worse
-	# failure probably due to unusual geometric symbols, not due to japanese text
 	for item in translate_maps:
-		if item.trans_type > 0 or item.trans_type == -1:
-			if item.cat_id == 0:  # this is header-type
-				pmx[item.cat_id][item.idx] = item.en_new
-			else:  # this is anything else
-				pmx[item.cat_id][item.idx][1] = item.en_new
+		# writeback any source except "nochange"
+		# even writeback fail type, because fail will be my best-effort translation
+		# if its being translated thats cuz old_en is bad, so im not making it any worse
+		# failure probably due to unusual geometric symbols, not due to japanese text
+		if item.trans_type != 0:
+			if item.cat_id == 0:  # this is header-type, meaning this is model name
+				pmx.header.name_en = item.en_new
+			elif item.cat_id == 4:
+				pmx.materials[item.idx].name_en = item.en_new
+			elif item.cat_id == 5:
+				pmx.bones[item.idx].name_en = item.en_new
+			elif item.cat_id == 6:
+				pmx.morphs[item.idx].name_en = item.en_new
+			elif item.cat_id == 7:
+				pmx.frames[item.idx].name_en = item.en_new
+			else:
+				core.MY_PRINT_FUNC("ERROR: translate_map has invalid cat_id=%s, how the hell did that happen?" % str(item.cat_id))
 	
 	###########################################
 	# next, print info!
 	core.MY_PRINT_FUNC("Translated {} / {} = {:.1%} english fields in the model".format(
 		total_changed, total_fields, total_changed / total_fields))
 	if moreinfo or type_fail:
-		# give full breakdown of each source
+		# give full breakdown of each source if requested OR if any fail
 		core.MY_PRINT_FUNC("Total fields={}, nochange={}, copy={}, exactmatch={}, piecewise={}, Google={}, fail={}".format(
 			total_fields, len(type_good), len(type_copy), len(type_exact), len(type_local), len(type_google), len(type_fail)))
 		#########
 		# now print the table of before/after/etc
 		if moreinfo:
-			# hide good/copyJP/exactmatch cuz those are uninteresting and guaranteed to be safe
-			# only show piecewise and google translations and fails
-			maps_printme = [item for item in translate_maps if item.trans_type > 2 or item.trans_type == -1]
+			if SHOW_ALL_CHANGED_FIELDS:
+				# show everything that isn't nochange
+				maps_printme = [item for item in translate_maps if item.trans_type != 0]
+			else:
+				# hide good/copyJP/exactmatch cuz those are uninteresting and guaranteed to be safe
+				# only show piecewise and google translations and fails
+				maps_printme = [item for item in translate_maps if item.trans_type > 2 or item.trans_type == -1]
 		else:
 			# if moreinfo not enabled, only show fails
 			maps_printme = type_fail
@@ -631,12 +660,12 @@ def translate_to_english(pmx, moreinfo=False):
 			# then, justify each column
 			# columns: category, idx, trans_type, en_old, en_new, jp_old = 6 types
 			# bone  15  google || EN: 'asdf' --> 'foobar' || JP: 'fffFFFff'
-			just_cat = core.MY_JUSTIFY_STRINGLIST([category_dict[vv.cat_id] for vv in maps_printme])
-			just_idx = core.MY_JUSTIFY_STRINGLIST([str(vv.idx) for vv in maps_printme], right=True)  # this is right-justify, all others are left
+			just_cat =    core.MY_JUSTIFY_STRINGLIST([category_dict[vv.cat_id] for vv in maps_printme])
+			just_idx =    core.MY_JUSTIFY_STRINGLIST([str(vv.idx) for vv in maps_printme], right=True)  # this is right-justify, all others are left
 			just_source = core.MY_JUSTIFY_STRINGLIST([type_dict[vv.trans_type] for vv in maps_printme])
-			just_enold = core.MY_JUSTIFY_STRINGLIST(["'%s'" % vv.en_old for vv in maps_printme])
-			just_ennew = core.MY_JUSTIFY_STRINGLIST(["'%s'" % vv.en_new for vv in maps_printme])
-			just_jpold = ["'%s'" % vv.jp_old for vv in maps_printme]  # no justify needed for final item
+			just_enold =  core.MY_JUSTIFY_STRINGLIST(["'%s'" % vv.en_old for vv in maps_printme])
+			just_ennew =  core.MY_JUSTIFY_STRINGLIST(["'%s'" % vv.en_new for vv in maps_printme])
+			just_jpold =  ["'%s'" % vv.jp_old for vv in maps_printme]  # no justify needed for final item
 			
 			# now pretty-print the list of translations:
 			for args in zip(just_cat, just_idx, just_source, just_enold, just_ennew, just_jpold):
@@ -665,7 +694,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")
+	core.MY_PRINT_FUNC("Nuthouse01 - 08/24/2020 - v5.00")
 	if DEBUG:
 		main()
 	else:

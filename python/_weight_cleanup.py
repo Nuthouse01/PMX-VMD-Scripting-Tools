@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/24/2020 - v4.63
+# Nuthouse01 - 08/24/2020 - v5.00
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -9,17 +9,19 @@ from typing import List, Tuple
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = None
+		core = pmxlib = pmxstruct = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -51,22 +53,22 @@ def showprompt():
 	return pmx, input_filename_pmx
 
 
-def normalize_weights(pmx: List[list]) -> int:
+def normalize_weights(pmx: pmxstruct.Pmx) -> int:
 	"""
 	Normalize weights for verts in the PMX object. Also "clean" the weights by removing bones with 0 weight, reducing
 	weight type to lowest possible, and sorting them by greatest weight. Return the # of vertices that were modified.
 	
-	:param pmx: PMX list-of-lists object
+	:param pmx: PMX object
 	:return: int, # of vertices that were modified
 	"""
 	# number of vertices fixed
 	weight_fix = 0
 	
 	# for each vertex:
-	for d, vert in enumerate(pmx[1]):
+	for d, vert in enumerate(pmx.verts):
 		# clean/normalize the weights
-		weighttype = vert[9]
-		w = vert[10]
+		weighttype = vert.weighttype
+		w = vert.weight
 		# type0=BDEF1, one bone has 100% weight
 		# do nothing
 		# type1=BDEF2, 2 bones 1 weight (other is implicit)
@@ -85,12 +87,12 @@ def normalize_weights(pmx: List[list]) -> int:
 			# only merge dupes, look for reason to reduce to BDEF1: bones are same, weight is 0/1
 			if w[0] == w[1] or w[2] == 1:  # same bones handled the same way as firstbone with weight 1
 				weight_fix += 1
-				vert[9] = 0  # set to BDEF1
-				vert[10] = [w[0]]
+				vert.weighttype = 0  # set to BDEF1
+				vert.weight = [w[0]]
 			elif w[2] == 0:  # firstbone has weight 0
 				weight_fix += 1
-				vert[9] = 0  # set to BDEF1
-				vert[10] = [w[1]]
+				vert.weighttype = 0  # set to BDEF1
+				vert.weight = [w[1]]
 			continue
 		elif weighttype == 2 or weighttype == 4:  # BDEF4/QDEF
 			# qdef: check for dupes and also normalize
@@ -135,14 +137,14 @@ def normalize_weights(pmx: List[list]) -> int:
 					i = weights.index(0)
 					if i == 1:  # first zero at 1, therefore has 1 entry, therefore force to be BDEF1!
 						weight_fix += 1
-						vert[9] = 0  # set to BDEF1
-						vert[10] = [bones[0]]
+						vert.weighttype = 0  # set to BDEF1
+						vert.weight = [bones[0]]
 						continue
 					if weighttype == 2:  # BDEF4 ONLY: check if it can be reduced to BDEF2
 						if i == 2:  # first zero at 2, therefore has 2 nonzero entries, therefore force to be BDEF2!
 							weight_fix += 1
-							vert[9] = 1  # set to BDEF2
-							vert[10] = [bones[0], bones[1], weights[0]]
+							vert.weighttype = 1  # set to BDEF2
+							vert.weight = [bones[0], bones[1], weights[0]]
 							continue
 						# if i == 3, fall thru
 				except ValueError:
@@ -159,12 +161,12 @@ def normalize_weights(pmx: List[list]) -> int:
 			# do try to compress to BDEF1 if the bones are the same or if one has 100 or 0 weight
 			if w[0] == w[1] or w[2] == 1:  # same bones handled the same way as firstbone with weight 1
 				weight_fix += 1
-				vert[9] = 0  # set to BDEF1
-				vert[10] = [w[0]]
+				vert.weighttype = 0  # set to BDEF1
+				vert.weight = [w[0]]
 			elif w[2] == 0:  # firstbone has weight 0
 				weight_fix += 1
-				vert[9] = 0  # set to BDEF1
-				vert[10] = [w[1]]
+				vert.weighttype = 0  # set to BDEF1
+				vert.weight = [w[1]]
 			continue
 		else:
 			core.MY_PRINT_FUNC("ERROR: invalid weight type for vertex %d" % d)
@@ -172,7 +174,7 @@ def normalize_weights(pmx: List[list]) -> int:
 	# how many did I change? printing is handled outside
 	return weight_fix
 
-def normalize_normals(pmx: List[list]) -> Tuple[int,List[int]]:
+def normalize_normals(pmx: pmxstruct.Pmx) -> Tuple[int,List[int]]:
 	"""
 	Normalize normal vectors for each vertex in the PMX object. Return # of verts that were modified, and also a list
 	of all vert indexes that have 0,0,0 normals and need special handling.
@@ -183,20 +185,20 @@ def normalize_normals(pmx: List[list]) -> Tuple[int,List[int]]:
 	norm_fix = 0
 	
 	normbad = []
-	for d,vert in enumerate(pmx[1]):
-		# normalize the normal, vert[3:6]
-		if vert[3:6] == [0, 0, 0]:
+	for d,vert in enumerate(pmx.verts):
+		# normalize the normal
+		if vert.norm == [0, 0, 0]:
 			# invalid normals will be taken care of below
 			normbad.append(d)
 		else:
-			norm_L = core.my_euclidian_distance(vert[3:6])
+			norm_L = core.my_euclidian_distance(vert.norm)
 			if round(norm_L, 6) != 1.0:
 				norm_fix += 1
-				vert[3:6] = [n / norm_L for n in vert[3:6]]
+				vert.norm = [n / norm_L for n in vert.norm]
 	# printing is handled outside
 	return norm_fix, normbad
 
-def repair_invalid_normals(pmx: List[list], normbad: List[int]) -> int:
+def repair_invalid_normals(pmx: pmxstruct.Pmx, normbad: List[int]) -> int:
 	"""
 	Repair all 0,0,0 normals in the model by averaging the normal vector for each face that vertex is a member of.
 	It is theoretically possible for a vertex to be a member in two faces with exactly opposite normals, and therefore
@@ -210,14 +212,14 @@ def repair_invalid_normals(pmx: List[list], normbad: List[int]) -> int:
 	"""
 	normbad_err = 0
 	# create a list in parallel with the faces list for holding the perpendicular normal to each face
-	facenorm_list = [list() for i in pmx[2]]
-	# create a list in paralle with normbad for holding the set of connected faces
+	facenorm_list = [list() for i in pmx.faces]
+	# create a list in paralle with normbad for holding the set of faces connected to each bad-norm vert
 	normbad_linked_faces = [list() for i in normbad]
 	
 	# goal: build the sets of faces that are associated with each bad vertex
 	
 	# first, flatten the list of face-vertices, probably faster to search that way
-	flatlist = [item for sublist in pmx[2] for item in sublist]
+	flatlist = [item for sublist in pmx.faces for item in sublist]
 	
 	# second, for each face-vertex, check if it is a bad vertex
 	# (this takes 70% of time)
@@ -240,15 +242,13 @@ def repair_invalid_normals(pmx: List[list], normbad: List[int]) -> int:
 			facenorm = facenorm_list[face_id]
 			if not facenorm:
 				# need to calculate it! use cross product or whatever
-				# order of vertices is important! not sure what's right
-				q = pmx[1][pmx[2][face_id][0]][0:3]
-				r = pmx[1][pmx[2][face_id][1]][0:3]
-				s = pmx[1][pmx[2][face_id][2]][0:3]
-				qr = [0, 0, 0]
-				qs = [0, 0, 0]
-				for i in range(3):
-					qr[i] = r[i] - q[i]
-					qs[i] = s[i] - q[i]
+				# q,r,s order of vertices is important!
+				q = pmx.verts[ pmx.faces[face_id][0] ].pos
+				r = pmx.verts[ pmx.faces[face_id][1] ].pos
+				s = pmx.verts[ pmx.faces[face_id][2] ].pos
+				# qr, qs order of vertices is critically important!
+				qr = [r[i] - q[i] for i in range(3)]
+				qs = [s[i] - q[i] for i in range(3)]
 				facenorm = core.my_cross_product(qr, qs)
 				# then normalize the fresh normal
 				norm_L = core.my_euclidian_distance(facenorm)
@@ -256,35 +256,37 @@ def repair_invalid_normals(pmx: List[list], normbad: List[int]) -> int:
 					facenorm = [n / norm_L for n in facenorm]
 				except ZeroDivisionError:
 					# this should never happen in normal cases
+					# however it can happen when the verts are at the same position and therefore their face has zero surface area
 					facenorm = [0, 1, 0]
 				# then save the result so I don't have to do this again
 				facenorm_list[face_id] = facenorm
-			# once I have the perpendicular normal, then accumulate it
+			# once I have the perpendicular normal for this face, then accumulate it (will divide later to get avg)
 			for i in range(3):
 				newnorm[i] += facenorm[i]
 		# error case check, theoretically possible for this to happen if there are no connected faces or their normals exactly cancel out
 		if newnorm == [0, 0, 0]:
 			if len(badvert_faces) == 0:
 				# if there are no connected faces, set the normal to 0,1,0 (same handling as PMXE)
-				pmx[1][badvert_idx][3:6] = [0, 1, 0]
+				pmx.verts[badvert_idx].norm = [0, 1, 0]
 			else:
 				# if there are faces that just so happened to perfectly cancel, choose the first face and use its normal
-				pmx[1][badvert_idx][3:6] = facenorm_list[badvert_faces[0]]
+				pmx.verts[badvert_idx].norm = facenorm_list[badvert_faces[0]]
 			normbad_err += 1
 			continue
 		# when done accumulating, divide by # to make an average
+		# zerodiv err not possible: if there are no connected faces then it will hit [0,0,0] branch above
 		newnorm = [n / len(badvert_faces) for n in newnorm]
 		# then normalize this, again
 		norm_L = core.my_euclidian_distance(newnorm)
 		newnorm = [n / norm_L for n in newnorm]
 		# finally, apply this new normal
-		pmx[1][badvert_idx][3:6] = newnorm
+		pmx.verts[badvert_idx].norm = newnorm
 	return normbad_err
 
 
 
 # TODO: rename this script & this function
-def weight_cleanup(pmx, moreinfo=False):
+def weight_cleanup(pmx: pmxstruct.Pmx, moreinfo=False):
 	
 	#############################
 	# part 1: fix all the weights, get an answer for how many i changed
@@ -292,7 +294,7 @@ def weight_cleanup(pmx, moreinfo=False):
 	
 	if weight_fix:
 		core.MY_PRINT_FUNC("Fixed weights for {} / {} = {:.1%} of all vertices".format(
-			weight_fix, len(pmx[1]), weight_fix/len(pmx[1])))
+			weight_fix, len(pmx.verts), weight_fix/len(pmx.verts)))
 	
 	#############################
 	# part 2: normalize all normals that aren't invalid, also count how many are invalid
@@ -301,14 +303,14 @@ def weight_cleanup(pmx, moreinfo=False):
 	
 	if norm_fix:
 		core.MY_PRINT_FUNC("Normalized normals for {} / {} = {:.1%} of all vertices".format(
-			norm_fix, len(pmx[1]), norm_fix / len(pmx[1])))
+			norm_fix, len(pmx.verts), norm_fix / len(pmx.verts)))
 	
 	#############################
 	# part 3: normalize all the normals that were invalid
 	if normbad:
 		normbad_err = repair_invalid_normals(pmx, normbad)
 		core.MY_PRINT_FUNC("Repaired invalid normals for {} / {} = {:.1%} of all vertices".format(
-			len(normbad), len(pmx[1]), len(normbad) / len(pmx[1])))
+			len(normbad), len(pmx.verts), len(normbad) / len(pmx.verts)))
 		if normbad_err and moreinfo:
 			core.MY_PRINT_FUNC("WARNING: used fallback vertex repair method for %d vertices" % normbad_err)
 	
@@ -336,7 +338,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")
+	core.MY_PRINT_FUNC("Nuthouse01 - 08/24/2020 - v5.00")
 	if DEBUG:
 		main()
 	else:

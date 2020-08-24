@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/24/2020 - v4.63
+# Nuthouse01 - 08/24/2020 - v5.00
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -25,11 +25,13 @@ from typing import List, Tuple
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 	from ._prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 		from _prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
@@ -37,13 +39,13 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = None
+		core = pmxlib = pmxstruct = None
 		newval_from_range_map = delme_list_to_rangemap = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
-DEBUG = True
+DEBUG = False
 
 
 # when this is true, it also prints a list of the number of vertices controlled by each bone. not recommended.
@@ -91,7 +93,7 @@ def showprompt():
 	return pmx, input_filename_pmx
 	
 
-def identify_unused_bones(pmx: list, moreinfo: bool) -> List[int]:
+def identify_unused_bones(pmx: pmxstruct.Pmx, moreinfo: bool) -> List[int]:
 	"""
 	Process the PMX and return a list of all unused bone indicies in the model.
 	1. get bones used by a rigidbody.
@@ -111,14 +113,14 @@ def identify_unused_bones(pmx: list, moreinfo: bool) -> List[int]:
 	vertex_ct = {}  # how many vertexes does each bone control? sometimes useful info
 
 	# first: bones used by a rigidbody
-	for body in pmx[8]:
-		true_used_bones.add(body[2])
+	for body in pmx.rigidbodies:
+		true_used_bones.add(body.bone_idx)
 
 	# second: bones used by a vertex i.e. has nonzero weight
 	# any vertex that has nonzero weight for that bone
-	for vert in pmx[1]:
-		weighttype = vert[9]
-		weights = vert[10]
+	for vert in pmx.verts:
+		weighttype = vert.weighttype
+		weights = vert.weight
 		if weighttype==0:
 			true_used_bones.add(weights[0])
 			core.increment_occurance_dict(vertex_ct,weights[0])
@@ -144,20 +146,20 @@ def identify_unused_bones(pmx: list, moreinfo: bool) -> List[int]:
 	# third: mark the "exception" bones as "used" if they are in the model
 	for protect in BONES_TO_PROTECT:
 		# get index from JP name
-		i = core.my_sublist_find(pmx[5], 0, protect, getindex=True)
+		i = core.my_list_search(pmx.bones, lambda x: x.name_jp == protect)
 		if i is not None:
 			true_used_bones.add(i)
 	
 	# build ik groups here
-	# IK + chain + target are treated as a group... if any 1 is used, all of them are used. build those groups now.
+	# IKbone + chain + target are treated as a group... if any 1 is used, all of them are used. build those groups now.
 	ik_groups = [] # list of sets
-	for d,bone in enumerate(pmx[5]):
-		if bone[23]:  # if ik enabled for this bone,
+	for d,bone in enumerate(pmx.bones):
+		if bone.has_ik:  # if ik enabled for this bone,
 			ik_set = set()
 			ik_set.add(d)  # this bone
-			ik_set.add(bone[24][0])  # this bone's target
-			for iklink in bone[24][3]:
-				ik_set.add(iklink[0])  # all this bone's IK links
+			ik_set.add(bone.ik_target_idx)  # this bone's target
+			for link in bone.ik_links:
+				ik_set.add(link.idx)  # all this bone's IK links
 			ik_groups.append(ik_set)
 	
 	# fourth: NEW APPROACH FOR SOLVING INHERITANCE: RECURSION!
@@ -168,7 +170,7 @@ def identify_unused_bones(pmx: list, moreinfo: bool) -> List[int]:
 	# standard way: input is set-of-already-known, return set-built-from-target, that requires merging results after each call tho
 	# BUT each function level adds exactly 1 or 0 bones to the set, therefore can just modify the set that is being passed around
 	
-	def recursive_climb_inherit_tree(target, set_being_built):
+	def recursive_climb_inherit_tree(target: int, set_being_built):
 		# implicitly inherits variables pmx, ik_groups from outer scope
 		if target in set_being_built or target == -1:
 			# stop condition: if this bone idx is already known to be used, i have already ran recursion from this node. don't do it again.
@@ -177,12 +179,12 @@ def identify_unused_bones(pmx: list, moreinfo: bool) -> List[int]:
 		# if not already in the set, but recursion is being called on this, then this bone is a "parent" of a used bone and should be added.
 		set_being_built.add(target)
 		# now the parents of THIS bone are also used, so recurse into those.
-		bb = pmx[5][target]
+		bb = pmx.bones[target]
 		# acutal parent
-		recursive_climb_inherit_tree(bb[5], set_being_built)
-		# partial inherit: if partial rot or partial move, and ratio is nonzero
-		if (bb[14] or bb[15]) and bb[16][1] != 0:
-			recursive_climb_inherit_tree(bb[16][0], set_being_built)
+		recursive_climb_inherit_tree(bb.parent_idx, set_being_built)
+		# partial inherit: if partial rot or partial move, and ratio is nonzero and parent is valid
+		if (bb.inherit_rot or bb.inherit_trans) and bb.inherit_ratio != 0 and bb.inherit_parent_idx != -1:
+			recursive_climb_inherit_tree(bb.inherit_parent_idx, set_being_built)
 		# IK groups: if in an IK group, recurse to all members of that IK group
 		for group in ik_groups:
 			if target in group:
@@ -199,18 +201,17 @@ def identify_unused_bones(pmx: list, moreinfo: bool) -> List[int]:
 	# also get all bones these tails depend on, it shouldn't depend on anything new but it theoretically can.
 	final_used_bones = set()
 	for bidx in parent_used_bones:
-		b = pmx[5][bidx]
+		b = pmx.bones[bidx]
 		# if this bone has a tail,
-		if b[12]:
+		if b.tail_type:
 			# add it and anything it depends on to the set.
-			recursive_climb_inherit_tree(b[13][0], final_used_bones)
+			recursive_climb_inherit_tree(b.tail, final_used_bones)
 	# now merge the two sets
 	final_used_bones = final_used_bones.union(parent_used_bones)
 	
 	# sixth: assemble the final "unused" set by inverting
 	# set of all bones, for inverting purposes
-	all_bones_list = []
-	all_bones_list.extend(range(len(pmx[5])))
+	all_bones_list = list(range(len(pmx.bones)))
 	all_bones_set = set(all_bones_list)
 	
 	unused_bones = all_bones_set.difference(final_used_bones)
@@ -220,7 +221,7 @@ def identify_unused_bones(pmx: list, moreinfo: bool) -> List[int]:
 	if moreinfo:
 		if unused_bones_list:
 			core.MY_PRINT_FUNC("Bones: total=%d, true_used=%d, parents=%d, tails=%d, unused=%d" %
-							   (len(pmx[5]), len(true_used_bones), len(parent_used_bones)-len(true_used_bones),
+							   (len(pmx.bones), len(true_used_bones), len(parent_used_bones)-len(true_used_bones),
 								len(final_used_bones)-len(parent_used_bones), len(unused_bones_list)))
 		# debug aid
 		if PRINT_VERTICES_CONTROLLED_BY_EACH_BONE:
@@ -232,7 +233,7 @@ def identify_unused_bones(pmx: list, moreinfo: bool) -> List[int]:
 	return unused_bones_list
 	
 
-def apply_bone_remapping(pmx, bone_dellist: List[int], bone_shiftmap: Tuple[List[int],List[int]]):
+def apply_bone_remapping(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shiftmap: Tuple[List[int],List[int]]):
 	"""
 	Given a list of bones to delete, delete them, and update the indices for all references to all remaining bones.
 	PMX is modified in-place. Behavior is undefined if the dellist bones are still in use somewhere!
@@ -245,15 +246,15 @@ def apply_bone_remapping(pmx, bone_dellist: List[int], bone_shiftmap: Tuple[List
 	"""
 	# acutally delete the bones
 	for f in reversed(bone_dellist):
-		pmx[5].pop(f)
+		pmx.bones.pop(f)
 	
 	core.print_progress_oneline(0 / 5)
 	# VERTICES:
 	# just remap the bones that have weight
 	# any references to bones being deleted will definitely have 0 weight, and therefore it doesn't matter what they reference afterwards
-	for d, vert in enumerate(pmx[1]):
-		weighttype = vert[9]
-		weights = vert[10]
+	for d, vert in enumerate(pmx.verts):
+		weighttype = vert.weighttype
+		weights = vert.weight
 		if weighttype == 0:
 			# just remap, this cannot have 0 weight
 			weights[0] = newval_from_range_map(weights[0], bone_shiftmap)
@@ -280,34 +281,33 @@ def apply_bone_remapping(pmx, bone_dellist: List[int], bone_shiftmap: Tuple[List
 	
 	core.print_progress_oneline(1 / 5)
 	# MORPHS:
-	for d, morph in enumerate(pmx[6]):
+	for d, morph in enumerate(pmx.morphs):
 		# only operate on bone morphs
-		if morph[3] != 2:
-			continue
+		if morph.morphtype != 2: continue
 		# first, it is plausible that bone morphs could reference otherwise unused bones, so I should check for and delete those
 		i = 0
-		while i < len(morph[4]):
+		while i < len(morph.items):
 			# if the bone being manipulated is in the list of bones being deleted, delete it here too. otherwise remap.
-			if core.binary_search_isin(morph[4][i][0], bone_dellist):
-				morph[4].pop(i)
+			if core.binary_search_isin(morph.items[i].bone_idx, bone_dellist):
+				morph.items.pop(i)
 			else:
-				morph[4][i][0] = newval_from_range_map(morph[4][i][0], bone_shiftmap)
+				morph.items[i].bone_idx = newval_from_range_map(morph.items[i].bone_idx, bone_shiftmap)
 				i += 1
 	# done with morphs
 	
 	core.print_progress_oneline(2 / 5)
 	# DISPLAY FRAMES
-	for d, frame in enumerate(pmx[7]):
+	for d, frame in enumerate(pmx.frames):
 		i = 0
-		while i < len(frame[3]):
-			item = frame[3][i]
+		while i < len(frame.items):
+			item = frame.items[i]
 			# if this item is a morph, skip it
 			if item[0]:
 				i += 1
 			else:
 				# if this is one of the bones being deleted, delete it here too. otherwise remap.
 				if core.binary_search_isin(item[1], bone_dellist):
-					frame[3].pop(i)
+					frame.items.pop(i)
 				else:
 					item[1] = newval_from_range_map(item[1], bone_shiftmap)
 					i += 1
@@ -315,44 +315,46 @@ def apply_bone_remapping(pmx, bone_dellist: List[int], bone_shiftmap: Tuple[List
 	
 	core.print_progress_oneline(3 / 5)
 	# RIGIDBODY
-	for d, body in enumerate(pmx[8]):
+	for d, body in enumerate(pmx.rigidbodies):
 		# only remap, no possibility of one of these bones being deleted
-		body[2] = newval_from_range_map(body[2], bone_shiftmap)
+		body.bone_idx = newval_from_range_map(body.bone_idx, bone_shiftmap)
 	# done with bodies
 	
 	core.print_progress_oneline(4 / 5)
 	# BONES: point-at target, true parent, external parent, partial append, ik stuff
-	for d, bone in enumerate(pmx[5]):
+	for d, bone in enumerate(pmx.bones):
 		# point-at link:
-		if bone[12]:
-			if core.binary_search_isin(bone[13][0], bone_dellist):
+		if bone.tail_type:
+			if core.binary_search_isin(bone.tail, bone_dellist):
 				# if pointing at a bone that will be deleted, instead change to offset with offset 0,0,0
-				bone[12] = 0
-				bone[13] = [0, 0, 0]
+				bone.tail_type = False
+				bone.tail = [0, 0, 0]
 			else:
 				# otherwise, remap
-				bone[13][0] = newval_from_range_map(bone[13][0], bone_shiftmap)
+				bone.tail = newval_from_range_map(bone.tail, bone_shiftmap)
 		# other 4 categories only need remapping
 		# true parent:
-		bone[5] = newval_from_range_map(bone[5], bone_shiftmap)
+		bone.parent_idx = newval_from_range_map(bone.parent_idx, bone_shiftmap)
 		# partial append:
-		if (bone[14] or bone[15]) and bone[16][1] != 0:
-			if core.binary_search_isin(bone[16][0], bone_dellist):
+		if (bone.inherit_rot or bone.inherit_trans) and bone.inherit_parent_idx != -1:
+			if core.binary_search_isin(bone.inherit_parent_idx, bone_dellist):
 				# if a bone is getting partial append from a bone getting deleted, break that relationship
-				bone[14] = 0
-				bone[15] = 0
+				# shouldn't be possible but whatever i'll support the case
+				bone.inherit_rot = False
+				bone.inherit_trans = False
+				bone.inherit_parent_idx = -1
 			else:
-				bone[16][0] = newval_from_range_map(bone[16][0], bone_shiftmap)
+				bone.inherit_parent_idx = newval_from_range_map(bone.inherit_parent_idx, bone_shiftmap)
 		# ik stuff:
-		if bone[23]:
-			bone[24][0] = newval_from_range_map(bone[24][0], bone_shiftmap)
-			for iklink in bone[24][3]:
-				iklink[0] = newval_from_range_map(iklink[0], bone_shiftmap)
+		if bone.has_ik:
+			bone.ik_target_idx = newval_from_range_map(bone.ik_target_idx, bone_shiftmap)
+			for link in bone.ik_links:
+				link.idx = newval_from_range_map(link.idx, bone_shiftmap)
 	# done with bones
 	return
 
 
-def prune_unused_bones(pmx, moreinfo=False):
+def prune_unused_bones(pmx: pmxstruct.Pmx, moreinfo=False):
 	# first build the list of bones to delete
 	unused_list = identify_unused_bones(pmx, moreinfo)
 	
@@ -365,9 +367,10 @@ def prune_unused_bones(pmx, moreinfo=False):
 	if moreinfo:
 		core.MY_PRINT_FUNC("Detected %d unused bones arranged in %d contiguous blocks" % (len(unused_list), len(delme_rangemap[0])))
 		for d in unused_list:
-			core.MY_PRINT_FUNC("bone #{:<3} JP='{}' / EN='{}'".format(d, pmx[5][d][0], pmx[5][d][1]))
+			core.MY_PRINT_FUNC("bone #{:<3} JP='{}' / EN='{}'".format(
+				d, pmx.bones[d].name_jp, pmx.bones[d].name_en))
 	
-	num_bones_before = len(pmx[5])
+	num_bones_before = len(pmx.bones)
 	apply_bone_remapping(pmx, unused_list, delme_rangemap)
 	
 	# print("Done deleting unused bones")
@@ -396,7 +399,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")
+	core.MY_PRINT_FUNC("Nuthouse01 - 08/24/2020 - v5.00")
 	if DEBUG:
 		main()
 	else:

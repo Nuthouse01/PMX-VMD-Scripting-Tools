@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/24/2020 - v4.63
+# Nuthouse01 - 08/24/2020 - v5.00
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 # massive thanks and credit to "Isometric" for helping me discover the quaternion transformation method used in mmd!!!!
@@ -75,17 +75,19 @@ from typing import List
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_vmd_parser as vmdlib
+	from . import nuthouse01_vmd_struct as vmdstruct
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_vmd_parser as vmdlib
+		import nuthouse01_vmd_struct as vmdstruct
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = vmdlib = None
+		core = vmdlib = vmdstruct = None
 
 ########################################################################################################################
 # constants & options
@@ -164,7 +166,7 @@ def check3_match_keystr(rawlist_text: list, keystr: list):
 # functions to allow reading vmd-as-txt
 ########################################################################################################################
 
-def read_vmdtext_header(rawlist_text: List[list]) -> vmdlib.VmdHeader:
+def read_vmdtext_header(rawlist_text: List[list]) -> vmdstruct.VmdHeader:
 	##################################
 	# header data
 	global readfrom_line
@@ -184,9 +186,9 @@ def read_vmdtext_header(rawlist_text: List[list]) -> vmdlib.VmdHeader:
 	readfrom_line += 1
 	core.MY_PRINT_FUNC("...model name   = JP:'%s'" % modelname)
 	# assemble and return
-	return vmdlib.VmdHeader(version, modelname)
+	return vmdstruct.VmdHeader(version, modelname)
 
-def read_vmdtext_boneframe(rawlist_text: List[list]) -> List[vmdlib.VmdBoneFrame]:
+def read_vmdtext_boneframe(rawlist_text: List[list]) -> List[vmdstruct.VmdBoneFrame]:
 	#############################
 	# bone frames
 	global readfrom_line
@@ -210,7 +212,7 @@ def read_vmdtext_boneframe(rawlist_text: List[list]) -> List[vmdlib.VmdBoneFrame
 			check1_match_len(rawlist_text, len(keystr_boneframekey))
 			# the nicelist has angles in euler format, don't convert the values here
 			r = rawlist_text[readfrom_line]
-			newframe = vmdlib.VmdBoneFrame(name=r[0],f=r[1],pos=r[2:5],rot=r[5:8],phys_off=r[8],interp=r[9:])
+			newframe = vmdstruct.VmdBoneFrame(name=r[0], f=r[1], pos=r[2:5], rot=r[5:8], phys_off=r[8], interp=r[9:])
 			bone_list.append(newframe)
 			# increment the readfrom_line pointer
 			readfrom_line += 1
@@ -218,7 +220,7 @@ def read_vmdtext_boneframe(rawlist_text: List[list]) -> List[vmdlib.VmdBoneFrame
 			core.print_progress_oneline(i / boneframe_ct)
 	return bone_list
 
-def read_vmdtext_morphframe(rawlist_text: List[list]) -> List[vmdlib.VmdMorphFrame]:
+def read_vmdtext_morphframe(rawlist_text: List[list]) -> List[vmdstruct.VmdMorphFrame]:
 	###########################################
 	# morph frames
 	global readfrom_line
@@ -240,7 +242,7 @@ def read_vmdtext_morphframe(rawlist_text: List[list]) -> List[vmdlib.VmdMorphFra
 			# ensure it has the right # of items on the line
 			check1_match_len(rawlist_text, len(keystr_morphframekey))
 			r = rawlist_text[readfrom_line]
-			newframe = vmdlib.VmdMorphFrame(name=r[0],f=r[1],val=r[2])
+			newframe = vmdstruct.VmdMorphFrame(name=r[0], f=r[1], val=r[2])
 			morph_list.append(newframe)
 			# increment the readfrom_line pointer
 			readfrom_line += 1
@@ -248,7 +250,7 @@ def read_vmdtext_morphframe(rawlist_text: List[list]) -> List[vmdlib.VmdMorphFra
 			core.print_progress_oneline(i / morphframe_ct)
 	return morph_list
 
-def read_vmdtext_camframe(rawlist_text: List[list]) -> List[vmdlib.VmdCamFrame]:
+def read_vmdtext_camframe(rawlist_text: List[list]) -> List[vmdstruct.VmdCamFrame]:
 	###########################################
 	# cam frames
 	global readfrom_line
@@ -269,7 +271,7 @@ def read_vmdtext_camframe(rawlist_text: List[list]) -> List[vmdlib.VmdCamFrame]:
 			# ensure it has the right # of items on the line
 			check1_match_len(rawlist_text, len(keystr_camframekey))
 			r = rawlist_text[readfrom_line]
-			newframe = vmdlib.VmdCamFrame(f=r[0],dist=r[1],pos=r[2:5],rot=r[5:8],interp=r[8:32],fov=r[32],perspective=r[33])
+			newframe = vmdstruct.VmdCamFrame(f=r[0], dist=r[1], pos=r[2:5], rot=r[5:8], interp=r[8:32], fov=r[32], perspective=r[33])
 			cam_list.append(newframe)
 			# increment the readfrom_line pointer
 			readfrom_line += 1
@@ -277,7 +279,7 @@ def read_vmdtext_camframe(rawlist_text: List[list]) -> List[vmdlib.VmdCamFrame]:
 			core.print_progress_oneline(i / camframe_ct)
 	return cam_list
 
-def read_vmdtext_lightframe(rawlist_text: List[list]) -> List[vmdlib.VmdLightFrame]:
+def read_vmdtext_lightframe(rawlist_text: List[list]) -> List[vmdstruct.VmdLightFrame]:
 	###########################################
 	# light frames
 	global readfrom_line
@@ -298,13 +300,13 @@ def read_vmdtext_lightframe(rawlist_text: List[list]) -> List[vmdlib.VmdLightFra
 			# ensure it has the right # of items on the line
 			check1_match_len(rawlist_text, len(keystr_lightframekey))
 			r = rawlist_text[readfrom_line]
-			newframe = vmdlib.VmdLightFrame(f=r[0],color=r[1:4],pos=r[4:7])
+			newframe = vmdstruct.VmdLightFrame(f=r[0], color=r[1:4], pos=r[4:7])
 			light_list.append(newframe)
 			# increment the readfrom_line pointer
 			readfrom_line += 1
 	return light_list
 
-def read_vmdtext_shadowframe(rawlist_text: List[list]) -> List[vmdlib.VmdShadowFrame]:
+def read_vmdtext_shadowframe(rawlist_text: List[list]) -> List[vmdstruct.VmdShadowFrame]:
 	###########################################
 	# shadow frames
 	global readfrom_line
@@ -326,13 +328,13 @@ def read_vmdtext_shadowframe(rawlist_text: List[list]) -> List[vmdlib.VmdShadowF
 			check1_match_len(rawlist_text, len(keystr_shadowframekey))
 			# the nicelist has angles in euler format, don't convert the values here
 			r = rawlist_text[readfrom_line]
-			newframe = vmdlib.VmdShadowFrame(f=r[0],mode=r[1],val=r[2])
+			newframe = vmdstruct.VmdShadowFrame(f=r[0], mode=r[1], val=r[2])
 			shadow_list.append(newframe)
 			# increment the readfrom_line pointer
 			readfrom_line += 1
 	return shadow_list
 
-def read_vmdtext_ikdispframe(rawlist_text: List[list]) -> List[vmdlib.VmdIkdispFrame]:
+def read_vmdtext_ikdispframe(rawlist_text: List[list]) -> List[vmdstruct.VmdIkdispFrame]:
 	###########################################
 	# disp/ik frames
 	global readfrom_line
@@ -362,8 +364,8 @@ def read_vmdtext_ikdispframe(rawlist_text: List[list]) -> List[vmdlib.VmdIkdispF
 			# need to restructure the frame before it becomes the correct nicelist format
 			ik_pairs = []
 			for pos in range(2, len(l), 2):
-				ik_pairs.append(vmdlib.VmdIkbone(name=l[pos],enable=l[pos+1]))
-			newframe = vmdlib.VmdIkdispFrame(f=l[0],disp=l[1],ikbones=ik_pairs)
+				ik_pairs.append(vmdstruct.VmdIkbone(name=l[pos], enable=l[pos + 1]))
+			newframe = vmdstruct.VmdIkdispFrame(f=l[0], disp=l[1], ikbones=ik_pairs)
 			ikdisp_list.append(newframe)
 			# increment the readfrom_line pointer
 			readfrom_line += 1
@@ -375,7 +377,7 @@ def read_vmdtext_ikdispframe(rawlist_text: List[list]) -> List[vmdlib.VmdIkdispF
 
 # TODO LOW: redo vmd-as-text structure to remove "how many of each frame type" specifiers
 
-def format_nicelist_as_rawlist(vmd: vmdlib.Vmd) -> List[list]:
+def format_nicelist_as_rawlist(vmd: vmdstruct.Vmd) -> List[list]:
 	# unpack the fields of the nicelist format into named lists
 	# (header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list,
 	#  ikdispframe_list) = nicelist
@@ -467,7 +469,7 @@ def format_nicelist_as_rawlist(vmd: vmdlib.Vmd) -> List[list]:
 # read_vmdtext() and write_vmdtext()
 ########################################################################################################################
 
-def read_vmdtext(vmdtext_filename: str) -> vmdlib.Vmd:
+def read_vmdtext(vmdtext_filename: str) -> vmdstruct.Vmd:
 	# break apart the CSV text-file format, arrange the data into a easier-to-manipulate list of lists
 	# also check that headers are where they should be and each line has the proper number of items on it
 	# return nicelist = [header, modelname, bone_list, morph_list, cam_list, light_list, shadow_list, ikdisp_list]
@@ -503,9 +505,9 @@ def read_vmdtext(vmdtext_filename: str) -> vmdlib.Vmd:
 	core.MY_PRINT_FUNC("Done parsing VMD-as-text file '%s'" % cleanname)
 	# stuff to return:
 	# version+modelname, bonelist, morphlist, camlist, lightlist, shadowlist, ikdisplist
-	return vmdlib.Vmd(A, B, C, D, E, F, G)
+	return vmdstruct.Vmd(A, B, C, D, E, F, G)
 
-def write_vmdtext(vmdtext_filename: str, nicelist: vmdlib.Vmd):
+def write_vmdtext(vmdtext_filename: str, nicelist: vmdstruct.Vmd):
 	# assume the output filename has already been validated as unused, etc
 	cleanname = core.get_clean_basename(vmdtext_filename) + ".txt"
 	core.MY_PRINT_FUNC("Begin formatting VMD-as-text file '%s'" % cleanname)
@@ -624,7 +626,7 @@ def main(moreinfo=False):
 ########################################################################################################################
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")
+	core.MY_PRINT_FUNC("Nuthouse01 - 08/24/2020 - v5.00")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

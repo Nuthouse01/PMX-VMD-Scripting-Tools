@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/24/2020 - v4.63
+# Nuthouse01 - 08/24/2020 - v5.00
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -9,12 +9,14 @@ import os
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
-	from . import _translate_to_english as translate_to_english
+	from . import nuthouse01_pmx_struct as pmxstruct
 	from . import file_sort_textures
+	from . import _translate_to_english as translate_to_english
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 		import file_sort_textures
 		import _translate_to_english as translate_to_english
 	except ImportError as eee:
@@ -23,12 +25,12 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = file_sort_textures = translate_to_english = None
+		core = pmxlib = pmxstruct = file_sort_textures = translate_to_english = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
-DEBUG = True
+DEBUG = False
 
 
 # this is recommended true, for obvious reasons
@@ -239,7 +241,7 @@ def main(moreinfo=False):
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")
+	core.MY_PRINT_FUNC("Nuthouse01 - 08/24/2020 - v5.00")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

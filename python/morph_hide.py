@@ -1,21 +1,23 @@
-# Nuthouse01 - 07/24/2020 - v4.63
+# Nuthouse01 - 08/24/2020 - v5.00
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import morph_scale
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import morph_scale
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = None
+		core = pmxlib = morph_scale = None
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
@@ -35,28 +37,6 @@ mtype_dict = {0:"group", 1:"vertex", 2:"bone", 3:"UV",
 			  8:"material", 9:"flip", 10:"impulse"}
 
 
-# function that takes a string & returns morph idx if it can match one, or None otherwise
-def get_morphidx_from_name(s: str, p):
-	if s == "": return -1
-	# then get the morph index from this
-	# search JP names first
-	t = core.my_sublist_find(p[6], 0, s, getindex=True)
-	if t is not None: return t
-	# search EN names next
-	t = core.my_sublist_find(p[6], 1, s, getindex=True)
-	if t is not None: return t
-	# try to cast to int next
-	try:
-		t = int(s)
-		if 0 <= t < len(p[6]):
-			return t
-		else:
-			core.MY_PRINT_FUNC("valid morph indexes are 0-'%d'" % (len(p[6]) - 1))
-			return None
-	except ValueError:
-		core.MY_PRINT_FUNC("unable to find matching morph for '%s'" % s)
-		return None
-
 
 def main(moreinfo=True):
 	# prompt PMX name
@@ -69,11 +49,11 @@ def main(moreinfo=True):
 	while True:
 		core.MY_PRINT_FUNC("")
 		# valid input is any string that can matched aginst a morph idx
-		s = core.MY_GENERAL_INPUT_FUNC(lambda x: get_morphidx_from_name(x, pmx) is not None,
-									   ["Please specify the target morph: morph #, JP name, or EN name (names are case sensitive).",
-										"Empty input will quit the script."])
+		s = core.MY_GENERAL_INPUT_FUNC(lambda x: (morph_scale.get_idx_in_pmxsublist(x, pmx.morphs) is not None),
+		   ["Please specify the target morph: morph #, JP name, or EN name (names are not case sensitive).",
+			"Empty input will quit the script."])
 		# do it again, cuz the lambda only returns true/false
-		target_index = get_morphidx_from_name(s, pmx)
+		target_index = morph_scale.get_idx_in_pmxsublist(s, pmx.morphs)
 		
 		# when given empty text, done!
 		if target_index == -1 or target_index is None:
@@ -81,28 +61,31 @@ def main(moreinfo=True):
 			break
 		
 		# determine the morph type
-		morphtype = pmx[6][target_index][3]
-		core.MY_PRINT_FUNC("Found {} morph #{}: '{}' / '{}'".format(mtype_dict[morphtype], target_index, pmx[6][target_index][0], pmx[6][target_index][1]))
-		core.MY_PRINT_FUNC("Was group {}, now group 0 (hidden)".format(pmx[6][target_index][2]))
+		morphtype = pmx.morphs[target_index].morphtype
+		core.MY_PRINT_FUNC("Found {} morph #{}: '{}' / '{}'".format(
+			mtype_dict[morphtype], target_index, pmx.morphs[target_index].name_jp, pmx.morphs[target_index].name_en))
+		core.MY_PRINT_FUNC("Was group {}, now group 0 (hidden)".format(
+			pmx.morphs[target_index].panel))
 		# make the actual change
-		pmx[6][target_index][2] = 0
+		pmx.morphs[target_index].panel = 0
 		num_hidden += 1
+		pass
 	
 	if num_hidden == 0:
 		core.MY_PRINT_FUNC("Nothing was changed")
 		return None
 	
 	# last step: remove all invalid morphs from all display panels
-	for d, frame in enumerate(pmx[7]):  # for each display group,
+	for d, frame in enumerate(pmx.frames):  # for each display group,
 		i = 0
-		while i < len(frame[3]):  # for each item in that display group,
-			item = frame[3][i]
+		while i < len(frame.items):  # for each item in that display group,
+			item = frame.items[i]
 			if item[0]:  # if it is a morph
 				# figure out what panel of this morph is
-				panel = pmx[6][item[1]][2]
+				panel = pmx.morphs[item[1]].panel
 				# if this is an invalid panel #, delete it here
 				if not 1 <= panel <= 4:
-					frame[3].pop(i)
+					frame.items.pop(i)
 				else:
 					i += 1
 			else:
@@ -117,7 +100,7 @@ def main(moreinfo=True):
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 07/24/2020 - v4.63")
+	print("Nuthouse01 - 08/24/2020 - v5.00")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

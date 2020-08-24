@@ -1,4 +1,4 @@
-# Nuthouse01 - 07/24/2020 - v4.63
+# Nuthouse01 - 08/24/2020 - v5.00
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -10,24 +10,30 @@
 # NOTE: if you are taking positions from one model and forcing them onto another model, it's not gonna be a perfect solution
 # scaling or manual adjustment will probably be required, which kinda defeats the whole point of this script...
 
+# first system imports
+from typing import List
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_vmd_parser as vmdlib
+	from . import nuthouse01_vmd_struct as vmdstruct
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_vmd_parser as vmdlib
+		import nuthouse01_vmd_struct as vmdstruct
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = vmdlib = pmxlib = None
+		core = vmdlib = vmdstruct = pmxlib = pmxstruct = None
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
@@ -114,20 +120,20 @@ def rotate3d(origin, angle_quat, point_in):
 	return point
 
 
-def build_bonechain(allbones, endbone):
+def build_bonechain(allbones: List[pmxstruct.PmxBone], endbone: str) -> List[Bone]:
 	nextbone = endbone
 	buildme = []
 	while True:
-		r = core.my_sublist_find(allbones, 0, nextbone)
+		r = core.my_list_search(allbones, lambda x: x.name_jp == nextbone, getitem=True)
 		if r is None:
 			core.MY_PRINT_FUNC("ERROR: unable to find '" + nextbone + "' in input file, unable to build parentage chain")
 			raise RuntimeError()
 		# 0 = bname, 5 = parent index, 234 = xyz position
-		nextbone = allbones[r[5]][0]
-		newrow = Bone(r[0], r[2], r[3], r[4])
+		nextbone = allbones[r.parent_idx].name_jp
+		newrow = Bone(r.name_jp, r.pos[0], r.pos[1], r.pos[2])
 		buildme.append(newrow)
 		# if parent index is -1, that means there is no parent. so we reached root. so break.
-		if r[5] == -1:
+		if r.parent_idx == -1:
 			break
 	buildme.reverse()
 	return buildme
@@ -153,7 +159,7 @@ def main(moreinfo=True):
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	# get bones
-	realbones = pmx[5]
+	realbones = pmx.bones
 	# then, make 2 lists: one starting from jp_righttoe, one starting from jp_lefttoe
 	# start from each "toe" bone (names are known), go parent-find-parent-find until reaching no-parent
 	bonechain_r = build_bonechain(realbones, jp_righttoe)
@@ -402,26 +408,27 @@ def main(moreinfo=True):
 	
 	if INCLUDE_IK_ENABLE_FRAME:
 		# create a single ikdispframe that enables the ik bones at frame 0
-		ikbones = [vmdlib.VmdIkbone(name=jp_rightfoot_ik, enable=True),
-		           vmdlib.VmdIkbone(name=jp_righttoe_ik, enable=True),
-		           vmdlib.VmdIkbone(name=jp_leftfoot_ik, enable=True),
-		           vmdlib.VmdIkbone(name=jp_lefttoe_ik, enable=True)]
-		ikdispframe_list = [vmdlib.VmdIkdispFrame(f=0,disp=True,ikbones=ikbones)]
+		ikbones = [vmdstruct.VmdIkbone(name=jp_rightfoot_ik, enable=True),
+				   vmdstruct.VmdIkbone(name=jp_righttoe_ik, enable=True),
+				   vmdstruct.VmdIkbone(name=jp_leftfoot_ik, enable=True),
+				   vmdstruct.VmdIkbone(name=jp_lefttoe_ik, enable=True)]
+		ikdispframe_list = [vmdstruct.VmdIkdispFrame(f=0, disp=True, ikbones=ikbones)]
 	else:
 		ikdispframe_list = []
 		core.MY_PRINT_FUNC("Warning: IK following will NOT be enabled when this VMD is loaded, you will need enable it manually!")
 	
 	# convert old-style bonelist ikframe_list to new object format
-	ikframe_list = [vmdlib.VmdBoneFrame(name=r[0],f=r[1],pos=r[2:5],rot=r[5:8],phys_off=r[8],interp=r[9:]) for r in ikframe_list]
+	ikframe_list = [vmdstruct.VmdBoneFrame(name=r[0], f=r[1], pos=r[2:5], rot=r[5:8], phys_off=r[8], interp=r[9:]) for r in ikframe_list]
 	# build actual VMD object
-	nicelist_out = vmdlib.Vmd(vmdlib.VmdHeader(2,"SEMISTANDARD-IK-BONES--------"),
-					          ikframe_list,		# bone
-					          [],				# morph
-					          [],				# cam
-					          [],				# light
-					          [],				# shadow
-					          ikdispframe_list	# ikdisp
-							  )
+	nicelist_out = vmdstruct.Vmd(
+		vmdstruct.VmdHeader(2, "SEMISTANDARD-IK-BONES--------"),
+		ikframe_list,  # bone
+		[],  # morph
+		[],  # cam
+		[],  # light
+		[],  # shadow
+		ikdispframe_list  # ikdisp
+		)
 	
 	
 	# write out
@@ -434,7 +441,7 @@ def main(moreinfo=True):
 	return None
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")
+	core.MY_PRINT_FUNC("Nuthouse01 - 08/24/2020 - v5.00")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

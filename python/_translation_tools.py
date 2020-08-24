@@ -14,7 +14,126 @@
 ########################################################################################################################
 
 import re
-from typing import List, Union, Tuple
+from typing import List, Tuple, TypeVar
+
+# dictionary for translating halfwitdth katakana to fullwidth katakana
+# i have no plans to actually use this but now it exists
+half_to_full_dict = {
+# dot
+'\uff65':	'\u30fb',
+# prolong
+'\uff70':	'\u30fc',
+# halfwidth "
+# "		\uff9e
+# halfwidth deg *
+# *		\uff9f
+# aeiou big+small
+'\uff67':	'\u30a1',
+'\uff68':	'\u30a3',
+'\uff69':	'\u30a5',
+'\uff6a':	'\u30a7',
+'\uff6b':	'\u30a9',
+'\uff71':	'\u30a2',
+'\uff72':	'\u30a4',
+'\uff73':	'\u30a6',
+'\uff74':	'\u30a8',
+'\uff75':	'\u30aa',
+# ya yu yo tu small
+'\uff6c':	'\u30e3',
+'\uff6d':	'\u30e5',
+'\uff6e':	'\u30e7',
+'\uff6f':	'\u30c3',
+# ya yu yo big
+'\uff94':	'\u30e4',
+'\uff95':	'\u30e6',
+'\uff96':	'\u30e8',
+# pattern: x, x+"
+'\uff76':		'\u30ab',
+'\uff76\uff9e':	'\u30ac',
+'\uff77':		'\u30ad',
+'\uff77\uff9e':	'\u30ae',
+'\uff78':		'\u30af',
+'\uff78\uff9e':	'\u30b0',
+'\uff79':		'\u30b1',
+'\uff79\uff9e':	'\u30b2',
+'\uff7a':		'\u30b3',
+'\uff7a\uff9e':	'\u30b4',
+'\uff7b':		'\u30b5',
+'\uff7b\uff9e':	'\u30b6',
+'\uff7c':		'\u30b7',
+'\uff7c\uff9e':	'\u30b8',
+'\uff7d':		'\u30b9',
+'\uff7d\uff9e':	'\u30ba',
+'\uff7e':		'\u30bb',
+'\uff7e\uff9e':	'\u30bc',
+'\uff7f':		'\u30bd',
+'\uff7f\uff9e':	'\u30be',
+'\uff80':		'\u30bf',
+'\uff80\uff9e':	'\u30b0',
+'\uff81':		'\u30c1',
+'\uff81\uff9e':	'\u30c2',
+'\uff82':		'\u30c4',
+'\uff82\uff9e':	'\u30c5',
+'\uff83':		'\u30c6',
+'\uff83\uff9e':	'\u30c7',
+'\uff84':		'\u30c8',
+'\uff84\uff9e':	'\u30c9',
+# x, x", x*
+'\uff8a':		'\u30cf',
+'\uff8a\uff9e':	'\u30d0',
+'\uff8a\uff9f':	'\u30d1',
+'\uff8b':		'\u30d2',
+'\uff8b\uff9e':	'\u30d3',
+'\uff8b\uff9f':	'\u30d4',
+'\uff8c':		'\u30d5',
+'\uff8c\uff9e':	'\u30d6',
+'\uff8c\uff9f':	'\u30d7',
+'\uff8d':		'\u30d8',
+'\uff8d\uff9e':	'\u30d9',
+'\uff8d\uff9f':	'\u30da',
+'\uff8e':		'\u30db',
+'\uff8e\uff9e':	'\u30dc',
+'\uff8e\uff9f':	'\u30dd',
+# n sounds
+'\uff85':	'\u30ca',
+'\uff86':	'\u30cb',
+'\uff87':	'\u30cc',
+'\uff88':	'\u30cd',
+'\uff89':	'\u30ce',
+# m sounds
+'\uff8f':	'\u30de',
+'\uff90':	'\u30df',
+'\uff91':	'\u30e0',
+'\uff92':	'\u30e1',
+'\uff93':	'\u30e2',
+# r sounds
+'\uff97':	'\u30e9',
+'\uff98':	'\u30ea',
+'\uff99':	'\u30eb',
+'\uff9a':	'\u30ec',
+'\uff9b':	'\u30ed',
+# wa,wo,n,vu
+'\uff9c':		'\u30ef',
+'\uff9c\uff9e':	'\u30f7',
+'\uff66':		'\u30f2',
+'\uff66\uff9e':	'\u30fa',
+'\uff9d':		'\u30f3',
+'\uff73\uff9e':	'\u30f4',
+#### fullwidth wi,we have no halfwidth counterpart at all
+# 30f0	30f0
+# 30f1	30f1
+'\u30f0\uff9e':	'\u30f8',
+'\u30f1\uff9e':	'\u30f9',
+}
+
+#### wa, ka, ke have fullwidth small ver but only halfwidth counterpart is big ver
+#### only useful when going full -> half
+# ?ff9c	30ee
+# ?ff76	30f5
+# ?ff79	30f6
+
+
+
 
 # this dict is added to both "words" and "morphs"... just in one place so I can keep thing straight
 symbols_dict = {
@@ -38,6 +157,7 @@ symbols_dict = {
 "★": "*",  #x2605
 "☆": "*",  #x2606
 "〜": "~",  # x301C wave dash, not a "fullwidth tilde"
+"～": "~",  # xff5e "fullwidth tilde" causes some issues
 "○": "O",  #x25cb
 "◯": "O",  #x25ef
 "〇": "O",  # x3007
@@ -48,11 +168,13 @@ symbols_dict = {
 morph_dict = {
 "ω□": "w open",  # without this entry it translates to "w box", and i dont like that
 "まばたき": "blink",
-"笑い": "happy", # pmxe translates to "smile" but this is an eye morph
+"笑い": "laughing", # "warai" = laugh/laughing/laughter pmxe translates to "smile" but this is an eye morph
 "ウィンク": "wink",
+# "ウィンク右": "wink_R",  # not acutally possible cuz of pretranslate
 "ウィンク2": "wink2",
 "ウィンク右2": "wink2_R",
 "ｳｨﾝｸ": "wink",
+# "ｳｨﾝｸ右": "wink_R",  # not acutally possible cuz of pretranslate
 "ｳｨﾝｸ2": "wink2",
 "ｳｨﾝｸ右2": "wink2_R",
 "ジト目": "doubt",
@@ -62,8 +184,9 @@ morph_dict = {
 "驚き": "surprise",
 "見開き": "wide eye",
 "悲しい": "sad low",
-"困る": "sadness",  # google translates to "troubled", but PMXE translates to "sadness"... maybe "worried" is best?
-"困った": "sadness",  # same as above
+"困る": "sadness",  # phonetically "komaru", google translates to "troubled", but PMXE translates to "sadness"... maybe "worried" is best?
+"困った": "sadness",  # phonetically "komaru", same as above
+"困り": "troubled",  # phonetically "komari"
 "動揺": "upset",
 "真面目": "serious",  # has the symbol for "eye" but is actually a brow morph, odd
 "怒り": "anger",
@@ -73,6 +196,8 @@ morph_dict = {
 "しいたけ": "star eyes", # "shiitake"
 "ハート目": "heart eyes",
 "ハート": "heart eyes",
+"はぁと目": "heart eyes",
+"はぁと": "heart eyes",
 "ぐるぐる": "dizzy eyes", # perhaps "spinny"
 "ぐる": "dizzy eyes", # perhaps "spinny"
 "グルグル": "dizzy eyes", # perhaps "spinny"
@@ -82,8 +207,8 @@ morph_dict = {
 "ｺｯﾁﾐﾝﾅ": "camera eyes",  # phonetically "Kotchiminna", might informally translate to "this guy" or "everyone" i guess? functionally same as "camera eyes" tho
 "こっちみんな": "camera eyes", # phonetically "Kotchiminna", google translates to "don't look at me" maybe like "not my fault"?
 "はぅ": ">.<",
-"にやり": "grin",
-"ニヤリ": "grin",  # these 2 are phonetically the same, "niyari"
+"にやり": "grin",  # phonetically "niyari", not totally sure how this is different from "smile"
+"ニヤリ": "grin",  # phonetically "niyari"
 "にっこり": "smile",  # phonetically "nikkori"
 "スマイル": "smile",  # phonetically "sumairu" aka engrish for "smile"
 "ムッ": "upset",
@@ -98,23 +223,24 @@ morph_dict = {
 "はちゅ目縦潰れ": "O.O height",
 "はちゅ目横潰れ": "O.O width",
 "ハイライト消し": "highlight off",
-"瞳小": "pupil small", # "pupil"
-"恐ろしい子!": "white eye", # literally "scary child!" who the hell thought that was a good name?
+"瞳小": "scared", # "pupil"
+"恐ろしい子!": "white eyes", # literally "scary child!" who the hell thought that was a good name?
 "ぺろっ": "tongue out",  # phonetically "perrow"
 "べー": "beeeeh", # another way of doing "tongue out" but google likes to turn this into 'base'
 "あ": "a",
 "い": "i",
 "う": "u",
 "え": "e",
+"えー": "eeeeeh",  # long "e" sound
 "お": "o",
 "ワ": "wa",
 "わ": "wa",
 "上": "brow up", # "go up"
 "下": "brow down", # "go down"
 "前": "brow fwd",
+"後": "brow back",
 "涙": "tears",
 "ん": "hmm", # wtf is this translation
-"ー": "--", # not sure what to do with this, often used to mean continuation of a sound/syllable...
 }
 
 # add the symbols into the morph dict
@@ -201,6 +327,7 @@ frame_dict = {
 "物理-その他": "Physics - Other",
 "その他-物理": "Other - Physics",
 "服": "Clothes",
+"胸": "Breasts",
 "猫耳": "Nekomimi",
 "ねこ耳": "Nekomimi",
 "獣耳": "Kemonomimi",
@@ -262,12 +389,14 @@ words_dict = {
 "乳首": "nipple",
 "乳輪": "areola",
 "ブラ": "bra",
+"ブラジャー": "bra",
 "耳": "ear",  # phonetically "mimi"
 "みみ": "ear",  # phonetically "mimi"
 "閉じ": "close",
 "開く": "open",
 "開け": "open",
 "開き": "open",
+"オープン": "open",  # phonetically "opun"
 "髪の毛": "hair", # this literally means hair of hair??? odd
 "毛": "hair",
 "髪": "hair",
@@ -303,8 +432,9 @@ words_dict = {
 "ハイライト": "highlight",
 "ﾊｲﾗｲﾄ": "highlight",
 "艶": "gloss",
-"靴": "shoe",  # phonetically "kutsu"
-"くつ": "shoe",  # phonetically "kutsu"
+"靴下": "socks",
+"靴": "shoes",  # phonetically "kutsu"
+"くつ": "shoes",  # phonetically "kutsu"
 "顔": "face",
 "額": "forehead",
 "ほほ": "cheek",  # phonetically "hoho"
@@ -342,7 +472,8 @@ words_dict = {
 "頭": "head",
 "帽子": "hat",
 "金属": "metal",
-"紐": "string",  # or cord
+"紐": "string",  # phonetically "himo", string or cord
+"ひも": "string",  # phonetically "himo", string or cord
 "ダミー": "dummy",
 "ﾀﾞﾐ": "dummy",
 "半": "half",
@@ -372,6 +503,7 @@ words_dict = {
 "犬": "dog",
 "猫": "cat",  # phonetically "neko"
 "ねこ": "cat",  # phonetically "neko"
+"ネコ": "cat",  # phonetically "neko"
 "獣": "animal",
 "くち": "mouth",  # phonetically "kuchi"
 "口": "mouth",  # phonetically "kuchi"
@@ -453,9 +585,11 @@ words_dict = {
 "ぺろっ": "tongue out",  # phonetically "perrow"
 "べー": "beeeeh",  # another way of doing "tongue out"
 "持ち": "hold",  # perhaps grab? holding? 手持ち = handheld
+"ホールド": "hold",  # phonetically "horudo"
 "ずらし": "shift",
 "短": "short",
 "長": "long",
+"長い": "long",
 
 "穏やか": "calm",
 "螺旋": "spiral",
@@ -506,7 +640,9 @@ words_dict = {
 "驚き": "surprise",
 "見開き": "spread",  # something closer to "wide eyes" but google says it's "spread" so idk
 "悲しい": "sad low",
-"困る": "sadness",
+"困る": "sadness",  # phonetically "komaru", google translates to "troubled", but PMXE translates to "sadness"... maybe "worried" is best?
+"困った": "sadness",  # phonetically "komaru", same as above
+"困り": "troubled",  # phonetically "komari"
 "真面": "serious",
 "怒り": "anger",
 "怒": "anger",
@@ -523,6 +659,7 @@ words_dict = {
 "にやり": "grin",
 "ニヤリ": "grin",  # these 2 are phonetically the same, "niyari"
 "にっこり": "smile",
+"キッス": "kiss",
 "ムッ": "upset",
 "照れ": "blush",
 "赤面": "blush",
@@ -603,6 +740,7 @@ odd_punctuation_dict = {
 "】": "]",  # x3011
 "・": "-",  # x30fb, could map to 00B7 but i don't think MMD would display that either
 "〜": "~",  # x301C wave dash, not a "fullwidth tilde"
+"～": "~",  # xff5e "fullwidth tilde" causes some issues
 "｟": "(",  # xff5f
 "｠": ")",  # xff60
 "｡": ".",  #xff61
@@ -675,6 +813,7 @@ DEBUG = False
 # not 100% confident this is right, there are probably other characters that can display just fine in MMD like accents
 # TODO: check for other chars that can display in MMD just fine, try accents maybe
 def is_latin(text:str) -> bool:
+	""" will display perfectly in EN MMD version """
 	return all(ord(c) < 128 for c in text)
 
 def is_jp(text:str) -> bool:
@@ -688,13 +827,14 @@ def needs_translate(text:str) -> bool:
 	m = not is_latin(text)
 	return bool(m)
 
-def pre_translate(in_list: Union[List[str],str]) -> Union[Tuple[str,str,str],Tuple[List[str],List[str],List[str]]]:
+STR_OR_STRLIST = TypeVar("STR_OR_STRLIST", str, List[str])
+def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLIST, STR_OR_STRLIST]:
 	"""
 	Handle common translation things like prefixes, suffixes, fullwidth alphanumeric characters, indents,
 	and some types of punctuation. Returns 3-ple of EN indent, JP body, EN suffix. This way the translate can work on
 	the important stuff and ignore the chaff.
 	:param in_list: list of JP strings, or a single JP string
-	:return: list of indent/body/suffix tuples, or a single tuple
+	:return: tuple of indent/body/suffix lists, or a single tuple
 	"""
 	# input str breakdown: (indent) (L/R prefix) (padding) (((body))) (padding) (L/R suffix)
 	
@@ -769,7 +909,7 @@ def pre_translate(in_list: Union[List[str],str]) -> Union[Tuple[str,str,str],Tup
 	else:			return indent_list, body_list, suffix_list	# otherwise return as a list
 
 
-def piecewise_translate(in_list: Union[List[str],str], in_dict: dict) -> Union[List[str],str]:
+def piecewise_translate(in_list: STR_OR_STRLIST, in_dict: dict) -> STR_OR_STRLIST:
 	"""
 	Apply piecewise translation to inputs when given a mapping dict.
 	Mapping dict will usually be the builtin comprehensive 'words_dict' or some results found from Google Translate.
@@ -821,7 +961,7 @@ def piecewise_translate(in_list: Union[List[str],str], in_dict: dict) -> Union[L
 	else:				return outlist		# otherwise return as a list
 
 
-def local_translate(in_list: Union[List[str],str]) -> Union[List[str],str]:
+def local_translate(in_list: STR_OR_STRLIST) -> STR_OR_STRLIST:
 	"""
 	Simple wrapper func to run both pre_translate and local_translate using words_dict.
 	With DEBUG=True, it prints before/after.
@@ -903,6 +1043,6 @@ def local_translate(in_list: Union[List[str],str]) -> Union[List[str],str]:
 # 		numpass, numtotal, numpass / numtotal))
 #
 # if __name__ == '__main__':
-# 	core.MY_PRINT_FUNC("Nuthouse01 - 07/24/2020 - v4.63")
+# 	core.MY_PRINT_FUNC("Nuthouse01 - 08/24/2020 - v5.00")
 # 	main()
 #
