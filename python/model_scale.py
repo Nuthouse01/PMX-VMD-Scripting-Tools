@@ -82,7 +82,10 @@ def main(moreinfo=True):
 			v.pos[i] *= scale[i]
 		# vertex normal
 		for i in range(3):
-			v.norm[i] *= scale[i]
+			if scale[i] != 0:
+				v.norm[i] /= scale[i]
+			else:
+				v.norm[i] = 100000
 		# then re-normalize the normal vector
 		L = core.my_euclidian_distance(v.norm)
 		if L != 0:
