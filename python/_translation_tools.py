@@ -738,6 +738,14 @@ odd_punctuation_dict = {
 "』": '"', # x300f
 "【": "[",  # x3010
 "】": "]",  # x3011
+"〔": "[",  # x3014
+"〕": "]",  # x3015
+"〖": "[",  # x3016
+"〗": "]",  # x3017
+"〘": "[",  # x3018
+"〙": "]",  # x3019
+"〚": "[",  # x301a
+"〛": "]",  # x301b
 "・": "-",  # x30fb, could map to 00B7 but i don't think MMD would display that either
 "〜": "~",  # x301C wave dash, not a "fullwidth tilde"
 "～": "~",  # xff5e "fullwidth tilde" causes some issues
