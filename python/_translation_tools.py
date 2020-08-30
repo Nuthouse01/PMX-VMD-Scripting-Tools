@@ -426,7 +426,7 @@ words_dict = {
 "ブロック": "block", # literally burroku, not sure why he picked this name
 "花": "flower",
 "鳥": "bird",
-"弓": "bow",  # as in bowtie not as in bending at the waist
+"弓": "bow",  # as archery bow not as in bending at the waist
 "その他": "other",
 "他": "other",
 "ハイライト": "highlight",
