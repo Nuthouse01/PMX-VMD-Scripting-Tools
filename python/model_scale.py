@@ -101,7 +101,7 @@ def main(moreinfo=True):
 		for i in range(3):
 			b.pos[i] *= scale[i]
 		# bone tail if using offset mode
-		if not b.tail_type:
+		if not b.tail_usebonelink:
 			for i in range(3):
 				b.tail[i] *= scale[i]
 		# scale fixedaxis and localaxis vectors, then normalize

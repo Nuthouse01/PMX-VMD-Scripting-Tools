@@ -126,7 +126,7 @@ def main(moreinfo=True):
 				pos=bones[0].pos, parent_idx=shoulder_idx, deform_layer=bones[0].deform_layer, 
 				deform_after_phys=bones[0].deform_after_phys,
 				has_rotate=True, has_translate=False, has_visible=False, has_enabled=True, has_ik=False,
-				tail_type=True, tail=0,  # want arm tail to point at the elbow, can't set it until elbow is created
+				tail_usebonelink=True, tail=0,  # want arm tail to point at the elbow, can't set it until elbow is created
 				inherit_rot=False, inherit_trans=False,
 				has_localaxis=bones[0].has_localaxis, localaxis_x=bones[0].localaxis_x, localaxis_z=bones[0].localaxis_z,
 				has_externalparent=False, has_fixedaxis=False, 
@@ -143,7 +143,7 @@ def main(moreinfo=True):
 				pos=bones[1].pos, parent_idx=shoulder_idx+1, deform_layer=bones[1].deform_layer, 
 				deform_after_phys=bones[1].deform_after_phys,
 				has_rotate=True, has_translate=False, has_visible=False, has_enabled=True, has_ik=False,
-				tail_type=True, tail=0,  # want elbow tail to point at the wrist, can't set it until wrist is created
+				tail_usebonelink=True, tail=0,  # want elbow tail to point at the wrist, can't set it until wrist is created
 				inherit_rot=False, inherit_trans=False,
 				has_localaxis=bones[1].has_localaxis, localaxis_x=bones[1].localaxis_x, localaxis_z=bones[1].localaxis_z,
 				has_externalparent=False, has_fixedaxis=False, 
@@ -162,7 +162,7 @@ def main(moreinfo=True):
 				pos=bones[2].pos, parent_idx=shoulder_idx+2, deform_layer=bones[2].deform_layer, 
 				deform_after_phys=bones[2].deform_after_phys,
 				has_rotate=True, has_translate=False, has_visible=False, has_enabled=True, has_ik=False,
-				tail_type=True, tail=-1,  # newwrist has no tail
+				tail_usebonelink=True, tail=-1,  # newwrist has no tail
 				inherit_rot=False, inherit_trans=False,
 				has_localaxis=bones[2].has_localaxis, localaxis_x=bones[2].localaxis_x, localaxis_z=bones[2].localaxis_z,
 				has_externalparent=False, has_fixedaxis=False, 
@@ -188,7 +188,7 @@ def main(moreinfo=True):
 				name_jp=side + jp_newik, name_en=en_newik + en_suffix, pos=bones[2].pos,
 				parent_idx=ikpar, deform_layer=bones[2].deform_layer, deform_after_phys=bones[2].deform_after_phys,
 				has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
-				tail_type=False, tail=[0,1,0], inherit_rot=False, inherit_trans=False,
+				tail_usebonelink=False, tail=[0,1,0], inherit_rot=False, inherit_trans=False,
 				has_fixedaxis=False, has_localaxis=False, has_externalparent=False, has_ik=True,
 				ik_target_idx=shoulder_idx+3, ik_numloops=newik_loops, ik_angle=newik_angle,
 				ik_links=[pmxstruct.PmxBoneIkLink(idx=shoulder_idx+2), pmxstruct.PmxBoneIkLink(idx=shoulder_idx+1)]

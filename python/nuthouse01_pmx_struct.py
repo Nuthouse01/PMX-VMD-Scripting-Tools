@@ -155,7 +155,7 @@ class PmxBoneIkLink(_BasePmx):
 class PmxBone(_BasePmx):
 	# thisbone = [name_jp, name_en, posX, posY, posZ, parent_idx, deform_layer, deform_after_phys,  # 0-7
 	# 			rotateable, translateable, visible, enabled,  # 8-11
-	# 			tail_type, maybe_tail, inherit_rot, inherit_trans, maybe_inherit, fixed_axis, maybe_fixed_axis,  # 12-18
+	# 			tail_usebonelink, maybe_tail, inherit_rot, inherit_trans, maybe_inherit, fixed_axis, maybe_fixed_axis,  # 12-18
 	# 			local_axis, maybe_local_axis, external_parent, maybe_external_parent, ik, maybe_ik]  # 19-24
 	def __init__(self,
 				 name_jp: str, name_en: str,
@@ -168,7 +168,7 @@ class PmxBone(_BasePmx):
 				 has_visible: bool,
 				 has_enabled: bool,
 				 has_ik: bool,
-				 tail_type: bool,
+				 tail_usebonelink: bool,
 				 tail: Union[int, List[float]],  # NOTE: either int or list of 3 float, but always exists, never None
 				 inherit_rot: bool,
 				 inherit_trans: bool,
@@ -188,7 +188,7 @@ class PmxBone(_BasePmx):
 				 ik_links: List[PmxBoneIkLink]=None,
 				 ):
 		assert len(pos) == 3
-		if tail_type:
+		if tail_usebonelink:
 			assert isinstance(tail, int)
 		else:
 			assert len(tail) == 3
@@ -209,8 +209,8 @@ class PmxBone(_BasePmx):
 		self.has_visible = has_visible
 		self.has_enabled = has_enabled
 		self.has_ik = has_ik
-		# tail_type: true = point-at mode, false = offset mode
-		self.tail_type = tail_type
+		# tail_usebonelink: true = point-at mode, false = offset mode
+		self.tail_usebonelink = tail_usebonelink
 		self.tail = tail
 		self.inherit_rot = inherit_rot
 		self.inherit_trans = inherit_trans
@@ -231,7 +231,7 @@ class PmxBone(_BasePmx):
 	def list(self) -> list:
 		return [self.name_jp, self.name_en, self.pos, self.parent_idx, self.deform_layer, self.deform_after_phys,
 				self.has_rotate, self.has_translate, self.has_visible, self.has_enabled,
-				self.tail_type, self.tail,
+				self.tail_usebonelink, self.tail,
 				self.inherit_rot, self.inherit_trans, self.inherit_parent_idx, self.inherit_ratio,
 				self.has_fixedaxis, self.fixedaxis,
 				self.has_localaxis, self.localaxis_x, self.localaxis_z,

@@ -269,7 +269,7 @@ def parse_pmx_bones(raw: bytearray) -> List[pmxstruct.PmxBone]:
 	for d in range(i):
 		(name_jp, name_en, posX, posY, posZ, parent_idx, deform_layer, flags1, flags2) = core.my_unpack("t t 3f" + IDX_BONE + "i 2B", raw)
 		# print(name_jp, name_en)
-		tail_type =              bool(flags1 & (1<<0))
+		tail_usebonelink =              bool(flags1 & (1<<0))
 		rotateable =             bool(flags1 & (1<<1))
 		translateable =          bool(flags1 & (1<<2))
 		visible =                bool(flags1 & (1<<3))
@@ -287,7 +287,7 @@ def parse_pmx_bones(raw: bytearray) -> List[pmxstruct.PmxBone]:
 		fixedaxis = None
 		local_axis_x_xyz = local_axis_z_xyz = None
 		ik_target = ik_loops = ik_anglelimit = ik_links = None
-		if tail_type:  # use index for bone its pointing at
+		if tail_usebonelink:  # use index for bone its pointing at
 			tail = core.my_unpack(IDX_BONE, raw)
 		else:  # use offset
 			tail = core.my_unpack("3f", raw)
@@ -324,7 +324,7 @@ def parse_pmx_bones(raw: bytearray) -> List[pmxstruct.PmxBone]:
 			# all ik stuff
 			has_ik=ik, ik_target_idx=ik_target, ik_numloops=ik_loops, ik_angle=ik_anglelimit, ik_links=ik_links,
 			# all tail stuff
-			tail_type=tail_type, tail=tail,
+			tail_usebonelink=tail_usebonelink, tail=tail,
 			# all partial-inherit stuff
 			inherit_rot=inherit_rot, inherit_trans=inherit_trans, inherit_ratio=inherit_influence, inherit_parent_idx=inherit_parent,
 			# all fixed-axis stuff
@@ -704,7 +704,7 @@ def encode_pmx_bones(nice: List[pmxstruct.PmxBone]) -> bytearray:
 		# next are the two flag-bytes (flags1, flags2)
 		# reassemble the bits into a byte
 		flagsum1 = 0
-		flagsum1 += (1 << 0) if bool(bone.tail_type) else 0
+		flagsum1 += (1 << 0) if bool(bone.tail_usebonelink) else 0
 		flagsum1 += (1 << 1) if bool(bone.has_rotate) else 0
 		flagsum1 += (1 << 2) if bool(bone.has_translate) else 0
 		flagsum1 += (1 << 3) if bool(bone.has_visible) else 0
@@ -721,7 +721,7 @@ def encode_pmx_bones(nice: List[pmxstruct.PmxBone]) -> bytearray:
 		out += core.my_pack(fmt_bone, packme)
 		
 		# tail will always exist but type will vary
-		if bone.tail_type:  # use index for bone its pointing at
+		if bone.tail_usebonelink:  # use index for bone its pointing at
 			out += core.my_pack(IDX_BONE, bone.tail)
 		else:  # use offset
 			out += core.my_pack("3f", bone.tail)

@@ -250,7 +250,7 @@ def identify_unused_bones(pmx: pmxstruct.Pmx, moreinfo: bool) -> List[int]:
 	for bidx in parent_used_bones:
 		b = pmx.bones[bidx]
 		# if this bone has a tail,
-		if b.tail_type:
+		if b.tail_usebonelink:
 			# add it and anything it depends on to the set.
 			recursive_climb_inherit_tree(b.tail, final_used_bones)
 	# now merge the two sets
@@ -368,10 +368,10 @@ def apply_bone_remapping(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shift
 	# BONES: point-at target, true parent, external parent, partial append, ik stuff
 	for d, bone in enumerate(pmx.bones):
 		# point-at link:
-		if bone.tail_type:
+		if bone.tail_usebonelink:
 			if core.binary_search_isin(bone.tail, bone_dellist):
 				# if pointing at a bone that will be deleted, instead change to offset with offset 0,0,0
-				bone.tail_type = False
+				bone.tail_usebonelink = False
 				bone.tail = [0, 0, 0]
 			else:
 				# otherwise, remap
