@@ -95,16 +95,16 @@ body_dict = {
     # more testing I guess?
 }
 
-#big_dict = {**finger_dict, **leg_dict, **arm_dict, **body_dict}
 big_dict = {**body_dict, **arm_dict, **leg_dict, **finger_dict}
 
-caution_message = 'This will not 100% make your model work with your motions.\n' \
-'You probably still need to add some necessary bones that the motions require.\n' \
-'Right now, they should be "腰", "グルーブ" and "全ての親".\n' \
-'"センター", which is assigned to Pelvis, comes before "全ての親".\n'
+caution_message: str = '''
+This will not 100% make your model work with your motion
+You probably still need to add some necessary bones that the motion requires
+'''
 
 
 def main():
+    # copied codes
     core.MY_PRINT_FUNC("Please enter name of PMX model file:")
     input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 
@@ -113,7 +113,8 @@ def main():
     input_filename_pmx_abs = os.path.normpath(os.path.abspath(input_filename_pmx))
     startpath, input_filename_pmx_rel = os.path.split(input_filename_pmx_abs)
 
-    retme = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
+    # object
+    retme: pmxstruct.Pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 
     for key in big_dict:
         for index, name in enumerate(retme.bones):
@@ -122,6 +123,7 @@ def main():
 
     output_filename_pmx = os.path.join(startpath, input_filename_pmx)
     pmxlib.write_pmx(output_filename_pmx, retme, moreinfo=moreinfo)
+
 
 if __name__ == "__main__":
     main()
