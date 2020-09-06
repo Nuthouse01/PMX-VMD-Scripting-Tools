@@ -386,6 +386,7 @@ class PmxFrame(_BasePmx):
 				 ):
 		self.name_jp = name_jp
 		self.name_en = name_en
+		# "special" frames are root and facials. name/position cannot be edited in PMXE, but they're otherwise ordinary frames.
 		self.is_special = is_special
 		# each "item" in the list of items is [is_morph, idx]
 		self.items = items
