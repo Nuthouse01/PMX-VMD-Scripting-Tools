@@ -116,9 +116,98 @@ def main():
     # object
     retme: pmxstruct.Pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 
+    leg_left_ik_name = "左足ＩＫ"
+    leg_left_toe_ik_name = "左つま先ＩＫ"
+    leg_right_ik_name = "右足ＩＫ"
+    leg_right_toe_ik_name = "右つま先ＩＫ"
+
+    # index of leg items from left toe
+    l_l = -3
+    l_k = -2
+    l_a = -1
+
+    r_l = -7
+    r_k = -6
+    r_a = -5
+    r_t = -4
+
+    knee_limit_1 = [-3.1415927410125732, 0.0, 0.0]
+    knee_limit_2 = [-0.008726646192371845, 0.0, 0.0]
+
     for key in big_dict:
         for index, name in enumerate(retme.bones):
             if name.name_jp == key:
+                if name.name_jp == "ValveBiped.Bip01_L_Toe0":
+                    # adding IK and such
+                    leg_left_obj = retme.bones[index + l_l]
+                    leg_left_knee_obj = retme.bones[index + l_k]
+                    leg_left_ankle_obj = retme.bones[index + l_a]
+                    leg_left_toe_obj = retme.bones[index]
+                    leg_right_obj = retme.bones[index + r_l]
+                    leg_right_knee_obj = retme.bones[index + r_k]
+                    leg_right_ankle_obj = retme.bones[index + r_a]
+                    leg_right_toe_obj = retme.bones[index + r_t]
+
+                    leg_left_ankle_pos = leg_left_ankle_obj.pos
+                    leg_left_toe_pos = leg_left_toe_obj.pos
+                    leg_right_ankle_pos = leg_right_ankle_obj.pos
+                    leg_right_toe_pos = leg_right_toe_obj.pos
+
+                    # thisbone = [name_jp, name_en, posX, posY, posZ, parent_idx, deform_layer, deform_after_phys,  # 0-7
+                    # 			rotateable, translateable, visible, enabled,  # 8-11
+                    # 			tail_type, maybe_tail, inherit_rot, inherit_trans, maybe_inherit, fixed_axis, maybe_fixed_axis,  # 12-18
+                    # 			local_axis, maybe_local_axis, external_parent, maybe_external_parent, ik, maybe_ik]  # 19-24
+
+                    leg_left_ik_obj = pmxstruct.PmxBone(leg_left_ik_name, "", leg_left_ankle_pos, 0, 0, False,
+                                                        True, True, True, True, True,
+                                                        False, [0.0, 0.0, 0.0], False, False, False,
+                                                        False, False, None, None, None, None, None, None,
+                                                        index + l_a, 85, 114.6149,
+                                                        [[index + l_k, knee_limit_1, knee_limit_2],
+                                                         [index + l_l, None, None]])
+                    retme.bones.insert(index + 1, leg_left_ik_obj)
+
+                    leg_left_toe_ik_obj = pmxstruct.PmxBone(leg_left_toe_ik_name, "", leg_left_toe_pos, index + 1, 0,
+                                                            False,
+                                                            True, True, True, True, True,
+                                                            False, [0, 0, 0], False, False, False,
+                                                            False, False, None, None, None, None, None, None,
+                                                            index, 160, 1, [[index + l_a, None, None]])
+                    retme.bones.insert(index + 2, leg_left_toe_ik_obj)
+
+                    leg_right_ik_obj = pmxstruct.PmxBone(leg_right_ik_name, "", leg_right_ankle_pos, 0, 0, False,
+                                                         True, True, True, True, True,
+                                                         False, [0.0, 0.0, 0.0], False, False, False,
+                                                         False, False, None, None, None, None, None, None,
+                                                         index + r_a, 85, 114.6149,
+                                                         [[index + r_k, knee_limit_1, knee_limit_2],
+                                                          [index + r_l, None, None]])
+                    retme.bones.insert(index + 3, leg_right_ik_obj)
+
+                    leg_right_toe_ik_obj = pmxstruct.PmxBone(leg_right_toe_ik_name, "", leg_right_toe_pos, index + 3, 0,
+                                                             False,
+                                                             True, True, True, True, True,
+                                                             False, [0, 0, 0], False, False, False,
+                                                             False, False, None, None, None, None, None, None,
+                                                             index + r_t, 160, 1, [[index + r_a, None, None]])
+                    retme.bones.insert(index + 4, leg_right_toe_ik_obj)
+
+                    # toe /// places of some value wont match with the struct /// taken from hololive's korone model
+                    # name, name, [-0.823277473449707, 0.2155265510082245, -1.8799238204956055], 112, 0, False,
+                    # True, True, True, True,
+                    # False, [0.0, -1.3884940147399902, 1.2653569569920364e-07] /// This is offset, False, False, None,
+                    # None, False, None, False, None, None, False, None, True,
+                    # 111, 160, 1.0, [[110, None, None]]
+
+                    # leg
+                    # 右足ＩＫ, en_name, [-0.8402935862541199, 1.16348397731781, 0.3492986857891083], 0, 0, False,
+                    # True, True, True, True,
+                    # False, [0.0, -2.53071505085245e-07, 1.3884940147399902], False, False, None,
+                    # None, False, None, False, None, None, False, None, True,
+                    # 110, 85, 1.9896754026412964, [[109, [-3.1415927410125732, 0.0, 0.0], [-0.008726646192371845, 0.0, 0.0]]
+                    # /// These ik_links are in radians /// , [108, None, None]]
+                # if name == "ValveBiped.Bip01_R_Toe0":
+                #     retme.bones.insert(index + 1, )
                 retme.bones[index].name_jp = big_dict[key]
 
     output_filename_pmx = os.path.join(startpath, input_filename_pmx)
