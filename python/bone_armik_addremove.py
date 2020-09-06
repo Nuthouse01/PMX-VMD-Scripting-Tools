@@ -10,14 +10,14 @@ try:
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
 	from . import nuthouse01_pmx_struct as pmxstruct
-	from ._prune_unused_bones import apply_bone_remapping
+	from ._prune_unused_bones import delete_multiple_bones, insert_single_bone
 	from ._prune_unused_vertices import delme_list_to_rangemap
 except ImportError as eee:
 	try:
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
 		import nuthouse01_pmx_struct as pmxstruct
-		from _prune_unused_bones import apply_bone_remapping
+		from _prune_unused_bones import delete_multiple_bones, insert_single_bone
 		from _prune_unused_vertices import delme_list_to_rangemap
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
@@ -25,7 +25,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = pmxstruct = apply_bone_remapping = delme_list_to_rangemap = None
+		core = pmxlib = pmxstruct = delete_multiple_bones = insert_single_bone = delme_list_to_rangemap = None
 
 
 
@@ -109,13 +109,9 @@ def main(moreinfo=True):
 					core.MY_PRINT_FUNC("ERROR1: semistandard bone '%s' is missing from the model, unable to create attached arm IK" % (side + n))
 					raise RuntimeError()
 				bones.append(i)
-			# get parent of arm bone
+			# get parent of arm bone (shoulder bone), new bones will be inserted after this
 			shoulder_idx = bones[0].parent_idx
 			
-			# then do the "remapping" on all existing bone references, to make space for inserting 4 bones
-			# don't delete any bones, just remap them
-			bone_shiftmap = ([shoulder_idx+1], [-4])
-			apply_bone_remapping(pmx, [], bone_shiftmap)
 			# new bones will be inserted AFTER shoulder_idx
 			# newarm_idx = shoulder_idx+1
 			# newelbow_idx = shoulder_idx+2
@@ -123,29 +119,57 @@ def main(moreinfo=True):
 			# newik_idx = shoulder_idx+4
 			
 			# make copies of the 3 armchain bones
-			for i, b in enumerate(bones):
-				b: pmxstruct.PmxBone
-				
-				# newarm = b[0:5] + [shoulder_idx + i] + b[6:8]  # copy names/pos, parent, copy deform layer
-				# newarm += [1, 0, 0, 0]  # rotateable, not translateable, not visible, not enabled(?)
-				# newarm += [1, [shoulder_idx + 2 + i], 0, 0, [], 0, []]  # tail type, no inherit, no fixed axis,
-				# newarm += b[19:21] + [0, [], 0, []]  # copy local axis, no ext parent, no ik
-				# newarm[0] += jp_ikchainsuffix  # add suffix to jp name
-				# newarm[1] += jp_ikchainsuffix  # add suffix to en name
-				newarm = pmxstruct.PmxBone(
-					name_jp=b.name_jp + jp_ikchainsuffix, name_en=b.name_en + jp_ikchainsuffix, pos=b.pos,
-					parent_idx=b.parent_idx, deform_layer=b.deform_layer, deform_after_phys=b.deform_after_phys,
-					has_rotate=True, has_translate=False, has_visible=False, has_enabled=True,
-					tail_type=True, tail=shoulder_idx + 2 + i, inherit_rot=False, inherit_trans=False,
-					has_fixedaxis=False, has_localaxis=b.has_localaxis, localaxis_x=b.localaxis_x, localaxis_z=b.localaxis_z,
-					has_externalparent=False, has_ik=False,
-				)
-				pmx.bones.insert(shoulder_idx + 1 + i, newarm)
-				# then change the existing arm/elbow (not the wrist) to inherit rot from them
-				if i != 2:
-					b.inherit_rot = True
-					b.inherit_parent_idx = shoulder_idx + 1 + i
-					b.inherit_ratio = 1
+			
+			# arm: parent is shoulder
+			newarm = pmxstruct.PmxBone(
+				name_jp=bones[0].name_jp + jp_ikchainsuffix, name_en=bones[0].name_en + jp_ikchainsuffix, 
+				pos=bones[0].pos, parent_idx=shoulder_idx, deform_layer=bones[0].deform_layer, 
+				deform_after_phys=bones[0].deform_after_phys,
+				has_rotate=True, has_translate=False, has_visible=False, has_enabled=True, has_ik=False,
+				tail_type=True, tail=0,  # want arm tail to point at the elbow, can't set it until elbow is created
+				inherit_rot=False, inherit_trans=False,
+				has_localaxis=bones[0].has_localaxis, localaxis_x=bones[0].localaxis_x, localaxis_z=bones[0].localaxis_z,
+				has_externalparent=False, has_fixedaxis=False, 
+			)
+			insert_single_bone(pmx, newarm, shoulder_idx + 1)
+			# change existing arm to inherit rot from this
+			bones[0].inherit_rot = True
+			bones[0].inherit_parent_idx = shoulder_idx + 1
+			bones[0].inherit_ratio = 1
+			
+			# elbow: parent is newarm
+			newelbow = pmxstruct.PmxBone(
+				name_jp=bones[1].name_jp + jp_ikchainsuffix, name_en=bones[1].name_en + jp_ikchainsuffix, 
+				pos=bones[1].pos, parent_idx=shoulder_idx+1, deform_layer=bones[1].deform_layer, 
+				deform_after_phys=bones[1].deform_after_phys,
+				has_rotate=True, has_translate=False, has_visible=False, has_enabled=True, has_ik=False,
+				tail_type=True, tail=0,  # want elbow tail to point at the wrist, can't set it until wrist is created
+				inherit_rot=False, inherit_trans=False,
+				has_localaxis=bones[1].has_localaxis, localaxis_x=bones[1].localaxis_x, localaxis_z=bones[1].localaxis_z,
+				has_externalparent=False, has_fixedaxis=False, 
+			)
+			insert_single_bone(pmx, newelbow, shoulder_idx + 2)
+			# change existing elbow to inherit rot from this
+			bones[1].inherit_rot = True
+			bones[1].inherit_parent_idx = shoulder_idx + 2
+			bones[1].inherit_ratio = 1
+			# now that newelbow exists, change newarm tail to point to this
+			newarm.tail = shoulder_idx + 2
+			
+			# wrist: parent is newelbow
+			newwrist = pmxstruct.PmxBone(
+				name_jp=bones[2].name_jp + jp_ikchainsuffix, name_en=bones[2].name_en + jp_ikchainsuffix, 
+				pos=bones[2].pos, parent_idx=shoulder_idx+2, deform_layer=bones[2].deform_layer, 
+				deform_after_phys=bones[2].deform_after_phys,
+				has_rotate=True, has_translate=False, has_visible=False, has_enabled=True, has_ik=False,
+				tail_type=True, tail=-1,  # newwrist has no tail
+				inherit_rot=False, inherit_trans=False,
+				has_localaxis=bones[2].has_localaxis, localaxis_x=bones[2].localaxis_x, localaxis_z=bones[2].localaxis_z,
+				has_externalparent=False, has_fixedaxis=False, 
+			)
+			insert_single_bone(pmx, newwrist, shoulder_idx + 3)
+			# now that newwrist exists, change newelbow tail to point to this
+			newelbow.tail = shoulder_idx + 3
 			
 			# copy the wrist to make the IK bone
 			en_suffix = "_L" if side == jp_l else "_R"
@@ -169,7 +193,7 @@ def main(moreinfo=True):
 				ik_target_idx=shoulder_idx+3, ik_numloops=newik_loops, ik_angle=newik_angle,
 				ik_links=[pmxstruct.PmxBoneIkLink(idx=shoulder_idx+2), pmxstruct.PmxBoneIkLink(idx=shoulder_idx+1)]
 			)
-			pmx.bones.insert(shoulder_idx + 4, newik)
+			insert_single_bone(pmx, newik, shoulder_idx + 4)
 			
 			# then add to dispframe
 			# first, does the frame already exist?
@@ -197,10 +221,8 @@ def main(moreinfo=True):
 			for v in pmx.bones[b].ik_links:
 				bone_dellist.append(v.idx) # each link along the bone
 		bone_dellist.sort()
-		# build the remap thing
-		bone_shiftmap = delme_list_to_rangemap(bone_dellist)
 		# do the actual delete & shift
-		apply_bone_remapping(pmx, bone_dellist, bone_shiftmap)
+		delete_multiple_bones(pmx, bone_dellist)
 		
 		# delete dispframe for hand ik
 		# first, does the frame already exist?
