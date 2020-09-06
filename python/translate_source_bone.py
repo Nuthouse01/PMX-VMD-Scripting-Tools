@@ -39,7 +39,7 @@ finger_dict = {
     "ValveBiped.Bip01_R_Finger12": "右人指３",
     "ValveBiped.Bip01_R_Finger0": "右親指１",
     "ValveBiped.Bip01_R_Finger01": "右親指２",
-    "ValveBiped.Bip01_R_Finger02": "",  # no bone for the second joint here
+    "ValveBiped.Bip01_R_Finger02": "右親指３",  # no bone for the second joint here
 
     "ValveBiped.Bip01_L_Finger4": "左小指１",
     "ValveBiped.Bip01_L_Finger41": "左小指２",
@@ -55,7 +55,7 @@ finger_dict = {
     "ValveBiped.Bip01_L_Finger12": "左人指３",
     "ValveBiped.Bip01_L_Finger0": "左親指１",
     "ValveBiped.Bip01_L_Finger01": "左親指２",
-    "ValveBiped.Bip01_L_Finger02": ""
+    "ValveBiped.Bip01_L_Finger02": "左親指３"
 }
 
 arm_dict = {
@@ -83,28 +83,29 @@ leg_dict = {
 }
 
 body_dict = {
-    "ValveBiped.Bip01_Pelvis": "センター",
+    # "ValveBiped.Bip01_Pelvis": "下半身",  # we only need 上半身 and 2 so these guys can be combined later in Pmxeditor
+    "ValveBiped.Bip01_Pelvis": "下半身",
     "ValveBiped.Bip01_Spine": "下半身",
     "ValveBiped.Bip01_Spine1": "上半身",
     "ValveBiped.Bip01_Spine2": "上半身2",
     "ValveBiped.Bip01_Spine4": "首",  # this is at the base of the neck, we can combine it
     "ValveBiped.Bip01_Neck1": "首",
     "ValveBiped.Bip01_Head1": "頭"
-
-    # "腰" is parent of _Spine most of the times, then "グルーブ" and "センター" and "全ての親"
-    # more testing I guess?
 }
+# base order: 上半身, 下半身, 腰, グルーブ, センター, 全ての親
+# the rest of the work should be done in pmxeditor instead, jsut one click away
 
 big_dict = {**body_dict, **arm_dict, **leg_dict, **finger_dict}
 
 caution_message: str = '''
-This will not 100% make your model work with your motion
-You probably still need to add some necessary bones that the motion requires
+This will not 100% make your model work with your motion or work as intended.
+You probably still need to adjust your model through Transform View (F9).
 '''
 
 
 def main():
     # copied codes
+    global b1_index
     core.MY_PRINT_FUNC("Please enter name of PMX model file:")
     input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 
@@ -116,6 +117,14 @@ def main():
     # object
     retme: pmxstruct.Pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 
+    # base bone section
+    # base order: 上半身, 下半身, 腰 (b_1), グルーブ, センター, 全ての親
+    b1_name = "腰"
+    b2_name = "グルーブ"
+    b3_name = "センター"
+    b4_name = "全ての親"
+
+    # IK bone section
     leg_left_ik_name = "左足ＩＫ"
     leg_left_toe_ik_name = "左つま先ＩＫ"
     leg_right_ik_name = "右足ＩＫ"
@@ -133,6 +142,8 @@ def main():
 
     knee_limit_1 = [-3.1415927410125732, 0.0, 0.0]
     knee_limit_2 = [-0.008726646192371845, 0.0, 0.0]
+
+    b1_index = 0
 
     for key in big_dict:
         for index, name in enumerate(retme.bones):
@@ -158,7 +169,7 @@ def main():
                     # 			tail_type, maybe_tail, inherit_rot, inherit_trans, maybe_inherit, fixed_axis, maybe_fixed_axis,  # 12-18
                     # 			local_axis, maybe_local_axis, external_parent, maybe_external_parent, ik, maybe_ik]  # 19-24
 
-                    leg_left_ik_obj = pmxstruct.PmxBone(leg_left_ik_name, "", leg_left_ankle_pos, 0, 0, False,
+                    leg_left_ik_obj = pmxstruct.PmxBone(leg_left_ik_name, "", leg_left_ankle_pos, index + 5, 0, False,
                                                         True, True, True, True, True,
                                                         False, [0.0, 0.0, 0.0], False, False, False,
                                                         False, False, None, None, None, None, None, None,
@@ -175,7 +186,7 @@ def main():
                                                             index, 160, 1, [[index + l_a, None, None]])
                     retme.bones.insert(index + 2, leg_left_toe_ik_obj)
 
-                    leg_right_ik_obj = pmxstruct.PmxBone(leg_right_ik_name, "", leg_right_ankle_pos, 0, 0, False,
+                    leg_right_ik_obj = pmxstruct.PmxBone(leg_right_ik_name, "", leg_right_ankle_pos, index + 5, 0, False,
                                                          True, True, True, True, True,
                                                          False, [0.0, 0.0, 0.0], False, False, False,
                                                          False, False, None, None, None, None, None, None,
@@ -206,11 +217,80 @@ def main():
                     # None, False, None, False, None, None, False, None, True,
                     # 110, 85, 1.9896754026412964, [[109, [-3.1415927410125732, 0.0, 0.0], [-0.008726646192371845, 0.0, 0.0]]
                     # /// These ik_links are in radians /// , [108, None, None]]
-                # if name == "ValveBiped.Bip01_R_Toe0":
-                #     retme.bones.insert(index + 1, )
-                retme.bones[index].name_jp = big_dict[key]
+                    # if name == "ValveBiped.Bip01_R_Toe0":
+                    #     retme.bones.insert(index + 1, )
 
-    output_filename_pmx = os.path.join(startpath, input_filename_pmx)
+                    # base part
+                    pelvis_obj = retme.bones[0]
+                    pelvis_pos: list = pelvis_obj.pos
+                    print(pelvis_pos)
+
+                    b4_pos = [0, 0, 0]
+
+                    b3_pos = pelvis_pos
+                    print(pelvis_pos)
+                    print(b3_pos)
+                    b3_pos[1] *= .55
+                    b2_pos = b3_pos
+
+                    b1_pos = pelvis_pos
+                    b1_pos[1] *= .85
+
+
+                    # 全ての親, name_en, [0.0, 0.0, -0.4735046625137329], -1, 0, False,
+                    # True, True, True, True,
+                    # False, [0.0, 0.0, 0.0], False, False, None,
+                    # None, False, None, False, None, None, False, None, False,
+                    # None, None, None, None
+
+                    # base order: 上半身, 下半身, 腰 (b_1), グルーブ, センター, 全ての親
+                    # the parents would be fixed later
+                    b4_obj = pmxstruct.PmxBone(b4_name, "", b4_pos, -1, 0, False,
+                                               True, True, True, True, False,
+                                               False, [0, 0, 0], False, False, None,
+                                               None, False, None, None, None, None, None, None,
+                                               None, None, None, None
+                                               )
+                    retme.bones.insert(index + 5, b4_obj)
+
+                    b3_obj = pmxstruct.PmxBone(b3_name, "", b3_pos, index + 5, 0, False,
+                                               True, True, True, True, False,
+                                               False, [0, 0, 0], False, False, None,
+                                               None, False, None, None, None, None, None, None,
+                                               None, None, None, None
+                                               )
+                    retme.bones.insert(index + 6, b3_obj)
+
+                    b2_obj = pmxstruct.PmxBone(b2_name, "", b2_pos, index + 6, 0, False,
+                                               True, True, True, True, False,
+                                               False, [0, 0, 0], False, False, None,
+                                               None, False, None, None, None, None, None, None,
+                                               None, None, None, None
+                                               )
+                    retme.bones.insert(index + 7, b2_obj)
+
+                    b1_obj = pmxstruct.PmxBone(b1_name, "", b1_pos, index + 7, 0, False,
+                                               True, False, True, True, False,
+                                               False, [0, 0, 0], False, False, None,
+                                               None, False, None, None, None, None, None, None,
+                                               None, None, None, None
+                                               )
+                    retme.bones.insert(index + 8, b1_obj)
+
+                    # pop this out for sorting after the loop
+                    b1_index = index + 8
+
+            # have to check and add everything before changing the anchor's name
+                retme.bones[index].name_jp = big_dict[key]
+    # else:
+    #     for i in range(0, 4):
+    #         retme.bones.insert(0, retme.bones.pop(b1_index))
+    #     else:
+    #         # fix the idx_parent offset due to pop up there.
+    #         for index in range(4, len(retme.bones)):
+    #             retme.bones[index].parent_idx += 4
+
+    output_filename_pmx = input_filename_pmx[0:-4] + "_sourcetrans.pmx"
     pmxlib.write_pmx(output_filename_pmx, retme, moreinfo=moreinfo)
 
 
