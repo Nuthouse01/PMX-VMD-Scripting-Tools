@@ -36,6 +36,9 @@ Shift select them, move all of them to the top by tediously clicking the uparrow
 Merge similar bone by names through menu Edit (E), Bone (B), Merge bone with similar name (M).
 Finally, have "腰" as parent of "上半身" and "下半身" by clicking on those two bones and set parent to that singular bone.
 
+If don't see "IK" bones (red, needed for some motions), check out this tutorial to add it due to
+some issues with this script.
+
 Since this is not plug-and-play, your model weight and UV won't always work perfectly with the motions, try to
 move the bones around and merge unused bones to avoid animation glitches.
 '''
@@ -47,6 +50,8 @@ Will result in object/list error where struct does not pass on an object attribu
 
 * If run the same file again with this script, 
 `TypeError: 'PmxBoneIkLink' object is not subscriptable` will show up at that same line
+
+* IK Bones cannot be added with older ValveBip (bip_), UV/Weight will be glitched.
 '''
 
 # This takes PMX output from Crowbar
@@ -182,6 +187,7 @@ old_body_dict = {
     "bip_head": "頭"
 }
 
+
 # base order: 上半身, 下半身, 腰, グルーブ, センター, 全ての親
 # the rest of the work should be done in pmxeditor instead, jsut one click away
 
@@ -223,7 +229,6 @@ def main():
     last_leg_name_cmp_r: str = ""
     last_leg_name_cmp_l: str = ""
 
-    # the last `last_leg_item` method was not scalable, this one is
     r_l_index: int = 0
     r_k_index: int = 0
     r_a_index: int = 0
@@ -324,57 +329,62 @@ def main():
     # if name == "ValveBiped.Bip01_R_Toe0":
     #     retme.bones.insert(last_leg_item + 1, )
 
-    leg_left_ik_obj = pmxstruct.PmxBone(leg_left_ik_name, "", leg_left_ankle_pos, last_leg_item + 5, 0, False,
-                                        True, True, True, True, True,
-                                        False, [0.0, 0.0, 0.0], False, False, False,
-                                        False, False, None, None, None, None, None, None,
-                                        l_a_index, 85, 114.6149,
-                                        [[l_k_index, knee_limit_1, knee_limit_2],
-                                         [l_l_index, None, None]])
-    retme.bones.insert(last_leg_item + 1, leg_left_ik_obj)
-
-    leg_left_toe_ik_obj = pmxstruct.PmxBone(leg_left_toe_ik_name, "", leg_left_toe_pos, last_leg_item + 1, 0,
-                                            False,
+    if not is_old:
+        leg_left_ik_obj = pmxstruct.PmxBone(leg_left_ik_name, "", leg_left_ankle_pos, last_leg_item + 5, 0, False,
                                             True, True, True, True, True,
-                                            False, [0, 0, 0], False, False, False,
+                                            False, [0.0, 0.0, 0.0], False, False, False,
                                             False, False, None, None, None, None, None, None,
-                                            l_t_index, 160, 1, [[l_a_index, None, None]])
-    retme.bones.insert(last_leg_item + 2, leg_left_toe_ik_obj)
+                                            l_a_index, 40, 114.5916,
+                                            [[l_k_index, knee_limit_1, knee_limit_2],
+                                             [l_l_index, None, None]])
+        retme.bones.insert(last_leg_item + 1, leg_left_ik_obj)
 
-    leg_right_ik_obj = pmxstruct.PmxBone(leg_right_ik_name, "", leg_right_ankle_pos, last_leg_item + 5, 0,
-                                         False,
-                                         True, True, True, True, True,
-                                         False, [0.0, 0.0, 0.0], False, False, False,
-                                         False, False, None, None, None, None, None, None,
-                                         r_a_index, 85, 114.6149,
-                                         [[r_k_index, knee_limit_1, knee_limit_2],
-                                          [r_l_index, None, None]])
-    retme.bones.insert(last_leg_item + 3, leg_right_ik_obj)
+        leg_left_toe_ik_obj = pmxstruct.PmxBone(leg_left_toe_ik_name, "", leg_left_toe_pos, last_leg_item + 1, 0,
+                                                False,
+                                                True, True, True, True, True,
+                                                False, [0, 0, 0], False, False, False,
+                                                False, False, None, None, None, None, None, None,
+                                                l_t_index, 3, 229.1831, [[l_a_index, None, None]])
+        retme.bones.insert(last_leg_item + 2, leg_left_toe_ik_obj)
 
-    leg_right_toe_ik_obj = pmxstruct.PmxBone(leg_right_toe_ik_name, "", leg_right_toe_pos, last_leg_item + 3, 0,
+        leg_right_ik_obj = pmxstruct.PmxBone(leg_right_ik_name, "", leg_right_ankle_pos, last_leg_item + 5, 0,
                                              False,
                                              True, True, True, True, True,
-                                             False, [0, 0, 0], False, False, False,
+                                             False, [0.0, 0.0, 0.0], False, False, False,
                                              False, False, None, None, None, None, None, None,
-                                             r_t_index, 160, 1, [[r_a_index, None, None]])
-    retme.bones.insert(last_leg_item + 4, leg_right_toe_ik_obj)
+                                             r_a_index, 40, 114.5916,
+                                             [[r_k_index, knee_limit_1, knee_limit_2],
+                                              [r_l_index, None, None]])
+        retme.bones.insert(last_leg_item + 3, leg_right_ik_obj)
 
-    # base part
+        leg_right_toe_ik_obj = pmxstruct.PmxBone(leg_right_toe_ik_name, "", leg_right_toe_pos, last_leg_item + 3, 0,
+                                                 False,
+                                                 True, True, True, True, True,
+                                                 False, [0, 0, 0], False, False, False,
+                                                 False, False, None, None, None, None, None, None,
+                                                 r_t_index, 3, 229.1831, [[r_a_index, None, None]])
+        retme.bones.insert(last_leg_item + 4, leg_right_toe_ik_obj)
+
+    if is_old:
+        # no IK bones would be added if the model is an old ValveBip (bip_)
+        pass
+
+    # # base part
     b4_pos = [0, 0, 0]
 
     # for some reasons, if we pass value from pelvis_pos to b3_pos, pelvis_pos will change as well?
     b3_pos = [-4.999999873689376e-06, 21, -0.533614993095398]
     b2_pos = b3_pos
     b1_pos = [-4.999999873689376e-06, 32, -0.533614993095398]
-
-    # 全ての親, name_en, [0.0, 0.0, -0.4735046625137329], -1, 0, False,
-    # True, True, True, True,
-    # False, [0.0, 0.0, 0.0], False, False, None,
-    # None, False, None, False, None, None, False, None, False,
-    # None, None, None, None
-
-    # base order: 上半身, 下半身, 腰 (b_1), グルーブ, センター, 全ての親
-    # the parents would be fixed later
+    #
+    # # 全ての親, name_en, [0.0, 0.0, -0.4735046625137329], -1, 0, False,
+    # # True, True, True, True,
+    # # False, [0.0, 0.0, 0.0], False, False, None,
+    # # None, False, None, False, None, None, False, None, False,
+    # # None, None, None, None
+    #
+    # # base order: 上半身, 下半身, 腰 (b_1), グルーブ, センター, 全ての親
+    # # the parents would be fixed later
     b4_obj = pmxstruct.PmxBone(b4_name, "", b4_pos, -1, 0, False,
                                True, True, True, True, False,
                                False, [0, 0, 0], False, False, None,
