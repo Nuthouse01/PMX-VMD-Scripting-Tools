@@ -22,6 +22,21 @@ except ImportError as eee:
 		core = None
 
 
+############################################################################################
+######## IMPORTANT NOTES ###################################################################
+# pos = position = xyz
+# rot = rotation = xyz, degrees
+# there are NO quaternions in any of these structs, all rotations are XYZ degrees
+# all RGB or RGBA color stuff is floats [0.0-1.0] (below 0.0 or above 1.0 are both allowed tho, i just mean 0-255 == 0.0-1.0)
+# the "list" members are just for viewing/debugging
+# i STRONGLY suggest you use all keyword arguments when creating any of these objects, even if it makes things messy &
+#    ugly it also makes them unambiguous and clear at a glance
+# i also suggest you omit any "optional" or conditionally needed args that aren't relevant and let them default to
+#    None instead of explicitly setting them to None
+############################################################################################
+############################################################################################
+
+
 # this is an abstract base class that all the PMX classes inherit
 # this lets them all get the __str__ method and forces them all to implement list()
 # it also lets me detect any of them by isinstance(x, _BasePmx)
@@ -38,8 +53,10 @@ class PmxHeader(_BasePmx):
 	# [ver, name_jp, name_en, comment_jp, comment_en]
 	def __init__(self, 
 				 ver: float, 
-				 name_jp: str, name_en: str, 
-				 comment_jp: str, comment_en: str):
+				 name_jp: str,
+				 name_en: str,
+				 comment_jp: str,
+				 comment_en: str):
 		self.ver = ver
 		self.name_jp = name_jp
 		self.name_en = name_en
@@ -50,6 +67,7 @@ class PmxHeader(_BasePmx):
 
 
 class PmxVertex(_BasePmx):
+	# note: this block is the order of args in the old system, does not represent order of args in .list() member
 	# [posX, posY, posZ, normX, normY, normZ, u, v, addl_vec4s, weighttype, weights, edgescale]
 	def __init__(self,
 				 pos: List[float],
@@ -58,6 +76,7 @@ class PmxVertex(_BasePmx):
 				 edgescale: float,
 				 weighttype: int,
 				 weight: List[float],
+				 # optional/conditional
 				 weight_sdef: List[List[float]]=None,
 				 addl_vec4s: List[List[float]]=None,
 				 ):
@@ -65,7 +84,10 @@ class PmxVertex(_BasePmx):
 		assert len(norm) == 3
 		assert len(uv) == 2
 		if weighttype == 3 and weight_sdef is not None:
-			assert len(weight_sdef) == 3
+			# weight_sdef doesn't need to exist now, but because weighttype == 3 it DOES need to exist and be valid before write-time
+			assert len(weight_sdef) == 3  # 3 sublists,
+			for rc in weight_sdef:
+				assert len(rc) == 3  # each sublist is 3 floats
 		if addl_vec4s is None: addl_vec4s = []
 		for av in addl_vec4s:
 			assert len(av) == 4
@@ -130,6 +152,7 @@ class PmxMaterial(_BasePmx):
 		self.toon_mode = toon_mode
 		self.comment = comment
 		self.faces_ct = faces_ct
+		# this order is accurate
 		# flaglist = [no_backface_culling, cast_ground_shadow, cast_shadow, receive_shadow, use_edge, vertex_color,
 		# 			draw_as_points, draw_as_lines]
 		self.flaglist = flaglist
@@ -141,10 +164,15 @@ class PmxMaterial(_BasePmx):
 				]
 
 class PmxBoneIkLink(_BasePmx):
-	def __init__(self, idx: int, limit_min: List[float]=None, limit_max: List[float]=None):
-		if limit_min is not None:
+	# NOTE: to represent "no limits", the min and max should be None or omitted
+	def __init__(self,
+				 idx: int,
+				 # optional/conditional
+				 limit_min: List[float]=None,
+				 limit_max: List[float]=None,
+				 ):
+		if limit_min is not None or limit_max is not None: # either both should be present, or neither
 			assert len(limit_min) == 3
-		if limit_max is not None:
 			assert len(limit_max) == 3
 		self.idx = idx
 		self.limit_min = limit_min
@@ -153,6 +181,7 @@ class PmxBoneIkLink(_BasePmx):
 		return [self.idx, self.limit_min, self.limit_max]
 
 class PmxBone(_BasePmx):
+	# note: this block is the order of args in the old system, does not represent order of args in .list() member
 	# thisbone = [name_jp, name_en, posX, posY, posZ, parent_idx, deform_layer, deform_after_phys,  # 0-7
 	# 			rotateable, translateable, visible, enabled,  # 8-11
 	# 			tail_usebonelink, maybe_tail, inherit_rot, inherit_trans, maybe_inherit, fixed_axis, maybe_fixed_axis,  # 12-18
@@ -175,7 +204,7 @@ class PmxBone(_BasePmx):
 				 has_fixedaxis: bool,
 				 has_localaxis: bool,
 				 has_externalparent: bool,
-				 
+				 # optional/conditional
 				 inherit_parent_idx: int=None,
 				 inherit_ratio: float=None,
 				 fixedaxis: List[float]=None,
@@ -193,11 +222,15 @@ class PmxBone(_BasePmx):
 		else:
 			assert len(tail) == 3
 		if has_fixedaxis and fixedaxis is not None:
+			# fixedaxis doesn't need to exist now, but because has_fixedaxis == True it DOES need to exist and be valid before write-time
 			assert len(fixedaxis) == 3
-		if has_localaxis and localaxis_x is not None:
-			assert len(localaxis_x) == 3
-		if has_localaxis and localaxis_z is not None:
-			assert len(localaxis_z) == 3
+		if has_localaxis:
+			if localaxis_x is not None:
+				# localaxis_x doesn't need to exist now, but because has_localaxis == True it DOES need to exist and be valid before write-time
+				assert len(localaxis_x) == 3
+			if localaxis_z is not None:
+				# localaxis_z doesn't need to exist now, but because has_localaxis == True it DOES need to exist and be valid before write-time
+				assert len(localaxis_z) == 3
 		self.name_jp = name_jp
 		self.name_en = name_en
 		self.pos = pos
@@ -310,6 +343,7 @@ class PmxMorphItemMaterial(_BasePmx):
 		self.texRGBA = texRGBA
 		self.sphRGBA = sphRGBA
 		self.toonRGBA = toonRGBA
+		# note: this order of args matches the current .list() order, except that it's grouped into sublists
 		# (mat_idx, is_add, diffR, diffG, diffB, diffA, specR, specG, specB) = core.unpack(IDX_MAT+"b 4f 3f", raw)
 		# (specpower, ambR, ambG, ambB, edgeR, edgeG, edgeB, edgeA, edgesize) = core.unpack("f 3f 4f f", raw)
 		# (texR, texG, texB, texA, sphR, sphG, sphB, sphA, toonR, toonG, toonB, toonA) = core.unpack("4f 4f 4f", raw)
@@ -389,11 +423,13 @@ class PmxFrame(_BasePmx):
 		# "special" frames are root and facials. name/position cannot be edited in PMXE, but they're otherwise ordinary frames.
 		self.is_special = is_special
 		# each "item" in the list of items is [is_morph, idx]
+		# TODO: make simply "FrameItem" object just so it's objects all the way down
 		self.items = items
 	def list(self) -> list:
 		return [self.name_jp, self.name_en, self.is_special, self.items]
 		
 class PmxRigidBody(_BasePmx):
+	# note: this block is the order of args in the old system, does not represent order of args in .list() member
 	# thisbody = [name_jp, name_en, bone_idx, group, nocollide_mask, shape, sizeX, sizeY, sizeZ, posX, posY, posZ,
 	# 			rotX, rotY, rotZ, mass, move_damp, rot_damp, repel, friction, physmode]
 	def __init__(self, 
@@ -442,6 +478,7 @@ class PmxRigidBody(_BasePmx):
 
 
 class PmxJoint(_BasePmx):
+	# note: this block is the order of args in the old system, does not represent order of args in .list() member
 	# thisjoint = [name_jp, name_en, jointtype, rb1_idx, rb2_idx, posX, posY, posZ,
 	# 			 rotX, rotY, rotZ, posminX, posminY, posminZ, posmaxX, posmaxY, posmaxZ,
 	# 			 rotminX, rotminY, rotminZ, rotmaxX, rotmaxY, rotmaxZ,
@@ -492,6 +529,7 @@ class PmxSoftBody(_BasePmx):
 	# i don't plan to support v2.1 so I'm not gonna try to hard to understand the meaning of these data fields
 	# this is mostly to consume the data so there are no bytes left over when done parsing a file to trigger warnings
 	# note: this is also untested because i dont care about it lol
+	# note: this block is the order of args in the old system, does not represent order of args in .list() member
 	# thissoft = [name_jp, name_en, shape, idx_mat, group, nocollide_mask, flags,
 	# 			b_link_create_dist, num_clusters, total_mass, collision_marign, aerodynamics_model,
 	# 			vcf, dp, dg, lf, pr, vc, df, mt, rch, kch, sch, ah,
