@@ -574,6 +574,7 @@ words_dict = {
 "拡散": "spread",
 "拡": "spread",
 "基部": "base",
+"基礎": "base",  # more accurately "foundation" but this is shorter
 "基": "base",  # either group or base
 "錘": "weight",
 "操作": "control",  # more closely translates to "operation" but w/e
