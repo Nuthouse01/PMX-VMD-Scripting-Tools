@@ -1,20 +1,15 @@
-import os
 
 try:
     from . import nuthouse01_core as core
     from . import nuthouse01_pmx_parser as pmxlib
     from . import nuthouse01_pmx_struct as pmxstruct
-    from . import file_sort_textures
-    from ._prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
     from ._prune_unused_bones import insert_single_bone
 except ImportError as eee:
     try:
         import nuthouse01_core as core
         import nuthouse01_pmx_parser as pmxlib
         import nuthouse01_pmx_struct as pmxstruct
-        import file_sort_textures
         from _prune_unused_bones import insert_single_bone
-        from _prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
     except ImportError as eee:
         print(eee.__class__.__name__, eee)
         print(
@@ -22,8 +17,7 @@ except ImportError as eee:
         print("...press ENTER to exit...")
         input()
         exit()
-        core = pmxlib = pmxstruct = None
-        newval_from_range_map = delme_list_to_rangemap = None
+        core = pmxlib = pmxstruct = insert_single_bone = None
 
 helptext: str = '''=================================================
 This will translate your Source model bone names to Japanese and add all the necessary bones while at it.
@@ -121,15 +115,10 @@ body_dict = {
 # the rest of the work should be done in pmxeditor instead, jsut one click away
 
 
-def main():
+def main(moreinfo=True):
     # copied codes
     core.MY_PRINT_FUNC("Please enter name of PMX model file:")
     input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
-
-    moreinfo = False
-
-    input_filename_pmx_abs = os.path.normpath(os.path.abspath(input_filename_pmx))
-    startpath, input_filename_pmx_rel = os.path.split(input_filename_pmx_abs)
 
     # object
     pmx_file_obj: pmxstruct.Pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
@@ -138,20 +127,22 @@ def main():
     # only prefixes are changed along with order, thus there is a little bit scripting here to find the last leg
     big_dict: dict = {**body_dict, **leg_dict, **arm_dict, **finger_dict}
 
-    # The script will first create base bones (grooves, mother,...) then add and translate bone names later
+    #########################################################################
+    # stage 1: create & insert core/base bones (grooves, mother,...)
+    #########################################################################
 
     # base bone section
     # base order: 上半身, 下半身, 腰 (b_1), グルーブ, センター, 全ての親
-    base_bone_1_name = "腰"
-    base_bone_2_name = "グルーブ"
-    base_bone_3_name = "センター"
-    base_bone_4_name = "全ての親"
-
-    # # base part
+    base_bone_4_name = "全ての親"  # motherbone
+    base_bone_3_name = "センター"  # center
+    base_bone_2_name = "グルーブ"  # groove
+    base_bone_1_name = "腰"  # waist
+    
+    # note: Source models apparently have a much larger scale than MMD models
     base_bone_4_pos = [0, 0, 0]
-    base_bone_3_pos = [-4.999999873689376e-06, 21, -0.533614993095398]
+    base_bone_3_pos = [0, 21, -0.533614993095398]
     base_bone_2_pos = base_bone_3_pos
-    base_bone_1_pos = [-4.999999873689376e-06, 32, -0.533614993095398]
+    base_bone_1_pos = [0, 32, -0.533614993095398]
 
     # pelvis_pos = [-4.999999873689376e-06, 38.566917419433594, -0.533614993095398]
 
@@ -162,39 +153,41 @@ def main():
     # None, None, None, None
 
     # base order: 上半身, 下半身, 腰 (b_1), グルーブ, センター, 全ての親
-    base_bone_4_obj = pmxstruct.PmxBone(base_bone_4_name, "", base_bone_4_pos, -1, 0, False,
-                               True, True, True, True, False,
-                               False, [0, 0, 0], False, False, None,
-                               None, False, None, None, None, None, None, None,
-                               None, None, None, None
-                               )
+    base_bone_4_obj = pmxstruct.PmxBone(
+        name_jp=base_bone_4_name, name_en="", pos=base_bone_4_pos, parent_idx=-1, deform_layer=0,
+        deform_after_phys=False, has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
+        has_ik=False, tail_usebonelink=False, tail=[0, 0, 0], inherit_rot=False, inherit_trans=False,
+        has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
+    )
     insert_single_bone(pmx_file_obj, base_bone_4_obj, 0)
 
-    base_bone_3_obj = pmxstruct.PmxBone(base_bone_3_name, "", base_bone_3_pos, 0, 0, False,
-                               True, True, True, True, False,
-                               False, [0, 0, 0], False, False, None,
-                               None, False, None, None, None, None, None, None,
-                               None, None, None, None
-                               )
+    base_bone_3_obj = pmxstruct.PmxBone(
+        name_jp=base_bone_3_name, name_en="", pos=base_bone_3_pos, parent_idx=0, deform_layer=0,
+        deform_after_phys=False, has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
+        has_ik=False, tail_usebonelink=False, tail=[0, 0, 0], inherit_rot=False, inherit_trans=False,
+        has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
+    )
     insert_single_bone(pmx_file_obj, base_bone_3_obj, 1)
 
-    base_bone_2_obj = pmxstruct.PmxBone(base_bone_2_name, "", base_bone_2_pos, 1, 0, False,
-                               True, True, True, True, False,
-                               False, [0, 0, 0], False, False, None,
-                               None, False, None, None, None, None, None, None,
-                               None, None, None, None
-                               )
+    base_bone_2_obj = pmxstruct.PmxBone(
+        name_jp=base_bone_2_name, name_en="", pos=base_bone_2_pos, parent_idx=1, deform_layer=0,
+        deform_after_phys=False, has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
+        has_ik=False, tail_usebonelink=False, tail=[0, 0, 0], inherit_rot=False, inherit_trans=False,
+        has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
+    )
     insert_single_bone(pmx_file_obj, base_bone_2_obj, 2)
 
-    base_bone_1_obj = pmxstruct.PmxBone(base_bone_1_name, "", base_bone_1_pos, 2, 0, False,
-                               True, False, True, True, False,
-                               False, [0, 0, 0], False, False, None,
-                               None, False, None, None, None, None, None, None,
-                               None, None, None, None
-                               )
+    base_bone_1_obj = pmxstruct.PmxBone(
+        name_jp=base_bone_1_name, name_en="", pos=base_bone_1_pos, parent_idx=2, deform_layer=0,
+        deform_after_phys=False, has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
+        has_ik=False, tail_usebonelink=False, tail=[0, 0, 0], inherit_rot=False, inherit_trans=False,
+        has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
+    )
     insert_single_bone(pmx_file_obj, base_bone_1_obj, 3)
 
-    # IK bone section
+    #########################################################################
+    # phase 2: translate Source names to MMD names
+    #########################################################################
 
     # checking for last leg item so the code could be scalable
     last_leg_item: int
@@ -211,7 +204,7 @@ def main():
 
     last_leg_item_index: int = 0
 
-    for key, value in big_dict.items():
+    for mmd_name, source_possible_names in big_dict.items():
         for index, bone_object in enumerate(pmx_file_obj.bones):
             # usually, the toes are the last parts of the legs, from there, we can interject the IK bones
             # this also pass the current `index` into the assigned variable to store a bone's index
@@ -238,11 +231,15 @@ def main():
                 l_l_index = index
 
             # the part that replaces texts
-            if bone_object.name_jp in value:
-                pmx_file_obj.bones[index].name_jp = key
+            if bone_object.name_jp in source_possible_names:
+                pmx_file_obj.bones[index].name_jp = mmd_name
+    
+    #########################################################################
+    # phase 3: create & insert IK bones for leg/toe
+    #########################################################################
 
     # find the last leg item index
-    # last_leg_item_index = (r_t_index * (r_t_index > l_t_index)) + (l_t_index * (l_t_index > r_t_index)))
+    # when creating IK bones, want to insert the
     if r_t_index > l_t_index:
         last_leg_item_index = r_t_index
     else:
@@ -253,6 +250,7 @@ def main():
     leg_right_ik_name = "右足ＩＫ"
     leg_right_toe_ik_name = "右つま先ＩＫ"
 
+    # these limits in radians
     knee_limit_1 = [-3.1415927410125732, 0.0, 0.0]
     knee_limit_2 = [-0.008726646192371845, 0.0, 0.0]
 
@@ -282,44 +280,53 @@ def main():
     # 110, 85, 1.9896754026412964, [[109, [-3.1415927410125732, 0.0, 0.0], [-0.008726646192371845, 0.0, 0.0]]
     # /// These ik_links are in radians /// , [108, None, None]]
 
-    leg_left_ik_obj = pmxstruct.PmxBone(leg_left_ik_name, "", leg_left_ankle_pos, 0, 0, False,
-                                        True, True, True, True, True,
-                                        False, [0.0, 0.0, 0.0], False, False, False,
-                                        False, False, None, None, None, None, None, None,
-                                        l_a_index, 40, 114.5916,
-                                        [pmxstruct.PmxBoneIkLink(idx=l_k_index, limit_min=knee_limit_1, limit_max=knee_limit_2),
-                                         pmxstruct.PmxBoneIkLink(idx=l_l_index)])
+    leg_left_ik_obj = pmxstruct.PmxBone(
+        name_jp=leg_left_ik_name, name_en="", pos=leg_left_ankle_pos, parent_idx=0, deform_layer=0,
+        deform_after_phys=False, has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
+        has_ik=True, tail_usebonelink=False, tail=[0.0, 0.0, 0.0], inherit_rot=False, inherit_trans=False,
+        has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
+        ik_target_idx=l_a_index, ik_numloops=40, ik_angle=114.5916,
+        ik_links=[pmxstruct.PmxBoneIkLink(idx=l_k_index, limit_min=knee_limit_1, limit_max=knee_limit_2),
+                  pmxstruct.PmxBoneIkLink(idx=l_l_index)],
+    )
     insert_single_bone(pmx_file_obj, leg_left_ik_obj, last_leg_item_index + 1)
 
-    leg_left_toe_ik_obj = pmxstruct.PmxBone(leg_left_toe_ik_name, "", leg_left_toe_pos, last_leg_item_index + 1, 0,
-                                            False,
-                                            True, True, True, True, True,
-                                            False, [0, 0, 0], False, False, False,
-                                            False, False, None, None, None, None, None, None,
-                                            l_t_index, 3, 229.1831, [pmxstruct.PmxBoneIkLink(idx=l_a_index)])
+    leg_left_toe_ik_obj = pmxstruct.PmxBone(
+        name_jp=leg_left_toe_ik_name, name_en="", pos=leg_left_toe_pos, parent_idx=last_leg_item_index + 1, deform_layer=0,
+        deform_after_phys=False, has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
+        has_ik=True, tail_usebonelink=False, tail=[0.0, 0.0, 0.0], inherit_rot=False, inherit_trans=False,
+        has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
+        ik_target_idx=l_t_index, ik_numloops=3, ik_angle=229.1831,
+        ik_links=[pmxstruct.PmxBoneIkLink(idx=l_a_index)],
+    )
     insert_single_bone(pmx_file_obj, leg_left_toe_ik_obj, last_leg_item_index + 2)
 
-    leg_right_ik_obj = pmxstruct.PmxBone(leg_right_ik_name, "", leg_right_ankle_pos, 0, 0,
-                                         False,
-                                         True, True, True, True, True,
-                                         False, [0.0, 0.0, 0.0], False, False, False,
-                                         False, False, None, None, None, None, None, None,
-                                         r_a_index, 40, 114.5916,
-                                         [pmxstruct.PmxBoneIkLink(idx=r_k_index, limit_min=knee_limit_1, limit_max=knee_limit_2),
-                                          pmxstruct.PmxBoneIkLink(idx=r_l_index)])
+    leg_right_ik_obj = pmxstruct.PmxBone(
+        name_jp=leg_right_ik_name, name_en="", pos=leg_right_ankle_pos, parent_idx=0, deform_layer=0,
+        deform_after_phys=False, has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
+        has_ik=True, tail_usebonelink=False, tail=[0.0, 0.0, 0.0], inherit_rot=False, inherit_trans=False,
+        has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
+        ik_target_idx=r_a_index, ik_numloops=40, ik_angle=114.5916,
+        ik_links=[pmxstruct.PmxBoneIkLink(idx=r_k_index, limit_min=knee_limit_1, limit_max=knee_limit_2),
+                  pmxstruct.PmxBoneIkLink(idx=r_l_index)],
+    )
     insert_single_bone(pmx_file_obj, leg_right_ik_obj, last_leg_item_index + 3)
 
-    leg_right_toe_ik_obj = pmxstruct.PmxBone(leg_right_toe_ik_name, "", leg_right_toe_pos, last_leg_item_index + 3, 0,
-                                             False,
-                                             True, True, True, True, True,
-                                             False, [0, 0, 0], False, False, False,
-                                             False, False, None, None, None, None, None, None,
-                                             r_t_index, 3, 229.1831, [pmxstruct.PmxBoneIkLink(idx=r_a_index)])
+    leg_right_toe_ik_obj = pmxstruct.PmxBone(
+        name_jp=leg_right_toe_ik_name, name_en="", pos=leg_right_toe_pos, parent_idx=last_leg_item_index + 3, deform_layer=0,
+        deform_after_phys=False, has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
+        has_ik=True, tail_usebonelink=False, tail=[0.0, 0.0, 0.0], inherit_rot=False, inherit_trans=False,
+        has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
+        ik_target_idx=r_t_index, ik_numloops=3, ik_angle=229.1831,
+        ik_links=[pmxstruct.PmxBoneIkLink(idx=r_a_index)],
+    )
     insert_single_bone(pmx_file_obj, leg_right_toe_ik_obj, last_leg_item_index + 4)
 
     # output the file
     output_filename_pmx = input_filename_pmx[0:-4] + "_sourcetrans.pmx"
     pmxlib.write_pmx(output_filename_pmx, pmx_file_obj, moreinfo=moreinfo)
+    core.MY_PRINT_FUNC("Done!")
+    return None
 
 
 if __name__ == "__main__":
