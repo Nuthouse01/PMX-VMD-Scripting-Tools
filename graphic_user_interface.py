@@ -32,6 +32,7 @@ try:
 	from python import morph_scale
 	from python import make_ik_from_vmd
 	from python import pmx_list_bone_morph_names
+	from python import translate_source_bone
 	from python import vmd_armtwist_insert
 except ImportError as eee:
 	print(eee.__class__.__name__, eee)
@@ -42,7 +43,7 @@ except ImportError as eee:
 	convert_vmd_to_txt = model_overall_cleanup = file_sort_textures = check_model_compatibility = None
 	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = bone_armik_addremove = None
 	core = morph_invert = morph_hide = morph_scale = file_translate_names = convert_vpd_to_vmd = None
-	model_shift = model_scale = bone_endpoint_addremove = None
+	model_shift = model_scale = bone_endpoint_addremove = translate_source_bone = None
 
 ########################################################################################################################
 # constants & options
@@ -67,6 +68,7 @@ all_script_list = [
 	("model_scale.py",                   model_scale.helptext,                   model_scale.main),
 	("convert_vmd_to_txt.py",            convert_vmd_to_txt.helptext,            convert_vmd_to_txt.main),
 	("convert_vpd_to_vmd.py",            convert_vpd_to_vmd.helptext,            convert_vpd_to_vmd.main),
+	("translate_source_bone.py",         translate_source_bone.helptext,         translate_source_bone.main),
 	("bone_armik_addremove.py",          bone_armik_addremove.helptext,          bone_armik_addremove.main),
 	("bone_endpoint_addremove.py",       bone_endpoint_addremove.helptext,       bone_endpoint_addremove.main),
 	("make_ik_from_vmd.py",              make_ik_from_vmd.helptext,              make_ik_from_vmd.main),
