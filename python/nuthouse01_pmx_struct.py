@@ -25,7 +25,7 @@ except ImportError as eee:
 ############################################################################################
 ######## IMPORTANT NOTES ###################################################################
 # pos = position = xyz
-# there are NO quaternions in any of these structs, all rotations are XYZ, some degrees some radians
+# there are NO quaternions in any of these structs, all angles are XYZ degrees
 # all RGB or RGBA color stuff is floats [0.0-1.0] (below 0.0 or above 1.0 are both allowed tho, i just mean 0-255 == 0.0-1.0)
 # the "list" members are just for viewing/debugging
 # i STRONGLY suggest you use all keyword arguments when creating any of these objects, even if it makes things messy &
@@ -167,8 +167,8 @@ class PmxBoneIkLink(_BasePmx):
 	def __init__(self,
 				 idx: int,
 				 # optional/conditional
-				 limit_min: List[float]=None,  # RADIANS
-				 limit_max: List[float]=None,  # RADIANS
+				 limit_min: List[float]=None,
+				 limit_max: List[float]=None,
 				 ):
 		if limit_min is not None or limit_max is not None: # either both should be present, or neither
 			assert len(limit_min) == 3
@@ -212,7 +212,7 @@ class PmxBone(_BasePmx):
 				 externalparent: int=None,
 				 ik_target_idx: int=None,
 				 ik_numloops: int=None,
-				 ik_angle: float=None,  # no goddamn clue what units this uses, "114.5916" in PMXE => 2.0 here
+				 ik_angle: float=None,
 				 ik_links: List[PmxBoneIkLink]=None,
 				 ):
 		assert len(pos) == 3
@@ -454,7 +454,7 @@ class PmxRigidBody(_BasePmx):
 		self.name_en = name_en
 		self.bone_idx = bone_idx
 		self.pos = pos
-		self.rot = rot  # RADIANS
+		self.rot = rot
 		self.size = size
 		# shape: 0=sphere, 1=box, 2=capsule
 		self.shape = shape
@@ -486,12 +486,12 @@ class PmxJoint(_BasePmx):
 				 name_jp: str, name_en: str,
 				 jointtype: int, rb1_idx: int, rb2_idx: int,
 				 pos: List[float],
-				 rot: List[float],  # RADIANS
+				 rot: List[float],
 				 movemin: List[float],
 				 movemax: List[float],
 				 movespring: List[float],
-				 rotmin: List[float],  # RADIANS
-				 rotmax: List[float],  # RADIANS
+				 rotmin: List[float],
+				 rotmax: List[float],
 				 rotspring: List[float],
 				 ):
 		assert len(pos) == 3

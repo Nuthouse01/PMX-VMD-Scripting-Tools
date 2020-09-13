@@ -10,6 +10,7 @@
 # this file fully parses a PMX file and returns all of the data it contained, structured as a list of lists
 # first, system imports
 from typing import List
+import math
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -269,7 +270,7 @@ def parse_pmx_bones(raw: bytearray) -> List[pmxstruct.PmxBone]:
 	for d in range(i):
 		(name_jp, name_en, posX, posY, posZ, parent_idx, deform_layer, flags1, flags2) = core.my_unpack("t t 3f" + IDX_BONE + "i 2B", raw)
 		# print(name_jp, name_en)
-		tail_usebonelink =              bool(flags1 & (1<<0))
+		tail_usebonelink =       bool(flags1 & (1<<0))
 		rotateable =             bool(flags1 & (1<<1))
 		translateable =          bool(flags1 & (1<<2))
 		visible =                bool(flags1 & (1<<3))
@@ -304,14 +305,17 @@ def parse_pmx_bones(raw: bytearray) -> List[pmxstruct.PmxBone]:
 			external_parent = core.my_unpack("i", raw)
 		if ik:
 			(ik_target, ik_loops, ik_anglelimit, num_ik_links) = core.my_unpack(IDX_BONE + "i f i", raw)
+			# note: ik angle comes in as radians, i want to represent it as degrees
+			ik_anglelimit = math.degrees(ik_anglelimit)
 			ik_links = []
 			for z in range(num_ik_links):
 				(ik_link_idx, use_link_limits) = core.my_unpack(IDX_BONE + "b", raw)
 				if use_link_limits:
 					(minX, minY, minZ, maxX, maxY, maxZ) = core.my_unpack("3f 3f", raw)
+					# note: these vals come in as XYZXYZ radians! must convert to degrees
 					link = pmxstruct.PmxBoneIkLink(idx=ik_link_idx,
-												   limit_min=[minX, minY, minZ],
-												   limit_max=[maxX, maxY, maxZ])
+												   limit_min=[math.degrees(minX), math.degrees(minY), math.degrees(minZ)],
+												   limit_max=[math.degrees(maxX), math.degrees(maxY), math.degrees(maxZ)])
 				else:
 					link = pmxstruct.PmxBoneIkLink(idx=ik_link_idx)
 				ik_links.append(link)
@@ -447,11 +451,14 @@ def parse_pmx_rigidbodies(raw: bytearray) -> List[pmxstruct.PmxRigidBody]:
 		(mass, move_damp, rot_damp, repel, friction, physmode) = core.my_unpack("5f b", raw)
 		# physmode: 0=follow bone, 1=physics, 2=physics rotate only (pivot on bone)
 		
+		# note: rotation comes in as XYZ radians, must convert to degrees for my struct
+		rot = [math.degrees(rotX), math.degrees(rotY), math.degrees(rotZ)]
+		
 		# display progress printouts
 		core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
 		# assemble the data into struct for returning
 		thisbody = pmxstruct.PmxRigidBody(name_jp=name_jp, name_en=name_en, bone_idx=bone_idx,
-			pos=[posX, posY, posZ], rot=[rotX, rotY, rotZ], size=[sizeX, sizeY, sizeZ], shape=shape, group=group,
+			pos=[posX, posY, posZ], rot=rot, size=[sizeX, sizeY, sizeZ], shape=shape, group=group,
 			nocollide_mask=nocollide_mask, phys_mode=physmode, phys_mass=mass, phys_move_damp=move_damp,
 			phys_rot_damp=rot_damp, phys_repel=repel, phys_friction=friction
 		)
@@ -470,15 +477,20 @@ def parse_pmx_joints(raw: bytearray) -> List[pmxstruct.PmxJoint]:
 		(rotX, rotY, rotZ, posminX, posminY, posminZ, posmaxX, posmaxY, posmaxZ) = core.my_unpack("3f 3f 3f", raw)
 		(rotminX, rotminY, rotminZ, rotmaxX, rotmaxY, rotmaxZ) = core.my_unpack("3f 3f", raw)
 		(springposX, springposY, springposZ, springrotX, springrotY, springrotZ) = core.my_unpack("3f 3f", raw)
-
+		
+		# note: rot/rotmin/rotmax all come in as XYZ radians, must convert to degrees for my struct
+		rot = [math.degrees(rotX), math.degrees(rotY), math.degrees(rotZ)]
+		rotmin = [math.degrees(rotminX), math.degrees(rotminY), math.degrees(rotminZ)]
+		rotmax = [math.degrees(rotmaxX), math.degrees(rotmaxY), math.degrees(rotmaxZ)]
+		
 		# display progress printouts
 		core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
 		# assemble the data into list for returning
 		thisjoint = pmxstruct.PmxJoint(name_jp=name_jp, name_en=name_en, jointtype=jointtype,
-			rb1_idx=rb1_idx, rb2_idx=rb2_idx, pos=[posX, posY, posZ], rot=[rotX, rotY, rotZ],
+			rb1_idx=rb1_idx, rb2_idx=rb2_idx, pos=[posX, posY, posZ], rot=rot,
 			movemin=[posminX, posminY, posminZ], movemax=[posmaxX, posmaxY, posmaxZ],
-			movespring=[springposX, springposY, springposZ], rotmin=[rotminX, rotminY, rotminZ],
-			rotmax=[rotmaxX, rotmaxY, rotmaxZ], rotspring=[springrotX, springrotY, springrotZ]
+			movespring=[springposX, springposY, springposZ], rotmin=rotmin,
+			rotmax=rotmax, rotspring=[springrotX, springrotY, springrotZ]
 			)
 		retme.append(thisjoint)
 	return retme
@@ -738,11 +750,19 @@ def encode_pmx_bones(nice: List[pmxstruct.PmxBone]) -> bytearray:
 		
 		if bone.has_ik:  # ik:
 			# (ik_target, ik_loops, ik_anglelimit, ik_numlinks)
-			out += core.my_pack(fmt_bone_ik, [bone.ik_target_idx, bone.ik_numloops, bone.ik_angle, len(bone.ik_links)])
-
+			# note: my struct holds ik_angle as degrees, file spec holds it as radians
+			out += core.my_pack(fmt_bone_ik, [bone.ik_target_idx, bone.ik_numloops,
+											  math.radians(bone.ik_angle), len(bone.ik_links)])
 			for iklink in bone.ik_links:
-				if iklink.limit_min and iklink.limit_max:  # bool(list) means "is the list non-empty and also not None"
-					out += core.my_pack(fmt_bone_ik_linkB, [iklink.idx, True, *iklink.limit_min, *iklink.limit_max])
+				# bool(list) means "is the list non-empty and also not None"
+				if iklink.limit_min and iklink.limit_max:
+					# note: my struct holds limit_min/max as degrees, file spec holds it as radians
+					limitminmax = []
+					for lim in iklink.limit_min:
+						limitminmax.append(math.radians(lim))
+					for lim in iklink.limit_max:
+						limitminmax.append(math.radians(lim))
+					out += core.my_pack(fmt_bone_ik_linkB, [iklink.idx, True, *limitminmax])
 				else:
 					out += core.my_pack(fmt_bone_ik_linkA, [iklink.idx, False])
 	return out
@@ -824,7 +844,10 @@ def encode_pmx_rigidbodies(nice: List[pmxstruct.PmxRigidBody]) -> bytearray:
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of rigidbodies      =", i)
 	fmt_rbody = "t t %s b H b 3f 3f 3f 5f b" % IDX_BONE
 	for d, b in enumerate(nice):
-		packme = [b.name_jp, b.name_en, b.bone_idx, b.group, b.nocollide_mask, b.shape, *b.size, *b.pos, *b.rot,
+		# note: my struct holds rotation as XYZ degrees, must convert to radians for file
+		rot = [math.radians(r) for r in b.rot]
+		
+		packme = [b.name_jp, b.name_en, b.bone_idx, b.group, b.nocollide_mask, b.shape, *b.size, *b.pos, *rot,
 				  b.phys_mass, b.phys_move_damp, b.phys_rot_damp, b.phys_repel, b.phys_friction, b.phys_mode]
 		out += core.my_pack(fmt_rbody, packme)
 	
@@ -837,8 +860,13 @@ def encode_pmx_joints(nice: List[pmxstruct.PmxJoint]) -> bytearray:
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of joints           =", i)
 	fmt_joint = "t t b 2%s 3f 3f 3f 3f 3f 3f 3f 3f" % IDX_RB
 	for d, j in enumerate(nice):
-		packme = [j.name_jp, j.name_en, j.jointtype, j.rb1_idx, j.rb2_idx, *j.pos, *j.rot, *j.movemin,
-				  *j.movemax, *j.rotmin, *j.rotmax, *j.movespring, *j.rotspring]
+		# note: my struct holds rot/rotmin/rotmax as XYZ degrees, must convert to radians for file
+		rot = [math.radians(r) for r in j.rot]
+		rotmin = [math.radians(r) for r in j.rotmin]
+		rotmax = [math.radians(r) for r in j.rotmax]
+		
+		packme = [j.name_jp, j.name_en, j.jointtype, j.rb1_idx, j.rb2_idx, *j.pos, *rot, *j.movemin,
+				  *j.movemax, *rotmin, *rotmax, *j.movespring, *j.rotspring]
 		out += core.my_pack(fmt_joint, packme)
 	return out
 

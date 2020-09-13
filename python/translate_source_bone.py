@@ -249,14 +249,14 @@ def main(moreinfo=True):
     leg_right_ik_name = "右足ＩＫ"
     leg_right_toe_ik_name = "右つま先ＩＫ"
 
-    # these limits in radians
-    knee_limit_1 = [-3.1415927410125732, 0.0, 0.0]
-    knee_limit_2 = [-0.008726646192371845, 0.0, 0.0]
+    # these limits in degrees
+    knee_limit_1 = [-180, 0.0, 0.0]
+    knee_limit_2 = [-0.5, 0.0, 0.0]
     # other parameters
     ik_loops = 40
-    ik_toe_loops = 3
-    ik_angle = 114.5916
-    ik_toe_angle = 229.1831
+    ik_toe_loops = 8
+    ik_angle = 114.5916  # degrees, =2 radians
+    ik_toe_angle = 229.1831  # degrees, =4 radians
 
     # adding IK and such
     leg_left_ankle_obj = pmx_file_obj.bones[l_a_index]
