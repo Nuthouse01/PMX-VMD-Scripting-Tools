@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README
-Created by Nuthouse01 - 08/24/2020 - v5.00
+Created by Nuthouse01 - 09/13/2020 - v5.01
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!
 

@@ -1,4 +1,4 @@
-# Nuthouse01 - 08/24/2020 - v5.00
+# Nuthouse01 - 09/13/2020 - v5.01
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -636,7 +636,7 @@ class Pmx(_BasePmx):
 
 		
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 08/24/2020 - v5.00")
+	core.MY_PRINT_FUNC("Nuthouse01 - 09/13/2020 - v5.01")
 	core.pause_and_quit("you are not supposed to directly run this file haha")
 
 
