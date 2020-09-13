@@ -216,6 +216,12 @@ The following files should be included with this README:
 
 #### Changelog: 
     
+    v5.01:
+    NEW: "translate_source_bone.py" for translating SFM names to MMD names
+        added by "khanghugo"
+    bugfix: converted all angles in PMX structs to always use degrees, not radians
+    add 3 more useful scripts to "handy tools"
+    
     v5.00:
     more words, always more words, so many words, words words words words
     add new PMX structs so everything uses named fields & becomes more readable
