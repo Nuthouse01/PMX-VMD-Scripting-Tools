@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README
-Created by Nuthouse01 - 08/24/2020 - v5.00
+Created by Nuthouse01 - 09/13/2020 - v5.01
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!
 
@@ -215,6 +215,12 @@ The following files should be included with this README:
 * img/screenshot1.png
 
 #### Changelog:
+
+    v5.01:
+    NEW: "translate_source_bone.py" for translating SFM names to MMD names
+        added by "khanghugo"
+    bugfix: converted all angles in PMX structs to always use degrees, not radians
+    add 3 more useful scripts to "handy tools"
 
     v5.00:
     more words, always more words, so many words, words words words words

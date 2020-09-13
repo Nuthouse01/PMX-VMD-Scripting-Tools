@@ -1,4 +1,4 @@
-# Nuthouse01 - 08/24/2020 - v5.00
+# Nuthouse01 - 09/13/2020 - v5.01
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -92,6 +92,53 @@ def showprompt():
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=True)
 	return pmx, input_filename_pmx
 	
+	
+	
+def insert_single_bone(pmx: pmxstruct.Pmx, newbone: pmxstruct.PmxBone, newindex: int):
+	"""
+	Wrapper function to make inserting bones simpler.
+	(!) No existing bones should refer to this bone before it is inserted. (!) When constructing newbone, it should
+	refer to already-existing bones by using their indices BEFORE this insert happens. (!) If you want to refer to
+	bones that haven't yet been created, too bad, come back and modify it after all insertions are done.
+	
+	:param pmx: PMX object
+	:param newbone: PMX Bone object to be inserted
+	:param newindex: position to insert it
+	"""
+	if newindex > len(pmx.bones) or newindex < 0:
+		raise ValueError("invalid index %d for inserting bone, current bonelist len= %d" % (newindex, len(pmx.bones)))
+	elif newindex == len(pmx.bones):
+		pmx.bones.append(newbone)
+	else:
+		# insert the bone at the new location
+		pmx.bones.insert(newindex, newbone)
+		# create the shiftmap for inserting things
+		bone_shiftmap = ([newindex], [-1])
+		# apply the shiftmap
+		# this also changes any references inside newbone to refer to the correct indices after the insertion
+		apply_bone_remapping(pmx, [], bone_shiftmap)
+	return
+	
+
+def delete_multiple_bones(pmx: pmxstruct.Pmx, bone_dellist: List[int]):
+	"""
+	Wrapper function to make deleting bones simpler.
+	
+	:param pmx: PMX object
+	:param bone_dellist: list of bone indices to delete
+	"""
+	# force it to be sorted, just to be safe
+	bone_dellist2 = sorted(bone_dellist)
+	# build the rangemap to determine how index references will be modified from this deletion
+	bone_shiftmap = delme_list_to_rangemap(bone_dellist2)
+	# acutally delete the bones
+	for f in reversed(bone_dellist):
+		pmx.bones.pop(f)
+	# apply remapping scheme to all remaining bones
+	apply_bone_remapping(pmx, bone_dellist2, bone_shiftmap)
+	return
+
+
 
 def identify_unused_bones(pmx: pmxstruct.Pmx, moreinfo: bool) -> List[int]:
 	"""
@@ -203,7 +250,7 @@ def identify_unused_bones(pmx: pmxstruct.Pmx, moreinfo: bool) -> List[int]:
 	for bidx in parent_used_bones:
 		b = pmx.bones[bidx]
 		# if this bone has a tail,
-		if b.tail_type:
+		if b.tail_usebonelink:
 			# add it and anything it depends on to the set.
 			recursive_climb_inherit_tree(b.tail, final_used_bones)
 	# now merge the two sets
@@ -240,13 +287,10 @@ def apply_bone_remapping(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shift
 	References include: vertex weight, bone morph, display frame, rigidbody anchor, bone tail, bone partial inherit,
 	bone IK target, bone IK link.
 	
-	:param pmx: PMX list-of-lists object
+	:param pmx: PMX object
 	:param bone_dellist: list of bone indices to delete
 	:param bone_shiftmap: created by delme_list_to_rangemap() before calling
 	"""
-	# acutally delete the bones
-	for f in reversed(bone_dellist):
-		pmx.bones.pop(f)
 	
 	core.print_progress_oneline(0 / 5)
 	# VERTICES:
@@ -324,10 +368,10 @@ def apply_bone_remapping(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shift
 	# BONES: point-at target, true parent, external parent, partial append, ik stuff
 	for d, bone in enumerate(pmx.bones):
 		# point-at link:
-		if bone.tail_type:
+		if bone.tail_usebonelink:
 			if core.binary_search_isin(bone.tail, bone_dellist):
 				# if pointing at a bone that will be deleted, instead change to offset with offset 0,0,0
-				bone.tail_type = False
+				bone.tail_usebonelink = False
 				bone.tail = [0, 0, 0]
 			else:
 				# otherwise, remap
@@ -362,16 +406,16 @@ def prune_unused_bones(pmx: pmxstruct.Pmx, moreinfo=False):
 		core.MY_PRINT_FUNC("No changes are required")
 		return pmx, False
 	
-	# convert the list of individual bones to remove into a list of ranges
-	delme_rangemap = delme_list_to_rangemap(unused_list)
 	if moreinfo:
+		# convert the list of individual bones to remove into a list of ranges
+		delme_rangemap = delme_list_to_rangemap(unused_list)
 		core.MY_PRINT_FUNC("Detected %d unused bones arranged in %d contiguous blocks" % (len(unused_list), len(delme_rangemap[0])))
 		for d in unused_list:
 			core.MY_PRINT_FUNC("bone #{:<3} JP='{}' / EN='{}'".format(
 				d, pmx.bones[d].name_jp, pmx.bones[d].name_en))
 	
 	num_bones_before = len(pmx.bones)
-	apply_bone_remapping(pmx, unused_list, delme_rangemap)
+	delete_multiple_bones(pmx, unused_list)
 	
 	# print("Done deleting unused bones")
 	core.MY_PRINT_FUNC("Found and deleted {} / {} = {:.1%} unused bones".format(
@@ -399,7 +443,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 08/24/2020 - v5.00")
+	core.MY_PRINT_FUNC("Nuthouse01 - 09/13/2020 - v5.01")
 	if DEBUG:
 		main()
 	else:

@@ -1,4 +1,4 @@
-# Nuthouse01 - 08/24/2020 - v5.00
+# Nuthouse01 - 09/13/2020 - v5.01
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -67,7 +67,7 @@ def main(moreinfo=True):
 		core.MY_PRINT_FUNC("Found bone #{}: '{}' / '{}'".format(
 			target_index, target_bone.name_jp, target_bone.name_en))
 		
-		if target_bone.tail_type:
+		if target_bone.tail_usebonelink:
 			core.MY_PRINT_FUNC("Was tailmode 'bonelink', changing to mode 'offset'")
 			if target_bone.tail == -1:
 				core.MY_PRINT_FUNC("Error: bone is not linked to anything, skipping")
@@ -77,7 +77,7 @@ def main(moreinfo=True):
 			# determine the equivalent offset vector
 			offset = [endpos[i] - target_bone.pos[i] for i in range(3)]
 			# write it into the bone
-			target_bone.tail_type = False
+			target_bone.tail_usebonelink = False
 			target_bone.tail = offset
 			# done unlinking endpoint!
 			pass
@@ -95,10 +95,10 @@ def main(moreinfo=True):
 				pos=endpos, parent_idx=target_index, deform_layer=target_bone.deform_layer,
 				deform_after_phys=target_bone.deform_after_phys, has_rotate=False, has_translate=False,
 				has_visible=False, has_enabled=True, has_ik=False, has_localaxis=False, has_fixedaxis=False,
-				has_externalparent=False, inherit_rot=False, inherit_trans=False, tail_type=True, tail=-1
+				has_externalparent=False, inherit_rot=False, inherit_trans=False, tail_usebonelink=True, tail=-1
 			)
 			# set the target to point at the new bone
-			target_bone.tail_type = True
+			target_bone.tail_usebonelink = True
 			target_bone.tail = len(pmx.bones)
 			# append the new bone
 			pmx.bones.append(newbone)
@@ -123,7 +123,7 @@ def main(moreinfo=True):
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 08/24/2020 - v5.00")
+	print("Nuthouse01 - 09/13/2020 - v5.01")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

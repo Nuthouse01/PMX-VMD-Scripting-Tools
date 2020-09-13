@@ -1,4 +1,4 @@
-# Nuthouse01 - 08/24/2020 - v5.00
+# Nuthouse01 - 09/13/2020 - v5.01
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -191,7 +191,7 @@ def dispframe_fix(pmx: pmxstruct.Pmx, moreinfo=False):
 		newframelist = [[1, x] for x in undisplayed_morphs]
 		# find morphs group and only add to it
 		# should ALWAYS be at index 1 but whatever might as well be extra safe
-		idx = core.my_list_search(pmx.frames, lambda x: (x.name_jp == "表情" and x.name_en == "Exp" and x.is_special))
+		idx = core.my_list_search(pmx.frames, lambda x: (x.name_jp == "表情" and x.is_special))
 		if idx is not None:
 			# concatenate to end of item list
 			pmx.frames[idx].items += newframelist
@@ -257,7 +257,7 @@ def main():
 	core.pause_and_quit("Done with everything! Goodbye!")
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 08/24/2020 - v5.00")
+	core.MY_PRINT_FUNC("Nuthouse01 - 09/13/2020 - v5.01")
 	if DEBUG:
 		main()
 	else:

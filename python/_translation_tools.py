@@ -426,7 +426,7 @@ words_dict = {
 "ブロック": "block", # literally burroku, not sure why he picked this name
 "花": "flower",
 "鳥": "bird",
-"弓": "bow",  # as in bowtie not as in bending at the waist
+"弓": "bow",  # as archery bow not as in bending at the waist
 "その他": "other",
 "他": "other",
 "ハイライト": "highlight",
@@ -574,6 +574,7 @@ words_dict = {
 "拡散": "spread",
 "拡": "spread",
 "基部": "base",
+"基礎": "base",  # more accurately "foundation" but this is shorter
 "基": "base",  # either group or base
 "錘": "weight",
 "操作": "control",  # more closely translates to "operation" but w/e
@@ -738,6 +739,14 @@ odd_punctuation_dict = {
 "』": '"', # x300f
 "【": "[",  # x3010
 "】": "]",  # x3011
+"〔": "[",  # x3014
+"〕": "]",  # x3015
+"〖": "[",  # x3016
+"〗": "]",  # x3017
+"〘": "[",  # x3018
+"〙": "]",  # x3019
+"〚": "[",  # x301a
+"〛": "]",  # x301b
 "・": "-",  # x30fb, could map to 00B7 but i don't think MMD would display that either
 "〜": "~",  # x301C wave dash, not a "fullwidth tilde"
 "～": "~",  # xff5e "fullwidth tilde" causes some issues
@@ -1043,6 +1052,6 @@ def local_translate(in_list: STR_OR_STRLIST) -> STR_OR_STRLIST:
 # 		numpass, numtotal, numpass / numtotal))
 #
 # if __name__ == '__main__':
-# 	core.MY_PRINT_FUNC("Nuthouse01 - 08/24/2020 - v5.00")
+# 	core.MY_PRINT_FUNC("Nuthouse01 - 09/13/2020 - v5.01")
 # 	main()
 #
