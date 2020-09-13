@@ -19,26 +19,27 @@ except ImportError as eee:
         exit()
         core = pmxlib = pmxstruct = insert_single_bone = None
 
-helptext: str = '''=================================================
+helptext = '''=================================================
 This will translate your Source model bone names to Japanese and add all the necessary bones while at it.
 '''
 
-caution_message: str = '''
+caution_message = '''
 This will not 100% make your model work as intended.
 '''
 
-instructions: str = '''
+instructions = '''
 This is not a a full plug-and-play script. You still need to work a little to finalize your model.
 
 After you are done with the script, open `yourfilename_sourcetrans.pmx`, merge similar bone by names through
 menu Edit (E), Bone (B), Merge bone with similar name (M).
-Finally, have "腰" as parent of "上半身" and "下半身" by clicking on those two bones and set parent to that singular bone.
+
+The model may need to be scaled down somewhat (see 'model_scale.py') and the core/base bones might need to be repositioned.
 
 Since this is not plug-and-play, your model weight and UV won't always work perfectly with the motions, try to
 move the bones around, merge unused bones, and change the pose to avoid animation glitches.
 '''
 
-known_issues: str = '''
+known_issues = '''
 * Positions of your base bones will varied depends on whether your model is generic or a little bit less generic. 
 You should move the base bones like "腰" and "グルーブ" if it is really needed since most of the time they are just there
 '''
@@ -156,7 +157,7 @@ def main(moreinfo=True):
     base_bone_4_obj = pmxstruct.PmxBone(
         name_jp=base_bone_4_name, name_en="", pos=base_bone_4_pos, parent_idx=-1, deform_layer=0,
         deform_after_phys=False, has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
-        has_ik=False, tail_usebonelink=False, tail=[0, 0, 0], inherit_rot=False, inherit_trans=False,
+        has_ik=False, tail_usebonelink=False, tail=[0, 3, 0], inherit_rot=False, inherit_trans=False,
         has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
     )
     insert_single_bone(pmx_file_obj, base_bone_4_obj, 0)
@@ -164,7 +165,7 @@ def main(moreinfo=True):
     base_bone_3_obj = pmxstruct.PmxBone(
         name_jp=base_bone_3_name, name_en="", pos=base_bone_3_pos, parent_idx=0, deform_layer=0,
         deform_after_phys=False, has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
-        has_ik=False, tail_usebonelink=False, tail=[0, 0, 0], inherit_rot=False, inherit_trans=False,
+        has_ik=False, tail_usebonelink=False, tail=[0, -3, 0], inherit_rot=False, inherit_trans=False,
         has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
     )
     insert_single_bone(pmx_file_obj, base_bone_3_obj, 1)
@@ -172,7 +173,7 @@ def main(moreinfo=True):
     base_bone_2_obj = pmxstruct.PmxBone(
         name_jp=base_bone_2_name, name_en="", pos=base_bone_2_pos, parent_idx=1, deform_layer=0,
         deform_after_phys=False, has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
-        has_ik=False, tail_usebonelink=False, tail=[0, 0, 0], inherit_rot=False, inherit_trans=False,
+        has_ik=False, tail_usebonelink=False, tail=[0, 0, 1.5], inherit_rot=False, inherit_trans=False,
         has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
     )
     insert_single_bone(pmx_file_obj, base_bone_2_obj, 2)
@@ -189,57 +190,55 @@ def main(moreinfo=True):
     # phase 2: translate Source names to MMD names
     #########################################################################
 
-    # checking for last leg item so the code could be scalable
-    last_leg_item: int
-    last_leg_name: str
-
-    r_l_index: int = 0
-    r_k_index: int = 0
-    r_a_index: int = 0
-    r_t_index: int = 0
-    l_l_index: int = 0
-    l_k_index: int = 0
-    l_a_index: int = 0
-    l_t_index: int = 0
-
-    last_leg_item_index: int = 0
-
+    # for each mapping of source-name to mmd-name,
     for mmd_name, source_possible_names in big_dict.items():
+        # for each bone,
         for index, bone_object in enumerate(pmx_file_obj.bones):
-            # usually, the toes are the last parts of the legs, from there, we can interject the IK bones
-            # this also pass the current `index` into the assigned variable to store a bone's index
-            if bone_object.name_jp in ["ValveBiped.Bip01_R_Toe0", "bip_toe_R"]:
-                r_t_index = index
-            elif bone_object.name_jp in ["ValveBiped.Bip01_L_Toe0", "bip_toe_L"]:
-                l_t_index = index
-
-            # without this, the pelvis will show as "green"
-            elif bone_object.name_jp in ["ValveBiped.Bip01_Pelvis", "bip_pelvis"]:
-                pmx_file_obj.bones[index].has_translate = False
-
-            elif bone_object.name_jp in ["ValveBiped.Bip01_R_Foot", "bip_foot_R"]:
-                r_a_index = index
-            elif bone_object.name_jp in ["ValveBiped.Bip01_L_Foot", "bip_foot_L"]:
-                l_a_index = index
-            elif bone_object.name_jp in ["ValveBiped.Bip01_R_Calf", "bip_knee_R"]:
-                r_k_index = index
-            elif bone_object.name_jp in ["ValveBiped.Bip01_L_Calf", "bip_knee_L"]:
-                l_k_index = index
-            elif bone_object.name_jp in ["ValveBiped.Bip01_R_Thigh", "bip_hip_R"]:
-                r_l_index = index
-            elif bone_object.name_jp in ["ValveBiped.Bip01_L_Thigh", "bip_hip_L"]:
-                l_l_index = index
-
-            # the part that replaces texts
+            # if it has a source-name, replace with mmd-name
             if bone_object.name_jp in source_possible_names:
                 pmx_file_obj.bones[index].name_jp = mmd_name
-    
+
+    # next, fix the lowerbody bone
+    # find lowerbod
+    lowerbod_obj = core.my_list_search(pmx_file_obj.bones, lambda x: x.name_jp == "下半身", getitem=True)
+    # elif bone_object.name_jp in ["ValveBiped.Bip01_Pelvis", "bip_pelvis"]:
+    if lowerbod_obj is not None:
+        # should not be translateable
+        lowerbod_obj.has_translate = False
+        # parent should be waist
+        lowerbod_obj.parent_idx = 3
+    # next, fix the upperbody bone
+    upperbod_obj = core.my_list_search(pmx_file_obj.bones, lambda x: x.name_jp == "上半身", getitem=True)
+    if upperbod_obj is not None:
+        # should not be translateable
+        upperbod_obj.has_translate = False
+        # parent should be waist
+        upperbod_obj.parent_idx = 3
+        
+
     #########################################################################
     # phase 3: create & insert IK bones for leg/toe
     #########################################################################
-
     # find the last leg item index
-    # when creating IK bones, want to insert the
+    # when creating IK bones, want to insert the IK bones after both legs
+    r_l_index = core.my_list_search(pmx_file_obj.bones, lambda x: x.name_jp == "右足")
+    r_k_index = core.my_list_search(pmx_file_obj.bones, lambda x: x.name_jp == "右ひざ")
+    r_a_index = core.my_list_search(pmx_file_obj.bones, lambda x: x.name_jp == "右足首")
+    r_t_index = core.my_list_search(pmx_file_obj.bones, lambda x: x.name_jp == "右つま先")
+    l_l_index = core.my_list_search(pmx_file_obj.bones, lambda x: x.name_jp == "左足")
+    l_k_index = core.my_list_search(pmx_file_obj.bones, lambda x: x.name_jp == "左ひざ")
+    l_a_index = core.my_list_search(pmx_file_obj.bones, lambda x: x.name_jp == "左足首")
+    l_t_index = core.my_list_search(pmx_file_obj.bones, lambda x: x.name_jp == "左つま先")
+    # if somehow they aren't found, default to 0
+    if r_l_index is None: r_l_index = 0
+    if r_k_index is None: r_k_index = 0
+    if r_a_index is None: r_a_index = 0
+    if r_t_index is None: r_t_index = 0
+    if l_l_index is None: l_l_index = 0
+    if l_k_index is None: l_k_index = 0
+    if l_a_index is None: l_a_index = 0
+    if l_t_index is None: l_t_index = 0
+
     if r_t_index > l_t_index:
         last_leg_item_index = r_t_index
     else:
@@ -253,6 +252,11 @@ def main(moreinfo=True):
     # these limits in radians
     knee_limit_1 = [-3.1415927410125732, 0.0, 0.0]
     knee_limit_2 = [-0.008726646192371845, 0.0, 0.0]
+    # other parameters
+    ik_loops = 40
+    ik_toe_loops = 3
+    ik_angle = 114.5916
+    ik_toe_angle = 229.1831
 
     # adding IK and such
     leg_left_ankle_obj = pmx_file_obj.bones[l_a_index]
@@ -283,9 +287,9 @@ def main(moreinfo=True):
     leg_left_ik_obj = pmxstruct.PmxBone(
         name_jp=leg_left_ik_name, name_en="", pos=leg_left_ankle_pos, parent_idx=0, deform_layer=0,
         deform_after_phys=False, has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
-        has_ik=True, tail_usebonelink=False, tail=[0.0, 0.0, 0.0], inherit_rot=False, inherit_trans=False,
+        has_ik=True, tail_usebonelink=False, tail=[0.0, 0.0, 1.0], inherit_rot=False, inherit_trans=False,
         has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
-        ik_target_idx=l_a_index, ik_numloops=40, ik_angle=114.5916,
+        ik_target_idx=l_a_index, ik_numloops=ik_loops, ik_angle=ik_angle,
         ik_links=[pmxstruct.PmxBoneIkLink(idx=l_k_index, limit_min=knee_limit_1, limit_max=knee_limit_2),
                   pmxstruct.PmxBoneIkLink(idx=l_l_index)],
     )
@@ -294,9 +298,9 @@ def main(moreinfo=True):
     leg_left_toe_ik_obj = pmxstruct.PmxBone(
         name_jp=leg_left_toe_ik_name, name_en="", pos=leg_left_toe_pos, parent_idx=last_leg_item_index + 1, deform_layer=0,
         deform_after_phys=False, has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
-        has_ik=True, tail_usebonelink=False, tail=[0.0, 0.0, 0.0], inherit_rot=False, inherit_trans=False,
+        has_ik=True, tail_usebonelink=False, tail=[0.0, -1.0, 0.0], inherit_rot=False, inherit_trans=False,
         has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
-        ik_target_idx=l_t_index, ik_numloops=3, ik_angle=229.1831,
+        ik_target_idx=l_t_index, ik_numloops=ik_toe_loops, ik_angle=ik_toe_angle,
         ik_links=[pmxstruct.PmxBoneIkLink(idx=l_a_index)],
     )
     insert_single_bone(pmx_file_obj, leg_left_toe_ik_obj, last_leg_item_index + 2)
@@ -304,9 +308,9 @@ def main(moreinfo=True):
     leg_right_ik_obj = pmxstruct.PmxBone(
         name_jp=leg_right_ik_name, name_en="", pos=leg_right_ankle_pos, parent_idx=0, deform_layer=0,
         deform_after_phys=False, has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
-        has_ik=True, tail_usebonelink=False, tail=[0.0, 0.0, 0.0], inherit_rot=False, inherit_trans=False,
+        has_ik=True, tail_usebonelink=False, tail=[0.0, 0.0, 1.0], inherit_rot=False, inherit_trans=False,
         has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
-        ik_target_idx=r_a_index, ik_numloops=40, ik_angle=114.5916,
+        ik_target_idx=r_a_index, ik_numloops=ik_loops, ik_angle=ik_angle,
         ik_links=[pmxstruct.PmxBoneIkLink(idx=r_k_index, limit_min=knee_limit_1, limit_max=knee_limit_2),
                   pmxstruct.PmxBoneIkLink(idx=r_l_index)],
     )
@@ -315,9 +319,9 @@ def main(moreinfo=True):
     leg_right_toe_ik_obj = pmxstruct.PmxBone(
         name_jp=leg_right_toe_ik_name, name_en="", pos=leg_right_toe_pos, parent_idx=last_leg_item_index + 3, deform_layer=0,
         deform_after_phys=False, has_rotate=True, has_translate=True, has_visible=True, has_enabled=True,
-        has_ik=True, tail_usebonelink=False, tail=[0.0, 0.0, 0.0], inherit_rot=False, inherit_trans=False,
+        has_ik=True, tail_usebonelink=False, tail=[0.0, -1.0, 0.0], inherit_rot=False, inherit_trans=False,
         has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
-        ik_target_idx=r_t_index, ik_numloops=3, ik_angle=229.1831,
+        ik_target_idx=r_t_index, ik_numloops=ik_toe_loops, ik_angle=ik_toe_angle,
         ik_links=[pmxstruct.PmxBoneIkLink(idx=r_a_index)],
     )
     insert_single_bone(pmx_file_obj, leg_right_toe_ik_obj, last_leg_item_index + 4)
