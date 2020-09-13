@@ -739,7 +739,7 @@ def encode_pmx_bones(nice: List[pmxstruct.PmxBone]) -> bytearray:
 		if bone.has_ik:  # ik:
 			# (ik_target, ik_loops, ik_anglelimit, ik_numlinks)
 			out += core.my_pack(fmt_bone_ik, [bone.ik_target_idx, bone.ik_numloops, bone.ik_angle, len(bone.ik_links)])
-			
+
 			for iklink in bone.ik_links:
 				if iklink.limit_min and iklink.limit_max:  # bool(list) means "is the list non-empty and also not None"
 					out += core.my_pack(fmt_bone_ik_linkB, [iklink.idx, True, *iklink.limit_min, *iklink.limit_max])
