@@ -7,6 +7,7 @@ import os
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
+	# these imports work if running from GUI
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
 	from . import nuthouse01_pmx_struct as pmxstruct
@@ -14,6 +15,7 @@ try:
 	from . import _translate_to_english as translate_to_english
 except ImportError as eee:
 	try:
+		# these imports work if running from double-click on THIS script
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
 		import nuthouse01_pmx_struct as pmxstruct

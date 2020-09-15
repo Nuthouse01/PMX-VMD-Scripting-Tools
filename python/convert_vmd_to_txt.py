@@ -73,11 +73,13 @@ from typing import List
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
+	# these imports work if running from GUI
 	from . import nuthouse01_core as core
 	from . import nuthouse01_vmd_parser as vmdlib
 	from . import nuthouse01_vmd_struct as vmdstruct
 except ImportError as eee:
 	try:
+		# these imports work if running from double-click on THIS script
 		import nuthouse01_core as core
 		import nuthouse01_vmd_parser as vmdlib
 		import nuthouse01_vmd_struct as vmdstruct
