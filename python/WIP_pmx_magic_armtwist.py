@@ -2,10 +2,10 @@
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-# second, wrap custom imports with a try-except to catch it if files are missing
 import math
 from collections import defaultdict
 
+# second, wrap custom imports with a try-except to catch it if files are missing
 try:
 	# these imports work if running from GUI
 	from . import nuthouse01_core as core
