@@ -39,13 +39,19 @@ except ImportError as eee:
 # this is an abstract base class that all the PMX classes inherit
 # this lets them all get the __str__ method and forces them all to implement list()
 # it also lets me detect any of them by isinstance(x, _BasePmx)
+# this also defines an "==" method so my structs can be compared
+# this also defines "idx_within" so if you forget the idx of a thing but still have its reference you can find its index again
 class _BasePmx(ABC):
-	def __str__(self) -> str: return str(self.list())
 	@abstractmethod
 	def list(self) -> list: pass
-	def __eq__(self, other):
+	def __str__(self) -> str: return str(self.list())
+	def __eq__(self, other) -> bool:
 		if type(self) != type(other): return False
 		return self.list() == other.list()
+	def idx_within(self, L: List) -> Union[int, None]:
+		for d, thing in enumerate(L):
+			if self is thing: return d
+		return None
 
 
 class PmxHeader(_BasePmx):
