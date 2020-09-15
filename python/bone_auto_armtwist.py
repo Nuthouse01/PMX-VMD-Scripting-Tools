@@ -30,14 +30,12 @@ except ImportError as eee:
 DEBUG = True
 
 helptext = '''=================================================
-pmx_magic_armtwist_bones:
-This will generate "magic armtwist bones" that will automatically fix pinching at shoulders/elbows.
-You can also create these twist rigs for the upper legs if you wish.
+bone_auto_armtwist:
+This will generate "automatic armtwist rigging" that will fix pinching at shoulders/elbows.
+This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.
+It creates a clever IK bone setup that hijacks the semistandard bones and moves them as needed to reach whatever pose you make with the arm/腕 or elbow/ひじ bones. You do not need to manually move the armtwist bones at all, you can animate all 3 axes of rotation on the arm bone and the twisting axis will be automatically extracted and transferred to the armtwist bone as needed!
 
-For best results, this requires that all "helper" bones be "flattened" into their parents.
-If the standard 3-bone armtwist rig exists, they will automatically be flattened & removed.
-
-Output: model PMX file '[modelname]_magictwist.pmx'
+Output: model PMX file '[modelname]_autotwist.pmx'
 '''
 
 # left and right prefixes
@@ -142,22 +140,19 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	
 	
 	# 2, find all armtwist-sub bones
-	armtwist_sub = []
+	armtwist_sub_obj = []
 	# # dont forget to refresh elbow_idx
 	# elbow_idx = core.my_list_search(pmx.bones, lambda x: x.name_jp == side + elbow_s)
 	for d, bone in enumerate(pmx.bones):
 		# anything that partial inherit from armtwist (except arm)
-		if bone.inherit_rot == True and bone.inherit_parent_idx == armtwist_idx:
+		if bone.inherit_rot and bone.inherit_parent_idx == armtwist_idx:
 			if d == arm_idx: continue
-			armtwist_sub.append(d)
+			armtwist_sub_obj.append(bone)
 		# anything that has armtwist as parent (except elbow or elbow helper (full parent armtwist, partial parent elbow))
 		if bone.parent_idx == armtwist_idx:
 			if d == elbow_idx: continue
-			if bone.inherit_rot == True and bone.inherit_parent_idx == elbow_idx: continue
-			armtwist_sub.append(d)
-	armtwist_sub = list(set(armtwist_sub))  # just in case idk
-	# convert to names
-	armtwist_sub_names = [pmx.bones[b].name_jp for b in armtwist_sub]
+			if bone.inherit_rot and bone.inherit_parent_idx == elbow_idx: continue
+			armtwist_sub_obj.append(bone)
 	
 	
 	# 3, calculate "perpendicular" location
@@ -265,8 +260,8 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	
 	
 	# 5, modify the armtwist-sub bones
-	# first go back from names to indices, since the bones moved
-	armtwist_sub = [core.my_list_search(pmx.bones, lambda x: x.name_jp == n) for n in armtwist_sub_names]
+	# first go back from obj to indices, since the bones moved
+	armtwist_sub = [b.idx_within(pmx.bones) for b in armtwist_sub_obj]
 	for b_idx in armtwist_sub:
 		bone = pmx.bones[b_idx]
 		# change parent from arm to armD
@@ -296,8 +291,8 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	
 	# transfer all weight from armtwist to armtwistX
 	transfer_weight_references(pmx, armtwist_idx, armtwistX_idx)
-	# transfer all rigidbody references from armtwist to armtwistX
-	transfer_rigidbody_references(pmx, armtwist_idx, armtwistX_idx)
+	# transfer all rigidbody references from armtwist to armT
+	transfer_rigidbody_references(pmx, armtwist_idx, armT_idx)
 	
 	# make armtwist0, pos=arm.pos, parent=armD_idx, inherit armT=0.00
 	armtwist0 = pmxstruct.PmxBone(
@@ -313,11 +308,37 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	# fix references to other bones
 	armtwist0.parent_idx = armD_idx
 	armtwist0.inherit_parent_idx = armT_idx
-
+	
 	# transfer all weight from arm to armtwist0
 	transfer_weight_references(pmx, arm_idx, armtwist0_idx)
-	# transfer all rigidbody references from arm to armtwist0
-	transfer_rigidbody_references(pmx, arm_idx, armtwist0_idx)
+	# transfer all rigidbody references from arm to armD
+	transfer_rigidbody_references(pmx, arm_idx, armD_idx)
+	
+	
+	# 7, fix shoulder-helper and elbow-helper if they exist
+	# shoulder helper: parent=shoulder(C), inherit=arm
+	# goto:            parent=shoulder(C), inherit=armD
+	# elbow helper: parent=arm(twist), inherit=elbow
+	# goto:         parent=armT,       inherit=elbowD
+	
+	# need to refresh elbow idx cuz it moved
+	elbow_idx = elbow.idx_within(pmx.bones)
+	for d, bone in enumerate(pmx.bones):
+		# transfer "inherit arm" to "inherit armD"
+		# this should be safe for all bones
+		if bone.inherit_rot and bone.inherit_parent_idx == arm_idx:
+			bone.inherit_parent_idx = armD_idx
+			if d < armD_idx:
+				# need to ensure deform order is respected!
+				bone.deform_layer = armD.deform_layer + 1
+		# transfer "parent arm(twist)" to "parent armT"
+		# this needs to exclude elbow, D_IK, T_IK, armtwist, arm
+		if bone.parent_idx in (armtwist_idx, arm_idx):
+			if d not in (elbow_idx, armDik_idx, armTik_idx, armtwist_idx, arm_idx):
+				bone.parent_idx = armT_idx
+				if d < armT_idx:
+					# need to ensure deform order is respected!
+					bone.deform_layer = armT.deform_layer + 1
 
 	# done with this function???
 	return None
@@ -355,6 +376,9 @@ def main(moreinfo=True):
 	# todo: if i want to, set wrist parent to elbowT...?
 	
 	
+	# todo: detect & use existing deform level
+	# todo: ik rigs have higher deform level, for armIK compat
+	# todo: EN names for new bones
 	
 	# TODO: examine leg system! not universal because nobody has legtwist bones to hijack but worth understanding
 	
