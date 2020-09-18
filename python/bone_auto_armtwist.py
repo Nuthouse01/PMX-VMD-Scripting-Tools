@@ -37,24 +37,24 @@ This will generate "automatic armtwist rigging" that will fix pinching at should
 This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.
 It creates a clever IK bone setup that hijacks the semistandard bones and moves them as needed to reach whatever pose you make with the arm/腕 or elbow/ひじ bones. You do not need to manually move the armtwist bones at all, you can animate all 3 axes of rotation on the arm bone and the twisting axis will be automatically extracted and transferred to the armtwist bone as needed!
 
-This script is compatible with IKMaker X plugin for PMXE.
-
 If the existing semistandard armtwist rig is bad, then the results from using this script will also be bad. To re-make the armtwist rig, you can merge all existing armtwist bones into the arm bone and use the "semistandard bones" PMXE plugin to try and rebuild it. Or, you can try using [TODO SDEF SCRIPT NAME HERE] to use a fancy SDEF weights method.
 
-If the model already has an automatic armtwist rig, then I've got no idea what this script will do. Why are you trying to run this anyway?
+This script is compatible with arm IK bones created by IKMaker X plugin for PMXE. HOWEVER, weird things can sometimes happen and it is not recommended.
+To easily disable the autotwist rig and make it definitely work with arm IK bones: in the parent & partial inherit section for each armtwist/wristtwist/helper bone, replace "armD" with "arm" and replace "armT" with "armtwist". Or, just use a version of the model from before running this script.
 
 Output: model PMX file '[modelname]_autotwist.pmx'
 '''
 
-# left and right prefixes
-jp_l = "左"
-jp_r = "右"
-# names for relevant bones
-jp_arm =		"腕"
-jp_armtwist =	"腕捩"
-jp_elbow =		"ひじ"
-jp_wristtwist = "手捩"
-jp_wrist =		"手首"
+'''
+CRITICAL NOTE
+to ensure compatability with "IK Maker X" plugin, we need to set bone deforms in a specific way.
+we also need to set the IK link limits for the D-bone to prevent it from going all wacky in rare cases
+overall it is recommended to NOT use auto-arm-twist rig along with arm-IK rig
+
+the deform order thing is essential to solving "spinning wrists" when standard arm-IK is present, and perfectly harmless when arm-IK is not present
+the IK link limits help to mitigate some rare issues when arm-IK exists but i'm like 1% confident they can cause issues when arm-IK is not present?
+'''
+
 
 jp_leg =		"足"
 jp_knee =		"ひざ"
@@ -65,29 +65,39 @@ jp_foot_d =		"足首D"
 
 
 
-# parameters
-n_base = "D"
-n_twist = "T"
-n_ik = "_IK"
-n_end = "先"
 
+# left and right prefixes
+jp_l =    ("左", "_L")
+jp_r =    ("右", "_R")
+# names for relevant bones
+jp_arm =		("腕", "arm")
+jp_armtwist =	("腕捩", "arm twist")
+jp_elbow =		("ひじ", "elbow")
+jp_wristtwist = ("手捩", "wrist twist")
+jp_wrist =		("手首", "wrist")
+# suffixes
+n_base =  ("D", "D")
+n_twist = ("T", "T")
+n_ik =    ("IK", "IK")
+n_end =   ("先", " end")
+
+# parameters
 perpendicular_offset_dist = 1.00
 
 ik_numloops = 100
 ik_angle = 5  # degrees
 
+ikD_lim_min = [0, -180, -180]
+ikD_lim_max = [0, 180, 180]
+
+# girls 555 L elbow
+# girls 1027 R elbow R shoulder
+# pink cat 464 L shoulder
+# pink cat 550 R shoulder
+# pink cat 574 R shoulder
+
 
 '''
-initial bone order:
-
-shoulderC
-arm
-armtwist
-armtwist1
-armtwist2
-armtwist3
-elbow
-
 insertion points:
 
 shoulderC
@@ -105,9 +115,8 @@ armtwist2
 armtwist3
 	armtwistX  (before elbow)
 elbow
-
-
 '''
+
 
 
 # why bother changing the arm/armtwist relationship? just leave it where it is, how it is! just steal its weights!
@@ -129,13 +138,13 @@ def transfer_rigidbody_references(pmx: pmxstruct.Pmx, from_bone:int, to_bone:int
 	return None
 
 
-def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:str, elbow_s:str):
+def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s):
 	# note: will be applicable to elbow-wristtwist-wrist as well! just named like armtwist for simplicity
 	
 	# 1, locate arm/armtwist/elbow idx and obj
 	r = []
 	for n in (arm_s, armtwist_s, elbow_s):
-		n2 = side + n
+		n2 = side[0] + n[0]
 		i = core.my_list_search(pmx.bones, lambda x: x.name_jp == n2)
 		if i is None:
 			core.MY_PRINT_FUNC("ERROR: standard bone '%s' not found in model, this is required!" % n2)
@@ -165,18 +174,22 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	
 	# 3, calculate "perpendicular" location
 	# get axis from arm to elbow, normalize to 1
-	delta = [b - a for a, b in zip(arm.pos, elbow.pos)]
-	# normalize
-	length = core.my_euclidian_distance(delta)
-	unit = [t / length for t in delta]
-	# calc cross-product between this and [0,0,1]
-	perpendicular = core.my_cross_product(unit, [0, 0, 1])
+	def normalize(foo):
+		LLL = core.my_euclidian_distance(foo)
+		return [t / LLL for t in foo]
+	axis = [b - a for a, b in zip(arm.pos, elbow.pos)]
+	axis = normalize(axis)
+	# calc vector in XZ plane at 90-deg from axis
+	frontback = core.my_cross_product(axis, [0,1,0])
+	frontback = normalize(frontback)
+	# calc vector in the same vertical plane as axis, at 90-deg from axis
+	perpendicular = core.my_cross_product(axis, frontback)
+	perpendicular = normalize(perpendicular)
 	# if result has negative y, invert
 	if perpendicular[1] < 0:
 		perpendicular = [p * -1 for p in perpendicular]
 	# normalize to perpendicular_offset_dist
-	length = core.my_euclidian_distance(perpendicular)
-	perpendicular = [perpendicular_offset_dist * t / length for t in perpendicular]
+	perpendicular = [perpendicular_offset_dist * t for t in perpendicular]
 	# add this to elbow pos and save
 	perp_pos = [a + b for a, b in zip(elbow.pos, perpendicular)]
 	
@@ -191,57 +204,61 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	armTend_idx = start + 5
 	armTik_idx =  start + 6
 	
-	# what deform level should they use?
-	deform = max(arm.deform_layer, armtwist.deform_layer)
-	
 	# make armD, pos=arm.pos, parent=arm.parent, tail=armDend
 	armD = pmxstruct.PmxBone(
-		name_jp=side + arm_s + n_base, name_en="",
-		pos=arm.pos, parent_idx=-99, deform_layer=deform, deform_after_phys=False,
-		has_rotate=True, has_translate=False, has_visible=False, has_enabled=True, has_ik=False,
+		name_jp=side[0] + arm_s[0] + n_base[0], 
+		name_en=arm_s[1] + n_base[1] + side[1],
+		pos=arm.pos, parent_idx=-99, deform_layer=0, deform_after_phys=False,
+		has_rotate=True, has_translate=False, has_visible=False, has_enabled=False, has_ik=False,
 		tail_usebonelink=True, tail=-99, inherit_rot=False, inherit_trans=False, has_fixedaxis=False,
 		has_localaxis=arm.has_localaxis, localaxis_x=arm.localaxis_x, localaxis_z=arm.localaxis_z,
 		has_externalparent=False,
 	)
 	# make armDend, pos=elbow.pos, parent=armD_idx
 	armDend = pmxstruct.PmxBone(
-		name_jp=side + arm_s + n_base + n_end, name_en="",
-		pos=elbow.pos, parent_idx=-99, deform_layer=deform, deform_after_phys=False,
-		has_rotate=True, has_translate=False, has_visible=False, has_enabled=True, has_ik=False,
+		name_jp=side[0] + arm_s[0] + n_base[0] + n_end[0],
+		name_en=arm_s[1] + n_base[1] + side[1] + n_end[1],
+		pos=elbow.pos, parent_idx=-99, deform_layer=0, deform_after_phys=False,
+		has_rotate=True, has_translate=False, has_visible=False, has_enabled=False, has_ik=False,
 		tail_usebonelink=True, tail=-1, inherit_rot=False, inherit_trans=False, has_fixedaxis=False,
 		has_localaxis=False, has_externalparent=False,
 	)
 	# make armD_IK, pos=elbow.pos, parent=elbow.parent, target=armDend, link=armD
 	armDik = pmxstruct.PmxBone(
-		name_jp=side + arm_s + n_base + n_ik, name_en="",
-		pos=elbow.pos, parent_idx=-99, deform_layer=deform, deform_after_phys=False,
-		has_rotate=True, has_translate=True, has_visible=False, has_enabled=True, has_ik=True,
+		name_jp=side[0] + arm_s[0] + n_base[0] + n_ik[0],
+		name_en=arm_s[1] + n_base[1] + n_ik[1] + side[1],
+		pos=elbow.pos, parent_idx=-99, deform_layer=0, deform_after_phys=False,
+		has_rotate=True, has_translate=True, has_visible=False, has_enabled=False, has_ik=True,
 		tail_usebonelink=True, tail=-1, inherit_rot=False, inherit_trans=False, has_fixedaxis=False,
 		has_localaxis=False, has_externalparent=False,
-		ik_target_idx=-99, ik_numloops=ik_numloops, ik_angle=ik_angle, ik_links=[pmxstruct.PmxBoneIkLink(idx=-99)]
+		ik_target_idx=-99, ik_numloops=ik_numloops, ik_angle=ik_angle, 
+		ik_links=[pmxstruct.PmxBoneIkLink(idx=-99, lim_min=ikD_lim_min, lim_max=ikD_lim_max)]
 	)
 	
 	# make armT, pos=elbow.pos, parent=armD_idx, tail=armTend
 	armT = pmxstruct.PmxBone(
-		name_jp=side + arm_s + n_twist, name_en="",
-		pos=elbow.pos, parent_idx=-99, deform_layer=deform, deform_after_phys=False,
-		has_rotate=True, has_translate=False, has_visible=False, has_enabled=True, has_ik=False,
+		name_jp=side[0] + arm_s[0] + n_twist[0],
+		name_en=arm_s[1] + n_twist[1] + side[1],
+		pos=elbow.pos, parent_idx=-99, deform_layer=0, deform_after_phys=False,
+		has_rotate=True, has_translate=False, has_visible=False, has_enabled=False, has_ik=False,
 		tail_usebonelink=True, tail=-99, inherit_rot=False, inherit_trans=False, has_fixedaxis=False,
 		has_localaxis=False, has_externalparent=False,
 	)
 	# make armTend, pos=perp_pos, parent=armT_idx
 	armTend = pmxstruct.PmxBone(
-		name_jp=side + arm_s + n_twist + n_end, name_en="",
-		pos=perp_pos, parent_idx=-99, deform_layer=deform, deform_after_phys=False,
-		has_rotate=True, has_translate=False, has_visible=False, has_enabled=True, has_ik=False,
+		name_jp=side[0] + arm_s[0] + n_twist[0] + n_end[0],
+		name_en=arm_s[1] + n_twist[1] + side[1] + n_end[1],
+		pos=perp_pos, parent_idx=-99, deform_layer=0, deform_after_phys=False,
+		has_rotate=True, has_translate=False, has_visible=False, has_enabled=False, has_ik=False,
 		tail_usebonelink=True, tail=-1, inherit_rot=False, inherit_trans=False, has_fixedaxis=False,
 		has_localaxis=False, has_externalparent=False,
 	)
 	# make armT_IK, pos=perp_pos, parent=elbow.parent, target=armTend, link=armT
 	armTik = pmxstruct.PmxBone(
-		name_jp=side + arm_s + n_twist + n_ik, name_en="",
-		pos=perp_pos, parent_idx=-99, deform_layer=deform, deform_after_phys=False,
-		has_rotate=True, has_translate=True, has_visible=False, has_enabled=True, has_ik=True,
+		name_jp=side[0] + arm_s[0] + n_twist[0] + n_ik[0],
+		name_en=arm_s[1] + n_twist[1] + n_ik[1] + side[1],
+		pos=perp_pos, parent_idx=-99, deform_layer=0, deform_after_phys=False,
+		has_rotate=True, has_translate=True, has_visible=False, has_enabled=False, has_ik=True,
 		tail_usebonelink=True, tail=-1, inherit_rot=False, inherit_trans=False, has_fixedaxis=False,
 		has_localaxis=False, has_externalparent=False,
 		ik_target_idx=-99, ik_numloops=ik_numloops, ik_angle=ik_angle, ik_links=[pmxstruct.PmxBoneIkLink(idx=-99)]
@@ -283,13 +300,12 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	
 	# 6, insert additional armtwist-sub bones and transfer weight to them
 	# just assume they are needed, if they're useless they're harmless
-	# match the deform level of the other armtwist-sub bones
-	deform_sub = max([b.deform_layer for b in armtwist_sub_obj])
 	asdf = len(armtwist_sub) + 1
 	# make armtwistX, pos=armtwist.pos, parent=armD_idx, inherit armT=1.00
 	armtwistX = pmxstruct.PmxBone(
-		name_jp= side + armtwist_s + str(asdf), name_en="",
-		pos=armtwist.pos, parent_idx=-99, deform_layer=deform_sub, deform_after_phys=False,
+		name_jp= side[0] + armtwist_s[0] + str(asdf),
+		name_en= armtwist_s[1] + str(asdf) + side[1],
+		pos=armtwist.pos, parent_idx=-99, deform_layer=0, deform_after_phys=False,
 		has_rotate=True, has_translate=False, has_visible=False, has_enabled=True, has_ik=False,
 		tail_usebonelink=True, tail=-1, inherit_rot=True, inherit_trans=False, inherit_parent_idx=-99, inherit_ratio=1.00,
 		has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
@@ -304,12 +320,13 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	# transfer all weight from armtwist to armtwistX
 	transfer_weight_references(pmx, armtwist_idx, armtwistX_idx)
 	# transfer all rigidbody references from armtwist to armT
-	transfer_rigidbody_references(pmx, armtwist_idx, armT_idx)
+	transfer_rigidbody_references(pmx, armtwist_idx, armtwistX_idx)
 	
 	# make armtwist0, pos=arm.pos, parent=armD_idx, inherit armT=0.00
 	armtwist0 = pmxstruct.PmxBone(
-		name_jp= side + armtwist_s + "0", name_en="",
-		pos=arm.pos, parent_idx=-99, deform_layer=deform_sub, deform_after_phys=False,
+		name_jp= side[0] + armtwist_s[0] + "0",
+		name_en= armtwist_s[1] + "0" + side[1],
+		pos=arm.pos, parent_idx=-99, deform_layer=0, deform_after_phys=False,
 		has_rotate=True, has_translate=False, has_visible=False, has_enabled=True, has_ik=False,
 		tail_usebonelink=True, tail=-1, inherit_rot=True, inherit_trans=False, inherit_parent_idx=-99, inherit_ratio=0.00,
 		has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
@@ -324,10 +341,28 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	# transfer all weight from arm to armtwist0
 	transfer_weight_references(pmx, arm_idx, armtwist0_idx)
 	# transfer all rigidbody references from arm to armD
-	transfer_rigidbody_references(pmx, arm_idx, armD_idx)
+	transfer_rigidbody_references(pmx, arm_idx, armtwist0_idx)
+	
+	armtwist_sub_obj.append(armtwistX)
+	armtwist_sub_obj.append(armtwist0)
+	deform_sub = max([b.deform_layer for b in armtwist_sub_obj])
+
+	
+	# 7, set the deform order of all the bones so that it doesn't break when armIK is added
+	# what deform level should they start from?
+	deform = max(arm.deform_layer, armtwist.deform_layer)
+	armD.deform_layer = deform + 2
+	armDend.deform_layer = deform + 2
+	armDik.deform_layer = deform + 2
+	armT.deform_layer = deform + 3
+	armTend.deform_layer = deform + 3
+	armTik.deform_layer = deform + 3
+	for bone in armtwist_sub_obj:
+		bone.deform_layer = deform + 4
+	# TODO: fix deform for anything hanging off of the armtwist bones (rare but sometimes exists)
 	
 	
-	# 7, fix shoulder-helper and elbow-helper if they exist
+	# 8, fix shoulder-helper and elbow-helper if they exist
 	# shoulder helper: parent=shoulder(C), inherit=arm
 	# goto:            parent=shoulder(C), inherit=armD
 	# elbow helper: parent=arm(twist), inherit=elbow
@@ -340,7 +375,7 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 		# this should be safe for all bones
 		if bone.inherit_rot and bone.inherit_parent_idx == arm_idx:
 			bone.inherit_parent_idx = armD_idx
-			if d < armD_idx:
+			if d < armD_idx and bone.deform_layer <= armD.deform_layer:
 				# need to ensure deform order is respected!
 				bone.deform_layer = armD.deform_layer + 1
 		# transfer "parent arm(twist)" to "parent armT"
@@ -348,16 +383,20 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 		if bone.parent_idx in (armtwist_idx, arm_idx):
 			if d not in (elbow_idx, armDik_idx, armTik_idx, armtwist_idx, arm_idx):
 				bone.parent_idx = armT_idx
-				if d < armT_idx:
+				if d < armT_idx and bone.deform_layer <= armT.deform_layer:
 					# need to ensure deform order is respected!
 					bone.deform_layer = armT.deform_layer + 1
 	
-	# 8, set english names for all these new bones
-	newbones = [armD, armDend, armDik, armT, armTend, armTik, armtwistX, armtwist0]
-	for bone in newbones:
-		# eh, i don't wanna do the full translation crap here
-		bone.name_en = bone.name_jp
-		
+	
+	# 9, detect & fix incorrect structure among primary bones
+	if elbow.parent_idx in deform_sub:
+		newparent = max(arm_idx, armtwist_idx)
+		core.MY_PRINT_FUNC("WARNING: fixing improper parenting for bone '%s'" % elbow.name_jp))
+		core.MY_PRINT_FUNC("parent was '%s', changing to '%s'" % 
+			(pmx.bones[elbow.parent_idx].name_jp, pmx.bones[newparent].name_jp))
+		core.MY_PRINT_FUNC("if this bone has a 'helper bone' please change its parent in the same way")
+		elbow.parent_idx = newparent
+	
 	
 	# done with this function???
 	return None
@@ -367,27 +406,19 @@ def main(moreinfo=True):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
-	# input_filename_pmx = "../../python_scripts/grasstest_better.pmx"
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	
-	##################################
-	# user flow:
-	# first ask whether they want to add armtwist, yes/no
-	# second ask whether they want to add legtwist, yes/no
-	# then do it
-	# then write out to file
-	##################################
 	
-	core.MY_PRINT_FUNC("Left upper arm...")
+	core.MY_PRINT_FUNC("L upper arm...")
 	make_autotwist_segment(pmx, jp_l, jp_arm, jp_armtwist, jp_elbow)
 	
-	core.MY_PRINT_FUNC("Right upper arm...")
+	core.MY_PRINT_FUNC("R upper arm...")
 	make_autotwist_segment(pmx, jp_r, jp_arm, jp_armtwist, jp_elbow)
 	
-	core.MY_PRINT_FUNC("Left lower arm...")
+	core.MY_PRINT_FUNC("L lower arm...")
 	make_autotwist_segment(pmx, jp_l, jp_elbow, jp_wristtwist, jp_wrist)
 	
-	core.MY_PRINT_FUNC("Right lower arm...")
+	core.MY_PRINT_FUNC("R lower arm...")
 	make_autotwist_segment(pmx, jp_r, jp_elbow, jp_wristtwist, jp_wrist)
 	
 	# if i want to, set elbowD parent to armT...?
