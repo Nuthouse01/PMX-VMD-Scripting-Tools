@@ -117,7 +117,44 @@ armtwist3
 elbow
 '''
 
-
+def fix_deform_for_children(pmx: pmxstruct.Pmx, me, already_visited=None) -> int:
+	# recursively ensure everything that inherits from this bone will deform after this one
+	# only care about parent and partial inherit
+	retme = 0
+	
+	if already_visited is None: already_visited = set()
+	# safety system to prevent infinite recursion:
+	if me in already_visited: return 0
+	else:                     already_visited.add(me)
+	
+	def relationship_is_valid(testme) -> bool:
+		if testme < me:
+			if pmx.bones[testme].deform_layer > pmx.bones[me].deform_layer:
+				return True
+			else:
+				pmx.bones[testme].deform_layer = pmx.bones[me].deform_layer + 1
+				return False
+		else:
+			if pmx.bones[testme].deform_layer >= pmx.bones[me].deform_layer:
+				return True
+			else:
+				pmx.bones[testme].deform_layer = pmx.bones[me].deform_layer
+				return False
+	
+	for d,bone in enumerate(pmx.bones):
+		if bone.parent_idx == me:
+			if not relationship_is_valid(d):
+				# the check also fixes it, all thats left is to recurse
+				print(d)
+				retme += 1
+				retme += fix_deform_for_children(pmx, d, already_visited)
+		if (bone.inherit_rot or bone.inherit_trans) and bone.inherit_parent_idx == me:
+			if not relationship_is_valid(d):
+				# the check also fixes it, all thats left is to recurse
+				print(d)
+				retme += 1
+				retme += fix_deform_for_children(pmx, d, already_visited)
+	return retme
 
 # why bother changing the arm/armtwist relationship? just leave it where it is, how it is! just steal its weights!
 
@@ -138,7 +175,7 @@ def transfer_to_armtwist_sub(pmx: pmxstruct.Pmx, from_bone:int, to_bone:int) -> 
 	return did_anything_change
 
 
-def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s):
+def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s, moreinfo):
 	# note: will be applicable to elbow-wristtwist-wrist as well! just named like armtwist for simplicity
 	
 	# 1, locate arm/armtwist/elbow idx and obj
@@ -365,21 +402,7 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s)
 		elbow.parent_idx = newparent
 	
 	
-	# 8, set the deform order of all the bones so that it doesn't break when armIK is added
-	# what deform level should they start from?
-	deform = max(arm.deform_layer, armtwist.deform_layer)
-	armD.deform_layer = deform + 2
-	armDend.deform_layer = deform + 2
-	armDik.deform_layer = deform + 2
-	armT.deform_layer = deform + 3
-	armTend.deform_layer = deform + 3
-	armTik.deform_layer = deform + 3
-	for bone in armtwist_sub_obj:
-		bone.deform_layer = deform + 4
-	# TODO: fix deform for anything hanging off of the armtwist bones (rare but sometimes exists)
-	
-	
-	# 9, fix shoulder-helper and elbow-helper if they exist
+	# 8, fix shoulder-helper and elbow-helper if they exist
 	# shoulder helper: parent=shoulder(C), inherit=arm
 	# goto:            parent=shoulder(C), inherit=armD
 	# elbow helper: parent=arm(twist), inherit=elbow
@@ -392,18 +415,38 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s)
 		# this should be safe for all bones
 		if bone.inherit_rot and bone.inherit_parent_idx == arm_idx:
 			bone.inherit_parent_idx = armD_idx
-			if d < armD_idx and bone.deform_layer <= armD.deform_layer:
-				# need to ensure deform order is respected!
-				bone.deform_layer = armD.deform_layer + 1
-		# transfer "parent arm(twist)" to "parent armT"
+		# transfer "parent armtwist" to "parent armT"
 		# this needs to exclude elbow, D_IK, T_IK, armtwist, arm
-		if bone.parent_idx in (armtwist_idx, arm_idx):
+		if bone.parent_idx == armtwist_idx:
 			if d not in (elbow_idx, armDik_idx, armTik_idx, armtwist_idx, arm_idx):
 				bone.parent_idx = armT_idx
-				if d < armT_idx and bone.deform_layer <= armT.deform_layer:
-					# need to ensure deform order is respected!
-					bone.deform_layer = armT.deform_layer + 1
+		if bone.parent_idx == arm_idx:
+			if d not in (elbow_idx, armDik_idx, armTik_idx, armtwist_idx, arm_idx):
+				bone.parent_idx = armD_idx
 	
+	
+	# 9, set the deform order of all the bones so that it doesn't break when armIK is added
+	# what deform level should they start from?
+	base_deform = max(arm.deform_layer, armtwist.deform_layer, elbow.deform_layer)
+	armD.deform_layer = base_deform + 2
+	armDend.deform_layer = base_deform + 2
+	armDik.deform_layer = base_deform + 2
+	armT.deform_layer = base_deform + 3
+	armTend.deform_layer = base_deform + 3
+	armTik.deform_layer = base_deform + 3
+	for bone in armtwist_sub_obj:
+		bone.deform_layer = base_deform + 4
+	
+	# fix deform for anything hanging off of the armtwist bones (rare but sometimes exists)
+	deform_changed = 0
+	deform_changed += fix_deform_for_children(pmx, armD_idx)
+	deform_changed += fix_deform_for_children(pmx, armT_idx)
+	for idx in armtwist_sub:
+		deform_changed += fix_deform_for_children(pmx, idx)
+		
+	if moreinfo and deform_changed:
+		core.MY_PRINT_FUNC("modified deform order for %d existing bones" % deform_changed)
+		
 	
 	# done with this function???
 	return None
@@ -417,16 +460,16 @@ def main(moreinfo=True):
 	
 	
 	core.MY_PRINT_FUNC("L upper arm...")
-	make_autotwist_segment(pmx, jp_l, jp_arm, jp_armtwist, jp_elbow)
+	make_autotwist_segment(pmx, jp_l, jp_arm, jp_armtwist, jp_elbow, moreinfo)
 	
 	core.MY_PRINT_FUNC("R upper arm...")
-	make_autotwist_segment(pmx, jp_r, jp_arm, jp_armtwist, jp_elbow)
+	make_autotwist_segment(pmx, jp_r, jp_arm, jp_armtwist, jp_elbow, moreinfo)
 	
 	core.MY_PRINT_FUNC("L lower arm...")
-	make_autotwist_segment(pmx, jp_l, jp_elbow, jp_wristtwist, jp_wrist)
+	make_autotwist_segment(pmx, jp_l, jp_elbow, jp_wristtwist, jp_wrist, moreinfo)
 	
 	core.MY_PRINT_FUNC("R lower arm...")
-	make_autotwist_segment(pmx, jp_r, jp_elbow, jp_wristtwist, jp_wrist)
+	make_autotwist_segment(pmx, jp_r, jp_elbow, jp_wristtwist, jp_wrist, moreinfo)
 	
 	# if i want to, set elbowD parent to armT...?
 	# if i want to, set wrist parent to elbowT...?
