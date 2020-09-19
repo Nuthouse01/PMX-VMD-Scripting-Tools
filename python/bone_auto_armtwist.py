@@ -345,7 +345,7 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s)
 	
 	armtwist_sub_obj.append(armtwistX)
 	armtwist_sub_obj.append(armtwist0)
-	deform_sub = max([b.deform_layer for b in armtwist_sub_obj])
+	armtwist_sub = max([b.deform_layer for b in armtwist_sub_obj])
 
 	
 	# 7, set the deform order of all the bones so that it doesn't break when armIK is added
