@@ -351,7 +351,21 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s)
 		armtwist_sub_obj.append(armtwist0)
 	
 	
-	# 7, set the deform order of all the bones so that it doesn't break when armIK is added
+	# 7, detect & fix incorrect structure among primary bones
+	# refresh list of armtwist_sub indixes cuz stuff was inserted
+	armtwist_sub = [b.deform_layer for b in armtwist_sub_obj]
+	# elbow should be a child of arm or armtwist, NOT any of the armtwist-sub bones
+	# this is to prevent deform layers from getting all fucky
+	if elbow.parent_idx in armtwist_sub:
+		newparent = max(arm_idx, armtwist_idx)
+		core.MY_PRINT_FUNC("WARNING: fixing improper parenting for bone '%s'" % elbow.name_jp)
+		core.MY_PRINT_FUNC("parent was '%s', changing to '%s'" %
+						   (pmx.bones[elbow.parent_idx].name_jp, pmx.bones[newparent].name_jp))
+		core.MY_PRINT_FUNC("if this bone has a 'helper bone' please change its parent in the same way")
+		elbow.parent_idx = newparent
+	
+	
+	# 8, set the deform order of all the bones so that it doesn't break when armIK is added
 	# what deform level should they start from?
 	deform = max(arm.deform_layer, armtwist.deform_layer)
 	armD.deform_layer = deform + 2
@@ -365,7 +379,7 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s)
 	# TODO: fix deform for anything hanging off of the armtwist bones (rare but sometimes exists)
 	
 	
-	# 8, fix shoulder-helper and elbow-helper if they exist
+	# 9, fix shoulder-helper and elbow-helper if they exist
 	# shoulder helper: parent=shoulder(C), inherit=arm
 	# goto:            parent=shoulder(C), inherit=armD
 	# elbow helper: parent=arm(twist), inherit=elbow
@@ -389,18 +403,6 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s)
 				if d < armT_idx and bone.deform_layer <= armT.deform_layer:
 					# need to ensure deform order is respected!
 					bone.deform_layer = armT.deform_layer + 1
-	
-	
-	# 9, detect & fix incorrect structure among primary bones
-	# refresh list of armtwist_sub indixes cuz stuff was inserted
-	armtwist_sub = max([b.deform_layer for b in armtwist_sub_obj])
-	if elbow.parent_idx in armtwist_sub:
-		newparent = max(arm_idx, armtwist_idx)
-		core.MY_PRINT_FUNC("WARNING: fixing improper parenting for bone '%s'" % elbow.name_jp)
-		core.MY_PRINT_FUNC("parent was '%s', changing to '%s'" % 
-			(pmx.bones[elbow.parent_idx].name_jp, pmx.bones[newparent].name_jp))
-		core.MY_PRINT_FUNC("if this bone has a 'helper bone' please change its parent in the same way")
-		elbow.parent_idx = newparent
 	
 	
 	# done with this function???
