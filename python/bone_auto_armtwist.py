@@ -121,21 +121,21 @@ elbow
 
 # why bother changing the arm/armtwist relationship? just leave it where it is, how it is! just steal its weights!
 
-def transfer_weight_references(pmx: pmxstruct.Pmx, from_bone:int, to_bone:int):
+def transfer_to_armtwist_sub(pmx: pmxstruct.Pmx, from_bone:int, to_bone:int) -> bool:
 	# any weights currently set to "from_bone" get replaced with "to_bone"
+	did_anything_change = False
 	weighttype_to_len = {0:1, 1:2, 2:4, 3:2, 4:4}
 	for v in pmx.verts:
 		for i in range(weighttype_to_len[v.weighttype]):
 			if v.weight[i] == from_bone:
 				v.weight[i] = to_bone
-	return None
-
-def transfer_rigidbody_references(pmx: pmxstruct.Pmx, from_bone:int, to_bone:int):
+				did_anything_change = True
 	# move all rigidbodies attached to "from_bone" to "to_bone" instead
 	for rb in pmx.rigidbodies:
 		if rb.bone_idx == from_bone:
 			rb.bone_idx = to_bone
-	return None
+			did_anything_change = True
+	return did_anything_change
 
 
 def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s):
@@ -299,54 +299,57 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s)
 	
 	
 	# 6, insert additional armtwist-sub bones and transfer weight to them
-	# just assume they are needed, if they're useless they're harmless
-	asdf = len(armtwist_sub) + 1
-	# make armtwistX, pos=armtwist.pos, parent=armD_idx, inherit armT=1.00
-	armtwistX = pmxstruct.PmxBone(
-		name_jp= side[0] + armtwist_s[0] + str(asdf),
-		name_en= armtwist_s[1] + str(asdf) + side[1],
-		pos=armtwist.pos, parent_idx=-99, deform_layer=0, deform_after_phys=False,
-		has_rotate=True, has_translate=False, has_visible=False, has_enabled=True, has_ik=False,
-		tail_usebonelink=True, tail=-1, inherit_rot=True, inherit_trans=False, inherit_parent_idx=-99, inherit_ratio=1.00,
-		has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
-	)
-	# insert armtwistX at max(armtwist_sub) + 1
-	armtwistX_idx = max(armtwist_sub)+1
-	insert_single_bone(pmx, armtwistX, armtwistX_idx)
-	# fix references to other bones
-	armtwistX.parent_idx = armD_idx
-	armtwistX.inherit_parent_idx = armT_idx
 	
-	# transfer all weight from armtwist to armtwistX
-	transfer_weight_references(pmx, armtwist_idx, armtwistX_idx)
-	# transfer all rigidbody references from armtwist to armT
-	transfer_rigidbody_references(pmx, armtwist_idx, armtwistX_idx)
+	# first, check whether armtwistX would receive any weights/RBs
+	# note, transferring from armtwist to armtwist changes nothing, this is harmless, just for looking
+	armtwistX_used = transfer_to_armtwist_sub(pmx, armtwist_idx, armtwist_idx)
+	if armtwistX_used:
+		asdf = len(armtwist_sub) + 1
+		# make armtwistX, pos=armtwist.pos, parent=armD_idx, inherit armT=1.00
+		armtwistX = pmxstruct.PmxBone(
+			name_jp= side[0] + armtwist_s[0] + str(asdf),
+			name_en= armtwist_s[1] + str(asdf) + side[1],
+			pos=armtwist.pos, parent_idx=-99, deform_layer=0, deform_after_phys=False,
+			has_rotate=True, has_translate=False, has_visible=False, has_enabled=True, has_ik=False,
+			tail_usebonelink=True, tail=-1, inherit_rot=True, inherit_trans=False, inherit_parent_idx=-99, inherit_ratio=1.00,
+			has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
+		)
+		# insert armtwistX at max(armtwist_sub) + 1
+		armtwistX_idx = max(armtwist_sub)+1
+		insert_single_bone(pmx, armtwistX, armtwistX_idx)
+		# fix references to other bones
+		armtwistX.parent_idx = armD_idx
+		armtwistX.inherit_parent_idx = armT_idx
+		
+		# transfer all weight and rigidbody references from armtwist to armtwistX
+		# this time the return val is not needed
+		transfer_to_armtwist_sub(pmx, armtwist_idx, armtwistX_idx)
+		armtwist_sub_obj.append(armtwistX)
+		
+	# second, do the same thing for armtwist0
+	armtwist0_used = transfer_to_armtwist_sub(pmx, arm_idx, arm_idx)
+	if armtwist0_used:
+		# make armtwist0, pos=arm.pos, parent=armD_idx, inherit armT=0.00
+		armtwist0 = pmxstruct.PmxBone(
+			name_jp= side[0] + armtwist_s[0] + "0",
+			name_en= armtwist_s[1] + "0" + side[1],
+			pos=arm.pos, parent_idx=-99, deform_layer=0, deform_after_phys=False,
+			has_rotate=True, has_translate=False, has_visible=False, has_enabled=True, has_ik=False,
+			tail_usebonelink=True, tail=-1, inherit_rot=True, inherit_trans=False, inherit_parent_idx=-99, inherit_ratio=0.00,
+			has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
+		)
+		# insert armtwist0 at min(armtwist_sub)
+		armtwist0_idx = min(armtwist_sub)
+		insert_single_bone(pmx, armtwist0, armtwist0_idx)
+		# fix references to other bones
+		armtwist0.parent_idx = armD_idx
+		armtwist0.inherit_parent_idx = armT_idx
+		
+		# transfer all weight and rigidbody references from arm to armtwist0
+		# this time the return val is not needed
+		transfer_to_armtwist_sub(pmx, arm_idx, armtwist0_idx)
+		armtwist_sub_obj.append(armtwist0)
 	
-	# make armtwist0, pos=arm.pos, parent=armD_idx, inherit armT=0.00
-	armtwist0 = pmxstruct.PmxBone(
-		name_jp= side[0] + armtwist_s[0] + "0",
-		name_en= armtwist_s[1] + "0" + side[1],
-		pos=arm.pos, parent_idx=-99, deform_layer=0, deform_after_phys=False,
-		has_rotate=True, has_translate=False, has_visible=False, has_enabled=True, has_ik=False,
-		tail_usebonelink=True, tail=-1, inherit_rot=True, inherit_trans=False, inherit_parent_idx=-99, inherit_ratio=0.00,
-		has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
-	)
-	# insert armtwist0 at min(armtwist_sub)
-	armtwist0_idx = min(armtwist_sub)
-	insert_single_bone(pmx, armtwist0, armtwist0_idx)
-	# fix references to other bones
-	armtwist0.parent_idx = armD_idx
-	armtwist0.inherit_parent_idx = armT_idx
-	
-	# transfer all weight from arm to armtwist0
-	transfer_weight_references(pmx, arm_idx, armtwist0_idx)
-	# transfer all rigidbody references from arm to armD
-	transfer_rigidbody_references(pmx, arm_idx, armtwist0_idx)
-	
-	armtwist_sub_obj.append(armtwistX)
-	armtwist_sub_obj.append(armtwist0)
-	armtwist_sub = max([b.deform_layer for b in armtwist_sub_obj])
-
 	
 	# 7, set the deform order of all the bones so that it doesn't break when armIK is added
 	# what deform level should they start from?
@@ -389,6 +392,8 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s)
 	
 	
 	# 9, detect & fix incorrect structure among primary bones
+	# refresh list of armtwist_sub indixes cuz stuff was inserted
+	armtwist_sub = max([b.deform_layer for b in armtwist_sub_obj])
 	if elbow.parent_idx in armtwist_sub:
 		newparent = max(arm_idx, armtwist_idx)
 		core.MY_PRINT_FUNC("WARNING: fixing improper parenting for bone '%s'" % elbow.name_jp)
