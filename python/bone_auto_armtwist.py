@@ -232,7 +232,7 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s)
 		tail_usebonelink=True, tail=-1, inherit_rot=False, inherit_trans=False, has_fixedaxis=False,
 		has_localaxis=False, has_externalparent=False,
 		ik_target_idx=-99, ik_numloops=ik_numloops, ik_angle=ik_angle, 
-		ik_links=[pmxstruct.PmxBoneIkLink(idx=-99, lim_min=ikD_lim_min, lim_max=ikD_lim_max)]
+		ik_links=[pmxstruct.PmxBoneIkLink(idx=-99, limit_min=ikD_lim_min, limit_max=ikD_lim_max)]
 	)
 	
 	# make armT, pos=elbow.pos, parent=armD_idx, tail=armTend
@@ -389,9 +389,9 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s)
 	
 	
 	# 9, detect & fix incorrect structure among primary bones
-	if elbow.parent_idx in deform_sub:
+	if elbow.parent_idx in armtwist_sub:
 		newparent = max(arm_idx, armtwist_idx)
-		core.MY_PRINT_FUNC("WARNING: fixing improper parenting for bone '%s'" % elbow.name_jp))
+		core.MY_PRINT_FUNC("WARNING: fixing improper parenting for bone '%s'" % elbow.name_jp)
 		core.MY_PRINT_FUNC("parent was '%s', changing to '%s'" % 
 			(pmx.bones[elbow.parent_idx].name_jp, pmx.bones[newparent].name_jp))
 		core.MY_PRINT_FUNC("if this bone has a 'helper bone' please change its parent in the same way")
