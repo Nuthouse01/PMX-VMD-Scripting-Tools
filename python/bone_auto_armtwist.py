@@ -39,8 +39,8 @@ It creates a clever IK bone setup that hijacks the semistandard bones and moves 
 
 If the existing semistandard armtwist rig is bad, then the results from using this script will also be bad. To re-make the armtwist rig, you can merge all existing armtwist bones into the arm bone and use the "semistandard bones" PMXE plugin to try and rebuild it. Or, you can try using [TODO SDEF SCRIPT NAME HERE] to use a fancy SDEF weights method.
 
-This script is compatible with arm IK bones created by IKMaker X plugin for PMXE. HOWEVER, weird things can sometimes happen and it is not recommended.
-To easily disable the autotwist rig and make it definitely work with arm IK bones: in the parent & partial inherit section for each armtwist/wristtwist/helper bone, replace "armD" with "arm" and replace "armT" with "armtwist". Or, just use a version of the model from before running this script.
+This script is not compatible with arm IK bones created by IKMaker X plugin for PMXE. It slightly works, but usually goes all wacky and strange.
+To easily disable the autotwist rig and make it work with arm IK bones: in the parent & partial inherit section for each armtwist/wristtwist/helper bone, replace "armD" with "arm" and replace "armT" with "armtwist". Or, just use a version of the model from before running this script.
 
 Output: model PMX file '[modelname]_autotwist.pmx'
 '''
@@ -54,15 +54,6 @@ overall it is recommended to NOT use auto-arm-twist rig along with arm-IK rig
 the deform order thing is essential to solving "spinning wrists" when standard arm-IK is present, and perfectly harmless when arm-IK is not present
 the IK link limits help to mitigate some rare issues when arm-IK exists but i'm like 1% confident they can cause issues when arm-IK is not present?
 '''
-
-
-jp_leg =		"足"
-jp_knee =		"ひざ"
-jp_foot =		"足首"
-jp_leg_d =		"足D"
-jp_knee_d =		"ひざD"
-jp_foot_d =		"足首D"
-
 
 
 
@@ -87,8 +78,10 @@ perpendicular_offset_dist = 1.00
 ik_numloops = 100
 ik_angle = 5  # degrees
 
-ikD_lim_min = [0, -180, -180]
-ikD_lim_max = [0, 180, 180]
+ikD_lim_min = None
+ikD_lim_max = None
+# ikD_lim_min = [0, -180, -180]
+# ikD_lim_max = [0, 180, 180]
 
 # girls 555 L elbow
 # girls 1027 R elbow R shoulder
