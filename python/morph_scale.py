@@ -1,4 +1,4 @@
-# Nuthouse01 - 09/13/2020 - v5.01
+# Nuthouse01 - 09/21/2020 - v5.02
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -7,11 +7,13 @@ import copy
 from typing import Union, List
 
 try:
+	# these imports work if running from GUI
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
 	from . import nuthouse01_pmx_struct as pmxstruct
 except ImportError as eee:
 	try:
+		# these imports work if running from double-click on THIS script
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
 		import nuthouse01_pmx_struct as pmxstruct
@@ -225,7 +227,7 @@ def main(moreinfo=True):
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 09/13/2020 - v5.01")
+	print("Nuthouse01 - 09/21/2020 - v5.02")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

@@ -1,4 +1,4 @@
-# Nuthouse01 - 09/13/2020 - v5.01
+# Nuthouse01 - 09/21/2020 - v5.02
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -9,9 +9,11 @@ from abc import ABC, abstractmethod
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
+	# these imports work if running from GUI
 	from . import nuthouse01_core as core
 except ImportError as eee:
 	try:
+		# these imports work if running from double-click on THIS script
 		import nuthouse01_core as core
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
@@ -39,13 +41,19 @@ except ImportError as eee:
 # this is an abstract base class that all the PMX classes inherit
 # this lets them all get the __str__ method and forces them all to implement list()
 # it also lets me detect any of them by isinstance(x, _BasePmx)
+# this also defines an "==" method so my structs can be compared
+# this also defines "idx_within" so if you forget the idx of a thing but still have its reference you can find its index again
 class _BasePmx(ABC):
-	def __str__(self) -> str: return str(self.list())
 	@abstractmethod
 	def list(self) -> list: pass
-	def __eq__(self, other):
+	def __str__(self) -> str: return str(self.list())
+	def __eq__(self, other) -> bool:
 		if type(self) != type(other): return False
 		return self.list() == other.list()
+	def idx_within(self, L: List) -> Union[int, None]:
+		for d, thing in enumerate(L):
+			if self is thing: return d
+		return None
 
 
 class PmxHeader(_BasePmx):
@@ -636,7 +644,7 @@ class Pmx(_BasePmx):
 
 		
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 09/13/2020 - v5.01")
+	core.MY_PRINT_FUNC("Nuthouse01 - 09/21/2020 - v5.02")
 	core.pause_and_quit("you are not supposed to directly run this file haha")
 
 

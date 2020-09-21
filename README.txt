@@ -1,9 +1,11 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README
-Created by Nuthouse01 - 09/13/2020 - v5.01
+Created by Nuthouse01 - 09/21/2020 - v5.02
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!
+If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)
+If you want to contribute a script or bugfix you've made, please make a Git Pull Request that merges onto the "development" branch. Any pull requests onto "master" branch will be rejected.
 
 ###### Legal:
 This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause. You are permitted to examine and modify the code as you see fit, but I make no guarantees about the safety or quality of the result.
@@ -40,6 +42,11 @@ This script is to check if the model you are using is compatible with the VMD/VP
 
 This script will reveal what exactly is mismatched; but to fix the issue, you must either change the PMX to match the VMD/VPD (using PMXEditor or a similar tool) or you must change the VMD/VPD to match the PMX (convert the VMD to text form, replace all uses of "笑顔" with "笑い" to match the model, and then convert it back to VMD form).
 
+##### bone_auto_armtwist.py
+This will generate "automatic armtwist rigging" that will fix pinching at shoulders/elbows.
+**This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.**
+It creates a clever IK bone setup that hijacks the semistandard bones and moves them as needed to reach whatever pose you make with the arm/腕 or elbow/ひじ bones. You do not need to manually move the armtwist bones at all, you can animate all 3 axes of rotation on the arm bone and the twisting axis will be automatically extracted and transferred to the armtwist bone as needed!
+
 ##### morph_hide.py
 This script simply sets the specified morphs within a model to group "0" so they do not show up in the eye/lip/brow/other menus. This is handy for components of group morphs that you don't want to be used independently.
 
@@ -49,28 +56,16 @@ This will "invert" a vertex or UV morph by permanently applying it to the model'
 ##### morph_scale.py
 This will scale the strength/magnitude of a vertex, UV, or bone morph by a specified factor such as 2.9 or 0.75.
 
-##### vmd_armtwist_insert.py
-Some models have "armtwist" and "wristtwist" bones, but almost no VMD dances actually use them. If you twist a model's arm bone around the axis of the arm (the local X-axis) it will cause ugly pinching/tearing at the joint, but if you do that same motion with the armtwist bone instead, the pinching/tearing will not happen. This script does some very clever math to extract the local X-axis rotation from the arm bones and elbow bones and transfer it to the armtwist bones instead, totally fixing the pinching/tearing problem! This operation must be done separately for each model/dance pair.
-
 ##### convert_vmd_to_txt.py
 This tool is for converting VMD (Vocaloid Motion Data) files from their packed binary form to a human-readable and human-editable text form, and vice versa. This can allow 3rd-party scripts to perform procedural edits on the VMD data while it is in text format, such as (for example) constraining certain bones to a desired max range of motion, and then converting it back to VMD form for use in MikuMikuDance. Or it can be used to modify the names of the bones/morphs that the VMD is trying to control, to customize it to work better with a specific model.
 
 ##### convert_vpd_to_vmd.py
 This script will convert VPD (Vocaloid Pose Data) files to or from VMD (Vocaloid Motion Data) files. The motion files will be only a single frame long, with all bones/morphs framed at time=0.
 
-##### make_ik_from_vmd.py
-This script runs forward kinematics for a given VMD dance motion on the bone structure for a given model, and calculates where the feet bones should be at each frame. It then creates a VMD motion file that has frames to move the IK bones to those locations at those frames. This is only useful for a dance motion that doesn't already use IK (such as Conqueror by IA).
-(The idea was to find a model whose feet are well positioned during the dance, store those locations as IK frames, and apply those locations to a different model whose feet are not well positioned during that same dance. This turned out to be not very helpful, but the script does what it claims to do so I'm including it anyway.)
-
-##### pmx_list_bone_morph_names.py
-This very basic script will parse a PMX file and print the JP names alongside the EN names for all bones and morphs. This way you can see the full list of morphs the model contains without needing to use PMXE.
-
 ### Notes:
-Note: when viewing textfile outputs with a text editor, if you see no Kanji and instead see lots of gibberish, you may need to change the language settings. For example in Notepad++, you should select Encoding > Character Sets > Japanese > Shift-JIS.
+Note: if you want to run the Python version rather than the EXE version, you will need have Python 3.6 or higher and need to install the "googletrans" library (pip install googletrans). This is the only non-standard library used in my codebase.
 
-Note: if you want to run the Python version rather than the EXE version, you will need have Python 3.4 or higher and need to install the "googletrans" library (pip install googletrans). This is the only non-standard library used in my codebase.
-
-Note: the EXE file is so much larger than all the Python scripts because it was bundled with PyInstaller, and contains an entire portable Python installation.
+Note: the EXE file is so much larger than all the Python scripts because it was bundled with PyInstaller, and contains an entire portable Python installation. Technically, when it runs it unpacks & installs Python to a temporary location, executes all of my Python scripts, and when the window is closed it deletes that temporary location.
 
 Note: Bones and morphs are stored in the VMD format by their JAPANESE NAME. It is not possible to get any english name info from the VMD.
 
@@ -119,6 +114,8 @@ Bone-rotation angles are converted from quaternion format and outputted as euler
     <file end>
 
 ### VMD binary structure:
+
+This is only included because I don't have permissions to update the MikuMikuDance Fandom page with all the info I discovered. It would be a shame if it just vanished forever, so I'll post it here.
 
 The binary file is encoded with "shift_jis" scheme.
 
@@ -190,7 +187,8 @@ Some really old motions that don't contain camframe/lightframe/shadowframe/ikdis
             1b boolean, = ik on=1/off=0
     <file end>
 
-Note: When doing conversion from txt->VMD, I append a signature string "Nuthouse01" to prove that this file was created by my conversion tool. This does not affect MikuMikuDance, MikuMikuMoving, PMXE, or MMDTools from successfully reading the motion.
+Note: When doing conversion from txt->VMD, I append a signature string "Nuthouse01" to prove that this file was created by my conversion tool.
+This does not affect MikuMikuDance, MikuMikuMoving, PMXE, or MMDTools (Blender plugin) from successfully reading the motion.
 
 Technically, the VMD binary file structure allows having both model data (bones, morphs, ikdisp) and cam data (cam, light, shadow) in the same file at the same time. However, MikuMikuDance will ignore model data and read only the cam data if the modelname is exactly "カメラ・照明" (TL: Camera / Lighting), and will ignore cam data and read only the model data if the modelname is anything else.
 
@@ -201,7 +199,9 @@ Thank you to whoever made [this VMD documentation page](https://mikumikudance.fa
 
 Also thanks to [FelixJones on Github](https://gist.github.com/felixjones/f8a06bd48f9da9a4539f) for already exploring & documenting the PMX file structure!
 
-Thanks to the people who made PyInstaller for making a super easy way to build an .exe from a bunch of Python scripts, its a really neat tool you should check it out. The EXE files are so large because it contains the entire Python kernel + all needed libraries for that script. pyinstaller --onefile --noconsole whatever.py
+Big thanks to "Quappa-El" for inventing the automatic armtwist bone structure that my "bone_auto_armtwist" script copies. Once I had a working example in front of me, it took only 2 days to put together the script that lets me apply it onto any model.
+
+Thanks to the people who made PyInstaller for making a super easy way to build an .exe from a bunch of Python scripts, its a really neat tool you should check it out. The EXE files are so large because it contains the entire Python kernel + all needed libraries for that script. "pyinstaller --onefile --noconsole whatever.py"
 
 ###### Files:
 The following files should be included with this README:
@@ -215,6 +215,9 @@ The following files should be included with this README:
 * img/screenshot1.png
 
 #### Changelog:
+
+    v5.02:
+    NEW: "bone_auto_armtwist.py" for creating rigging to automatically control existing armtwist bones
 
     v5.01:
     NEW: "translate_source_bone.py" for translating SFM names to MMD names

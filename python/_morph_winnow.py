@@ -1,15 +1,17 @@
-# Nuthouse01 - 09/13/2020 - v5.01
+# Nuthouse01 - 09/21/2020 - v5.02
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
+	# these imports work if running from GUI
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
 	from . import nuthouse01_pmx_struct as pmxstruct
 	from ._prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
 except ImportError as eee:
 	try:
+		# these imports work if running from double-click on THIS script
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
 		import nuthouse01_pmx_struct as pmxstruct
@@ -171,7 +173,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 09/13/2020 - v5.01")
+	core.MY_PRINT_FUNC("Nuthouse01 - 09/21/2020 - v5.02")
 	if DEBUG:
 		main()
 	else:

@@ -53,7 +53,6 @@ def recursively_compare(AAA,BBB):
 
 
 
-# i am giving the function two lists to walk in parallel, NOT two items
 
 
 f1 = "foobar.pmx"
@@ -63,8 +62,12 @@ f2 = "whatev.pmx"
 pmx2 = pmxlib.read_pmx(f2)
 
 
-alldiff = recursively_compare(pmx1, pmx2)
+# i am giving the function two lists to walk in parallel, NOT two items
+alldiff = recursively_compare(pmx1.list(), pmx2.list())
+# it's an iterator thing so i need to iterate on it before it becomes a true list
+# aka cast it to a list
 alldiff = list(alldiff)
+print(alldiff)
 
 noverts = [d for d in alldiff if not (d[0] == 1 and d[2] == 2)]
 print(len(noverts))
