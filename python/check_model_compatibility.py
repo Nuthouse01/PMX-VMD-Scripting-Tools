@@ -258,6 +258,25 @@ def main(moreinfo=True):
 					for m, num in matching_bones_list:
 						core.MY_PRINT_FUNC("  %s  ||  %d" % (m, int(num)))
 		
+		# NEW: among matching bones, check whether any bones have unsupported translation/rotation
+		for bonestr in sorted(list(matching_bones.keys())):
+			# get the bone to get whether rot/trans enabled
+			bone = core.my_list_search(pmx.bones, lambda x: x.name_jp == bonestr, getitem=True)
+			# get all the frames from the VMD that are relevant to this bone
+			thisboneframes = [f for f in vmd.boneframes if f.name == bonestr]
+			# does the VMD use rotation? probably, check anyway
+			vmd_use_rot = any(f.rot != [0,0,0] for f in thisboneframes)
+			if vmd_use_rot and not (bone.has_rotate and bone.has_enabled):
+				# raise some sort of warning
+				w = "Warning: supported bone '%s' uses rotation in VMD, but rotation not allowed by PMX" % bonestr
+				core.MY_PRINT_FUNC(w)
+			# does the VMD use translation?
+			vmd_use_trans = any(f.pos != [0,0,0] for f in thisboneframes)
+			if vmd_use_trans and not (bone.has_translate and bone.has_enabled):
+				# raise some sort of warning
+				w = "Warning: supported bone '%s' uses move/shift in VMD, but move/shift not allowed by PMX" % bonestr
+				core.MY_PRINT_FUNC(w)
+		
 	core.MY_PRINT_FUNC("")
 	core.MY_PRINT_FUNC("Done!")
 	return None
