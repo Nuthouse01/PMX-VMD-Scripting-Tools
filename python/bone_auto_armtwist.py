@@ -383,7 +383,7 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s,
 	
 	# 7, detect & fix incorrect structure among primary bones
 	# refresh list of armtwist_sub indixes cuz stuff was inserted
-	armtwist_sub = [b.deform_layer for b in armtwist_sub_obj]
+	armtwist_sub = [b.idx_within(pmx.bones) for b in armtwist_sub_obj]
 	# elbow should be a child of arm or armtwist, NOT any of the armtwist-sub bones
 	# this is to prevent deform layers from getting all fucky
 	if elbow.parent_idx in armtwist_sub:
