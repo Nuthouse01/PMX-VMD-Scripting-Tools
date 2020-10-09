@@ -193,9 +193,9 @@ def calculate_percentiles(pmx: pmxstruct.Pmx, bone_arm: int, bone_elbow: int, bo
 			# 4. calculate how far along the axis each vertex lies
 			# percentile: 0.0 means at the startpoint, 1.0 means at the endpoint
 			# apply 2d Y-rotation: ignore Y-axis, this will cause Z==Z
-			inter1x, inter1z = core.rotate2d(origin=(startx, startz), angle=theta_y, point=(vert[0], vert[2]))
+			inter1x, inter1z = core.rotate2d(origin=(startx, startz), angle=theta_y, point=(vert.pos[0], vert.pos[2]))
 			# apply 2d Z-rotation: ignore Z-axis, this will cause Y==Y
-			finalx, finaly = core.rotate2d(origin=(startx, starty), angle=theta_z, point=(inter1x, vert[1]))
+			finalx, finaly = core.rotate2d(origin=(startx, starty), angle=theta_z, point=(inter1x, vert.pos[1]))
 			# calculate the actual percentile
 			v_percentile = (finalx - startx) / axis_length
 			retme_percents.append(v_percentile)
