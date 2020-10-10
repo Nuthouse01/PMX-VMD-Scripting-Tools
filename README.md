@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README  
-Created by Nuthouse01 - 09/21/2020 - v5.02  
+Created by Nuthouse01 - 10/10/2020 - v5.03  
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!  
 If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)  
@@ -216,6 +216,12 @@ The following files should be included with this README:
 
 #### Changelog: 
 
+    v5.03:
+    bugfix: in "bone auto armtwist", fixed bones hanging off of armtwist# bones not having deform level updated
+    bugfix: in "dispframe fix", fixed bug that would crash if root group is or becomes empty
+    "check model compatability" now also check bones for trans/rot support
+    "prune unused bones" now added "edge adjust" bone to list of exceptions
+    
     v5.02:
     NEW: "bone_auto_armtwist.py" for creating rigging to automatically control existing armtwist bones
     
