@@ -1,4 +1,4 @@
-# Nuthouse01 - 09/21/2020 - v5.02
+# Nuthouse01 - 10/10/2020 - v5.03
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -383,7 +383,7 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s,
 	
 	# 7, detect & fix incorrect structure among primary bones
 	# refresh list of armtwist_sub indixes cuz stuff was inserted
-	armtwist_sub = [b.deform_layer for b in armtwist_sub_obj]
+	armtwist_sub = [b.idx_within(pmx.bones) for b in armtwist_sub_obj]
 	# elbow should be a child of arm or armtwist, NOT any of the armtwist-sub bones
 	# this is to prevent deform layers from getting all fucky
 	if elbow.parent_idx in armtwist_sub:
@@ -483,7 +483,7 @@ def main(moreinfo=True):
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 09/21/2020 - v5.02")
+	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

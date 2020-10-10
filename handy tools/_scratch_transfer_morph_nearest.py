@@ -118,7 +118,7 @@ def main():
 	return None
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 09/21/2020 - v5.02")
+	print("Nuthouse01 - 10/10/2020 - v5.03")
 	if DEBUG:
 		main()
 	else:

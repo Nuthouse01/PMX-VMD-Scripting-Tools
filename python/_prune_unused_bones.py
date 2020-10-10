@@ -1,4 +1,4 @@
-# Nuthouse01 - 09/21/2020 - v5.02
+# Nuthouse01 - 10/10/2020 - v5.03
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -59,8 +59,8 @@ PRINT_FOUND_UNUSED_BONES = False
 
 
 # these are common bones that are unused but should not be deleted
-# glasses, dummy_L, dummy_R, view cnt, motherbone
-BONES_TO_PROTECT = ["メガネ", "左ダミー", "右ダミー", "操作中心", "全ての親"]
+# glasses, dummy_L, dummy_R, view cnt, motherbone, edge adjust
+BONES_TO_PROTECT = ["メガネ", "左ダミー", "右ダミー", "操作中心", "全ての親", "エッジ調整"]
 
 helptext = '''====================
 prune_unused_bones:
@@ -445,7 +445,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 09/21/2020 - v5.02")
+	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
 	if DEBUG:
 		main()
 	else:

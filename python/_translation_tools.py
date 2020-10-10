@@ -280,15 +280,19 @@ bone_dict =  {
 "親指0": "thumb0",
 "親指1": "thumb1",
 "親指2": "thumb2",
+"小指0": "little0",
 "小指1": "little1",
 "小指2": "little2",
 "小指3": "little3",
+"薬指0": "third0",
 "薬指1": "third1",
 "薬指2": "third2",
 "薬指3": "third3",
+"中指0": "middle0",
 "中指1": "middle1",
 "中指2": "middle2",
 "中指3": "middle3",
+"人指0": "fore0",
 "人指1": "fore1",
 "人指2": "fore2",
 "人指3": "fore3",
@@ -1052,6 +1056,6 @@ def local_translate(in_list: STR_OR_STRLIST) -> STR_OR_STRLIST:
 # 		numpass, numtotal, numpass / numtotal))
 #
 # if __name__ == '__main__':
-# 	core.MY_PRINT_FUNC("Nuthouse01 - 09/21/2020 - v5.02")
+# 	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
 # 	main()
 #

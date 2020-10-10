@@ -1,4 +1,4 @@
-# Nuthouse01 - 09/21/2020 - v5.02
+# Nuthouse01 - 10/10/2020 - v5.03
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -83,13 +83,11 @@ def dispframe_fix(pmx: pmxstruct.Pmx, moreinfo=False):
 		motherid = 0
 	
 	# ensure that "motherbone" and nothing else is in the root:
-	oldrootid = -100
 	for d,frame in enumerate(pmx.frames):
 		# only operate on the root group
 		if frame.name_jp == "Root" and frame.name_en == "Root" and frame.is_special:
 			newframelist = [[0,motherid]]
 			if frame.items != newframelist:
-				oldrootid = frame.items[0][1]
 				# if the itemslist is not exactly only motherbone, make it exactly only motherbone
 				frame.items = newframelist
 				fix_root += 1
@@ -121,7 +119,7 @@ def dispframe_fix(pmx: pmxstruct.Pmx, moreinfo=False):
 		# add an item for this bone to the group
 		pmx.frames[centerid].items.append([0,boneid])
 		# do not count moving a bone from root to center
-		if boneid != oldrootid: fix_center += 1
+		fix_center += 1
 	if fix_center and moreinfo:
 		core.MY_PRINT_FUNC("fixing center group")
 	
@@ -259,7 +257,7 @@ def main():
 	core.pause_and_quit("Done with everything! Goodbye!")
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 09/21/2020 - v5.02")
+	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
 	if DEBUG:
 		main()
 	else:
