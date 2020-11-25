@@ -570,6 +570,7 @@ words_dict = {
 "内": "inner",
 "外": "outer",
 "角": "corner",
+"隅": "corner",
 "法線": "normals",  # normals as in vertex normals not normal as in ordinary, i think?
 "調整": "adjust",
 "出し": "out",  # out as in takeout???
