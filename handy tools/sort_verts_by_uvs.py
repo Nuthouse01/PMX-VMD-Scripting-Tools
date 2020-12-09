@@ -1,0 +1,79 @@
+
+import sys
+try:
+	sys.path.append("../")
+	from python import nuthouse01_core as core
+	from python import nuthouse01_pmx_parser as pmxlib
+except ImportError as eee:
+	print(eee)
+	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
+	print("...press ENTER to exit...")
+	input()
+	exit()
+	core = pmxlib = None
+
+
+# GOAL: sort vertices by UV coordinates
+# PROBLEM: verts that have matching UV coords?
+# SOLUTION: use xyz as tiebreaker... if uv exact match and xyz exact match, then order probably doesnt matter
+# also need to update references to vertices
+# vertices are referenced in faces, morphs (uv and vertex morphs), and soft bodies (should be handled just for completeness' sake)
+
+# NOTES:
+# this is used to guarantee matching vertex order for geometry that should be the "same" but comes from different sources
+# this ordering is totally useless if the two versions have different numbers of vertices though!
+# reduce the PMX to the smallest units possible & sort one by one
+
+
+def main():
+	pmxname = core.prompt_user_filename(".pmx")
+	
+	pmx = pmxlib.read_pmx(pmxname, moreinfo=True)
+	
+	# first, attach the vert index to the vert object, so i can determine the before-after map
+	idxlist = list(range(len(pmx.verts)))
+	vertlist = list(zip(pmx.verts, idxlist))
+	# lambda func to use for sorting: returns a list of keys to sort by
+	# use + to append lists
+	# this key will sort by u then by v then by x then by y then by z
+	sortkey = lambda x: x[0].uv + x[0].pos
+	# then, sort the list
+	print("sorting")
+	vertlist.sort(key=sortkey)
+	
+	# unzip
+	new_vertlist = [a for a, b in vertlist]
+	old_idxs =     [b for a, b in vertlist]
+	
+	# put the newly sorted list into the pmx struct
+	pmx.verts = new_vertlist
+	
+	# build a map of old index to new index
+	old_to_new = dict(zip(old_idxs,idxlist))
+	
+	# now update all faces
+	print("doing faces")
+	for f in pmx.faces:
+		for i in range(3):
+			f[i] = old_to_new[f[i]]
+			
+	# now update all morphs
+	print("doing morphs")
+	for m in pmx.morphs:
+		if m.morphtype == 1:  #vertex
+			for item in m.items:
+				item.vert_idx = old_to_new[item.vert_idx]
+		if 3 <= m.morphtype <= 7: # uv
+			for item in m.items:
+				item.vert_idx = old_to_new[item.vert_idx]
+		
+	# softbodies: eh, who cares
+	
+	pmxname_done = pmxname[:-4] + "_Vsort.pmx"
+	pmxlib.write_pmx(pmxname_done, pmx, moreinfo=True)
+	print("done")
+	
+
+if __name__ == "__main__":
+	main()
+
