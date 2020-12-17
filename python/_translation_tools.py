@@ -691,6 +691,7 @@ words_dict = {
 "表": "front", # not sure about this one, front as in outward-facing geometry, opposite of backward-facing geometry. literally means "table" tho lol
 "縁": "edge",
 "エッジ": "edge",
+"丸い": "round",
 "丸": "round",
 "はちゅ": "round",
 "縮小": "small",
