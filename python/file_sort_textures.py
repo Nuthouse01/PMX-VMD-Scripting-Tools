@@ -228,7 +228,7 @@ def combine_tex_reference(pmx: pmxstruct.Pmx, dupe_to_master_map: Dict[int,int])
 	"""
 	# now modify this PMX to resolve/consolidate/unify the duplicates:
 	# first: make dellist & idx_shift_map
-	dellist = list(dupe_to_master_map.keys())
+	dellist = sorted(list(dupe_to_master_map.keys()))
 	# make the idx_shift_map
 	idx_shift_map = delme_list_to_rangemap(dellist)
 	# second: delete the acutal textures from the actual texture list
