@@ -24,15 +24,16 @@ print("give XYZ of 2 points that you want to align, and XYZ of the 2 points you 
 print("returns XYZ scale and XYZ offset needed to make them aligned")
 print("the two locations should be different in all 3 dimensions")
 
+DIMENSIONS = 3
+CHECK_ROTATION = False
+
+print("DIMENSIONS = %d" % DIMENSIONS)
 print("")
 print("format: floating point numbers separated by commas, no spaces")
 moveme_1_str = input("moveme point 1: ")
 dest_1_str =   input("  dest point 1: ")
 moveme_2_str = input("moveme point 2: ")
 dest_2_str =   input("  dest point 2: ")
-
-DIMENSIONS = 3
-CHECK_ROTATION = False
 
 points_str = [moveme_1_str, moveme_2_str, dest_1_str, dest_2_str]
 points = []
