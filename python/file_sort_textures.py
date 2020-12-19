@@ -69,6 +69,7 @@ FOLDER_UNUSED = "unused"
 # PNG, JPEG, BMP, DDS, TIFF, GIF
 IMG_TYPE_TO_EXT = {
 	"PNG": (".png",),
+	"TGA": (".tga",),
 	"JPEG": (".jpg", ".jpeg",),
 	"BMP": (".bmp",), #".spa", ".sph",
 	"DDS": (".dds",),
@@ -431,6 +432,7 @@ Unused image files can be moved into an "unused" folder, to declutter things.
 Any files referenced by the PMX that do not exist on disk will be listed.
 Before actually changing anything, it will list all proposed file renames and ask for final confirmation.
 It also creates a zipfile backup of the entire folder, just in case.
+If you have PIL installed, it will also verify that each image file extension actually matches the image format. Occasionally a .jpg will be saved with a .bmp extension, or whatever. This will just the file to .jpg. This will not re-encode the image.
 Bonus: this can process all "neighbor" pmx files in addition to the target, this highly recommended because neighbors usually reference similar sets of files.
 
 Note: *** means "all files within this folder"
