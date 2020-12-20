@@ -1,4 +1,4 @@
-# Nuthouse01 - 10/10/2020 - v5.03
+# Nuthouse01 - 12/20/2020 - v5.04
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -32,6 +32,12 @@ except ImportError as eee:
 		core = pmxlib = pmxstruct = None
 		newval_from_range_map = delme_list_to_rangemap = None
 
+try:
+	from PIL import Image
+	PIL_CHECK_IMGTYPE = True
+except ImportError:
+	Image = None
+	PIL_CHECK_IMGTYPE = False
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
@@ -59,8 +65,22 @@ FOLDER_TOON =   "toon"
 FOLDER_MULTI =  "multi"
 FOLDER_UNUSED = "unused"
 
-IMG_EXT = (".jpg", ".jpeg", ".png", ".bmp", ".spa", ".sph", ".gif", ".tga", ".dds",
-		   ".xcf", ".psd", ".sai")
+# how PIL reads things:
+# PNG, JPEG, BMP, DDS, TIFF, GIF
+IMG_TYPE_TO_EXT = {
+	"PNG": (".png",),
+	"TGA": (".tga",),
+	"JPEG": (".jpg", ".jpeg",),
+	"BMP": (".bmp",), #".spa", ".sph",
+	"DDS": (".dds",),
+	"GIF": (".gif",),
+	"TIFF": (".tif", ".tiff",),
+	"SPH": (".spa", ".sph",), # this isn't a "real" file type so this is just to get these extensions in IMG_EXT
+}
+
+# IMG_EXT = (".jpg", ".jpeg", ".png", ".bmp", ".spa", ".sph", ".gif", ".tga", ".dds", ".tif", ".tiff")
+IMG_EXT = tuple([item for sublist in IMG_TYPE_TO_EXT.values() for item in sublist])
+
 KEEP_FOLDERS_TEX = ("cloth", "outfit", "uniform", "wear", "body", "tex", "weapon", "acc", "face", "tx")
 KEEP_FOLDERS_TOON = ("tn", "toon")
 KEEP_FOLDERS_SPH = ("sph", "spa", "sp")
@@ -96,6 +116,27 @@ class FileRecord:
 		p = "'%s': used as %s, %d times among %d files" % (
 			self.name, self.usage, self.numused, len(self.used_pmx))
 		return p
+	
+def make_imgext_match_imgformat(abspath, newname):
+	try:
+		im = Image.open(abspath)
+	
+		base, currext = os.path.splitext(newname)
+		if currext not in IMG_TYPE_TO_EXT[im.format]:
+			return base + IMG_TYPE_TO_EXT[im.format][0]
+		else:
+			return newname
+	except FileNotFoundError as eeee:
+		print("FILESYSTEM MALFUNCTION!", eeee.__class__.__name__, eeee)
+		return ""
+	except OSError as eeee:
+		# this has 2 causes, "Unsupported BMP bitfields layout" or "cannot identify image file"
+		# print("CANNOT INSPECT!1", eeee.__class__.__name__, eeee, fname)
+		return ""
+	except NotImplementedError as eeee:
+		# this is because there's some DDS format it can't make sense of
+		# print("CANNOT INSPECT!2", eeee.__class__.__name__, eeee, fname)
+		return ""
 
 
 def walk_filetree_from_root(startpath: str) -> List[str]:
@@ -228,7 +269,7 @@ def combine_tex_reference(pmx: pmxstruct.Pmx, dupe_to_master_map: Dict[int,int])
 	"""
 	# now modify this PMX to resolve/consolidate/unify the duplicates:
 	# first: make dellist & idx_shift_map
-	dellist = list(dupe_to_master_map.keys())
+	dellist = sorted(list(dupe_to_master_map.keys()))
 	# make the idx_shift_map
 	idx_shift_map = delme_list_to_rangemap(dellist)
 	# second: delete the acutal textures from the actual texture list
@@ -391,6 +432,7 @@ Unused image files can be moved into an "unused" folder, to declutter things.
 Any files referenced by the PMX that do not exist on disk will be listed.
 Before actually changing anything, it will list all proposed file renames and ask for final confirmation.
 It also creates a zipfile backup of the entire folder, just in case.
+If you have PIL installed, it will also verify that each image file extension actually matches the image format. Occasionally a .jpg will be saved with a .bmp extension, or whatever. This will just the file to .jpg. This will not re-encode the image.
 Bonus: this can process all "neighbor" pmx files in addition to the target, this highly recommended because neighbors usually reference similar sets of files.
 
 Note: *** means "all files within this folder"
@@ -546,6 +588,11 @@ def main(moreinfo=False):
 	# =========================================================================================================
 	# DETERMINE NEW NAMES FOR FILES
 	
+	pil_cannot_inspect = 0
+	pil_cannot_inspect_list = []
+	pil_imgext_mismatch = 0
+	
+	
 	# how to remap: build a list of all destinations (lowercase) to see if any proposed change would lead to collision
 	all_new_names = set()
 	
@@ -564,6 +611,16 @@ def main(moreinfo=False):
 		newname = newname[:dot] + newname[dot:].lower()
 		if CONVERT_SPA_SPH_TO_BMP and newname.endswith((".spa",".sph")):
 			newname = newname[:-4] + ".bmp"
+			
+		if PIL_CHECK_IMGTYPE:
+			r = make_imgext_match_imgformat(os.path.join(startpath, p.name), newname)
+			if r == "":
+				pil_cannot_inspect += 1
+				pil_cannot_inspect_list.append(p.name)
+			elif r != newname:
+				pil_imgext_mismatch += 1
+				newname = r
+		
 		# if the name I build is not the name it already has, queue it for actual rename
 		if newname != p.name:
 			# resolve potential collisions by adding numbers suffix to file names
@@ -605,6 +662,16 @@ def main(moreinfo=False):
 		newname = newname[:dot] + newname[dot:].lower()
 		if CONVERT_SPA_SPH_TO_BMP and newname.lower().endswith((".spa", ".sph")):
 			newname = newname[:-4] + ".bmp"
+
+		if PIL_CHECK_IMGTYPE:
+			r = make_imgext_match_imgformat(os.path.join(startpath, p.name),newname)
+			if r == "":
+				pil_cannot_inspect += 1
+				pil_cannot_inspect_list.append(p.name)
+			elif r != newname:
+				pil_imgext_mismatch += 1
+				newname = r
+		
 		# if the name I build is not the name it already has, queue it for actual rename
 		if newname != p.name:
 			# resolve potential collisions by adding numbers suffix to file names
@@ -621,6 +688,15 @@ def main(moreinfo=False):
 	# =========================================================================================================
 	# =========================================================================================================
 	# NOW PRINT MY PROPOSED RENAMINGS and other findings
+	
+	if PIL_CHECK_IMGTYPE:
+		if pil_cannot_inspect or pil_imgext_mismatch:
+			core.MY_PRINT_FUNC("=" * 60)
+		if pil_cannot_inspect:
+			core.MY_PRINT_FUNC("WARNING: failed to inspect %d image files" % pil_cannot_inspect)
+			core.MY_PRINT_FUNC(pil_cannot_inspect_list)
+		if pil_imgext_mismatch:
+			core.MY_PRINT_FUNC("Repaired %d images with incorrect extensions (included in renaming table below)" % pil_imgext_mismatch)
 	
 	# isolate the ones with proposed renaming
 	used_rename =          [u for u in used_exist if u.newname is not None]
@@ -777,7 +853,7 @@ def main(moreinfo=False):
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
+	core.MY_PRINT_FUNC("Nuthouse01 - 12/20/2020 - v5.04")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

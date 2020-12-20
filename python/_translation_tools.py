@@ -1,3 +1,6 @@
+# Nuthouse01 - 12/20/2020 - v5.04
+# This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
+#####################
 
 # this file simply contains commonly-used translation data
 # most of these copied from PMXE's translation dict
@@ -227,20 +230,21 @@ morph_dict = {
 "恐ろしい子!": "white eyes", # literally "scary child!" who the hell thought that was a good name?
 "ぺろっ": "tongue out",  # phonetically "perrow"
 "べー": "beeeeh", # another way of doing "tongue out" but google likes to turn this into 'base'
-"あ": "a",
-"い": "i",
-"う": "u",
-"え": "e",
+"あ": "A",
+"い": "I",
+"う": "U",
+"え": "E",
 "えー": "eeeeeh",  # long "e" sound
-"お": "o",
-"ワ": "wa",
-"わ": "wa",
+"お": "O",
+"ワ": "Wa",
+"ん": "N",  # default translation is "hmm" but this makes more sense I think? not commonly used anyway so w/e
+"ふ": "F",  # uncommon
+"ぴ": "P",  # uncommon
 "上": "brow up", # "go up"
 "下": "brow down", # "go down"
 "前": "brow fwd",
 "後": "brow back",
 "涙": "tears",
-"ん": "hmm", # wtf is this translation
 }
 
 # add the symbols into the morph dict
@@ -569,6 +573,7 @@ words_dict = {
 "内": "inner",
 "外": "outer",
 "角": "corner",
+"隅": "corner",
 "法線": "normals",  # normals as in vertex normals not normal as in ordinary, i think?
 "調整": "adjust",
 "出し": "out",  # out as in takeout???
@@ -595,6 +600,11 @@ words_dict = {
 "短": "short",
 "長": "long",
 "長い": "long",
+"たれ": "drooping",  # "tare"
+"タレ": "drooping",  # "tare"
+"つり": "slanted",  # "tsuri"
+"ツリ": "slanted",  # "tsuri"
+"悔しい": "frustrated",  # "Kuyashī"
 
 "穏やか": "calm",
 "螺旋": "spiral",
@@ -684,6 +694,7 @@ words_dict = {
 "表": "front", # not sure about this one, front as in outward-facing geometry, opposite of backward-facing geometry. literally means "table" tho lol
 "縁": "edge",
 "エッジ": "edge",
+"丸い": "round",
 "丸": "round",
 "はちゅ": "round",
 "縮小": "small",
@@ -694,16 +705,18 @@ words_dict = {
 "消": "erase",
 "裸": "bare", # or "naked" like bare legs
 "あ": "a",
-"ア": "a",
+"ア": "a",  # not one of the primary phonetic morphs, but shows up such as in "ワアアア" = "wa a a a"
 "い": "i",
 "う": "u",
 "え": "e",
 "お": "o",
 "ワ": "wa",
-"わ": "wa",
+"わ": "wa",  # not one of the primary phonetic morphs
+"ん": "n",
+"ふ": "f",  # uncommon
+"ぴ": "p",  # uncommon
 "なみだ": "tears",  # phonetically "namida"
 "涙": "tears",  # phonetically "namida"
-"ん": "hmm",
 "へ": "eeeh",
 "の": "of", # backwards yoda-style grammar: technically "A の B" translates to "B of A" but I can't do that switcheroo without major changes
 "用": "for",  # backwards yoda-style grammar: same

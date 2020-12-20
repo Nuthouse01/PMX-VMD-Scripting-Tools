@@ -1,4 +1,4 @@
-# Nuthouse01 - 10/10/2020 - v5.03
+# Nuthouse01 - 12/20/2020 - v5.04
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -92,6 +92,10 @@ def delme_list_to_rangemap(delme_verts: List[int]) -> Tuple[List[int],List[int]]
 	:param delme_verts: ascending sorted list of ints
 	:return: tuple(list-of-starts, list-of-cumulativelength)
 	"""
+	
+	if delme_verts and not all(delme_verts[i] <= delme_verts[i + 1] for i in range(len(delme_verts) - 1)):
+		core.MY_PRINT_FUNC("BUG DETECTED: delme_list_to_rangemap() received argument not in sorted order!!")
+		raise ValueError("BUG DETECTED: delme_list_to_rangemap() received argument not in sorted order!!")
 	delme_range = []
 	start_idx = 0
 	for end_idx in range(1, len(delme_verts)+1):
@@ -284,7 +288,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
+	core.MY_PRINT_FUNC("Nuthouse01 - 12/20/2020 - v5.04")
 	if DEBUG:
 		main()
 	else:
