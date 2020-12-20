@@ -1,3 +1,6 @@
+# Nuthouse01 - 12/20/2020 - v5.04
+# This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
+#####################
 
 # this file simply contains commonly-used translation data
 # most of these copied from PMXE's translation dict
