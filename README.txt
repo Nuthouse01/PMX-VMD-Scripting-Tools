@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README
-Created by Nuthouse01 - 10/10/2020 - v5.03
+Created by Nuthouse01 - 12/20/2020 - v5.04
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!
 If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)
@@ -15,7 +15,7 @@ Don't try to claim this work as yours. That would be a profoundly dick move.
 
 ###### Usage:
 1. Click the green button above, select "Download ZIP", save it, and unzip it somewhere.
-2. Just double-click "graphic_user_interface.exe" to open the user interface window. (For simplicity I recommend you use the EXE version. No installation is required. But if you want to run the PY versions or modify the code, you will need to [Install Python3](https://www.google.com/search?q=how+to+install+python) and the "googletrans" library.)
+2. Just double-click "graphic_user_interface.exe" to open the user interface window. (For simplicity I recommend you use the EXE version. No installation is required. But if you want to run the PY versions or modify the code, you will need to [Install Python3](https://www.google.com/search?q=how+to+install+python) and the "googletrans" library ("pip install googletrans==4.0.0-rc1").)
     1. If you get a popup saying "Windows protected your PC", you can click "More Info" and then "Run Anyway". This does not mean that it detected a virus (that is a different popup), this happens whenever you run an EXE from an unknown publisher, like me.
 3. Use the dropdown menu at the top to select which script you want to run. You can press the "Help" button to print out a detailed explanation of what the currently selected script does, how it does it, and what output files it creates.
 4. Click the large "RUN" button to the left to execute the selected script. This will begin by prompting you for input file(s), and will then run to completion. Outputs and info will be printed in the large space at the bottom of the window.
@@ -211,10 +211,16 @@ The following files should be included with this README:
 * graphic_user_interface.py
 * graphic_user_interface.exe
 * python/*.py
-* handy tools/*.py
+* handy_tools/*.py
 * img/screenshot1.png
 
 #### Changelog:
+
+    v5.04:
+    bugfix: fix a thing in file_sort_textures that needs to always be in sorted order
+    recompile EXE with updated version of googletrans (4.0.0-rc1)
+    "file_sort_textures" now can also verify image format matches image extension (if PIL is installed)(this is optional)
+    add more stuff to "handy_tools"
 
     v5.03:
     bugfix: in "bone auto armtwist", fixed bones hanging off of armtwist# bones not having deform level updated
