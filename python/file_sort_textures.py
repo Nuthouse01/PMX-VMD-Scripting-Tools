@@ -33,6 +33,7 @@ except ImportError as eee:
 		newval_from_range_map = delme_list_to_rangemap = None
 
 try:
+	# NOTE: i comment this line before compiling the EXE cuz the PIL library is gigantic
 	from PIL import Image
 	PIL_CHECK_IMGTYPE = True
 except ImportError:
@@ -316,6 +317,9 @@ def categorize_files(pmx_dict: Dict[str, pmxstruct.Pmx], exist_files: List[str],
 		null_texture_dict = dict()
 		# for each texture,
 		for d, tex in enumerate(pmx.textures):
+			# NOTE: mmd will work just fine if the texture has trailing whitespace, but my system will not!
+			# first, strip leading/trailing whitespace
+			tex = tex.strip()
 			# if it is just whitepace or empty, then queue it up to be nullified (mapped to -1 and deleted)
 			if tex == "" or tex.isspace():
 				null_texture_dict[d] = -1
