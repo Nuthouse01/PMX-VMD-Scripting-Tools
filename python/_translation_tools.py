@@ -215,6 +215,7 @@ morph_dict = {
 "にっこり": "smile",  # phonetically "nikkori"
 "スマイル": "smile",  # phonetically "sumairu" aka engrish for "smile"
 "ムッ": "upset",
+"~": "wavy",
 "照れ": "blush",  # "little blush", literally "shy"
 "照れ2": "blush2",  # "big blush", literally "shy"
 "照れ屋": "blush",  # another blush, literally "shy"

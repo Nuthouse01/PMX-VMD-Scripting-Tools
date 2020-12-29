@@ -1,4 +1,4 @@
-# Nuthouse01 - 12/20/2020 - v5.04
+# Nuthouse01 - 12/28/2020 - v5.05
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -32,12 +32,14 @@ except ImportError as eee:
 		core = pmxlib = pmxstruct = None
 		newval_from_range_map = delme_list_to_rangemap = None
 
+PIL_CHECK_IMGTYPE = False
+# NOTE: i comment this block before compiling the EXE cuz the PIL library is gigantic
+
 try:
 	from PIL import Image
 	PIL_CHECK_IMGTYPE = True
 except ImportError:
 	Image = None
-	PIL_CHECK_IMGTYPE = False
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
@@ -316,6 +318,9 @@ def categorize_files(pmx_dict: Dict[str, pmxstruct.Pmx], exist_files: List[str],
 		null_texture_dict = dict()
 		# for each texture,
 		for d, tex in enumerate(pmx.textures):
+			# NOTE: mmd will work just fine if the texture has trailing whitespace, but my system will not!
+			# first, strip leading/trailing whitespace
+			tex = tex.strip()
 			# if it is just whitepace or empty, then queue it up to be nullified (mapped to -1 and deleted)
 			if tex == "" or tex.isspace():
 				null_texture_dict[d] = -1
@@ -853,7 +858,7 @@ def main(moreinfo=False):
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 12/20/2020 - v5.04")
+	core.MY_PRINT_FUNC("Nuthouse01 - 12/28/2020 - v5.05")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)
