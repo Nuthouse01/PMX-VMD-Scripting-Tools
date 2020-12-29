@@ -32,13 +32,14 @@ except ImportError as eee:
 		core = pmxlib = pmxstruct = None
 		newval_from_range_map = delme_list_to_rangemap = None
 
+PIL_CHECK_IMGTYPE = False
+# NOTE: i comment this block before compiling the EXE cuz the PIL library is gigantic
+
 try:
-	# NOTE: i comment this line before compiling the EXE cuz the PIL library is gigantic
 	from PIL import Image
 	PIL_CHECK_IMGTYPE = True
 except ImportError:
 	Image = None
-	PIL_CHECK_IMGTYPE = False
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
