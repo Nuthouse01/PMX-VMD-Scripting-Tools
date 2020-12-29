@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README
-Created by Nuthouse01 - 12/20/2020 - v5.04
+Created by Nuthouse01 - 12/28/2020 - v5.05
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!
 If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)
@@ -215,6 +215,10 @@ The following files should be included with this README:
 * img/screenshot1.png
 
 #### Changelog:
+
+    v5.05:
+    bugfix: fix file_sort_textures breaking when texture names end in whitespace
+    add more stuff to "handy_tools"
 
     v5.04:
     bugfix: fix a thing in file_sort_textures that needs to always be in sorted order
