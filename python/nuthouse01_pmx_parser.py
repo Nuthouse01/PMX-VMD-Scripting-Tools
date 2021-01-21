@@ -919,7 +919,7 @@ def read_pmx(pmx_filename: str, moreinfo=False) -> pmxstruct.Pmx:
 	# assumes the calling function already verified correct file extension
 	core.MY_PRINT_FUNC("Begin reading PMX file '%s'" % pmx_filename_clean)
 	pmx_bytes = core.read_binfile_to_bytes(pmx_filename)
-	core.MY_PRINT_FUNC("...total size   = %sKB" % round(len(pmx_bytes) / 1024))
+	core.MY_PRINT_FUNC("...total size   = %s" % core.prettyprint_file_size(len(pmx_bytes)))
 	core.MY_PRINT_FUNC("Begin parsing PMX file '%s'" % pmx_filename_clean)
 	core.reset_unpack()
 	core.print_progress_oneline(0)
@@ -1010,7 +1010,7 @@ def write_pmx(pmx_filename: str, pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 	# done encoding!!
 
 	core.MY_PRINT_FUNC("Begin writing PMX file '%s'" % pmx_filename_clean)
-	core.MY_PRINT_FUNC("...total size   = %sKB" % round(len(output_bytes) / 1024))
+	core.MY_PRINT_FUNC("...total size   = %s" % core.prettyprint_file_size(len(output_bytes)))
 	core.write_bytes_to_binfile(pmx_filename, output_bytes)
 	core.MY_PRINT_FUNC("Done writing PMX file '%s'" % pmx_filename_clean)
 	# done with everything!

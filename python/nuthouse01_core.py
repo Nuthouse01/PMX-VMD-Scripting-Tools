@@ -160,6 +160,30 @@ def my_list_partition(l: Iterable[THING], condition: Callable[[THING], bool]) ->
 			list_where_false.append(iiiii)
 	return list_where_true, list_where_false
 
+def prettyprint_file_size(size_b: int) -> str:
+	"""
+	Format a filesize in terms of bytes, KB, MB, GB, whatever is most appropriate.
+	:param size_b: int size in bytes
+	:return: string
+	"""
+	if size_b < 1024:
+		# bytes
+		ret = "%d B" % size_b
+	elif size_b < 1024*1024:
+		# kilobytes
+		s = size_b / 1024
+		ret = "{:.2f} KB".format(s)
+	elif size_b < 1024*1024*1024:
+		# megabytes
+		s = size_b / (1024*1024)
+		ret = "{:.2f} MB".format(s)
+	else:
+		# gigabytes
+		s = size_b / (1024*1024*1024)
+		ret = "{:.2f} GB".format(s)
+	return ret
+	
+
 MAXDIFFERENCE = 0
 # recursively check for equality, using a loose comparison for floatingpoints
 # operating on test file, the greatest difference introduced by quaternion transform is 0.000257

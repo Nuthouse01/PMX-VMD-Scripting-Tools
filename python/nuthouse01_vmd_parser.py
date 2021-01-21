@@ -607,7 +607,7 @@ def read_vmd(vmd_filename: str, moreinfo=False) -> vmdstruct.Vmd:
 	# assumes the calling function already verified correct file extension
 	core.MY_PRINT_FUNC("Begin reading VMD file '%s'" % vmd_filename_clean)
 	vmd_bytes = core.read_binfile_to_bytes(vmd_filename)
-	core.MY_PRINT_FUNC("...total size   = %sKB" % round(len(vmd_bytes) / 1024))
+	core.MY_PRINT_FUNC("...total size   = %s" % core.prettyprint_file_size(len(vmd_bytes)))
 	core.MY_PRINT_FUNC("Begin parsing VMD file '%s'" % vmd_filename_clean)
 	core.reset_unpack()
 	core.set_encoding("shift_jis")
@@ -707,7 +707,7 @@ def write_vmd(vmd_filename: str, vmd: vmdstruct.Vmd, moreinfo=False):
 		output_bytes += bytes(SIGNATURE, encoding="shift_jis")
 	
 	core.MY_PRINT_FUNC("Begin writing VMD file '%s'" % vmd_filename_clean)
-	core.MY_PRINT_FUNC("...total size   = %sKB" % round(len(output_bytes) / 1024))
+	core.MY_PRINT_FUNC("...total size   = %s" % core.prettyprint_file_size(len(output_bytes)))
 	core.write_bytes_to_binfile(vmd_filename, output_bytes)
 	core.MY_PRINT_FUNC("Done writing VMD file '%s'" % vmd_filename_clean)
 	# done with everything!
