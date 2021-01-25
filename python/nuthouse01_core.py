@@ -900,13 +900,13 @@ def my_slerp(v0: Sequence[float], v1: Sequence[float], t: float) -> Tuple[float,
 def hamilton_product(quat1: Sequence[float], quat2: Sequence[float]) -> Tuple[float,float,float,float]:
 	"""
 	Perform the mathematical "hamilton product", effectively adds two quaternions. However the order of the inputs does matter.
+	Returns the equivalent of rotation quat2 followed by rotation quat1.
 	Result is another quaternion.
 	
 	:param quat1: 4x float, W X Y Z quaternion
 	:param quat2: 4x float, W X Y Z quaternion
 	:return: 4x float, W X Y Z quaternion
 	"""
-	# this product returns the equivalent of rotation quat2 followed by rotation quat1
 	# thank you stackexchange and thank you wikipedia
 	(a1, b1, c1, d1) = quat1
 	(a2, b2, c2, d2) = quat2
