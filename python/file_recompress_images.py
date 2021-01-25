@@ -85,7 +85,8 @@ def main(moreinfo=False):
 	# step zero: verify that Pillow exists
 	if Image is None:
 		core.MY_PRINT_FUNC("ERROR: Python library 'Pillow' not found. This script requires this library to run!")
-		core.MY_PRINT_FUNC("To install Pillow, please use the command 'pip install Pillow' in the Windows command prompt.")
+		core.MY_PRINT_FUNC("This script cannot be ran from the EXE version, the Pillow library is too large to package into the executable.")
+		core.MY_PRINT_FUNC("To install Pillow, please use the command 'pip install Pillow' in the Windows command prompt and then run the Python scripts directly.")
 		return None
 	
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
