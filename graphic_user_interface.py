@@ -1,4 +1,4 @@
-# Nuthouse01 - 12/20/2020 - v5.04
+# Nuthouse01 - 1/24/2021 - v5.06
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -23,6 +23,7 @@ try:
 	from python import check_model_compatibility
 	from python import convert_vmd_to_txt
 	from python import convert_vpd_to_vmd
+	from python import file_recompress_images
 	from python import file_sort_textures
 	from python import file_translate_names
 	from python import model_overall_cleanup
@@ -45,6 +46,7 @@ except ImportError as eee:
 	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = bone_armik_addremove = None
 	core = morph_invert = morph_hide = morph_scale = file_translate_names = convert_vpd_to_vmd = None
 	model_shift = model_scale = bone_endpoint_addremove = translate_source_bone = bone_auto_armtwist = None
+	file_recompress_images = None
 
 ########################################################################################################################
 # constants & options
@@ -60,6 +62,7 @@ all_script_list = [
 	("model_overall_cleanup.py",         model_overall_cleanup.helptext,         model_overall_cleanup.main),
 	("file_sort_textures.py",            file_sort_textures.helptext,            file_sort_textures.main),
 	("file_translate_names.py",          file_translate_names.helptext,          file_translate_names.main),
+	("file_recompress_images.py",        file_recompress_images.helptext,        file_recompress_images.main),
 	("bone_auto_armtwist.py",            bone_auto_armtwist.helptext,            bone_auto_armtwist.main),
 	("morph_invert.py",                  morph_invert.helptext,                  morph_invert.main),
 	("morph_hide.py",                    morph_hide.helptext,                    morph_hide.main),
@@ -421,7 +424,7 @@ class Application(tk.Frame):
 		return
 	
 	def print_header(self):
-		core.MY_PRINT_FUNC("Nuthouse01 - 12/20/2020 - v5.04")
+		core.MY_PRINT_FUNC("Nuthouse01 - 1/24/2021 - v5.06")
 		core.MY_PRINT_FUNC("Begin by selecting a script above, then click 'Run'")
 		core.MY_PRINT_FUNC("Click 'Help' to print out details of what the selected script does")
 		return

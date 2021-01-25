@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README
-Created by Nuthouse01 - 12/28/2020 - v5.05
+Created by Nuthouse01 - 1/24/2021 - v5.06
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!
 If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)
@@ -208,13 +208,22 @@ The following files should be included with this README:
 * LICENSE
 * README.md
 * README.txt
+* README_command_line_support.txt
 * graphic_user_interface.py
 * graphic_user_interface.exe
 * python/*.py
+* handy_tools/README_handy_tools.txt
 * handy_tools/*.py
 * img/screenshot1.png
 
 #### Changelog:
+
+    v5.06:
+    NEW: "file_recompress_images.py" for converting TGA or DDS crap into nicely compressed PNG to save disk space
+    removed image-type detection stuff from file_sort_textures and put it into file_recompress_images
+    added README explaining how command-line support (doesn't) work
+    added README explaining how "handy_tools" stuff works
+    bugfix: change how translate grabs prefix/suffix, so it stops eating leading or trailing minus symbols
 
     v5.05:
     bugfix: fix file_sort_textures breaking when texture names end in whitespace

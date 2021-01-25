@@ -1,4 +1,4 @@
-# Nuthouse01 - 12/28/2020 - v5.05
+# Nuthouse01 - 1/24/2021 - v5.06
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -31,15 +31,6 @@ except ImportError as eee:
 		exit()
 		core = pmxlib = pmxstruct = None
 		newval_from_range_map = delme_list_to_rangemap = None
-
-PIL_CHECK_IMGTYPE = False
-# NOTE: i comment this block before compiling the EXE cuz the PIL library is gigantic
-
-try:
-	from PIL import Image
-	PIL_CHECK_IMGTYPE = True
-except ImportError:
-	Image = None
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
@@ -77,6 +68,7 @@ IMG_TYPE_TO_EXT = {
 	"DDS": (".dds",),
 	"GIF": (".gif",),
 	"TIFF": (".tif", ".tiff",),
+	"WEBP": (".webp",),
 	"SPH": (".spa", ".sph",), # this isn't a "real" file type so this is just to get these extensions in IMG_EXT
 }
 
@@ -118,28 +110,6 @@ class FileRecord:
 		p = "'%s': used as %s, %d times among %d files" % (
 			self.name, self.usage, self.numused, len(self.used_pmx))
 		return p
-	
-def make_imgext_match_imgformat(abspath, newname):
-	try:
-		im = Image.open(abspath)
-	
-		base, currext = os.path.splitext(newname)
-		if currext not in IMG_TYPE_TO_EXT[im.format]:
-			return base + IMG_TYPE_TO_EXT[im.format][0]
-		else:
-			return newname
-	except FileNotFoundError as eeee:
-		print("FILESYSTEM MALFUNCTION!", eeee.__class__.__name__, eeee)
-		return ""
-	except OSError as eeee:
-		# this has 2 causes, "Unsupported BMP bitfields layout" or "cannot identify image file"
-		# print("CANNOT INSPECT!1", eeee.__class__.__name__, eeee, fname)
-		return ""
-	except NotImplementedError as eeee:
-		# this is because there's some DDS format it can't make sense of
-		# print("CANNOT INSPECT!2", eeee.__class__.__name__, eeee, fname)
-		return ""
-
 
 def walk_filetree_from_root(startpath: str) -> List[str]:
 	absolute_all_exist_files = []
@@ -192,14 +162,14 @@ def remove_pattern(s: str) -> str:
 	return remove_re.sub("", s)
 
 
-def make_zipfile_backup(startpath: str, backup_suffix: str) -> bool:
+def make_zipfile_backup(startpath: str, backup_suffix: str) -> str:
 	"""
 	Make a .zip backup of the folder 'startpath' and all its contents. Returns True if all goes well, False if it should abort.
 	Resulting zip will be adjacent to the folder it is backing up with a slightly different name.
 	
 	:param startpath: absolute path of the folder you want to zip
 	:param backup_suffix: segment inserted between the foldername and .zip extension
-	:return: true if things are good, False if i should abort
+	:return: zipfile path if things went well, empty if i should abort
 	"""
 	# need to add .zip for checking against already-exising files and for printing
 	zipname = startpath + "." + backup_suffix + ".zip"
@@ -217,11 +187,14 @@ def make_zipfile_backup(startpath: str, backup_suffix: str) -> bool:
 				"Do you want to continue without a zipfile backup?",
 				"1 = Yes, 2 = No (abort)"]
 		r = core.MY_SIMPLECHOICE_FUNC((1, 2), info)
-		if r == 2: return False
-	return True
+		if r == 2:
+			return "" # false
+		else:
+			return "zipfile_missing"
+	return zipname
 
 
-def apply_file_renaming(pmx_dict: Dict[str, pmxstruct.Pmx], filerecord_list: List[FileRecord], startpath: str):
+def apply_file_renaming(pmx_dict: Dict[str, pmxstruct.Pmx], filerecord_list: List[FileRecord], startpath: str, skipdiskrename=False):
 	"""
 	Apply all the renaming operations to files on the disk and in any PMX objects where they are used.
 	First, try to rename all files on disk. If any raise exceptions, those files will not be changed in PMXes.
@@ -230,24 +203,26 @@ def apply_file_renaming(pmx_dict: Dict[str, pmxstruct.Pmx], filerecord_list: Lis
 	:param pmx_dict: dict of PMX objects, key is path relative to startpath, value is actual PMX obj
 	:param filerecord_list: list of FileRecord obj, all completely processed & filled out
 	:param startpath: absolute path that all filepaths are relative to
+	:param skipdiskrename: when true, only modify what PMX is pointing at. assume something else already took care of renaming on disk.
 	"""
-	# first, rename files on disk:
-	core.MY_PRINT_FUNC("...renaming files on disk...")
-	for i, p in enumerate(filerecord_list):
-		# if this file exists on disk and there is a new name for this file,
-		if p.exists and p.newname is not None:
-			try:
-				# os.renames creates all necessary intermediate folders needed for the destination
-				# it also deletes the source folders if they become empty after the rename operation
-				os.renames(os.path.join(startpath, p.name), os.path.join(startpath, p.newname))
-			except OSError as e:
-				# ending the operation halfway through is unacceptable! attempt to continue
-				core.MY_PRINT_FUNC(e.__class__.__name__, e)
-				core.MY_PRINT_FUNC(
-					"ERROR1!: unable to rename file '%s' --> '%s', attempting to continue with other file rename operations"
-					% (p.name, p.newname))
-				# change this to empty to signify that it didn't actually get moved, check this before changing PMX paths
-				p.newname = None
+	if not skipdiskrename:
+		# first, rename files on disk:
+		core.MY_PRINT_FUNC("...renaming files on disk...")
+		for i, p in enumerate(filerecord_list):
+			# if this file exists on disk and there is a new name for this file,
+			if p.exists and p.newname is not None:
+				try:
+					# os.renames creates all necessary intermediate folders needed for the destination
+					# it also deletes the source folders if they become empty after the rename operation
+					os.renames(os.path.join(startpath, p.name), os.path.join(startpath, p.newname))
+				except OSError as e:
+					# ending the operation halfway through is unacceptable! attempt to continue
+					core.MY_PRINT_FUNC(e.__class__.__name__, e)
+					core.MY_PRINT_FUNC(
+						"ERROR1!: unable to rename file '%s' --> '%s', attempting to continue with other file rename operations"
+						% (p.name, p.newname))
+					# change this to empty to signify that it didn't actually get moved, check this before changing PMX paths
+					p.newname = None
 	
 	# second, rename entries in PMX file(s)
 	for p in filerecord_list:
@@ -437,7 +412,6 @@ Unused image files can be moved into an "unused" folder, to declutter things.
 Any files referenced by the PMX that do not exist on disk will be listed.
 Before actually changing anything, it will list all proposed file renames and ask for final confirmation.
 It also creates a zipfile backup of the entire folder, just in case.
-If you have PIL installed, it will also verify that each image file extension actually matches the image format. Occasionally a .jpg will be saved with a .bmp extension, or whatever. This will just the file to .jpg. This will not re-encode the image.
 Bonus: this can process all "neighbor" pmx files in addition to the target, this highly recommended because neighbors usually reference similar sets of files.
 
 Note: *** means "all files within this folder"
@@ -593,11 +567,6 @@ def main(moreinfo=False):
 	# =========================================================================================================
 	# DETERMINE NEW NAMES FOR FILES
 	
-	pil_cannot_inspect = 0
-	pil_cannot_inspect_list = []
-	pil_imgext_mismatch = 0
-	
-	
 	# how to remap: build a list of all destinations (lowercase) to see if any proposed change would lead to collision
 	all_new_names = set()
 	
@@ -617,15 +586,6 @@ def main(moreinfo=False):
 		if CONVERT_SPA_SPH_TO_BMP and newname.endswith((".spa",".sph")):
 			newname = newname[:-4] + ".bmp"
 			
-		if PIL_CHECK_IMGTYPE:
-			r = make_imgext_match_imgformat(os.path.join(startpath, p.name), newname)
-			if r == "":
-				pil_cannot_inspect += 1
-				pil_cannot_inspect_list.append(p.name)
-			elif r != newname:
-				pil_imgext_mismatch += 1
-				newname = r
-		
 		# if the name I build is not the name it already has, queue it for actual rename
 		if newname != p.name:
 			# resolve potential collisions by adding numbers suffix to file names
@@ -668,15 +628,6 @@ def main(moreinfo=False):
 		if CONVERT_SPA_SPH_TO_BMP and newname.lower().endswith((".spa", ".sph")):
 			newname = newname[:-4] + ".bmp"
 
-		if PIL_CHECK_IMGTYPE:
-			r = make_imgext_match_imgformat(os.path.join(startpath, p.name),newname)
-			if r == "":
-				pil_cannot_inspect += 1
-				pil_cannot_inspect_list.append(p.name)
-			elif r != newname:
-				pil_imgext_mismatch += 1
-				newname = r
-		
 		# if the name I build is not the name it already has, queue it for actual rename
 		if newname != p.name:
 			# resolve potential collisions by adding numbers suffix to file names
@@ -693,15 +644,6 @@ def main(moreinfo=False):
 	# =========================================================================================================
 	# =========================================================================================================
 	# NOW PRINT MY PROPOSED RENAMINGS and other findings
-	
-	if PIL_CHECK_IMGTYPE:
-		if pil_cannot_inspect or pil_imgext_mismatch:
-			core.MY_PRINT_FUNC("=" * 60)
-		if pil_cannot_inspect:
-			core.MY_PRINT_FUNC("WARNING: failed to inspect %d image files" % pil_cannot_inspect)
-			core.MY_PRINT_FUNC(pil_cannot_inspect_list)
-		if pil_imgext_mismatch:
-			core.MY_PRINT_FUNC("Repaired %d images with incorrect extensions (included in renaming table below)" % pil_imgext_mismatch)
 	
 	# isolate the ones with proposed renaming
 	used_rename =          [u for u in used_exist if u.newname is not None]
@@ -858,7 +800,7 @@ def main(moreinfo=False):
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 12/28/2020 - v5.05")
+	core.MY_PRINT_FUNC("Nuthouse01 - 1/24/2021 - v5.06")
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

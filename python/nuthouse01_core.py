@@ -1,4 +1,4 @@
-# Nuthouse01 - 10/10/2020 - v5.03
+# Nuthouse01 - 1/24/2021 - v5.06
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -159,6 +159,30 @@ def my_list_partition(l: Iterable[THING], condition: Callable[[THING], bool]) ->
 		else:
 			list_where_false.append(iiiii)
 	return list_where_true, list_where_false
+
+def prettyprint_file_size(size_b: int) -> str:
+	"""
+	Format a filesize in terms of bytes, KB, MB, GB, whatever is most appropriate.
+	:param size_b: int size in bytes
+	:return: string
+	"""
+	if size_b < 1024:
+		# bytes
+		ret = "%d B" % size_b
+	elif size_b < 1024*1024:
+		# kilobytes
+		s = size_b / 1024
+		ret = "{:.2f} KB".format(s)
+	elif size_b < 1024*1024*1024:
+		# megabytes
+		s = size_b / (1024*1024)
+		ret = "{:.2f} MB".format(s)
+	else:
+		# gigabytes
+		s = size_b / (1024*1024*1024)
+		ret = "{:.2f} GB".format(s)
+	return ret
+	
 
 MAXDIFFERENCE = 0
 # recursively check for equality, using a loose comparison for floatingpoints
@@ -876,13 +900,13 @@ def my_slerp(v0: Sequence[float], v1: Sequence[float], t: float) -> Tuple[float,
 def hamilton_product(quat1: Sequence[float], quat2: Sequence[float]) -> Tuple[float,float,float,float]:
 	"""
 	Perform the mathematical "hamilton product", effectively adds two quaternions. However the order of the inputs does matter.
+	Returns the equivalent of rotation quat2 followed by rotation quat1.
 	Result is another quaternion.
 	
 	:param quat1: 4x float, W X Y Z quaternion
 	:param quat2: 4x float, W X Y Z quaternion
 	:return: 4x float, W X Y Z quaternion
 	"""
-	# this product returns the equivalent of rotation quat2 followed by rotation quat1
 	# thank you stackexchange and thank you wikipedia
 	(a1, b1, c1, d1) = quat1
 	(a2, b2, c2, d2) = quat2
@@ -1369,5 +1393,5 @@ def _pack_text(fmt: str, args: str) -> bytearray:
 		raise newerr
 
 if __name__ == '__main__':
-	MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
+	MY_PRINT_FUNC("Nuthouse01 - 1/24/2021 - v5.06")
 	pause_and_quit("you are not supposed to directly run this file haha")

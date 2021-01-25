@@ -1,4 +1,4 @@
-# Nuthouse01 - 10/10/2020 - v5.03
+# Nuthouse01 - 1/24/2021 - v5.06
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -790,18 +790,23 @@ def encode_pmx_morphs(nice: List[pmxstruct.PmxMorph]) -> bytearray:
 			# for each morph in the group morph, or vertex in the vertex morph, or bone in the bone morph....
 			# what to unpack varies on morph type, 9 possibilities + some for v2.1
 			if morph.morphtype == 0:  # group
+				z: pmxstruct.PmxMorphItemGroup
 				out += core.my_pack(fmt_morph_group, [z.morph_idx, z.value])
 			elif morph.morphtype == 1:  # vertex
+				z: pmxstruct.PmxMorphItemVertex
 				out += core.my_pack(fmt_morph_vert, [z.vert_idx, *z.move])
 			elif morph.morphtype == 2:  # bone
+				z: pmxstruct.PmxMorphItemBone
 				(rotqW, rotqX, rotqY, rotqZ) = core.euler_to_quaternion(z.rot)
 				# (bone_idx, transX, transY, transZ, rotqX, rotqY, rotqZ, rotqW)
 				out += core.my_pack(fmt_morph_bone, [z.bone_idx, *z.move, rotqX, rotqY, rotqZ, rotqW])
 			elif 3 <= morph.morphtype <= 7:  # UV
+				z: pmxstruct.PmxMorphItemUV
 				# what these values do depends on the UV layer they are affecting, but the docs dont say what...
 				# oh well, i dont need to use them so i dont care :)
 				out += core.my_pack(fmt_morph_uv, [z.vert_idx, *z.move])
 			elif morph.morphtype == 8:  # material
+				z: pmxstruct.PmxMorphItemMaterial
 				# (mat_idx, is_add, diffR, diffG, diffB, diffA, specR, specG, specB) = core.unpack(IDX_MAT+"b 4f 3f", raw)
 				# (specpower, ambR, ambG, ambB, edgeR, edgeG, edgeB, edgeA, edgesize) = core.unpack("f 3f 4f f", raw)
 				# (texR, texG, texB, texA, sphR, sphG, sphB, sphA, toonR, toonG, toonB, toonA) = core.unpack("4f 4f 4f", raw)
@@ -809,8 +814,10 @@ def encode_pmx_morphs(nice: List[pmxstruct.PmxMorph]) -> bytearray:
 						  z.edgealpha, z.edgesize, *z.texRGBA, *z.sphRGBA, *z.toonRGBA]
 				out += core.my_pack(fmt_morph_mat, packme)
 			elif morph.morphtype == 9:  # (2.1 only) flip
+				z: pmxstruct.PmxMorphItemFlip
 				out += core.my_pack(fmt_morph_flip, [z.morph_idx, z.value])
 			elif morph.morphtype == 10:  # (2.1 only) impulse
+				z: pmxstruct.PmxMorphItemImpulse
 				# (rb_idx, is_local, movX, movY, movZ, rotX, rotY, rotZ)
 				out += core.my_pack(fmt_morph_impulse, [z.rb_idx, z.is_local, *z.move, *z.rot])
 			else:
@@ -919,7 +926,7 @@ def read_pmx(pmx_filename: str, moreinfo=False) -> pmxstruct.Pmx:
 	# assumes the calling function already verified correct file extension
 	core.MY_PRINT_FUNC("Begin reading PMX file '%s'" % pmx_filename_clean)
 	pmx_bytes = core.read_binfile_to_bytes(pmx_filename)
-	core.MY_PRINT_FUNC("...total size   = %sKB" % round(len(pmx_bytes) / 1024))
+	core.MY_PRINT_FUNC("...total size   = %s" % core.prettyprint_file_size(len(pmx_bytes)))
 	core.MY_PRINT_FUNC("Begin parsing PMX file '%s'" % pmx_filename_clean)
 	core.reset_unpack()
 	core.print_progress_oneline(0)
@@ -1010,7 +1017,7 @@ def write_pmx(pmx_filename: str, pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 	# done encoding!!
 
 	core.MY_PRINT_FUNC("Begin writing PMX file '%s'" % pmx_filename_clean)
-	core.MY_PRINT_FUNC("...total size   = %sKB" % round(len(output_bytes) / 1024))
+	core.MY_PRINT_FUNC("...total size   = %s" % core.prettyprint_file_size(len(output_bytes)))
 	core.write_bytes_to_binfile(pmx_filename, output_bytes)
 	core.MY_PRINT_FUNC("Done writing PMX file '%s'" % pmx_filename_clean)
 	# done with everything!
@@ -1041,7 +1048,7 @@ def main():
 ########################################################################################################################
 # after all the funtions are defined, actually execute main()
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
+	core.MY_PRINT_FUNC("Nuthouse01 - 1/24/2021 - v5.06")
 	if DEBUG:
 		main()
 	else:

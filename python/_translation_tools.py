@@ -1,4 +1,4 @@
-# Nuthouse01 - 12/20/2020 - v5.04
+# Nuthouse01 - 1/24/2021 - v5.06
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -140,9 +140,6 @@ half_to_full_dict = {
 
 # this dict is added to both "words" and "morphs"... just in one place so I can keep thing straight
 symbols_dict = {
-"╱": "/",  # x2571 "box drawing" section.
-"╲": "\\",  # x2572 "box drawing" section. NOTE backslash isn't MMD supported, find something better!
-"╳": "X",  # x2573 "box drawing" section.
 "×": "x",  # x0215 multiply symbol
 "↑": "|^|", # x2191, NOTE: backslashes work poorly so /\ doesn't work right
 "↓": "|v|", # x2193, NOTE: backslashes work poorly so \/ doesn't work right
@@ -533,7 +530,7 @@ words_dict = {
 "影": "shadow",  # phonetically "kage"
 "鼻": "nose",
 "表情": "expression",
-"襟": "collar",
+"襟": "collar",  # phonetically "eri"
 "頂点": "vertex",
 "テクスチャ": "texture",
 "骨": "bone",
@@ -549,6 +546,8 @@ words_dict = {
 "フード": "hood",  # phonetically "fudo" so it could mean "food" but more models will have sweatshirts with hoods than will have food
 "支": "support",
 "支え": "support",
+"ちゃん": "-chan",  # for names
+"さん": "-san",  # for names
 
 
 # modifiers
@@ -744,6 +743,10 @@ prefix_dict_ord = dict({(ord(k), v) for k, v in prefix_dict.items()})
 
 
 odd_punctuation_dict = {
+"’": "'",  # x2019
+"╱": "/",  # x2571 "box drawing" section.
+"╲": "\\",  # x2572 "box drawing" section. NOTE backslash isn't MMD friendly, find something better!
+"╳": "X",  # x2573 "box drawing" section.
 "　": " ",  # x3000, just a fullwidth space aka "ideographic space"
 "、": ",",  # x3001, some sorta fullwidth comma
 "。": ".",  # x3002
@@ -782,7 +785,7 @@ odd_punctuation_dict = {
 fullwidth_dict_ord = dict({(ord(k), v) for k, v in odd_punctuation_dict.items()})
 # then add the fullwidth latin symbols:
 # https://en.wikipedia.org/wiki/Halfwidth_and_Fullwidth_Forms_(Unicode_block)
-# fullwidth chars like ０１２３ＩＫ are in range FF01–FF5E  and correspond to  21-7E, difference=(FEE0/‭65248‬)
+# fullwidth chars like ０１２３ＩＫ are in range FF01–FF5E  and correspond to  21-7E, difference=(FEE0)
 for uni in range(0xff01, 0xff5f):
 	fullwidth_dict_ord[uni] = uni - 0xfee0
 
@@ -790,18 +793,14 @@ for uni in range(0xff01, 0xff5f):
 ########################################################################################################################
 ########################################################################################################################
 # regular expression stuff
-# indent: whitespace _ box, 2571/2572/2573 are exceptions!
-indent_pattern = "^[\\s_\u2500-\u2570\u2574-\u257f]+"
-indent_re = re.compile(indent_pattern)
-# prefix: match 右|左|中 but not 中指
-prefix_pattern = "^([右左]|中(?!指))+"
-prefix_re = re.compile(prefix_pattern)
-# suffix: match LRM and parent (but not motherbone) and end (but not toe)
-suffix_pattern = "([右左中]|(?<!全ての)親|(?<!つま)先)+$"
-suffix_re = re.compile(suffix_pattern)
+# indent: whitespace _ boxstuff
+indent_pattern = "^[\\s_\u2500-\u257f]+"
 # strip: whitespace _ . -
-strip_pattern = "(^[\\s_.-]+)|([\\s_.-]+$)"
-strip_re = re.compile(strip_pattern)
+padding_pattern = r"[\s_.-]*"
+# prefix: match 右|左|中 but not 中指 (middle finger), one or more times
+prefix_pattern = "^(([右左]|中(?!指))+)"
+# suffix: match 右|左|中 and parent (but not motherbone) and end (but not toe), one or more times
+suffix_pattern = "(([右左中]|(?<!全ての)親|(?<!つま)先)+)$"
 
 # TODO: maybe instead of finding unusal jap chars, i should just find anything not basic ASCII alphanumeric characters?
 # https://www.compart.com/en/unicode/block
@@ -863,7 +862,7 @@ def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLI
 	:param in_list: list of JP strings, or a single JP string
 	:return: tuple of indent/body/suffix lists, or a single tuple
 	"""
-	# input str breakdown: (indent) (L/R prefix) (padding) (((body))) (padding) (L/R suffix)
+	# input str breakdown: (indent) (L/R prefix) (padding) [[[body]]] (padding) (L/R suffix)
 	
 	input_is_str = isinstance(in_list, str)
 	if input_is_str: in_list = [in_list]  # force it to be a list anyway so I don't have to change my structure
@@ -873,15 +872,15 @@ def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLI
 	for s in in_list:
 		# 1: subst JP/fullwidth alphanumeric chars -> standard EN alphanumeric chars
 		# https://en.wikipedia.org/wiki/Halfwidth_and_Fullwidth_Forms_(Unicode_block)
-		# fullwidth chars like ０１２３ＩＫ are in range FF01–FF5E  and correspond to  21-7E, difference=(FEE0/‭65248‬)
+		# fullwidth chars like ０１２３ＩＫ are in range FF01–FF5E  and correspond to  21-7E
+		# this also handles all the "odd_punctuation_dict" stuff
 		# to handle them, use nifty str.translate() method, dict must have keys be ordinal unicode values tho
 		out = s.translate(fullwidth_dict_ord)
 		
 		# 2. check for indent
 		indent_prefix = ""
-		# get the entire indent, regardless of what it is made of
-		# re.search
-		indent_match = indent_re.search(out)
+		# get the entire indent: whitespace or _ or box
+		indent_match = re.search(indent_pattern, out)
 		if indent_match is not None:
 			# found a matching indent!
 			if indent_match.end() == len(out):
@@ -897,7 +896,7 @@ def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLI
 		# 3: remove known JP prefix/suffix, assemble EN suffix to be reattached later
 		en_suffix = ""
 		# get the prefix
-		prefix_match = prefix_re.search(out)
+		prefix_match = re.search(prefix_pattern + padding_pattern, out)
 		if prefix_match is not None:
 			if prefix_match.end() == len(out):
 				# if the prefix consumed the entire string, skip this stage
@@ -906,9 +905,9 @@ def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLI
 				# remove the prefix from the orig str
 				out = out[prefix_match.end():]
 				# generate a new EN suffix from the prefix I removed
-				en_suffix += prefix_match.group().translate(prefix_dict_ord)
+				en_suffix += prefix_match.group(1).translate(prefix_dict_ord)
 		# get the suffix
-		suffix_match = suffix_re.search(out)
+		suffix_match = re.search(padding_pattern + suffix_pattern, out)
 		if suffix_match is not None:
 			if suffix_match.start() == 0:
 				# if the suffix consumed the entire string, skip this stage
@@ -917,15 +916,15 @@ def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLI
 				# remove the suffix from the orig str
 				out = out[:suffix_match.start()]
 				# generate a new EN suffix from the suffix I removed
-				en_suffix += suffix_match.group().translate(prefix_dict_ord)
+				en_suffix += suffix_match.group(1).translate(prefix_dict_ord)
 				
-		# 4: strip leading/ending spaces or whatever that might have been insulated by the prefix/suffix
-		out_strip = strip_re.sub("", out)
-		if out_strip == "":
-			# if stripping whitespace removes the entire string, then skip/undo this step
-			pass
-		else:
-			out = out_strip
+		# # 4: strip leading/ending spaces or whatever that might have been insulated by the prefix/suffix
+		# out_strip = strip_re.sub("", out)
+		# if out_strip == "":
+		# 	# if stripping whitespace removes the entire string, then skip/undo this step
+		# 	pass
+		# else:
+		# 	out = out_strip
 		
 		# 5: append all 3 to the list: return indent/suffix separate from the body
 		indent_list.append(indent_prefix)
