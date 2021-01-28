@@ -187,8 +187,10 @@ def main(moreinfo=False):
 		abspath = os.path.join(startpath, p.name)
 		orig_size = os.path.getsize(abspath)
 
+		# if not moreinfo, then each line overwrites the previous like a progress printout does
+		# if moreinfo, then each line is printed permanently
 		core.MY_PRINT_FUNC("...analyzing {:>3}/{:>3}, file='{}', size={}                ".format(
-			i+1, len(image_filerecords), p.name, core.prettyprint_file_size(orig_size)), is_progress=True)
+			i+1, len(image_filerecords), p.name, core.prettyprint_file_size(orig_size)), is_progress=(not moreinfo))
 		mem_saved.append(0)
 
 		# before opening, try to close it just in case
