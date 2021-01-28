@@ -35,16 +35,13 @@ except ImportError as eee:
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
-DEBUG = True
+DEBUG = False
 
 
 # this is recommended true, for obvious reasons
 MAKE_BACKUP_ZIPFILE = True
 # note: zipper automatically appends .zip onto whatever output name i give it, so dont give it a .zip suffix here
 BACKUP_SUFFIX = "beforePNG"
-
-# name used for temporary location
-TEMPFILENAME = "temp_image_file_just_delete_me"
 
 IM_FORMAT_ALWAYS_CONVERT = ("DDS", "TIFF", "TGA")
 IM_FORMAT_ALWAYS_SKIP = ("JPEG", "GIF")
@@ -88,6 +85,8 @@ def main(moreinfo=False):
 		core.MY_PRINT_FUNC("This script cannot be ran from the EXE version, the Pillow library is too large to package into the executable.")
 		core.MY_PRINT_FUNC("To install Pillow, please use the command 'pip install Pillow' in the Windows command prompt and then run the Python scripts directly.")
 		return None
+	# print pillow version just cuz
+	core.MY_PRINT_FUNC("Using Pillow version '%s'" % Image.__version__)
 	
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
@@ -165,8 +164,10 @@ def main(moreinfo=False):
 			core.MY_PRINT_FUNC("Aborting: no files were changed")
 			return None
 		zipfile_name = r
+		
+	# name used for temporary location
+	tempfilename = os.path.join(startpath,"temp_image_file_just_delete_me.png")
 	
-	# how to remap: build a list of all destinations (lowercase) to see if any proposed change would lead to collision
 	pil_cannot_inspect = 0
 	pil_cannot_inspect_list = []
 	pil_imgext_mismatch = 0
@@ -175,6 +176,9 @@ def main(moreinfo=False):
 	
 	# list of memory saved by recompressing each file. same order/length as "image_filerecords"
 	mem_saved = []
+	
+	# make image persistient, so I know it always exists and I can always call "close" before open
+	im = None
 	
 	# only iterate over images that exist, obviously
 	image_filerecords = [f for f in filerecord_list if f.exists]
@@ -187,12 +191,15 @@ def main(moreinfo=False):
 			i+1, len(image_filerecords), p.name, core.prettyprint_file_size(orig_size)), is_progress=True)
 		mem_saved.append(0)
 
+		# before opening, try to close it just in case
+		if im is not None:
+			im.close()
 		# open the image & catch all possible errors
 		try:
 			im = Image.open(abspath)
 		except FileNotFoundError as eeee:
 			core.MY_PRINT_FUNC("FILESYSTEM MALFUNCTION!!", eeee.__class__.__name__, eeee)
-			core.MY_PRINT_FUNC("Something impossible just happened, something that I don't understand...")
+			core.MY_PRINT_FUNC("os.walk created a list of all filenames on disk, but then this filename doesn't exist when i try to open it?")
 			im = None
 		except OSError as eeee:
 			# this has 2 causes, "Unsupported BMP bitfields layout" or "cannot identify image file"
@@ -218,15 +225,23 @@ def main(moreinfo=False):
 
 		# 1, depending on image format, attempt to re-save as PNG
 		if im.format not in IM_FORMAT_ALWAYS_SKIP:
-			# save to TEMPFILENAME with png format, use optimize=true
+			# delete temp file if it still exists
+			if os.path.exists(tempfilename):
+				try:
+					os.remove(tempfilename)
+				except OSError as e:
+					core.MY_PRINT_FUNC(e.__class__.__name__, e)
+					core.MY_PRINT_FUNC("ERROR1: failed to delete temp image file '%s' during processing" % tempfilename)
+					break
+			# save to tempfilename with png format, use optimize=true
 			try:
-				im.save(TEMPFILENAME, format="PNG", optimize=True)
+				im.save(tempfilename, format="PNG", optimize=True)
 			except OSError as e:
 				core.MY_PRINT_FUNC(e.__class__.__name__, e)
-				core.MY_PRINT_FUNC("WARNING: failed to re-compress image '%s', original not modified" % p.name)
+				core.MY_PRINT_FUNC("ERROR2: failed to re-compress image '%s', original not modified" % p.name)
 				continue
 			# measure & compare file size
-			new_size = os.path.getsize(TEMPFILENAME)
+			new_size = os.path.getsize(tempfilename)
 			diff = orig_size - new_size
 			
 			# if using a 16-bit BMP format, re-save back to bmp with same name
@@ -237,7 +252,8 @@ def main(moreinfo=False):
 					if im.tile[0][3][0] in KNOWN_BAD_FORMATS:
 						is_bad_bmp = True
 				except Exception as e:
-					print(e.__class__.__name__, e, "BMP THING", p.name, im.tile)
+					if DEBUG:
+						print(e.__class__.__name__, e, "BMP THING", p.name, im.tile)
 
 			if diff > (REQUIRED_COMPRESSION_AMOUNT_KB * 1024) \
 					or is_bad_bmp\
@@ -250,7 +266,7 @@ def main(moreinfo=False):
 					os.remove(os.path.join(startpath, p.name))
 				except OSError as e:
 					core.MY_PRINT_FUNC(e.__class__.__name__, e)
-					core.MY_PRINT_FUNC("WARNING: failed to delete old image '%s' after recompressing" % p.name)
+					core.MY_PRINT_FUNC("ERROR3: failed to delete old image '%s' after recompressing" % p.name)
 					continue
 				
 				newname = base + ".png"
@@ -265,10 +281,10 @@ def main(moreinfo=False):
 				
 				try:
 					# move new into place
-					os.rename(TEMPFILENAME, os.path.join(startpath, newname))
+					os.rename(tempfilename, os.path.join(startpath, newname))
 				except OSError as e:
 					core.MY_PRINT_FUNC(e.__class__.__name__, e)
-					core.MY_PRINT_FUNC("ERROR: after deleting original '%s', failed to move recompressed version into place!" % p.name)
+					core.MY_PRINT_FUNC("ERROR4: after deleting original '%s', failed to move recompressed version into place!" % p.name)
 					continue
 				num_recompressed += 1
 				p.newname = newname
@@ -296,24 +312,27 @@ def main(moreinfo=False):
 				os.renames(os.path.join(startpath, p.name), os.path.join(startpath, newname))
 			except OSError as e:
 				core.MY_PRINT_FUNC(e.__class__.__name__, e)
-				core.MY_PRINT_FUNC("ERROR!: unable to rename file '%s' --> '%s', attempting to continue with other file rename operations"
+				core.MY_PRINT_FUNC("ERROR5: unable to rename file '%s' --> '%s', attempting to continue with other file rename operations"
 					% (p.name, newname))
 				continue
 				
 			pil_imgext_mismatch += 1
 			p.newname = newname
 			continue
-			
+	
 	# these must be the same length after iterating
 	assert len(mem_saved) == len(image_filerecords)
+	# if the image is still open, close it
+	if im is not None:
+		im.close()
 	
 	# delete temp file if it still exists
-	if os.path.exists(TEMPFILENAME):
+	if os.path.exists(tempfilename):
 		try:
-			os.remove(TEMPFILENAME)
+			os.remove(tempfilename)
 		except OSError as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
-			core.MY_PRINT_FUNC("WARNING: failed to delete temp image file '%s' after processing" % os.path.abspath(TEMPFILENAME))
+			core.MY_PRINT_FUNC("WARNING: failed to delete temp image file '%s' after processing" % tempfilename)
 	
 	# =========================================================================================================
 	# =========================================================================================================
