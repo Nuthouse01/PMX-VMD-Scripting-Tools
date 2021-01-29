@@ -1,4 +1,4 @@
-# Nuthouse01 - 1/24/2021 - v5.06
+# Nuthouse01 - 1/29/2021 - v5.07
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -424,7 +424,7 @@ class Application(tk.Frame):
 		return
 	
 	def print_header(self):
-		core.MY_PRINT_FUNC("Nuthouse01 - 1/24/2021 - v5.06")
+		core.MY_PRINT_FUNC("Nuthouse01 - 1/29/2021 - v5.07")
 		core.MY_PRINT_FUNC("Begin by selecting a script above, then click 'Run'")
 		core.MY_PRINT_FUNC("Click 'Help' to print out details of what the selected script does")
 		return
