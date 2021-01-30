@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README
-Created by Nuthouse01 - 1/24/2021 - v5.06
+Created by Nuthouse01 - 1/29/2021 - v5.07
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!
 If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)
@@ -217,6 +217,9 @@ The following files should be included with this README:
 * img/screenshot1.png
 
 #### Changelog:
+
+    v5.07:
+    minor update to make file_recompress_images more stable and have better error messages
 
     v5.06:
     NEW: "file_recompress_images.py" for converting TGA or DDS crap into nicely compressed PNG to save disk space
