@@ -689,7 +689,7 @@ words_dict = {
 "赤": "red",
 "青": "blue",  # "ao", regular blue
 "蒼": "blue",  # "ao", regular blue
-"紺": "blue",  # "kon", technically "navy blue" but w/e
+"紺": "navy blue",  # "kon", technically "navy blue" but w/e
 "金": "gold",
 "銀": "silver",
 "色": "color",
