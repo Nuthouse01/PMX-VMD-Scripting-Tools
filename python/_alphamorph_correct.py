@@ -89,7 +89,7 @@ def alphamorph_correct(pmx: pmxstruct.Pmx, moreinfo=False):
 			if (not matitem.is_add and matitem.alpha == 0) or (matitem.is_add and matitem.alpha == -1):
 				# then replace the entire set of material-morph parameters
 				# opacity, edge size, edge alpha, tex, toon, sph
-				if matitem.mat_idx != -1 and pmx.materials[matitem.mat_idx].alpha == 0:
+				if matitem.mat_idx != -1 and matitem.mat_idx < len(pmx.materials) and pmx.materials[matitem.mat_idx].alpha == 0:
 					# if the target material is initially transparent, replace with add-negative-1
 					t = template_minusone
 				else:
