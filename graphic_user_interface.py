@@ -110,6 +110,12 @@ inputpopup_result = None
 
 
 def gui_fileprompt(extensions: str) -> str:
+	"""
+	Use a Tkinter File Dialogue popup to prompt for a file. Same signature as core.prompt_user_filename().
+	
+	:param extensions: string of valid extensions, separated by spaces
+	:return: case-correct absolute file path
+	"""
 	# replaces core func MY_FILEPROMPT_FUNC when running in GUI mode
 	
 	# make this list into a new, separate thing: list of identifiers + globs
