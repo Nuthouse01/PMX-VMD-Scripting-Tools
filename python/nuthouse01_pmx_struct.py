@@ -55,6 +55,10 @@ class _BasePmx(ABC):
 			if self is thing: return d
 		return None
 
+class _BasePmxMorphItem(_BasePmx):
+	@abstractmethod
+	def list(self) -> list: pass
+
 
 class PmxHeader(_BasePmx):
 	# [ver, name_jp, name_en, comment_jp, comment_en]
@@ -281,14 +285,14 @@ class PmxBone(_BasePmx):
 				]
 
 
-class PmxMorphItemGroup(_BasePmx):
+class PmxMorphItemGroup(_BasePmxMorphItem):
 	def __init__(self, morph_idx: int, value: float):
 		self.morph_idx = morph_idx
 		self.value = value
 	def list(self) -> list:
 		return [self.morph_idx, self.value]
 	
-class PmxMorphItemVertex(_BasePmx):
+class PmxMorphItemVertex(_BasePmxMorphItem):
 	def __init__(self, vert_idx: int, move: List[float]):
 		assert len(move) == 3
 		self.vert_idx = vert_idx
@@ -296,7 +300,7 @@ class PmxMorphItemVertex(_BasePmx):
 	def list(self) -> list:
 		return [self.vert_idx, self.move]
 	
-class PmxMorphItemBone(_BasePmx):
+class PmxMorphItemBone(_BasePmxMorphItem):
 	def __init__(self, bone_idx: int, move: List[float], rot: List[float]):
 		assert len(move) == 3
 		assert len(rot) == 3
@@ -307,7 +311,7 @@ class PmxMorphItemBone(_BasePmx):
 		return [self.bone_idx, self.move, self.rot]
 
 
-class PmxMorphItemUV(_BasePmx):
+class PmxMorphItemUV(_BasePmxMorphItem):
 	def __init__(self, vert_idx: int, move: List[float]):
 		assert len(move) == 4
 		self.vert_idx = vert_idx
@@ -316,7 +320,7 @@ class PmxMorphItemUV(_BasePmx):
 		return [self.vert_idx, self.move]
 
 
-class PmxMorphItemMaterial(_BasePmx):
+class PmxMorphItemMaterial(_BasePmxMorphItem):
 	def __init__(self, mat_idx: int, is_add: int,
 				 diffRGB: List[float],
 				 specRGB: List[float],
@@ -362,7 +366,7 @@ class PmxMorphItemMaterial(_BasePmx):
 				]
 
 
-class PmxMorphItemFlip(_BasePmx):
+class PmxMorphItemFlip(_BasePmxMorphItem):
 	def __init__(self, morph_idx: int, value: float):
 		self.morph_idx = morph_idx
 		self.value = value
@@ -370,7 +374,7 @@ class PmxMorphItemFlip(_BasePmx):
 		return [self.morph_idx, self.value]
 
 
-class PmxMorphItemImpulse(_BasePmx):
+class PmxMorphItemImpulse(_BasePmxMorphItem):
 	def __init__(self, rb_idx: int, is_local: bool, move: List[float], rot: List[float]):
 		assert len(move) == 3
 		assert len(rot) == 3
@@ -388,13 +392,7 @@ class PmxMorph(_BasePmx):
 				 name_jp: str, name_en: str,
 				 panel: int,
 				 morphtype: int,
-				 items: Union[List[PmxMorphItemGroup],
-							  List[PmxMorphItemVertex],
-							  List[PmxMorphItemBone],
-							  List[PmxMorphItemUV],
-							  List[PmxMorphItemMaterial],
-							  List[PmxMorphItemFlip],
-							  List[PmxMorphItemImpulse], ],
+				 items: List[_BasePmxMorphItem],
 				 ):
 		self.name_jp = name_jp
 		self.name_en = name_en
