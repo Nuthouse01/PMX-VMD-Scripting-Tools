@@ -278,7 +278,14 @@ def main(moreinfo=False):
 	core.MY_PRINT_FUNC("")
 	core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 	core.MY_PRINT_FUNC("++++      Scanning for other potential issues      ++++")
-
+	core.MY_PRINT_FUNC("")
+	
+	num_badnames = find_shiftjis_unsupported_names(pmx, input_filename_pmx)
+	if num_badnames:
+		core.MY_PRINT_FUNC("WARNING: found %d JP names that cannot be encoded with SHIFT-JIS, please replace the bad characters in the strings printed above!" % num_badnames)
+		core.MY_PRINT_FUNC("If the filepath contains bad characters, then MMD project files (.pmm .emm) will not properly store/load model data between sessions.")
+		core.MY_PRINT_FUNC("If the modelname/bones/morphs contain bad characters, then they will work just fine in MMD but will not properly save/load in VMD motion files.")
+	
 	longbone, longmorph = find_toolong_bonemorph(pmx)
 	# also checks that bone/morph names can be stored in shift_jis for VMD usage
 	if longmorph or longbone:
@@ -326,13 +333,6 @@ def main(moreinfo=False):
 		if len(jointless_bodies) > MAX_WARNING_LIST:
 			ss = ss[0:-1] + ", ...]"
 		core.MY_PRINT_FUNC("These %d bodies are jointless (index): %s" % (len(jointless_bodies), ss))
-		
-	num_badnames = find_shiftjis_unsupported_names(pmx, input_filename_pmx)
-	if num_badnames:
-		core.MY_PRINT_FUNC("")
-		core.MY_PRINT_FUNC("WARNING: found %d JP names that cannot be encoded with SHIFT-JIS, please replace the bad characters in the strings printed above!" % num_badnames)
-		core.MY_PRINT_FUNC("If the filepath contains bad characters, then MMD project files (.pmm .emm) will not properly store/load model data between sessions.")
-		core.MY_PRINT_FUNC("If the modelname/bones/morphs contain bad characters, then they will work just fine in MMD but will not properly save/load in VMD motion files.")
 		
 	crashing_joints = find_crashing_joints(pmx)
 	if crashing_joints:
