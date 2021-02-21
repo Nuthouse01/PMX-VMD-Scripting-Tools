@@ -35,6 +35,7 @@ helptext = '''====================
 weight_cleanup:
 This function will fix the vertex weights that are weighted twice to the same bone, a minor issue that sometimes happens when merging bones.
 This also normalizes the weights of all vertices, and normalizes the normal vectors for all vertices.
+Finally, it removes weight for any bones that have <0.001% weight, because it's imperceptible anyways.
 '''
 
 iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_weightfix.pmx"
