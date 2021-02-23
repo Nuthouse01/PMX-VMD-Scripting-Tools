@@ -749,10 +749,31 @@ def my_euclidian_distance(x: Sequence[float]) -> float:
 	"""
 	Calculate Euclidian distance (square each component, sum, and square root).
 
-	:param x: any number of floats
+	:param x: list/tuple, any number of floats
 	:return: single float
 	"""
 	return math.sqrt(my_dot(x, x))
+
+def normalize_distance(foo: Sequence[float]) -> List[float]:
+	"""
+	Normalize by Euclidian distance. Supports any number of dimensions.
+	
+	:param foo: list/tuple, any number of floats
+	:return: list of floats
+	"""
+	LLL = my_euclidian_distance(foo)
+	return [t / LLL for t in foo]
+
+def normalize_sum(foo: Sequence[float]) -> List[float]:
+	"""
+	Normalize by sum. Supports any number of dimensions.
+	
+	:param foo: list/tuple, any number of floats
+	:return: list of floats
+	"""
+	LLL = sum(foo)
+	return [t / LLL for t in foo]
+
 
 ########################################################################################################################
 # MyBezier object for bezier curve interpolation

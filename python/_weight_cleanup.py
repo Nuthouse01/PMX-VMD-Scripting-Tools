@@ -139,7 +139,9 @@ def normalize_weights(pmx: pmxstruct.Pmx) -> int:
 			# normalize if needed
 			s = sum(weights)
 			if round(s, 6) != 1.0:
-				if s == 0:
+				try:
+					weights = core.normalize_sum(weights)
+				except ZeroDivisionError:
 					core.MY_PRINT_FUNC("Error: vert %d has BDEF4 weights that sum to 0, cannot normalize" % d)
 					continue
 				# it needs it, do it
@@ -265,9 +267,8 @@ def repair_invalid_normals(pmx: pmxstruct.Pmx, normbad: List[int]) -> int:
 				qs = [s[i] - q[i] for i in range(3)]
 				facenorm = core.my_cross_product(qr, qs)
 				# then normalize the fresh normal
-				norm_L = core.my_euclidian_distance(facenorm)
 				try:
-					facenorm = [n / norm_L for n in facenorm]
+					facenorm = core.normalize_distance(facenorm)
 				except ZeroDivisionError:
 					# this should never happen in normal cases
 					# however it can happen when the verts are at the same position and therefore their face has zero surface area
@@ -291,8 +292,7 @@ def repair_invalid_normals(pmx: pmxstruct.Pmx, normbad: List[int]) -> int:
 		# zerodiv err not possible: if there are no connected faces then it will hit [0,0,0] branch above
 		newnorm = [n / len(badvert_faces) for n in newnorm]
 		# then normalize this, again
-		norm_L = core.my_euclidian_distance(newnorm)
-		newnorm = [n / norm_L for n in newnorm]
+		newnorm = core.normalize_distance(newnorm)
 		# finally, apply this new normal
 		pmx.verts[badvert_idx].norm = newnorm
 	return normbad_err

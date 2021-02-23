@@ -89,9 +89,7 @@ def main(moreinfo=True):
 			else:
 				v.norm[i] = 100000
 		# then re-normalize the normal vector
-		L = core.my_euclidian_distance(v.norm)
-		if L != 0:
-			v.norm = [n / L for n in v.norm]
+		v.norm = core.normalize_distance(v.norm)
 		# c, r0, r1 params of every SDEF vertex
 		if v.weighttype == 3:
 			for param in v.weight_sdef:
@@ -111,9 +109,7 @@ def main(moreinfo=True):
 			for i in range(3):
 				b.fixedaxis[i] *= scale[i]
 			# then re-normalize
-			L = core.my_euclidian_distance(b.fixedaxis)
-			if L != 0:
-				b.fixedaxis = [n / L for n in b.fixedaxis]
+			b.fixedaxis = core.normalize_distance(b.fixedaxis)
 		# scale fixedaxis and localaxis vectors, then normalize
 		if b.has_localaxis:
 			for i in range(3):
@@ -121,12 +117,8 @@ def main(moreinfo=True):
 			for i in range(3):
 				b.localaxis_z[i] *= scale[i]
 			# then re-normalize
-			L = core.my_euclidian_distance(b.localaxis_x)
-			if L != 0:
-				b.localaxis_x = [n / L for n in b.localaxis_x]
-			L = core.my_euclidian_distance(b.localaxis_z)
-			if L != 0:
-				b.localaxis_z = [n / L for n in b.localaxis_z]
+			b.localaxis_x = core.normalize_distance(b.localaxis_x)
+			b.localaxis_z = core.normalize_distance(b.localaxis_z)
 
 	for m in pmx.morphs:
 		# vertex morph and bone morph (only translate, not rotate)
