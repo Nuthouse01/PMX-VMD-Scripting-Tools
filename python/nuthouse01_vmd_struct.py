@@ -93,13 +93,13 @@ class VmdCamFrame(_BaseVmd):
 				 perspective: bool,
 				 ):
 		self.f = f
-		self.dist = dist
 		self.pos = pos  # X Y Z float
 		self.rot = rot  # X Y Z float euler angles in degrees
-		# interp = [x_ax, x_bx, x_ay, x_by, 	y_ax, y_bx, y_ay, y_by, 				z_ax, z_bx, z_ay, z_by,
-		# 			r_ax, r_bx, r_ay, r_by,		dist_ax, dist_bx, dist_ay, dist_by, 	ang_ax, ang_bx, ang_ay, ang_by]
-		self.interp = interp  # 24x int [0-127], see readme for interp explanation
+		self.dist = dist
 		self.fov = fov  # int
+		# interp = [x_ax, x_bx, x_ay, x_by, 	y_ax, y_bx, y_ay, y_by, 				z_ax, z_bx, z_ay, z_by,
+		# 			r_ax, r_bx, r_ay, r_by,		dist_ax, dist_bx, dist_ay, dist_by, 	fov_ax, fov_bx, fov_ay, fov_by]
+		self.interp = interp  # 24x int [0-127], see readme for interp explanation
 		self.perspective = perspective
 	def list(self) -> list:
 		return [self.f, self.dist, *self.pos, *self.rot, *self.interp, self.fov, self.perspective]
