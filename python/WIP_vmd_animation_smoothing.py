@@ -37,7 +37,7 @@ DEBUG = True
 # if 1, slope outside a cut will be set to 0. AKA after a cut, accelerate from a stop.
 # if 2, slope outside a cut will be calculated to "point at" the control point for the opposite side.
 # this should produce a smooth, pleasant motion curve.
-HOW_TO_HANDLE_SINGLE_SIDE_CUTPOINT = 1 ###
+HOW_TO_HANDLE_SINGLE_SIDE_CUTPOINT = 2 ###
 
 # a double cutpoint means a segment with cuts on either end. like 9 to 34 if given frames 8,9,34,35
 # if 1, the segment will begin/end with slope 0, AKA begin by accelerating from rest and stop by decelerating to rest.
@@ -86,7 +86,7 @@ CONTROL_POINT_PLACING_METHOD = 1 ###
 
 # range [0.0-1.0], control distance from corner to control point.
 # higher number makes the bezier curve S-bends more pronounced.
-CONTROL_POINT_ECCENTRICITY = 0.5 ###
+CONTROL_POINT_ECCENTRICITY = 0.8 ###
 
 
 # TODO: enable/disable per channel of bones & per channel of cam
@@ -429,7 +429,7 @@ def get_corner_sharpness_factor(quatA: Sequence[float],
 	# print(math.degrees(ang_d))
 	# if ang = 0, perfectly colinear, factor = 1
 	# if ang = 180, perfeclty opposite, factor = 0
-	factor = 1 - (ang_d / 180)
+	factor = 1 - (math.degrees(ang_d) / 180)
 	if ROTATION_CORNER_SHARPNESS_FACTOR_MODE == 1:
 		# disabled
 		return 1
