@@ -722,7 +722,7 @@ def main(moreinfo=True):
 		thisbone_bezier_points = []
 		for depart_slopes, approach_slopes in bezier_for_one_frame:
 			slopes_per_channel = list(zip(depart_slopes, approach_slopes))
-			print(slopes_per_channel)
+			# print(slopes_per_channel)
 			depart_points = []
 			approach_points = []
 			for depart_slope, approach_slope in slopes_per_channel:
