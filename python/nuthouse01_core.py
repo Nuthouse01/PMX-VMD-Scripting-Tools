@@ -166,14 +166,14 @@ def prettyprint_file_size(size_b: int) -> str:
 	:param size_b: int size in bytes
 	:return: string
 	"""
-	if size_b < 1024:
+	if abs(size_b) < 1024:
 		# bytes
 		ret = "%d B" % size_b
-	elif size_b < 1024*1024:
+	elif abs(size_b) < 1024*1024:
 		# kilobytes
 		s = size_b / 1024
 		ret = "{:.2f} KB".format(s)
-	elif size_b < 1024*1024*1024:
+	elif abs(size_b) < 1024*1024*1024:
 		# megabytes
 		s = size_b / (1024*1024)
 		ret = "{:.2f} MB".format(s)
