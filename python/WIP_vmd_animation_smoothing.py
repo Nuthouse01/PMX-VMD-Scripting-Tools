@@ -73,10 +73,8 @@ TREAT_ADJACENT_BONEFRAMES_AS_JUMPCUT = False ###
 # between these two rotations" value into a factor to multiply the slopes by?
 # if 1, disabled (no slowdown, even when perfectly reversing the direction)
 # if 2, linear (half-speed at 90deg, full stop at 180deg)
-# if 3, suqare-root
-### if 4, piecewise linear (full speed from 0-90deg, then half speed at 135deg and full stop at 180deg)
-### if 5, use a sine curve
-### if 6, cube root
+# if 3, suqare-root (more than half speed at 90deg, full stop at 180deg)
+# if 4, floored piecewise (full speed from 0-90deg, then 0.75speed at 135deg and 0.5speed at 180deg)
 ROTATION_CORNER_SHARPNESS_FACTOR_MODE = 3 ###
 
 
@@ -439,14 +437,21 @@ def get_corner_sharpness_factor(quatA: Tuple[float,float,float,float],
 	factor = 1 - (math.degrees(ang_d) / 180)
 	if ROTATION_CORNER_SHARPNESS_FACTOR_MODE == 1:
 		# disabled
-		return 1
+		out_factor = 1
 	elif ROTATION_CORNER_SHARPNESS_FACTOR_MODE == 2:
 		# linear
-		return factor
+		out_factor = factor
 	elif ROTATION_CORNER_SHARPNESS_FACTOR_MODE == 3:
 		# square root
-		return math.sqrt(factor)
-	return factor
+		out_factor = math.sqrt(factor)
+	elif ROTATION_CORNER_SHARPNESS_FACTOR_MODE == 4:
+		# piecewise floored, (0,.5) to (.5,1)
+		out_factor = 0.5 + factor
+		out_factor = core.clamp(out_factor, 0.0, 1.0)
+	else:
+		out_factor = 1
+	out_factor = core.clamp(out_factor, 0.0, 1.0)
+	return out_factor
 	
 
 
