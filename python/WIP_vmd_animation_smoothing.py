@@ -396,22 +396,29 @@ def rotation_calculate_ideal_bezier_slope(A: Optional[Tuple[int, Sequence[float]
 	return out1, out2
 
 
-def get_corner_sharpness_factor(quatA: Sequence[float],
-								quatB: Sequence[float],
-								quatC: Sequence[float]) -> float:
-	# this function will calculate... something...
-	# to compensate for the speed difference, one will be accelerated and the other will be slowed
-	# this means one will have slope increased and one will have slope decreased
-	# OPPOSITE IMPACT
+def get_corner_sharpness_factor(quatA: Tuple[float,float,float,float],
+								quatB: Tuple[float,float,float,float],
+								quatC: Tuple[float,float,float,float]) -> float:
+	"""
+	Calculate a [0.0-1.0] factor indicating how "sharp" the corner is at B.
+	By "corner" I mean the directional change when A->B stops and B->C begins.
+	If they are going the same angular "direction", then return 1.0. If they
+	are going perfectly opposite directions, return 0.0. Otherwise return something
+	in between.
+	The option ROTATION_CORNER_SHARPNESS_FACTOR_MODE controls what the transfer
+	curve looks like from angle to factor.
+	
+	:param quatA: quaterinon WXYZ for frame A
+	:param quatB: quaterinon WXYZ for frame B
+	:param quatC: quaterinon WXYZ for frame C
+	:return: float [0.0-1.0]
+	"""
 	# to compensate for the angle difference, both will be slowed by some amount
 	# IDENTICAL IMPACT
-	# net effect is s-curve... not ideal... or is it? it cant be... is it?
 	
 	# first, find the deltas between the quaternions
 	deltaquat_AB = core.hamilton_product(core.my_quat_conjugate(quatA), quatB)
 	deltaquat_BC = core.hamilton_product(core.my_quat_conjugate(quatB), quatC)
-	# print(core.quaternion_to_euler(deltaquat_AB))
-	# print(core.quaternion_to_euler(deltaquat_BC))
 	# to get sensible results below, ignore the "W" component and only use the XYZ components, treat as 3d vector
 	deltavect_AB = deltaquat_AB[1:4]
 	deltavect_BC = deltaquat_BC[1:4]
@@ -422,7 +429,7 @@ def get_corner_sharpness_factor(quatA: Sequence[float],
 		# this happens when one vector has a length of 0
 		ang_d = 0
 	else:
-		# technically the clamp shouldn't be necessary but floating point inaccuracy caused it to die
+		# technically the clamp shouldn't be necessary but floating point inaccuracy caused it to do math.acos(1.000000002) which crashed lol
 		shut_up = core.my_dot(deltavect_AB, deltavect_BC) / t
 		shut_up = core.clamp(shut_up, -1.0, 1.0)
 		ang_d = math.acos(shut_up)
@@ -616,6 +623,41 @@ def main(moreinfo=True):
 	# this makes the typechecker angry
 	if len(vmd.camframes) != 0:
 		boneframe_dict[NAME_FOR_CAMFRAMES] = vmd.camframes
+	
+	# >>>>>> part 0: verify that there are no "multiple frames on the same timestep" situations
+	# the MMD GUI shouldn't let this happen, but apparently it has happened... how???
+	# the only explanation I can think of is that it's due to physics bones with names that are too long and
+	# get truncated, and the uniquifying numbers are in the part that got lost. they originally had one frame
+	# per bone but because the names were truncated they look like they're all the same name so it looks like
+	# there are many frames for that non-real bone at the same timestep.
+	for bonename, boneframe_list in boneframe_dict.items():
+		# if a bone has only 1 (or 0?) frames associated with it then there's definitely no overlap probelm
+		if len(boneframe_list) < 2:
+			continue
+		i = 0
+		while i < len(boneframe_list)-1:
+			# look at all pairs of adjacent frames along a bone
+			A = boneframe_list[i]
+			B = boneframe_list[i+1]
+			# are they on the same timestep? if so, problem!
+			if A.f == B.f:
+				# are they setting the same pose?
+				if A == B:
+					# if they are setting the same values at the same frame, just fix the problem silently
+					pass
+				else:
+					# if they are trying to set different values at the same frame, this is a problem!
+					# gotta fix it to continue, but also gotta print some kind of warning
+					if bonename == NAME_FOR_CAMFRAMES:
+						core.MY_PRINT_FUNC("WARNING: at timestep t=%d, there are multiple cam frames trying to set different poses. How does this even happen???" % A.f)
+					else:
+						core.MY_PRINT_FUNC("WARNING: at timestep t=%d, there are multiple frames trying to set bone '%s' to different poses. How does this even happen???" % (A.f, bonename))
+					core.MY_PRINT_FUNC("I will delete one of them and continue.")
+				# remove the 2nd one so that there is only one frame at each timestep
+				boneframe_list.pop(i+1)
+				continue
+			# otherwise, no problem at all
+			i += 1
 	
 	# >>>>>> part 1: identify the desired slope for each metric of each frame
 	core.MY_PRINT_FUNC("Finding smooth approach/depart slopes...")
