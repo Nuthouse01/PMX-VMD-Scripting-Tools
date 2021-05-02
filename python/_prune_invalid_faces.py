@@ -2,6 +2,8 @@
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
+# first, system imports
+import copy
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
 	# these imports work if running from GUI
@@ -107,13 +109,13 @@ def prune_invalid_faces(pmx: pmxstruct.Pmx, moreinfo=False):
 	# PROBLEM: faces from the same vertices but reversed are considered different faces, so sorting is not a valid way to differentiate
 	# the order of the vertices within the face are what matters, but they can start from any of the 3 points
 	# ABC === BCA === CAB
-	# therefore I will silently apply a "lowest index first" rule to all faces in the model, to make future runs of this script faster
-	# "rotating" the verts within a face shouldn't matter to any rendering mechanisms in any program
+	# create a copy list and rotate all teh copies so that the lowest index is always first (do not modify vertex order of original!)
+	facescopy = copy.deepcopy(pmx.faces)
 	donothing = lambda x: x							# if i==0, don't change it
 	headtotail = lambda x: x.append(x.pop(0))		# if i==1, pop the head & move it to the tail
 	tailtohead = lambda x: x.insert(0, x.pop(2))	# if i==2, pop the tail & move it to the head
-	opdict = {0: donothing, 1: headtotail, 2: tailtohead}
-	for f in pmx.faces:
+	opdict = {0: donothing, 1: headtotail, 2: tailtohead} # dict of functions
+	for f in facescopy:
 		# for each face, find the index of the minimum vert within the face
 		i = f.index(min(f))
 		# this can be extremely slow, for maximum efficiency use dict-lambda trick instead of if-else chain.
@@ -123,9 +125,9 @@ def prune_invalid_faces(pmx: pmxstruct.Pmx, moreinfo=False):
 	
 	# now the faces have been rotated so that dupes will align perfectly but mirrors will stay different!!
 	# turn each face into a sorted tuple and then hash it, numbers easier to store & compare
-	hashfaces = [hash(tuple(f)) for f in pmx.faces]
+	hashfaces = [hash(tuple(f)) for f in facescopy]
 	# now make a new list where this hashed value is attached to the index of the corresponding face
-	f_all_idx = list(range(len(pmx.faces)))
+	f_all_idx = list(range(len(facescopy)))
 	hashfaces_idx = list(zip(hashfaces, f_all_idx))
 	# for each material unit, sort & find dupes
 	startidx = 0
