@@ -3,6 +3,10 @@
 #####################
 
 
+import numpy as np
+import matplotlib.pyplot as plt
+
+ANGLE_SHARPNESS_FACTORS = []
 
 
 # first, import builtin stuff
@@ -56,7 +60,7 @@ HOW_TO_HANDLE_TURNAROUND_POINTS = 1 ###
 
 
 # option: angle-bisector averaging or total-slope averaging
-# if 1, use same angle-bisector averaging that the rotation part uses
+# if 1, use angle-bisector averaging
 # if 2, use the total-slope smoothing idea
 HOW_TO_FIND_DESIRED_SLOPE_FOR_SCALAR = 1 ###
 HOW_TO_FIND_DESIRED_SLOPE_FOR_ROTATION = 1 ###
@@ -75,7 +79,7 @@ TREAT_ADJACENT_BONEFRAMES_AS_JUMPCUT = False ###
 # if 2, linear (half-speed at 90deg, full stop at 180deg)
 # if 3, suqare-root (more than half speed at 90deg, full stop at 180deg)
 # if 4, floored piecewise (full speed from 0-90deg, then 0.75speed at 135deg and 0.5speed at 180deg)
-ROTATION_CORNER_SHARPNESS_FACTOR_MODE = 3 ###
+ROTATION_CORNER_SHARPNESS_FACTOR_MODE = 2 ###
 
 
 # if 1, control points are placed on a circle centered around the corners
@@ -87,8 +91,9 @@ CONTROL_POINT_PLACING_METHOD = 1 ###
 CONTROL_POINT_ECCENTRICITY = 0.8 ###
 
 
-# TODO: enable/disable per channel of bones & per channel of cam
 
+
+# my tester guy is useless. i'll have to do it myself.
 
 
 # TODO helptext
@@ -132,6 +137,7 @@ def dictify_framelist(frames: List[BONEFRAME_OR_MORPHFRAME]) -> Dict[str, List[B
 MAX_CIRCLE_RADIUS = 1.4142135623730951 / 2
 CURRENT_BONENAME = ""
 NAME_FOR_CAMFRAMES = "..."
+CLOSE_TO_ZERO = 0.001
 
 '''
 def calculate_approach_depart_slope(A: Optional[Tuple[int,float]],
@@ -293,8 +299,8 @@ def scalar_calculate_ideal_bezier_slope(A: Optional[Tuple[int, float]],
 	valuedelta_AB = B[1] - A[1]
 	valuedelta_BC = C[1] - B[1]
 	# do some rounding to make extremely small numbers become zero
-	valuedelta_AB = round(valuedelta_AB, 4)
-	valuedelta_BC = round(valuedelta_BC, 4)
+	if valuedelta_AB < CLOSE_TO_ZERO: valuedelta_AB = 0
+	if valuedelta_BC < CLOSE_TO_ZERO: valuedelta_BC = 0
 	# slope = rise(valuedelta) over run(timedelta)
 	slope_AB = valuedelta_AB / (B[0] - A[0])
 	slope_BC = valuedelta_BC / (C[0] - B[0])
@@ -359,8 +365,8 @@ def rotation_calculate_ideal_bezier_slope(A: Optional[Tuple[int, Sequence[float]
 	asdf = core.clamp(asdf, -1.0, 1.0)
 	angdist_BC = math.acos(asdf)
 	# do some rounding to make extremely small numbers become zero
-	angdist_AB = round(angdist_AB, 4)
-	angdist_BC = round(angdist_BC, 4)
+	if angdist_AB < CLOSE_TO_ZERO: angdist_AB = 0
+	if angdist_BC < CLOSE_TO_ZERO: angdist_BC = 0
 	# print(math.degrees(angdist_AB), math.degrees(angdist_BC))
 	# use framedelta to turn the "length" into "speed"
 	# this is also the "truespace slope" of the approach/depart
@@ -383,7 +389,10 @@ def rotation_calculate_ideal_bezier_slope(A: Optional[Tuple[int, Sequence[float]
 	factor = get_corner_sharpness_factor(quatA, quatB, quatC)
 	angslope_AB *= factor
 	angslope_BC *= factor
-
+	if angdist_AB != 0 and angdist_BC != 0 and B[0] - A[0] != 0 and C[0] - B[0] != 0:
+		# print(factor)
+		ANGLE_SHARPNESS_FACTORS.append(factor)
+	
 	# fourth, scale the desired truespace slope to the bezier scale
 	# also handle any corner cases
 	out1, out2 = desired_truespace_slope_to_bezier_slope((B[0] - A[0], angdist_AB),
@@ -435,6 +444,8 @@ def get_corner_sharpness_factor(quatA: Tuple[float,float,float,float],
 	# if ang = 0, perfectly colinear, factor = 1
 	# if ang = 180, perfeclty opposite, factor = 0
 	factor = 1 - (math.degrees(ang_d) / 180)
+	# print(factor)
+	# ANGLE_SHARPNESS_FACTORS.append(factor)
 	if ROTATION_CORNER_SHARPNESS_FACTOR_MODE == 1:
 		# disabled
 		out_factor = 1
@@ -877,6 +888,11 @@ def main(moreinfo=True):
 	output_filename_vmd = "%s_smoothed.vmd" % input_filename_vmd[0:-4]
 	output_filename_vmd = core.get_unused_file_name(output_filename_vmd)
 	vmdlib.write_vmd(output_filename_vmd, vmd, moreinfo=moreinfo)
+	
+	# H = plt.hist([j for j in ANGLE_SHARPNESS_FACTORS if j!=0 and j!=1], bins=40, density=True)
+	print("factors=", len(ANGLE_SHARPNESS_FACTORS))
+	H = plt.hist(ANGLE_SHARPNESS_FACTORS, bins=16, density=True)
+	plt.show()
 	
 	core.MY_PRINT_FUNC("Done!")
 	return None
