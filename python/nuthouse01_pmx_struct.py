@@ -448,10 +448,10 @@ class PmxRigidBody(_BasePmx):
 				 nocollide_mask: int, 
 				 phys_mode: int,
 				 phys_mass: float=1.0,
-				 phys_move_damp: float=0.0,
-				 phys_rot_damp: float=0.0,
+				 phys_move_damp: float=0.5,
+				 phys_rot_damp: float=0.5,
 				 phys_repel: float=0.0,
-				 phys_friction: float=0.0,
+				 phys_friction: float=0.5,
 				 ):
 		assert len(pos) == 3
 		assert len(rot) == 3
@@ -461,10 +461,16 @@ class PmxRigidBody(_BasePmx):
 		self.bone_idx = bone_idx
 		self.pos = pos
 		self.rot = rot
+		# todo: what size means for each shape type
 		self.size = size
 		# shape: 0=sphere, 1=box, 2=capsule
 		self.shape = shape
+		# group is int [0-15]
 		self.group = group
+		# RIGIDBODY_GROUP_COLLIDE_NONE = 0
+		# RIGIDBODY_GROUP_COLLIDE_ALL = sum([1<<i for i in range(16)])
+		# therefore, each 1 in this mask indicates a group that it WILL collide with!
+		# todo: replace this with a list of ints
 		self.nocollide_mask = nocollide_mask
 		# phys_mode: 0=follow bone, 1=physics, 2=physics rotate only (pivot on bone)
 		self.phys_mode = phys_mode
