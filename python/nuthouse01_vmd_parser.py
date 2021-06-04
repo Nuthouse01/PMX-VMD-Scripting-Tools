@@ -334,7 +334,8 @@ def parse_vmd_shadowframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdSha
 			v = round(10000 - (v * 100000))
 			# stored as 0.0 to 0.1 ??? why would it use this range!? also its range-inverted
 			# [0,9999] -> [0.1, 0.0]
-			shadowframe_list.append(vmdstruct.VmdShadowFrame(f=f, mode=m, val=v))
+			shadowmode = vmdstruct.IntEnum(m)
+			shadowframe_list.append(vmdstruct.VmdShadowFrame(f=f, mode=shadowmode, val=v))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("frame=", i)
@@ -519,7 +520,7 @@ def encode_vmd_shadowframe(nice:List[vmdstruct.VmdShadowFrame], moreinfo:bool) -
 		# convert it back to its natural form for packing
 		val = (10000 - frame.val) / 100000
 		try:
-			output += core.my_pack(fmt_shadowframe, [frame.f, frame.mode, val])
+			output += core.my_pack(fmt_shadowframe, [frame.f, frame.mode.value, val])
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)

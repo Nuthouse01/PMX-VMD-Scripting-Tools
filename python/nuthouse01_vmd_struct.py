@@ -6,6 +6,7 @@
 # first, system imports
 from typing import List
 from abc import ABC, abstractmethod
+from enum import IntEnum
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -34,6 +35,12 @@ class _BaseVmd(ABC):
 	def __eq__(self, other):
 		if type(self) != type(other): return False
 		return self.list() == other.list()
+
+
+class ShadowMode(IntEnum):
+	OFF = 0
+	MODE1 = 1
+	MODE2 = 2
 
 
 # NOTE: for simplicity, all the list() members (except Vmd.list()) should return FLAT LISTS
@@ -121,14 +128,14 @@ class VmdLightFrame(_BaseVmd):
 class VmdShadowFrame(_BaseVmd):
 	def __init__(self,
 				 f: int,
-				 mode: int,
+				 mode: ShadowMode,
 				 val: int
 				 ):
 		self.f = f
 		self.mode = mode  # int (0=off, 1=mode1, 2=mode2)
 		self.val = val  # int [0-9999]
 	def list(self) -> list:
-		return [self.f, self.mode, self.val]
+		return [self.f, self.mode.value, self.val]
 
 
 class VmdIkbone(_BaseVmd):
