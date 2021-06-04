@@ -2,12 +2,14 @@
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
+
 try:
 	# these imports work if running from GUI
-	from . import nuthouse01_core as core
-	from . import nuthouse01_pmx_parser as pmxlib
-	from . import nuthouse01_pmx_struct as pmxstruct
-	from . import morph_scale
+	sys.path.append("../")
+	from python import nuthouse01_core as core
+	from python import nuthouse01_pmx_parser as pmxlib
+	from python import nuthouse01_pmx_struct as pmxstruct
+	from python import morph_scale
 except ImportError as eee:
 	try:
 		# these imports work if running from double-click on THIS script
