@@ -168,27 +168,11 @@ def identify_unused_bones(pmx: pmxstruct.Pmx, moreinfo: bool) -> List[int]:
 	# second: bones used by a vertex i.e. has nonzero weight
 	# any vertex that has nonzero weight for that bone
 	for vert in pmx.verts:
-		weighttype = vert.weighttype
-		weights = vert.weight
-		if weighttype==0:
-			true_used_bones.add(weights[0])
-			core.increment_occurance_dict(vertex_ct,weights[0])
-		elif weighttype==1 or weighttype==3:
-			# b1, b2, b1w
-			# if b1w = 0, then skip b1
-			if weights[2] != 0:
-				true_used_bones.add(weights[0])
-				core.increment_occurance_dict(vertex_ct,weights[0])
-			# if b1w = 1, then skip b2
-			if weights[2] != 1:
-				true_used_bones.add(weights[1])
-				core.increment_occurance_dict(vertex_ct,weights[1])
-		elif weighttype==2 or weighttype==4:
-			for i in range(4):
-				if weights[i+4] != 0:
-					true_used_bones.add(weights[i])
-					core.increment_occurance_dict(vertex_ct, weights[i])
-		
+		for boneidx, weightval in vert.weight:
+			if weightval != 0:
+				true_used_bones.add(boneidx)
+				core.increment_occurance_dict(vertex_ct, boneidx)
+				
 	# NOTE: some vertices/rigidbodies depend on "invalid" (-1) bones, clean that up here
 	true_used_bones.discard(-1)
 	
@@ -299,30 +283,8 @@ def apply_bone_remapping(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shift
 	# just remap the bones that have weight
 	# any references to bones being deleted will definitely have 0 weight, and therefore it doesn't matter what they reference afterwards
 	for d, vert in enumerate(pmx.verts):
-		weighttype = vert.weighttype
-		weights = vert.weight
-		if weighttype == 0:
-			# just remap, this cannot have 0 weight
-			weights[0] = newval_from_range_map(weights[0], bone_shiftmap)
-		elif weighttype == 1 or weighttype == 3:
-			# b1, b2, b1w
-			# if b1w == 0, zero out b1
-			if weights[2] == 0:
-				weights[0] = 0
-			else:
-				weights[0] = newval_from_range_map(weights[0], bone_shiftmap)
-			# if b1w == 1, then b2w == 0 so zero out b2
-			if weights[2] == 1:
-				weights[1] = 0
-			else:
-				weights[1] = newval_from_range_map(weights[1], bone_shiftmap)
-		elif weighttype == 2 or weighttype == 4:
-			for i in range(4):
-				# if weight == 0, then change its bone to 0. otherwise, remap
-				if weights[i + 4] == 0:
-					weights[i] = 0
-				else:
-					weights[i] = newval_from_range_map(weights[i], bone_shiftmap)
+		for pair in vert.weight:
+			pair[0] = newval_from_range_map(int(pair[0]), bone_shiftmap)
 	# done with verts
 	
 	core.print_progress_oneline(1 / 5)
