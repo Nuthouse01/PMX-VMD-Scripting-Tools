@@ -72,14 +72,13 @@ def main():
 		item:pmxstruct.PmxMorphItemVertex
 		
 		v = pmx.verts[item.vert_idx]
-		wtype = v.weighttype
 		w = v.weight
 		# already know its all mode1
 		
 		rot = 0
 		# only care about BDEF2, right? or sdef
 		# if not a bdef2 vertex, then rot=0 meaning no change
-		if wtype == 1 or wtype == 3:
+		if v.weighttype in (pmxstruct.WeightMode.BDEF2, pmxstruct.WeightMode.SDEF):
 			for b,r in zip(matchbones, rotamt):
 				# get the weight %, multiply it by how much the bone is rotated by
 				if w[0][0] == b:

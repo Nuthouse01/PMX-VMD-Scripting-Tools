@@ -51,7 +51,7 @@ def transfer_bone_weights(pmx: pmxstruct.Pmx, to_bone: int, from_bone: int, scal
 	# for each vertex, determine if that vert is controlled by from_bone
 	for d,vert in enumerate(pmx.verts):
 		w = vert.weight
-		if vert.weighttype == 0:
+		if vert.weighttype == pmxstruct.WeightMode.BDEF1:
 			# BDEF1
 			if w[0][0] == from_bone: # match!
 				if scalefactor == 1:
@@ -64,10 +64,10 @@ def transfer_bone_weights(pmx: pmxstruct.Pmx, to_bone: int, from_bone: int, scal
 					if to_bone_parent == -1: # if to_bone is root and has no parent,
 						w[0][0] = to_bone
 					else: # if to_parent is valid, convert to BDEF2
-						vert.weighttype = 1
+						vert.weighttype = pmxstruct.WeightMode.BDEF2
 						vert.weight = [[to_bone, scalefactor],
 									   [to_bone_parent, 1-scalefactor]]
-		elif vert.weighttype in (1, 3):
+		elif vert.weighttype in (pmxstruct.WeightMode.BDEF2, pmxstruct.WeightMode.SDEF):
 			# BDEF2, SDEF
 			# (b1, b2, b1w)
 			# replace the from_bone ref with to_bone, but also need to modify the value
@@ -85,7 +85,7 @@ def transfer_bone_weights(pmx: pmxstruct.Pmx, to_bone: int, from_bone: int, scal
 				newval = 1 - (z*scalefactor) / (z*scalefactor + (1-z))
 				w[0][1] = newval
 				w[1][1] = 1 - newval
-		elif vert.weighttype in (2, 4):
+		elif vert.weighttype in (pmxstruct.WeightMode.BDEF4, pmxstruct.WeightMode.QDEF):
 			# BDEF4, QDEF
 			# (b1, b2, b3, b4, b1w, b2w, b3w, b4w)
 			for pair in vert.weight:

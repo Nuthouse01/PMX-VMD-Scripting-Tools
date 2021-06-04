@@ -7,6 +7,7 @@ try:
 	# these imports work if running from GUI
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 	from . import model_shift
 	from . import morph_scale
 except ImportError as eee:
@@ -14,6 +15,7 @@ except ImportError as eee:
 		# these imports work if running from double-click on THIS script
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 		import model_shift
 		import morph_scale
 	except ImportError as eee:
@@ -22,7 +24,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = model_shift = morph_scale = None
+		core = pmxlib = model_shift = morph_scale = pmxstruct = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -91,7 +93,8 @@ def main(moreinfo=True):
 		# then re-normalize the normal vector
 		v.norm = core.normalize_distance(v.norm)
 		# c, r0, r1 params of every SDEF vertex
-		if v.weighttype == 3:
+		# these correspond to real positions in 3d space so they need to be modified
+		if v.weighttype == pmxstruct.WeightMode.SDEF:
 			for param in v.weight_sdef:
 				for i in range(3):
 					param[i] *= scale[i]

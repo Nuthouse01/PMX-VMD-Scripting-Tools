@@ -44,8 +44,11 @@ iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_weightfi
 # epsilon: a number very close to zero. weights below this value become zero.
 EPSILON = 0.00001  # = 1e-5 = 0.001%
 
-WEIGHTTYPE_TO_LEN = {0:1, 1:2, 2:4, 3:2, 4:4}
-
+WEIGHTTYPE_TO_LEN = {pmxstruct.WeightMode.BDEF1:1,
+					 pmxstruct.WeightMode.BDEF2:2,
+					 pmxstruct.WeightMode.BDEF4:4,
+					 pmxstruct.WeightMode.SDEF: 2,
+					 pmxstruct.WeightMode.QDEF: 4}
 
 def showhelp():
 	# print info to explain the purpose of this file
@@ -115,7 +118,7 @@ def normalize_weights(pmx: pmxstruct.Pmx) -> int:
 					invalid = True
 				vert.weight.pop(i)
 		
-		# FOURTH, merge duplicate entries!
+		# THIRD, merge duplicate entries!
 		i = 0
 		while i < len(vert.weight):
 			# compare item i with each item AFTER it
@@ -152,7 +155,7 @@ def normalize_weights(pmx: pmxstruct.Pmx) -> int:
 			
 		# FIFTH, sort! descending by strength
 		# if SDEF, do not sort! the order is significant, somehow
-		if vert.weighttype != 3:
+		if vert.weighttype != pmxstruct.WeightMode.SDEF:
 			# save the order of items for comparison
 			weightidx = [foo for foo,_ in vert.weight]
 			vert.weight.sort(reverse=True, key=lambda x: x[1])
@@ -164,21 +167,21 @@ def normalize_weights(pmx: pmxstruct.Pmx) -> int:
 		
 		# SIXTH, pick new weighttype based on how many pairs are left!
 		# all the [0,0] placeholder should be gone so just use the raw length
-		if vert.weighttype == 4:  # QDEF
+		if vert.weighttype == pmxstruct.WeightMode.QDEF:  # QDEF
 			# if vert is QDEF type, it stays qdef type. no matter what. I don't understand it so i'm not taking chances.
 			pass
 		elif len(vert.weight) == 1:
 			# BDEF1/BDEF2/BDEF4/SDEF modes go to BDEF1 if there is only 1 thing left
-			if vert.weighttype != 0:
-				vert.weighttype = 0
+			if vert.weighttype != pmxstruct.WeightMode.BDEF1:
+				vert.weighttype = pmxstruct.WeightMode.BDEF1
 				is_modified = True
 				reduce = True
 		elif len(vert.weight) == 2:
 			# BDEF2/SDEF stay the same
 			# BDEF4 changes to bdef2
 			# QDEF doesn't hit here
-			if vert.weighttype == 2:  # BDEF4
-				vert.weighttype = 1
+			if vert.weighttype == pmxstruct.WeightMode.BDEF4:  # BDEF4
+				vert.weighttype = pmxstruct.WeightMode.BDEF2
 				is_modified = True
 				reduce = True
 		

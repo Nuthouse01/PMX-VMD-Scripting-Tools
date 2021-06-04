@@ -252,7 +252,7 @@ def main(moreinfo=True):
 		# for each vertex in this fragment, give it 100% weight on that bone
 		for v_id in all_vert_sets[fragnum]:
 			v = pmx.verts[v_id]
-			v.weighttype = 0 # BDEF1
+			v.weighttype = pmxstruct.WeightMode.BDEF1 # BDEF1
 			v.weight = [[thisboneindex, 1]]
 		pass
 	

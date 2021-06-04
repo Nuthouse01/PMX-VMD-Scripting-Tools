@@ -6,6 +6,7 @@
 # first, system imports
 from typing import List, Union
 from abc import ABC, abstractmethod
+from enum import IntEnum, Enum
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -60,6 +61,75 @@ class _BasePmxMorphItem(_BasePmx):
 	def list(self) -> list: pass
 
 
+class WeightMode(Enum):
+	# 0 = BDEF1 = [b1]
+	# 1 = BDEF2 = [b1, b2, b1w]
+	# 2 = BDEF4 = [b1, b2, b3, b4, b1w, b2w, b3w, b4w]
+	# 3 = sdef =  [b1, b2, b1w]
+	# weight_sdef = [[c1, c2, c3], [r01, r02, r03], [r11, r12, r13]]
+	# 4 = qdef =  [b1, b2, b3, b4, b1w, b2w, b3w, b4w]
+	BDEF1 = 0
+	BDEF2 = 1
+	BDEF4 = 2
+	SDEF =  3
+	QDEF =  4  # (only in pmx v2.1)
+class SphMode(IntEnum):
+	# 0 = disabled, 1 = multiply, 2 = additive, 3 = additional vec4*
+	DISABLE =  0
+	MULTIPLY = 1
+	ADDITIVE = 2
+	# "* Environment blend mode 3 will use the first additional vec4 to map the environment texture,
+	# using just the X and Y values as the texture UV. It is mapped as an additional texture layer.
+	# This may conflict with other uses for the first additional vec4."
+	# I think this is the mode used for normal map usage?
+	SUBTEX = 3
+class MorphType(IntEnum):
+	# morphtype
+	# 0 = group = (morph_idx, influence)
+	# 1 = vertex = (vert_idx, transX, transY, transZ)
+	# 2 = bone = (bone_idx, transX, transY, transZ, rotX, rotY, rotZ, rotW)
+	# 3/4/5/6/7 = uv = (vert_idx, A, B, C, D)
+	# 8 = material =
+	# (mat_idx, is_add, diffR, diffG, diffB, diffA, specR, specG, specB) = core.unpack(IDX_MAT+"b 4f 3f", raw)
+	# (specpower, ambR, ambG, ambB, edgeR, edgeG, edgeB, edgeA, edgesize) = core.unpack("f 3f 4f f", raw)
+	# (texR, texG, texB, texA, sphR, sphG, sphB, sphA, toonR, toonG, toonB, toonA) = core.unpack("4f 4f 4f", raw)
+	# 9 = flip = (morph_idx, influence)  (pmx v2.1 only)
+	# 10 = impulse = (rb_idx, is_local, movX, movY, movZ, rotX, rotY, rotZ)   (pmx v2.1 only)
+	GROUP =    0
+	VERTEX =   1
+	BONE =     2
+	UV =       3
+	UV_EXT1 =  4
+	UV_EXT2 =  5
+	UV_EXT3 =  6
+	UV_EXT4 =  7
+	MATERIAL = 8
+	FLIP =     9  # (only in pmx v2.1)
+	IMPULSE =  10  # (only in pmx v2.1)
+class RigidBodyShape(IntEnum):
+	# shape: 0=sphere, 1=box, 2=capsule
+	SPHERE =  0
+	BOX =     1
+	CAPSULE = 2
+class RigidBodyMode(IntEnum):
+	# phys_mode: 0=follow bone, 1=physics, 2=physics rotate only (pivot on bone)
+	BONE =               0
+	PHYSICS =            1
+	PHYSICS_ROTATEONLY = 2
+class JointMode(IntEnum):
+	# jointtype: 0=spring6DOF, all others are v2.1 only!!!! 1=6dof, 2=p2p, 3=conetwist, 4=slider, 5=hinge
+	SPRING_SIXDOF = 0
+	SIXDOF =        1  # (only in pmx v2.1)
+	P2P =           2  # (only in pmx v2.1)
+	CONETWIST =     3  # (only in pmx v2.1)
+	SLIDER =        4  # (only in pmx v2.1)
+	HINGE =         5  # (only in pmx v2.1)
+	
+# rigidbody group?
+# rigidbody group nocollide mask?
+
+# use flags for material stuff?
+
 class PmxHeader(_BasePmx):
 	# [ver, name_jp, name_en, comment_jp, comment_en]
 	def __init__(self, 
@@ -85,7 +155,7 @@ class PmxVertex(_BasePmx):
 				 norm: List[float],
 				 uv: List[float],
 				 edgescale: float,
-				 weighttype: int,
+				 weighttype: WeightMode,
 				 weight: List[List[float]],
 				 # optional/conditional
 				 weight_sdef: List[List[float]]=None,
@@ -94,7 +164,7 @@ class PmxVertex(_BasePmx):
 		assert len(pos) == 3
 		assert len(norm) == 3
 		assert len(uv) == 2
-		if weighttype == 3 and weight_sdef is not None:
+		if weighttype == WeightMode.SDEF and weight_sdef is not None:
 			# weight_sdef doesn't need to exist now, but because weighttype == 3 it DOES need to exist and be valid before write-time
 			assert len(weight_sdef) == 3  # 3 sublists,
 			for rc in weight_sdef:
@@ -257,26 +327,32 @@ class PmxBone(_BasePmx):
 		self.has_translate = has_translate
 		self.has_visible = has_visible
 		self.has_enabled = has_enabled
-		self.has_ik = has_ik
+		
 		# tail_usebonelink: true = point-at mode, false = offset mode
 		self.tail_usebonelink = tail_usebonelink
-		self.tail = tail
+		self.tail = tail  # if tail_usebonelink = true, this is [x y z]. otherwise, this is int.
+		
 		self.inherit_rot = inherit_rot
 		self.inherit_trans = inherit_trans
-		self.has_fixedaxis = has_fixedaxis
-		self.has_localaxis = has_localaxis
-		self.has_externalparent = has_externalparent
-		
 		self.inherit_parent_idx = inherit_parent_idx
 		self.inherit_ratio = inherit_ratio
+		
+		self.has_fixedaxis = has_fixedaxis
 		self.fixedaxis = fixedaxis
+		
+		self.has_localaxis = has_localaxis
 		self.localaxis_x = localaxis_x
 		self.localaxis_z = localaxis_z
+		
+		self.has_externalparent = has_externalparent
 		self.externalparent = externalparent
+		
+		self.has_ik = has_ik
 		self.ik_target_idx = ik_target_idx
 		self.ik_numloops = ik_numloops
 		self.ik_angle = ik_angle
 		self.ik_links = ik_links
+		
 	def list(self) -> list:
 		return [self.name_jp, self.name_en, self.pos, self.parent_idx, self.deform_layer, self.deform_after_phys,
 				self.has_rotate, self.has_translate, self.has_visible, self.has_enabled,

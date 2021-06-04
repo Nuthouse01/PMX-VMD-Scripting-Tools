@@ -7,18 +7,20 @@ try:
 	# these imports work if running from GUI
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 except ImportError as eee:
 	try:
 		# these imports work if running from double-click on THIS script
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = None
+		core = pmxlib = pmxstruct = None
 
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
@@ -82,7 +84,8 @@ def main(moreinfo=True):
 		for i in range(3):
 			v.pos[i] += shift[i]
 		# c, r0, r1 params of every SDEF vertex
-		if v.weighttype == 3:
+		# these correspond to real positions in 3d space so they need to be modified
+		if v.weighttype == pmxstruct.WeightMode.SDEF:
 			for param in v.weight_sdef:
 				for i in range(3):
 					param[i] += shift[i]
