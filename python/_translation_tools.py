@@ -192,6 +192,7 @@ morph_dict = {
 "怒り": "anger",
 "にこり": "cheerful",
 "ｷﾘｯ": "serious eyes", # phonetically "kiri-tsu", might informally mean "confident"? kinda a meme phrase, a professional model translated this to 'serious' tho so idk
+"キリッ": "serious eyes",  # same as above but full size
 "星目": "star eyes",
 "しいたけ": "star eyes", # "shiitake"
 "ハート目": "heart eyes",
@@ -202,7 +203,7 @@ morph_dict = {
 "ぐる": "dizzy eyes", # perhaps "spinny"
 "グルグル": "dizzy eyes", # perhaps "spinny"
 "グル": "dizzy eyes", # perhaps "spinny"
-"笑い目": "happy eyes",
+"笑い目": "laughing eyes",
 "カメラ目": "camera eyes", # for looking at the camera
 "ｺｯﾁﾐﾝﾅ": "camera eyes",  # phonetically "Kotchiminna", might informally translate to "this guy" or "everyone" i guess? functionally same as "camera eyes" tho
 "こっちみんな": "camera eyes", # phonetically "Kotchiminna", google translates to "don't look at me" maybe like "not my fault"?
@@ -641,12 +642,13 @@ words_dict = {
 "非表示": "hide",
 "追従": "follow",
 "まばたき": "blink",
-"笑い": "happy",
+"笑い": "laughing",
 "ウィンク": "wink",
 "ウインク": "wink",  # this is somehow different than above?
 "ｳｨﾝｸ": "wink",
 "睨み": "glare",
 "ｷﾘｯ": "serious", # phonetically "kiri-tsu", might informally mean "confident"? kinda a meme phrase, a professional model translated this to 'serious' tho so idk
+"キリッ": "serious",  # same as above but full size
 "ジト": "doubt", # jito
 "じと": "doubt", # jito
 "じど": "doubt", # jido but close enough that it probably means jito
@@ -685,7 +687,9 @@ words_dict = {
 "黄": "yellow",
 "紫": "purple",
 "赤": "red",
-"蒼": "blue",
+"青": "blue",  # "ao", regular blue
+"蒼": "blue",  # "ao", regular blue
+"紺": "navy blue",  # "kon", technically "navy blue" but w/e
 "金": "gold",
 "銀": "silver",
 "色": "color",

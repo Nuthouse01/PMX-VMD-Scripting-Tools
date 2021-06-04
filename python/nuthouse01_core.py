@@ -1,4 +1,4 @@
-# Nuthouse01 - 1/24/2021 - v5.06
+# Nuthouse01 - 6/3/2021 - v5.08
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -166,14 +166,14 @@ def prettyprint_file_size(size_b: int) -> str:
 	:param size_b: int size in bytes
 	:return: string
 	"""
-	if size_b < 1024:
+	if abs(size_b) < 1024:
 		# bytes
 		ret = "%d B" % size_b
-	elif size_b < 1024*1024:
+	elif abs(size_b) < 1024*1024:
 		# kilobytes
 		s = size_b / 1024
 		ret = "{:.2f} KB".format(s)
-	elif size_b < 1024*1024*1024:
+	elif abs(size_b) < 1024*1024*1024:
 		# megabytes
 		s = size_b / (1024*1024)
 		ret = "{:.2f} MB".format(s)
@@ -749,10 +749,31 @@ def my_euclidian_distance(x: Sequence[float]) -> float:
 	"""
 	Calculate Euclidian distance (square each component, sum, and square root).
 
-	:param x: any number of floats
+	:param x: list/tuple, any number of floats
 	:return: single float
 	"""
 	return math.sqrt(my_dot(x, x))
+
+def normalize_distance(foo: Sequence[float]) -> List[float]:
+	"""
+	Normalize by Euclidian distance. Supports any number of dimensions.
+	
+	:param foo: list/tuple, any number of floats
+	:return: list of floats
+	"""
+	LLL = my_euclidian_distance(foo)
+	return [t / LLL for t in foo]
+
+def normalize_sum(foo: Sequence[float]) -> List[float]:
+	"""
+	Normalize by sum. Supports any number of dimensions.
+	
+	:param foo: list/tuple, any number of floats
+	:return: list of floats
+	"""
+	LLL = sum(foo)
+	return [t / LLL for t in foo]
+
 
 ########################################################################################################################
 # MyBezier object for bezier curve interpolation
@@ -798,7 +819,7 @@ class MyBezier(object):
 			retlist.append(_bezier_math(i / resolution, point1, point2))
 		retlist.append((1.0, 1.0))  # curve always ends at 1,1
 		self.resolution = resolution  # store resolution param
-		xx, yy = zip(*retlist)
+		xx, yy = zip(*retlist)  # unzip
 		self.xx = list(xx)
 		self.yy = list(yy)
 
@@ -854,9 +875,15 @@ def my_cross_product(a: Sequence[float], b: Sequence[float]) -> Tuple[float,floa
 		   a[0]*b[1] - a[1]*b[0]
 
 def my_quat_conjugate(q: Sequence[float]) -> Tuple[float,float,float,float]:
+	"""
+	"invert" or "reverse" or "conjugate" a quaternion by negating the x/y/z components.
+	
+	:param q: 4x float, W X Y Z quaternion
+	:return: 4x float, W X Y Z quaternion
+	"""
 	return q[0], -q[1], -q[2], -q[3]
 
-def my_slerp(v0: Sequence[float], v1: Sequence[float], t: float) -> Tuple[float, ...]:
+def my_slerp(v0: Sequence[float], v1: Sequence[float], t: float) -> Tuple[float,float,float,float]:
 	"""
 	Spherically Linear intERPolates between quat1 and quat2 by t.
 	The param t should be clamped to the range [0, 1].
@@ -889,13 +916,13 @@ def my_slerp(v0: Sequence[float], v1: Sequence[float], t: float) -> Tuple[float,
 	theta = math.acos(dot)
 	if theta == 0:
 		# if there is no angle between the two quaternions, then interpolation is pointless
-		return tuple(v0)
+		return v0[0], v0[1], v0[2], v0[3]
 	
 	# q1 * sin((1-t) * theta) / sin(theta) + q2 * sin(t * theta) / sin(theta)
 	factor0 = math.sin((1 - t) * theta) / math.sin(theta)
 	factor1 = math.sin(t * theta) / math.sin(theta)
 	res = tuple((v0[i] * factor0) + (v1[i] * factor1) for i in range(4))
-	return res
+	return res[0], res[1], res[2], res[3]
 
 def hamilton_product(quat1: Sequence[float], quat2: Sequence[float]) -> Tuple[float,float,float,float]:
 	"""

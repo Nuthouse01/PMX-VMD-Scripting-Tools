@@ -1,4 +1,4 @@
-# Nuthouse01 - 10/10/2020 - v5.03
+# Nuthouse01 - 6/3/2021 - v5.08
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -99,8 +99,7 @@ def swing_twist_decompose(quat_in, axis):
 	twist = [quat_in[0], p[0], p[1], p[2]]
 	
 	# twist.normalize();
-	length = core.my_euclidian_distance(twist)
-	twist = [t / length for t in twist]
+	twist = core.normalize_distance(twist)
 	
 	# swing = quat_in * twist.conjugated();
 	twist_conjugate = core.my_quat_conjugate(twist)

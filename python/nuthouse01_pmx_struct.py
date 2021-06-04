@@ -1,4 +1,4 @@
-# Nuthouse01 - 10/10/2020 - v5.03
+# Nuthouse01 - 6/3/2021 - v5.08
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -54,6 +54,10 @@ class _BasePmx(ABC):
 		for d, thing in enumerate(L):
 			if self is thing: return d
 		return None
+
+class _BasePmxMorphItem(_BasePmx):
+	@abstractmethod
+	def list(self) -> list: pass
 
 
 class PmxHeader(_BasePmx):
@@ -281,14 +285,14 @@ class PmxBone(_BasePmx):
 				]
 
 
-class PmxMorphItemGroup(_BasePmx):
+class PmxMorphItemGroup(_BasePmxMorphItem):
 	def __init__(self, morph_idx: int, value: float):
 		self.morph_idx = morph_idx
 		self.value = value
 	def list(self) -> list:
 		return [self.morph_idx, self.value]
 	
-class PmxMorphItemVertex(_BasePmx):
+class PmxMorphItemVertex(_BasePmxMorphItem):
 	def __init__(self, vert_idx: int, move: List[float]):
 		assert len(move) == 3
 		self.vert_idx = vert_idx
@@ -296,7 +300,7 @@ class PmxMorphItemVertex(_BasePmx):
 	def list(self) -> list:
 		return [self.vert_idx, self.move]
 	
-class PmxMorphItemBone(_BasePmx):
+class PmxMorphItemBone(_BasePmxMorphItem):
 	def __init__(self, bone_idx: int, move: List[float], rot: List[float]):
 		assert len(move) == 3
 		assert len(rot) == 3
@@ -307,7 +311,7 @@ class PmxMorphItemBone(_BasePmx):
 		return [self.bone_idx, self.move, self.rot]
 
 
-class PmxMorphItemUV(_BasePmx):
+class PmxMorphItemUV(_BasePmxMorphItem):
 	def __init__(self, vert_idx: int, move: List[float]):
 		assert len(move) == 4
 		self.vert_idx = vert_idx
@@ -316,7 +320,7 @@ class PmxMorphItemUV(_BasePmx):
 		return [self.vert_idx, self.move]
 
 
-class PmxMorphItemMaterial(_BasePmx):
+class PmxMorphItemMaterial(_BasePmxMorphItem):
 	def __init__(self, mat_idx: int, is_add: int,
 				 diffRGB: List[float],
 				 specRGB: List[float],
@@ -362,7 +366,7 @@ class PmxMorphItemMaterial(_BasePmx):
 				]
 
 
-class PmxMorphItemFlip(_BasePmx):
+class PmxMorphItemFlip(_BasePmxMorphItem):
 	def __init__(self, morph_idx: int, value: float):
 		self.morph_idx = morph_idx
 		self.value = value
@@ -370,7 +374,7 @@ class PmxMorphItemFlip(_BasePmx):
 		return [self.morph_idx, self.value]
 
 
-class PmxMorphItemImpulse(_BasePmx):
+class PmxMorphItemImpulse(_BasePmxMorphItem):
 	def __init__(self, rb_idx: int, is_local: bool, move: List[float], rot: List[float]):
 		assert len(move) == 3
 		assert len(rot) == 3
@@ -388,13 +392,7 @@ class PmxMorph(_BasePmx):
 				 name_jp: str, name_en: str,
 				 panel: int,
 				 morphtype: int,
-				 items: Union[List[PmxMorphItemGroup],
-							  List[PmxMorphItemVertex],
-							  List[PmxMorphItemBone],
-							  List[PmxMorphItemUV],
-							  List[PmxMorphItemMaterial],
-							  List[PmxMorphItemFlip],
-							  List[PmxMorphItemImpulse], ],
+				 items: List[_BasePmxMorphItem],
 				 ):
 		self.name_jp = name_jp
 		self.name_en = name_en
@@ -450,10 +448,10 @@ class PmxRigidBody(_BasePmx):
 				 nocollide_mask: int, 
 				 phys_mode: int,
 				 phys_mass: float=1.0,
-				 phys_move_damp: float=0.0,
-				 phys_rot_damp: float=0.0,
+				 phys_move_damp: float=0.5,
+				 phys_rot_damp: float=0.5,
 				 phys_repel: float=0.0,
-				 phys_friction: float=0.0,
+				 phys_friction: float=0.5,
 				 ):
 		assert len(pos) == 3
 		assert len(rot) == 3
@@ -463,10 +461,16 @@ class PmxRigidBody(_BasePmx):
 		self.bone_idx = bone_idx
 		self.pos = pos
 		self.rot = rot
+		# todo: what size means for each shape type
 		self.size = size
 		# shape: 0=sphere, 1=box, 2=capsule
 		self.shape = shape
+		# group is int [0-15]
 		self.group = group
+		# RIGIDBODY_GROUP_COLLIDE_NONE = 0
+		# RIGIDBODY_GROUP_COLLIDE_ALL = sum([1<<i for i in range(16)])
+		# therefore, each 1 in this mask indicates a group that it WILL collide with!
+		# todo: replace this with a list of ints
 		self.nocollide_mask = nocollide_mask
 		# phys_mode: 0=follow bone, 1=physics, 2=physics rotate only (pivot on bone)
 		self.phys_mode = phys_mode

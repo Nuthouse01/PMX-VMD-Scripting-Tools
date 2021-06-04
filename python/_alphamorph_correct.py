@@ -1,4 +1,4 @@
-# Nuthouse01 - 10/10/2020 - v5.03
+# Nuthouse01 - 6/3/2021 - v5.08
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -87,6 +87,9 @@ def alphamorph_correct(pmx: pmxstruct.Pmx, moreinfo=False):
 			matitem:pmxstruct.PmxMorphItemMaterial  # type annotation for pycharm
 			# if (mult opacity by 0) OR (add -1 to opacity), then this item is (trying to) hide the target material
 			if (not matitem.is_add and matitem.alpha == 0) or (matitem.is_add and matitem.alpha == -1):
+				if not (-1 <= matitem.mat_idx < len(pmx.materials)):
+					core.MY_PRINT_FUNC("Warning: material morph %d item %d uses invalid material index %d, skipping" % (d, dd, matitem.mat_idx))
+					continue
 				# then replace the entire set of material-morph parameters
 				# opacity, edge size, edge alpha, tex, toon, sph
 				if matitem.mat_idx != -1 and pmx.materials[matitem.mat_idx].alpha == 0:

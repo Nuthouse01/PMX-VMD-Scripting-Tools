@@ -1,3 +1,5 @@
+# Nuthouse01 - 6/3/2021 - v5.08
+
 """
 DO FEET THE BEST WAY
 !!!
@@ -42,12 +44,14 @@ except ImportError as eee:
 # copy normals
 ###################
 
-pmx_flatrot = pmxlib.read_pmx("nano feetflatrot.pmx")
-pmx_point =   pmxlib.read_pmx("nano feetpoint3.pmx")
+pmx_from = pmxlib.read_pmx("from.pmx")
+pmx_to =   pmxlib.read_pmx("to.pmx")
 
 # copy normals of steephalf to point
 
-for v_flatrot, v_point in zip(pmx_flatrot.verts, pmx_point.verts):
-	v_point.norm = v_flatrot.norm
+assert len(pmx_from.verts) == len(pmx_to.verts)
 
-pmxlib.write_pmx("FINAL.pmx", pmx_point)
+for v_from, v_to in zip(pmx_from.verts, pmx_to.verts):
+	v_to.norm = v_from.norm
+
+pmxlib.write_pmx("FINAL.pmx", pmx_to)

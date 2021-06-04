@@ -1,4 +1,4 @@
-# Nuthouse01 - 10/10/2020 - v5.03
+# Nuthouse01 - 6/3/2021 - v5.08
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -35,10 +35,14 @@ helptext = '''====================
 weight_cleanup:
 This function will fix the vertex weights that are weighted twice to the same bone, a minor issue that sometimes happens when merging bones.
 This also normalizes the weights of all vertices, and normalizes the normal vectors for all vertices.
+Finally, it removes weight for any bones that have <0.001% weight, because it's imperceptible anyways.
 '''
 
 iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_weightfix.pmx"
 '''
+
+# epsilon: a number very close to zero. weights below this value become zero.
+EPSILON = 0.00001  # = 1e-5 = 0.001%
 
 
 def showhelp():
@@ -81,17 +85,18 @@ def normalize_weights(pmx: pmxstruct.Pmx) -> int:
 		# nothing
 		# type4=QDEF, 4 bones 4 weights
 		# normalize, merge
+		
 		if weighttype == 0:  # BDEF1
 			# nothing to be fixed here
 			continue
 		elif weighttype == 1:  # BDEF2
 			# no need to normalize because the 2nd weight is implicit, not explicit
 			# only merge dupes, look for reason to reduce to BDEF1: bones are same, weight is 0/1
-			if w[0] == w[1] or w[2] == 1:  # same bones handled the same way as firstbone with weight 1
+			if w[0] == w[1] or w[2] >= 1-EPSILON:  # same bones handled the same way as firstbone with weight 1
 				weight_fix += 1
 				vert.weighttype = 0  # set to BDEF1
 				vert.weight = [w[0]]
-			elif w[2] == 0:  # firstbone has weight 0
+			elif w[2] <= EPSILON:  # firstbone has weight 0
 				weight_fix += 1
 				vert.weighttype = 0  # set to BDEF1
 				vert.weight = [w[1]]
@@ -102,9 +107,16 @@ def normalize_weights(pmx: pmxstruct.Pmx) -> int:
 			weights = w[4:8]
 			is_modified = False
 			
+			# weights that are very close to zero should become zero
+			for i in range(4):
+				if 0 < weights[i] <= EPSILON:
+					is_modified = True
+					weights[i] = 0
+			
 			# unify dupes
 			usedbones = []
 			for i in range(4):
+				# bone=0 and weight=0 means just a placeholder, ignore it
 				if not (bones[i] == 0 and weights[i] == 0.0) and (bones[i] in usedbones):
 					is_modified = True  # then this is a duplicate bone!
 					where = usedbones.index(bones[i])  # find index where it was first used
@@ -127,7 +139,9 @@ def normalize_weights(pmx: pmxstruct.Pmx) -> int:
 			# normalize if needed
 			s = sum(weights)
 			if round(s, 6) != 1.0:
-				if s == 0:
+				try:
+					weights = core.normalize_sum(weights)
+				except ZeroDivisionError:
 					core.MY_PRINT_FUNC("Error: vert %d has BDEF4 weights that sum to 0, cannot normalize" % d)
 					continue
 				# it needs it, do it
@@ -253,9 +267,8 @@ def repair_invalid_normals(pmx: pmxstruct.Pmx, normbad: List[int]) -> int:
 				qs = [s[i] - q[i] for i in range(3)]
 				facenorm = core.my_cross_product(qr, qs)
 				# then normalize the fresh normal
-				norm_L = core.my_euclidian_distance(facenorm)
 				try:
-					facenorm = [n / norm_L for n in facenorm]
+					facenorm = core.normalize_distance(facenorm)
 				except ZeroDivisionError:
 					# this should never happen in normal cases
 					# however it can happen when the verts are at the same position and therefore their face has zero surface area
@@ -279,8 +292,7 @@ def repair_invalid_normals(pmx: pmxstruct.Pmx, normbad: List[int]) -> int:
 		# zerodiv err not possible: if there are no connected faces then it will hit [0,0,0] branch above
 		newnorm = [n / len(badvert_faces) for n in newnorm]
 		# then normalize this, again
-		norm_L = core.my_euclidian_distance(newnorm)
-		newnorm = [n / norm_L for n in newnorm]
+		newnorm = core.normalize_distance(newnorm)
 		# finally, apply this new normal
 		pmx.verts[badvert_idx].norm = newnorm
 	return normbad_err

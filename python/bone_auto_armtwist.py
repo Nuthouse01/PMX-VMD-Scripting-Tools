@@ -1,4 +1,4 @@
-# Nuthouse01 - 10/10/2020 - v5.03
+# Nuthouse01 - 6/3/2021 - v5.08
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -204,17 +204,14 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side, arm_s, armtwist_s, elbow_s,
 	
 	# 3, calculate "perpendicular" location
 	# get axis from arm to elbow, normalize to 1
-	def normalize(foo):
-		LLL = core.my_euclidian_distance(foo)
-		return [t / LLL for t in foo]
 	axis = [b - a for a, b in zip(arm.pos, elbow.pos)]
-	axis = normalize(axis)
+	axis = core.normalize_distance(axis)
 	# calc vector in XZ plane at 90-deg from axis
 	frontback = core.my_cross_product(axis, [0,1,0])
-	frontback = normalize(frontback)
+	frontback = core.normalize_distance(frontback)
 	# calc vector in the same vertical plane as axis, at 90-deg from axis
 	perpendicular = core.my_cross_product(axis, frontback)
-	perpendicular = normalize(perpendicular)
+	perpendicular = core.normalize_distance(perpendicular)
 	# if result has negative y, invert
 	if perpendicular[1] < 0:
 		perpendicular = [p * -1 for p in perpendicular]
