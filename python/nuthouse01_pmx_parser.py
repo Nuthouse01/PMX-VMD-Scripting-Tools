@@ -146,31 +146,6 @@ def parse_pmx_vertices(raw: bytearray) -> List[pmxstruct.PmxVertex]:
 	bdef4_fmt = "4%s 4f" % IDX_BONE
 	sdef_fmt =  "2%s 10f" % IDX_BONE
 	qdef_fmt =  bdef4_fmt
-	
-	def weightbinary_to_weightpairs(wtype: int, w_i: List[float]) -> List[List[float]]:
-		# convert the list of weights as stored in binary file into a more reasonable list of bone-weight pairs
-		# this comes out of the parser so it should be perfect, no need to error-check the input
-		w_o = []
-		if wtype == 0:
-			# 0 = BDEF1 = [b1]
-			w_o = [[w_i[0], 1.0],
-				  ]
-		elif wtype in (1, 3):
-			# 1 = BDEF2 = [b1, b2, b1w]
-			# 3 = sdef =  [b1, b2, b1w] + weight_sdef = [[c1, c2, c3], [r01, r02, r03], [r11, r12, r13]]
-			w_o = [[w_i[0], w_i[2]],
-				  [w_i[1], 1.0 - w_i[2]],
-				  ]
-		elif wtype in (2, 4):
-			# 2 = BDEF4 = [b1, b2, b3, b4, b1w, b2w, b3w, b4w]
-			# 4 = qdef =  [b1, b2, b3, b4, b1w, b2w, b3w, b4w]  (only in pmx v2.1)
-			w_o = [[w_i[0], w_i[4]],
-				  [w_i[1], w_i[5]],
-				  [w_i[2], w_i[6]],
-				  [w_i[3], w_i[7]],
-				  ]
-		return w_o
-	
 	for d in range(i):
 		# first, basic stuff
 		(posX, posY, posZ, normX, normY, normZ, u, v) = core.my_unpack("8f", raw)
@@ -208,14 +183,12 @@ def parse_pmx_vertices(raw: bytearray) -> List[pmxstruct.PmxVertex]:
 			core.MY_PRINT_FUNC("invalid weight type for vertex", weighttype)
 		# then there is one final float after the weight crap
 		edgescale = core.my_unpack("f", raw)
-		
-		weight_pairs = weightbinary_to_weightpairs(weighttype, weights)
 
 		# display progress printouts
 		core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
 		# assemble all the info into a struct for returning
 		thisvert = pmxstruct.PmxVertex(pos=[posX, posY, posZ], norm=[normX, normY, normZ], uv=[u, v],
-									   weighttype=weighttype, weight=weight_pairs, weight_sdef=weight_sdef,
+									   weighttype=weighttype, weight=weights, weight_sdef=weight_sdef,
 									   edgescale=edgescale, addl_vec4s=addl_vec4s)
 		
 		retme.append(thisvert)
@@ -630,32 +603,6 @@ def encode_pmx_vertices(nice: List[pmxstruct.PmxVertex]) -> bytearray:
 	bdef4_fmt = "4%s 4f" % IDX_BONE
 	sdef_fmt =  "2%s 10f" % IDX_BONE
 	qdef_fmt =  bdef4_fmt
-	
-	def weightpairs_to_weightbinary(weighttype: int, w: List[List[float]]) -> List[float]:
-		# convert the list of bone-weight pairs to the format/order used in the binary file
-		# # how many pairs have a real bone or a real weight?
-		# real_weight_count = sum([(a[0] > 0 or a[1]) != 0 for a in w])
-		wo = []
-		if weighttype == 0:
-			while len(w) < 1: w.append([0, 0])  # pad with [0,0] till we have enough members
-			# 0 = BDEF1 = [b1]
-			wo = [w[0][0]]
-		elif weighttype in (1, 3):
-			while len(w) < 2: w.append([0, 0])  # pad with [0,0] till we have enough members
-			# 1 = BDEF2 = [b1, b2, b1w]
-			# 3 = sdef =  [b1, b2, b1w] + weight_sdef = [[c1, c2, c3], [r01, r02, r03], [r11, r12, r13]]
-			wo = [w[0][0],
-				  w[1][0],
-				  w[0][1]]
-		elif weighttype in (2, 4):
-			while len(w) < 4: w.append([0, 0])  # pad with [0,0] till we have enough members
-			# 2 = BDEF4 = [b1, b2, b3, b4, b1w, b2w, b3w, b4w]
-			# 4 = qdef =  [b1, b2, b3, b4, b1w, b2w, b3w, b4w]  (only in pmx v2.1)
-			wo = [w[0][0], w[1][0], w[2][0], w[3][0],
-				  w[0][1], w[1][1], w[2][1], w[3][1],
-				  ]
-		return wo
-	
 	for d, vert in enumerate(nice):
 		# first, basic stuff
 		packme = vert.pos + vert.norm + vert.uv  # concat these
@@ -673,29 +620,27 @@ def encode_pmx_vertices(nice: List[pmxstruct.PmxVertex]) -> bytearray:
 		# 2 = BDEF4 = [b1, b2, b3, b4, b1w, b2w, b3w, b4w]
 		# 3 = sdef =  [b1, b2, b1w] + weight_sdef = [[c1, c2, c3], [r01, r02, r03], [r11, r12, r13]]
 		# 4 = qdef =  [b1, b2, b3, b4, b1w, b2w, b3w, b4w]  (only in pmx v2.1)
-		
-		weightlist = weightpairs_to_weightbinary(vert.weighttype, vert.weight)
 
 		if vert.weighttype == 0:
 			# BDEF1
-			out += core.my_pack(bdef1_fmt, weightlist)
+			out += core.my_pack(bdef1_fmt, vert.weight)
 		elif vert.weighttype == 1:
 			# BDEF2
 			# (b1, b2, b1w)
-			out += core.my_pack(bdef2_fmt, weightlist)
+			out += core.my_pack(bdef2_fmt, vert.weight)
 		elif vert.weighttype == 2:
 			# BDEF4
 			# (b1, b2, b3, b4, b1w, b2w, b3w, b4w)
-			out += core.my_pack(bdef4_fmt, weightlist)
+			out += core.my_pack(bdef4_fmt, vert.weight)
 		elif vert.weighttype == 3:
 			# SDEF
 			# ([b1, b2, b1w], [c1, c2, c3], [r01, r02, r03], [r11, r12, r13])
-			packme = weightlist + core.flatten(vert.weight_sdef)
+			packme = vert.weight + core.flatten(vert.weight_sdef)
 			out += core.my_pack(sdef_fmt, packme)
 		elif vert.weighttype == 4:
 			# it must be using QDEF, a type only for PMX v2.1 which I dont need to support so idgaf
 			# (b1, b2, b3, b4, b1w, b2w, b3w, b4w)
-			out += core.my_pack(qdef_fmt, weightlist)
+			out += core.my_pack(qdef_fmt, vert.weight)
 		else:
 			core.MY_PRINT_FUNC("invalid weight type for vertex", vert.weighttype)
 			

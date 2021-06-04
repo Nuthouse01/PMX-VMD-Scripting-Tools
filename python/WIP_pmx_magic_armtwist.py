@@ -116,8 +116,19 @@ weight_type_to_len = {0:1, 1:2, 2:4, 3:2, 4:4}
 
 def dict_from_weights(weighttype, w):
 	wd = defaultdict(float)
-	for pair in w:
-		wd[pair[0]] += pair[1]
+	if weighttype == 0:
+		# BDEF1
+		wd[w[0]] += 1.0
+	elif weighttype in (1, 3):
+		# BDEF2, SDEF
+		# (b1, b2, b1w)
+		wd[w[0]] += w[2]
+		wd[w[1]] += 1.0 - w[2]
+	elif weighttype in (2, 4):
+		# BDEF4, QDEF
+		# (b1, b2, b3, b4, b1w, b2w, b3w, b4w)
+		for i in range(4):
+			wd[w[i]] += w[i + 4]
 	return wd
 
 	
@@ -171,8 +182,10 @@ def calculate_percentiles(pmx: pmxstruct.Pmx, bone_arm: int, bone_elbow: int, bo
 	
 	# 3. collect all vertices controlled by bone_hasweight
 	for d, vert in enumerate(pmx.verts):
-		weightidx = [foo for foo,_ in vert.weight]
-		if bone_hasweight in weightidx:
+		weighttype = vert.weighttype
+		w = vert.weight
+		weightlen = weight_type_to_len[weighttype]
+		if bone_hasweight in w[0:weightlen]:
 			# if this vert is controlled by bone_hasweight, then it is relevant! save it!
 			# most of the verts aren't going to have 0 weight for a bone, dont worry about checking that
 			retme_verts.append(d)
@@ -227,15 +240,17 @@ def divvy_weights(pmx: pmxstruct.Pmx, vert_zip, axis_limits, bone_hasweight, bon
 		vert = pmx.verts[vidx]
 		vert: pmxstruct.PmxVertex
 		weighttype = vert.weighttype
+		w = vert.weight
 		
 		# 2. % <= 0.0 means above shoulder, just replace arm with armYZ, don't change anything else
 		if percentile <= 0.0:
-			for pair in vert.weight:
-				if pair[0] == bone_hasweight:
-					pair[0] = bone_getsweight
+			weightlen = weight_type_to_len[weighttype]
+			for i in range(weightlen):
+				if w[i] == bone_hasweight:
+					w[i] = bone_getsweight
 			continue
 			
-		wdict = dict_from_weights(weighttype, vert.weight)
+		wdict = dict_from_weights(weighttype, w)
 		# this is a rare case but it should still be handled
 		if wdict[bone_hasweight] == 0: continue
 		
@@ -251,8 +266,7 @@ def divvy_weights(pmx: pmxstruct.Pmx, vert_zip, axis_limits, bone_hasweight, bon
 			# 4. if this has 100% weight on HAS, then handle it the normal way: divide weights between HAS and GETS and save as SDEF
 			# blend ratio: replace HAS with (HAS = HAS*blend) + (GETS = HAS*(1-blend))
 			vert.weighttype = 3  # type = SDEF = (b1, b2, b1w, c1, c2, c3, r01, r02, r03, r11, r12, r13)
-			# set the component bones and the blend ratio, dont worry about order
-			wnew = [[bone_hasweight, bez_percentile], [bone_getsweight, 1-bez_percentile]]
+			wnew = [bone_hasweight, bone_getsweight, bez_percentile]  # set the component bones and the blend ratio, dont worry about order
 			vert.weight = wnew
 			# c = center
 			# r0 = axis start = armbone
@@ -268,8 +282,8 @@ def divvy_weights(pmx: pmxstruct.Pmx, vert_zip, axis_limits, bone_hasweight, bon
 			if BLEED_HANDLING_MODE == 1:
 				# A. overwrite/ignore: pretend it was not a bleeder, set to blended SDEF anyway
 				vert.weighttype = 3  # type = SDEF = (b1, b2, b1w, c1, c2, c3, r01, r02, r03, r11, r12, r13)
-				# set the component bones and the blend ratio, dont worry about order
-				wnew = [[bone_hasweight, bez_percentile], [bone_getsweight, 1 - bez_percentile]]
+				wnew = [bone_hasweight, bone_getsweight,
+						bez_percentile]  # set the component bones and the blend ratio, dont worry about order
 				vert.weight = wnew
 				# c = center
 				# r0 = axis start = armbone
@@ -308,8 +322,11 @@ def divvy_weights(pmx: pmxstruct.Pmx, vert_zip, axis_limits, bone_hasweight, bon
 				pass
 			else:  # QDEF
 				# qdef -> qdef
-				# blend_vector is a list of key-value pairs, key=idx value=weight, so its already good!
-				vert.weight = [list(a) for a in blend_vector]
+				v = [0] * 8
+				for i in range(len(blend_vector)):
+					v[i] = blend_vector[i][0]
+					v[i + 4] = blend_vector[i][1]
+				vert.weight = v
 				if weighttype != 4:
 					# BDEF1 BDEF2 BDEF4 -> BDEF4, but QDEF stays QDEF
 					vert.weighttype = 2

@@ -154,10 +154,11 @@ def fix_deform_for_children(pmx: pmxstruct.Pmx, me, already_visited=None) -> int
 def transfer_to_armtwist_sub(pmx: pmxstruct.Pmx, from_bone:int, to_bone:int) -> bool:
 	# any weights currently set to "from_bone" get replaced with "to_bone"
 	did_anything_change = False
+	weighttype_to_len = {0:1, 1:2, 2:4, 3:2, 4:4}
 	for v in pmx.verts:
-		for pair in v.weight:
-			if pair[0] == from_bone:
-				pair[0] = to_bone
+		for i in range(weighttype_to_len[v.weighttype]):
+			if v.weight[i] == from_bone:
+				v.weight[i] = to_bone
 				did_anything_change = True
 	# move all rigidbodies attached to "from_bone" to "to_bone" instead
 	for rb in pmx.rigidbodies:

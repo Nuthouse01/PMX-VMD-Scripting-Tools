@@ -86,7 +86,7 @@ class PmxVertex(_BasePmx):
 				 uv: List[float],
 				 edgescale: float,
 				 weighttype: int,
-				 weight: List[List[float]],
+				 weight: List[float],
 				 # optional/conditional
 				 weight_sdef: List[List[float]]=None,
 				 addl_vec4s: List[List[float]]=None,
@@ -107,18 +107,13 @@ class PmxVertex(_BasePmx):
 		self.uv = uv
 		self.edgescale = edgescale
 		# weighttype:
-		# TODO: make weighttype a named enum! no magic numbers!
 		# 0 = BDEF1 = [b1]
 		# 1 = BDEF2 = [b1, b2, b1w]
 		# 2 = BDEF4 = [b1, b2, b3, b4, b1w, b2w, b3w, b4w]
-		# 3 = sdef =  [b1, b2, b1w]
+		# 3 = sdef =  [b1, b2, b1w] + weight_sdef = [[c1, c2, c3], [r01, r02, r03], [r11, r12, r13]]
 		# 4 = qdef =  [b1, b2, b3, b4, b1w, b2w, b3w, b4w]  (only in pmx v2.1)
 		self.weighttype = weighttype
-		# this is an ordered list of boneidx-weight pairs
-		# the list can be 1 to 4 pairs depending on weighttype
 		self.weight = weight
-		# weight_sdef = [[c1, c2, c3], [r01, r02, r03], [r11, r12, r13]]
-		# this is used/valid if and only if weighttype is SDEF
 		self.weight_sdef = weight_sdef
 		self.addl_vec4s = addl_vec4s
 	def list(self) -> list:

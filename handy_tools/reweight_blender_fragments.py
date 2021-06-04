@@ -253,7 +253,7 @@ def main(moreinfo=True):
 		for v_id in all_vert_sets[fragnum]:
 			v = pmx.verts[v_id]
 			v.weighttype = 0 # BDEF1
-			v.weight = [[thisboneindex, 1]]
+			v.weight = [thisboneindex]
 		pass
 	
 	# RIGID BODIES
