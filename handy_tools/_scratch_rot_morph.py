@@ -82,10 +82,10 @@ def main():
 		if wtype == 1 or wtype == 3:
 			for b,r in zip(matchbones, rotamt):
 				# get the weight %, multiply it by how much the bone is rotated by
-				if w[0] == b:
-					rot += r * w[2]
-				elif w[1] == b:
-					rot += r * (1-w[2])
+				if w[0][0] == b:
+					rot += r * w[0][1]
+				elif w[1][0] == b:
+					rot += r * w[1][1]
 			# count how many actually get rotated
 			if rot != 0: count += 1
 		# convert from degrees to radians for rotate2d()

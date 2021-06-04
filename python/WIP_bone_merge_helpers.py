@@ -50,44 +50,48 @@ def transfer_bone_weights(pmx: pmxstruct.Pmx, to_bone: int, from_bone: int, scal
 	scalefactor = core.clamp(scalefactor, 0.0, 1.0)
 	# for each vertex, determine if that vert is controlled by from_bone
 	for d,vert in enumerate(pmx.verts):
-		weighttype = vert.weighttype
 		w = vert.weight
-		if weighttype == 0:
+		if vert.weighttype == 0:
 			# BDEF1
-			if w[0] == from_bone: # match!
+			if w[0][0] == from_bone: # match!
 				if scalefactor == 1:
-					w[0] = to_bone
+					w[0][0] = to_bone
 				else:
 					# TODO: rethink this? test this? not 100% convinced this is correct
 					# if the from_bone had 100% weight but only a .5 factor, then this should only move half as much as the to_bone
 					# the other half of the weight would come from the parent of the to_bone, i suppose?
 					to_bone_parent = pmx.bones[to_bone].parent_idx
 					if to_bone_parent == -1: # if to_bone is root and has no parent,
-						w[0] = to_bone
+						w[0][0] = to_bone
 					else: # if to_parent is valid, convert to BDEF2
 						vert.weighttype = 1
-						vert.weight = [to_bone, to_bone_parent, scalefactor]
-		elif weighttype in (1, 3):
+						vert.weight = [[to_bone, scalefactor],
+									   [to_bone_parent, 1-scalefactor]]
+		elif vert.weighttype in (1, 3):
 			# BDEF2, SDEF
 			# (b1, b2, b1w)
 			# replace the from_bone ref with to_bone, but also need to modify the value
 			# a = b1w out, z = b1w in, f = scalefactor
 			# a = z*f / (z*f + (1-z))
-			if w[0] == from_bone:
-				w[0] = to_bone
-				z = w[2]
-				w[2] = (z*scalefactor) / (z*scalefactor + (1-z))
-			elif w[1] == from_bone:
-				w[1] = to_bone
-				z = 1 - w[2]
-				w[2] = 1 - ((z*scalefactor) / (z*scalefactor + (1-z)))
-		elif weighttype in (2, 4):
+			if w[0][0] == from_bone:
+				w[0][0] = to_bone
+				z = w[0][1]
+				newval = (z*scalefactor) / (z*scalefactor + (1-z))
+				w[0][1] = newval
+				w[1][1] = 1 - newval
+			elif w[1][0] == from_bone:
+				w[1][0] = to_bone
+				z = 1 - w[0][1]
+				newval = 1 - (z*scalefactor) / (z*scalefactor + (1-z))
+				w[0][1] = newval
+				w[1][1] = 1 - newval
+		elif vert.weighttype in (2, 4):
 			# BDEF4, QDEF
 			# (b1, b2, b3, b4, b1w, b2w, b3w, b4w)
-			for i in range(4):
-				if w[i] == from_bone and w[i+4] != 0:
-					w[i] = to_bone
-					w[i+4] = w[i+4] * scalefactor
+			for pair in vert.weight:
+				if pair[0] == from_bone and pair[1] != 0:
+					pair[0] = to_bone
+					pair[1] *= scalefactor
 	# done! no return, modifies PMX list directly
 	return None
 
@@ -194,7 +198,7 @@ def main(moreinfo=True):
 		# if using partial rot inherit AND inheriting from dest_idx AND ratio != 0, use that
 		# think this is good, if twistbones exist they should be children of preferred
 		f = pmx.bones[source_idx].inherit_ratio
-	elif pmx.bones[source_idx].parent == dest_idx:
+	elif pmx.bones[source_idx].parent_idx == dest_idx:
 		# if they have a direct parent-child relationship, then factor is 1
 		f = 1
 	else:
