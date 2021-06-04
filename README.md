@@ -1,16 +1,16 @@
 # PMX-VMD-Scripting-Tools
 
-PMX/VMD Scripting Tools README
-Created by Nuthouse01 - 1/29/2021 - v5.07
+PMX/VMD Scripting Tools README  
+Created by Nuthouse01 - 6/3/2021 - v5.08
 
-If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!
-If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)
+If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!  
+If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)  
 If you want to contribute a script or bugfix you've made, please make a Git Pull Request that merges onto the "development" branch. Any pull requests onto "master" branch will be rejected.
 
 ###### Legal:
-This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause. You are permitted to examine and modify the code as you see fit, but I make no guarantees about the safety or quality of the result.
-I take no responsibility for how you use this code: any damages, or copyright violations or other illegal activity are completely the fault of the user. These tools only gives you "the ability to read/edit", what you do with that ability is not my business and not my fault.
-You are free to use this for any commercial or non-commercial applications.
+This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause. You are permitted to examine and modify the code as you see fit, but I make no guarantees about the safety or quality of the result.  
+I take no responsibility for how you use this code: any damages, or copyright violations or other illegal activity are completely the fault of the user. These tools only gives you "the ability to read/edit", what you do with that ability is not my business and not my fault.  
+You are free to use this for any commercial or non-commercial applications.  
 Don't try to claim this work as yours. That would be a profoundly dick move.
 
 ###### Usage:
@@ -43,8 +43,8 @@ This script is to check if the model you are using is compatible with the VMD/VP
 This script will reveal what exactly is mismatched; but to fix the issue, you must either change the PMX to match the VMD/VPD (using PMXEditor or a similar tool) or you must change the VMD/VPD to match the PMX (convert the VMD to text form, replace all uses of "笑顔" with "笑い" to match the model, and then convert it back to VMD form).
 
 ##### bone_auto_armtwist.py
-This will generate "automatic armtwist rigging" that will fix pinching at shoulders/elbows.
-**This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.**
+This will generate "automatic armtwist rigging" that will fix pinching at shoulders/elbows.  
+**This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.**  
 It creates a clever IK bone setup that hijacks the semistandard bones and moves them as needed to reach whatever pose you make with the arm/腕 or elbow/ひじ bones. You do not need to manually move the armtwist bones at all, you can animate all 3 axes of rotation on the arm bone and the twisting axis will be automatically extracted and transferred to the armtwist bone as needed!
 
 ##### morph_hide.py
