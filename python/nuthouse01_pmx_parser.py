@@ -258,17 +258,7 @@ def parse_pmx_materials(raw: bytearray) -> List[pmxstruct.PmxMaterial]:
 		(name_jp, name_en, diffR, diffG, diffB, diffA, specR, specG, specB, specpower) = core.my_unpack("t t 4f 4f", raw)
 		# print(name_jp, name_en)
 		(ambR, ambG, ambB, flags, edgeR, edgeG, edgeB, edgeA, edgescale, tex_idx) = core.my_unpack("3f B 5f" + IDX_TEX, raw)
-		no_backface_culling = bool(flags & (1<<0)) # does this mean it is 2-sided?
-		cast_ground_shadow  = bool(flags & (1<<1))
-		cast_shadow         = bool(flags & (1<<2))
-		receive_shadow      = bool(flags & (1<<3))
-		use_edge            = bool(flags & (1<<4))
-		vertex_color        = bool(flags & (1<<5)) # v2.1 only
-		draw_as_points      = bool(flags & (1<<6)) # v2.1 only
-		draw_as_lines       = bool(flags & (1<<7)) # v2.1 only
-		# assemble all the info into a list
-		flaglist = [no_backface_culling, cast_ground_shadow, cast_shadow, receive_shadow, use_edge, vertex_color,
-					draw_as_points, draw_as_lines]
+		matflags = pmxstruct.MaterialFlags(flags)
 		(sph_idx, sph_mode_int, toon_mode) = core.my_unpack(IDX_TEX + "b b", raw)
 		sph_mode = pmxstruct.SphMode(sph_mode_int)
 		if toon_mode == 0:
@@ -282,13 +272,12 @@ def parse_pmx_materials(raw: bytearray) -> List[pmxstruct.PmxMaterial]:
 		faces_ct = int(surface_ct / 3)
 		
 		# assemble all the data into a struct for returning
-		thismat = pmxstruct.PmxMaterial(name_jp=name_jp, name_en=name_en,
-										diffRGB=[diffR, diffG, diffB], specRGB=[specR, specG, specB],
-										ambRGB=[ambR, ambG, ambB], alpha=diffA, specpower=specpower,
-										edgeRGB=[edgeR, edgeG, edgeB], edgealpha=edgeA, edgesize=edgescale,
-										tex_idx=tex_idx, sph_idx=sph_idx, toon_idx=toon_idx,
-										sph_mode=sph_mode, toon_mode=toon_mode, comment=comment, faces_ct=faces_ct,
-										flaglist=flaglist)
+		thismat = pmxstruct.PmxMaterial(name_jp=name_jp, name_en=name_en, diffRGB=[diffR, diffG, diffB],
+										specRGB=[specR, specG, specB], ambRGB=[ambR, ambG, ambB], alpha=diffA,
+										specpower=specpower, edgeRGB=[edgeR, edgeG, edgeB], edgealpha=edgeA,
+										edgesize=edgescale, tex_idx=tex_idx, sph_idx=sph_idx, sph_mode=sph_mode,
+										toon_idx=toon_idx, toon_mode=toon_mode, comment=comment, faces_ct=faces_ct,
+										matflags=matflags)
 		
 		retme.append(thismat)
 	return retme
@@ -748,10 +737,7 @@ def encode_pmx_materials(nice: List[pmxstruct.PmxMaterial]) -> bytearray:
 	# this fmt is when the toon is using a builtin toon, toon01.bmp thru toon10.bmp (values 0-9)
 	mat_fmtB = "t t 4f 4f 3f B 5f 2%s b b b  t i" % IDX_TEX
 	for d, mat in enumerate(nice):
-		flagsum = 0
-		for pos, flag in enumerate(mat.flaglist):
-			# reassemble the bits into a byte
-			flagsum += 1 << pos if bool(flag) else 0
+		flagsum = mat.matflags.value
 		# note: i structure the faces list into groups of 3 vertex indices, this is divided by 3 to match, so now i need to undivide
 		verts_ct = 3 * mat.faces_ct
 		packme = [mat.name_jp, mat.name_en, *mat.diffRGB, mat.alpha, *mat.specRGB, mat.specpower, *mat.ambRGB,

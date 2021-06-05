@@ -119,7 +119,10 @@ def alphamorph_correct(pmx: pmxstruct.Pmx, moreinfo=False):
 	mats_fixed = 0
 	for d,mat in enumerate(pmx.materials):
 		# if opacity is zero AND edge is enabled AND edge has nonzero opacity AND edge has nonzero size
-		if mat.alpha == 0 and mat.flaglist[4] and mat.edgealpha != 0 and mat.edgesize != 0:
+		if mat.alpha == 0 \
+				and pmxstruct.MaterialFlags.USE_EDGING in mat.matflags \
+				and mat.edgealpha != 0 \
+				and mat.edgesize != 0:
 			this_num_edgefixed = 0
 			# THEN check for any material morphs that add opacity to this material
 			for d2,morph in enumerate(pmx.morphs):

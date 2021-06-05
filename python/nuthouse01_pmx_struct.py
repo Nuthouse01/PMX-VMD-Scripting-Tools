@@ -6,7 +6,7 @@
 # first, system imports
 from typing import List, Union
 from abc import ABC, abstractmethod
-from enum import IntEnum, Enum
+from enum import Flag, Enum
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -124,6 +124,39 @@ class JointType(Enum):
 	CONETWIST =     3  # (only in pmx v2.1)
 	SLIDER =        4  # (only in pmx v2.1)
 	HINGE =         5  # (only in pmx v2.1)
+class MaterialFlags(Flag):
+	DOUBLE_SIDED =       (1 << 0)
+	CAST_GROUND_SHADOW = (1 << 1)
+	CAST_SHADOW =        (1 << 2)
+	RECEIVE_SHADOW =     (1 << 3)
+	USE_EDGING =         (1 << 4)
+	USE_VERTEX_COLOR =   (1 << 5)  # (only in pmx v2.1)
+	DRAW_AS_POINTS =     (1 << 6)  # (only in pmx v2.1)
+	DRAW_AS_LINES =      (1 << 7)  # (only in pmx v2.1)
+	# def includes(self, f: 'MaterialFlags') -> bool:
+	# 	"""
+	# 	This is a synonym for "f in this"
+	# 	"""
+	# 	return f in self
+	def add(self, f: 'MaterialFlags') -> 'MaterialFlags':
+		"""
+		Return a new flags object with the new flag added into it. DOES NOT MODIFY THE ORIGINAL.
+		You need to use "m = m.add(thing)" or just use "m = m | thing"
+		:param f: a MaterialFlags item
+		:return: this, but with f added to it
+		"""
+		s = self | f
+		return s
+	def remove(self, f: 'MaterialFlags') -> 'MaterialFlags':
+		"""
+		Return a new flags object with the flag deleted from it. DOES NOT MODIFY THE ORIGINAL.
+		You need to use "m = m.remove(thing)" or just use "m = m & ~thing"
+		:param f: a MaterialFlags item
+		:return: this, but with f removed from it
+		"""
+		s = self & ~f
+		return s
+	
 	
 # rigidbody group?
 # rigidbody group nocollide mask?
@@ -199,25 +232,14 @@ class PmxVertex(_BasePmx):
 # tex is just a string, no struct needed
 
 class PmxMaterial(_BasePmx):
-	def __init__(self,
-				 name_jp: str, name_en: str,
-				 diffRGB: List[float],
-				 specRGB: List[float],
-				 ambRGB: List[float],
-				 alpha: float, specpower: float,
-				 edgeRGB: List[float], edgealpha: float, edgesize: float,
-				 tex_idx: int,
-				 sph_idx: int, sph_mode: SphMode,
-				 toon_idx: int, toon_mode: int,
-				 comment: str,
-				 faces_ct: int,
-				 flaglist: List[bool],
-				 ):
+	def __init__(self, name_jp: str, name_en: str, diffRGB: List[float], specRGB: List[float], ambRGB: List[float],
+				 alpha: float, specpower: float, edgeRGB: List[float], edgealpha: float, edgesize: float, tex_idx: int,
+				 sph_idx: int, sph_mode: SphMode, toon_idx: int, toon_mode: int, comment: str, faces_ct: int,
+				 matflags: MaterialFlags):
 		assert len(diffRGB) == 3
 		assert len(specRGB) == 3
 		assert len(ambRGB) == 3
 		assert len(edgeRGB) == 3
-		assert len(flaglist) == 8
 		self.name_jp = name_jp
 		self.name_en = name_en
 		self.diffRGB = diffRGB
@@ -230,22 +252,20 @@ class PmxMaterial(_BasePmx):
 		self.edgesize = edgesize
 		self.tex_idx = tex_idx
 		self.sph_idx = sph_idx
-		# TODO: sph mode explain
+		# sph_mode: see SphMode definition
 		self.sph_mode = sph_mode
 		self.toon_idx = toon_idx
 		# toon_mode: 0 = tex reference, 1 = one of the builtin toons, toon01.bmp thru toon10.bmp (values 0-9)
 		self.toon_mode = toon_mode
 		self.comment = comment
 		self.faces_ct = faces_ct
-		# this order is accurate
-		# flaglist = [no_backface_culling, cast_ground_shadow, cast_shadow, receive_shadow, use_edge, vertex_color,
-		# 			draw_as_points, draw_as_lines]
-		self.flaglist = flaglist
+		# flaglist: see MaterialFlags definition
+		self.matflags = matflags
 	def list(self) -> list:
 		return [self.name_jp, self.name_en, self.diffRGB, self.specRGB, self.ambRGB, self.alpha, self.specpower,
 				self.edgeRGB, self.edgealpha, self.edgesize,
 				self.tex_idx, self.sph_idx, self.sph_mode, self.toon_idx, self.toon_mode,
-				self.comment, self.faces_ct, self.flaglist,
+				self.comment, self.faces_ct, self.matflags,
 				]
 
 class PmxBoneIkLink(_BasePmx):

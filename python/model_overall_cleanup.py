@@ -154,8 +154,11 @@ def find_shadowy_materials(pmx: pmxstruct.Pmx) -> list:
 	# identify materials that start transparent but still have edging
 	retme = []
 	for d,mat in enumerate(pmx.materials):
-		# opacity is zero AND edge is enabled AND edge has nonzero opacity AND edge has nonzero size 
-		if mat.alpha == 0 and mat.flaglist[4] and mat.edgealpha != 0 and mat.edgesize != 0:
+		# if opacity is zero AND edge is enabled AND edge has nonzero opacity AND edge has nonzero size
+		if mat.alpha == 0 \
+				and pmxstruct.MaterialFlags.USE_EDGING in mat.matflags \
+				and mat.edgealpha != 0 \
+				and mat.edgesize != 0:
 			retme.append(d)
 	return retme
 
