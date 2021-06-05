@@ -73,7 +73,7 @@ class WeightMode(Enum):
 	BDEF4 = 2
 	SDEF =  3
 	QDEF =  4  # (only in pmx v2.1)
-class SphMode(IntEnum):
+class SphMode(Enum):
 	# 0 = disabled, 1 = multiply, 2 = additive, 3 = additional vec4*
 	DISABLE =  0
 	MULTIPLY = 1
@@ -83,7 +83,7 @@ class SphMode(IntEnum):
 	# This may conflict with other uses for the first additional vec4."
 	# I think this is the mode used for normal map usage?
 	SUBTEX = 3
-class MorphType(IntEnum):
+class MorphType(Enum):
 	# morphtype
 	# 0 = group = (morph_idx, influence)
 	# 1 = vertex = (vert_idx, transX, transY, transZ)
@@ -106,17 +106,17 @@ class MorphType(IntEnum):
 	MATERIAL = 8
 	FLIP =     9  # (only in pmx v2.1)
 	IMPULSE =  10  # (only in pmx v2.1)
-class RigidBodyShape(IntEnum):
+class RigidBodyShape(Enum):
 	# shape: 0=sphere, 1=box, 2=capsule
 	SPHERE =  0
 	BOX =     1
 	CAPSULE = 2
-class RigidBodyMode(IntEnum):
+class RigidBodyPhysMode(Enum):
 	# phys_mode: 0=follow bone, 1=physics, 2=physics rotate only (pivot on bone)
 	BONE =               0
 	PHYSICS =            1
 	PHYSICS_ROTATEONLY = 2
-class JointMode(IntEnum):
+class JointType(Enum):
 	# jointtype: 0=spring6DOF, all others are v2.1 only!!!! 1=6dof, 2=p2p, 3=conetwist, 4=slider, 5=hinge
 	SPRING_SIXDOF = 0
 	SIXDOF =        1  # (only in pmx v2.1)
@@ -177,7 +177,6 @@ class PmxVertex(_BasePmx):
 		self.uv = uv
 		self.edgescale = edgescale
 		# weighttype:
-		# TODO: make weighttype a named enum! no magic numbers!
 		# 0 = BDEF1 = [b1]
 		# 1 = BDEF2 = [b1, b2, b1w]
 		# 2 = BDEF4 = [b1, b2, b3, b4, b1w, b2w, b3w, b4w]
@@ -524,10 +523,10 @@ class PmxRigidBody(_BasePmx):
 				 pos: List[float],
 				 rot: List[float],
 				 size: List[float],
-				 shape: int,
+				 shape: RigidBodyShape,
 				 group: int, 
 				 nocollide_mask: int, 
-				 phys_mode: int,
+				 phys_mode: RigidBodyPhysMode,
 				 phys_mass: float=1.0,
 				 phys_move_damp: float=0.5,
 				 phys_rot_damp: float=0.5,
@@ -577,7 +576,8 @@ class PmxJoint(_BasePmx):
 	# 			 springposX, springposY, springposZ, springrotX, springrotY, springrotZ]
 	def __init__(self,
 				 name_jp: str, name_en: str,
-				 jointtype: int, rb1_idx: int, rb2_idx: int,
+				 jointtype: JointType,
+				 rb1_idx: int, rb2_idx: int,
 				 pos: List[float],
 				 rot: List[float],
 				 movemin: List[float],

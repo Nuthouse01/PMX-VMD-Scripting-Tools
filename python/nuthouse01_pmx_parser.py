@@ -474,11 +474,13 @@ def parse_pmx_rigidbodies(raw: bytearray) -> List[pmxstruct.PmxRigidBody]:
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of rigidbodies      =", i)
 	retme = []
 	for d in range(i):
-		(name_jp, name_en, bone_idx, group, nocollide_mask, shape) = core.my_unpack("t t" + IDX_BONE + "b H b", raw)
+		(name_jp, name_en, bone_idx, group, nocollide_mask, shape_int) = core.my_unpack("t t" + IDX_BONE + "b H b", raw)
+		shape = pmxstruct.RigidBodyShape(shape_int)
 		# print(name_jp, name_en)
 		# shape: 0=sphere, 1=box, 2=capsule
 		(sizeX, sizeY, sizeZ, posX, posY, posZ, rotX, rotY, rotZ) = core.my_unpack("3f 3f 3f", raw)
-		(mass, move_damp, rot_damp, repel, friction, physmode) = core.my_unpack("5f b", raw)
+		(mass, move_damp, rot_damp, repel, friction, physmode_int) = core.my_unpack("5f b", raw)
+		physmode = pmxstruct.RigidBodyPhysMode(physmode_int)
 		# physmode: 0=follow bone, 1=physics, 2=physics rotate only (pivot on bone)
 		
 		# note: rotation comes in as XYZ radians, must convert to degrees for my struct
@@ -501,8 +503,9 @@ def parse_pmx_joints(raw: bytearray) -> List[pmxstruct.PmxJoint]:
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of joints           =", i)
 	retme = []
 	for d in range(i):
-		(name_jp, name_en, jointtype, rb1_idx, rb2_idx, posX, posY, posZ) = core.my_unpack("t t b 2" + IDX_RB + "3f", raw)
+		(name_jp, name_en, jointtype_int, rb1_idx, rb2_idx, posX, posY, posZ) = core.my_unpack("t t b 2" + IDX_RB + "3f", raw)
 		# jointtype: 0=spring6DOF, all others are v2.1 only!!!! 1=6dof, 2=p2p, 3=conetwist, 4=slider, 5=hinge
+		jointtype = pmxstruct.JointType(jointtype_int)
 		# print(name_jp, name_en)
 		(rotX, rotY, rotZ, posminX, posminY, posminZ, posmaxX, posmaxY, posmaxZ) = core.my_unpack("3f 3f 3f", raw)
 		(rotminX, rotminY, rotminZ, rotmaxX, rotmaxY, rotmaxZ) = core.my_unpack("3f 3f", raw)
@@ -912,8 +915,8 @@ def encode_pmx_rigidbodies(nice: List[pmxstruct.PmxRigidBody]) -> bytearray:
 		# note: my struct holds rotation as XYZ degrees, must convert to radians for file
 		rot = [math.radians(r) for r in b.rot]
 		
-		packme = [b.name_jp, b.name_en, b.bone_idx, b.group, b.nocollide_mask, b.shape, *b.size, *b.pos, *rot,
-				  b.phys_mass, b.phys_move_damp, b.phys_rot_damp, b.phys_repel, b.phys_friction, b.phys_mode]
+		packme = [b.name_jp, b.name_en, b.bone_idx, b.group, b.nocollide_mask, b.shape.value, *b.size, *b.pos, *rot,
+				  b.phys_mass, b.phys_move_damp, b.phys_rot_damp, b.phys_repel, b.phys_friction, b.phys_mode.value]
 		out += core.my_pack(fmt_rbody, packme)
 	
 	return out
@@ -930,7 +933,7 @@ def encode_pmx_joints(nice: List[pmxstruct.PmxJoint]) -> bytearray:
 		rotmin = [math.radians(r) for r in j.rotmin]
 		rotmax = [math.radians(r) for r in j.rotmax]
 		
-		packme = [j.name_jp, j.name_en, j.jointtype, j.rb1_idx, j.rb2_idx, *j.pos, *rot, *j.movemin,
+		packme = [j.name_jp, j.name_en, j.jointtype.value, j.rb1_idx, j.rb2_idx, *j.pos, *rot, *j.movemin,
 				  *j.movemax, *rotmin, *rotmax, *j.movespring, *j.rotspring]
 		out += core.my_pack(fmt_joint, packme)
 	return out

@@ -296,8 +296,8 @@ def main(moreinfo=True):
 		# all the others are set to bone -1 and connected to the mainbody via joints
 		newbody_obj = pmxstruct.PmxRigidBody(
 			name_jp=newbody_name, name_en=newbody_name, bone_idx=all_bone_indices[fragnum],
-			pos=newbody_pos, rot=[0,0,0], size=[newbody_radius,0,0], shape=0,
-			group=0, nocollide_mask=RIGIDBODY_GROUP_COLLIDE_ALL, phys_mode=1, phys_mass=mass,
+			pos=newbody_pos, rot=[0,0,0], size=[newbody_radius,0,0], shape=pmxstruct.RigidBodyShape.SPHERE,
+			group=0, nocollide_mask=RIGIDBODY_GROUP_COLLIDE_ALL, phys_mode=pmxstruct.RigidBodyPhysMode.PHYSICS, phys_mass=mass,
 			phys_move_damp=phys_move_damp, phys_rot_damp=phys_rot_damp, phys_repel=phys_repel, phys_friction=phys_friction
 		)
 		
