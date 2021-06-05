@@ -125,7 +125,7 @@ def main(moreinfo=True):
 
 	for m in pmx.morphs:
 		# vertex morph and bone morph (only translate, not rotate)
-		if m.morphtype in (1,2):
+		if m.morphtype in (pmxstruct.MorphType.VERTEX, pmxstruct.MorphType.BONE):
 			morph_scale.morph_scale(m, scale, bone_mode=1)
 			
 	for rb in pmx.rigidbodies:

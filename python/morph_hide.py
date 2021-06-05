@@ -65,7 +65,7 @@ def main(moreinfo=True):
 		# determine the morph type
 		morphtype = pmx.morphs[target_index].morphtype
 		core.MY_PRINT_FUNC("Found {} morph #{}: '{}' / '{}'".format(
-			mtype_dict[morphtype], target_index, pmx.morphs[target_index].name_jp, pmx.morphs[target_index].name_en))
+			morphtype, target_index, pmx.morphs[target_index].name_jp, pmx.morphs[target_index].name_en))
 		core.MY_PRINT_FUNC("Was group {}, now group 0 (hidden)".format(
 			pmx.morphs[target_index].panel))
 		# make the actual change

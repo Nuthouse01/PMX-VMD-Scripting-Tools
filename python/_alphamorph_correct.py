@@ -80,7 +80,7 @@ def alphamorph_correct(pmx: pmxstruct.Pmx, moreinfo=False):
 	# for each morph:
 	for d,morph in enumerate(pmx.morphs):
 		# if not a material morph, skip it
-		if morph.morphtype != 8: continue
+		if morph.morphtype != pmxstruct.MorphType.MATERIAL: continue
 		this_num_fixed = 0
 		# for each material in this material morph:
 		for dd,matitem in enumerate(morph.items):
@@ -124,7 +124,7 @@ def alphamorph_correct(pmx: pmxstruct.Pmx, moreinfo=False):
 			# THEN check for any material morphs that add opacity to this material
 			for d2,morph in enumerate(pmx.morphs):
 				# if not a material morph, skip it
-				if morph.morphtype != 8: continue
+				if morph.morphtype != pmxstruct.MorphType.MATERIAL: continue
 				# for each material in this material morph:
 				for matitem in morph.items:
 					# if not operating on the right material, skip it

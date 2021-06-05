@@ -291,15 +291,17 @@ def apply_bone_remapping(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shift
 	# MORPHS:
 	for d, morph in enumerate(pmx.morphs):
 		# only operate on bone morphs
-		if morph.morphtype != 2: continue
+		if morph.morphtype != pmxstruct.MorphType.BONE: continue
 		# first, it is plausible that bone morphs could reference otherwise unused bones, so I should check for and delete those
 		i = 0
 		while i < len(morph.items):
+			it = morph.items[i]
+			it: pmxstruct.PmxMorphItemBone
 			# if the bone being manipulated is in the list of bones being deleted, delete it here too. otherwise remap.
-			if core.binary_search_isin(morph.items[i].bone_idx, bone_dellist):
+			if core.binary_search_isin(it.bone_idx, bone_dellist):
 				morph.items.pop(i)
 			else:
-				morph.items[i].bone_idx = newval_from_range_map(morph.items[i].bone_idx, bone_shiftmap)
+				it.bone_idx = newval_from_range_map(it.bone_idx, bone_shiftmap)
 				i += 1
 	# done with morphs
 	

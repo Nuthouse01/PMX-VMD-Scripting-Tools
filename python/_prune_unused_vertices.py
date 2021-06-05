@@ -167,7 +167,12 @@ def prune_unused_vertices(pmx: pmxstruct.Pmx, moreinfo=False):
 	
 	# need to update places that reference vertices: faces, morphs, softbody
 	# first get the total # of iterations I need to do, for progress purposes: #faces + sum of len of all UV and vert morphs
-	totalwork = len(pmx.faces) + sum([len(m.items) for m in pmx.morphs if (m.morphtype in (1,3,4,5,6,7))])
+	totalwork = len(pmx.faces) + sum([len(m.items) for m in pmx.morphs if (m.morphtype in (pmxstruct.MorphType.VERTEX,
+																						   pmxstruct.MorphType.UV,
+																						   pmxstruct.MorphType.UV_EXT1,
+																						   pmxstruct.MorphType.UV_EXT2,
+																						   pmxstruct.MorphType.UV_EXT3,
+																						   pmxstruct.MorphType.UV_EXT4))])
 	
 	# faces:
 	d = 0
@@ -186,7 +191,12 @@ def prune_unused_vertices(pmx: pmxstruct.Pmx, moreinfo=False):
 	orphan_vertex_references = 0
 	for morph in pmx.morphs:
 		# if not a vertex morph or UV morph, skip it
-		if not morph.morphtype in (1,3,4,5,6,7): continue
+		if not morph.morphtype in (pmxstruct.MorphType.VERTEX,
+								   pmxstruct.MorphType.UV,
+								   pmxstruct.MorphType.UV_EXT1,
+								   pmxstruct.MorphType.UV_EXT2,
+								   pmxstruct.MorphType.UV_EXT3,
+								   pmxstruct.MorphType.UV_EXT4): continue
 		lenbefore = len(morph.items)
 		# it is plausible that vertex/uv morphs could reference orphan vertices, so I should check for and delete those
 		i = 0

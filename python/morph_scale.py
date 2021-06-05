@@ -92,7 +92,7 @@ def morph_scale(morph: pmxstruct.PmxMorph, scale: Union[List[float], float], bon
 	if len(scale) < 4:
 		scale.extend([1] * (4 - len(scale)))
 
-	if morph.morphtype == 2:  # bone
+	if morph.morphtype == pmxstruct.MorphType.BONE:  # bone
 		# bone_mode: 1 = motion(translation), 2 = rotation, 3 = both
 		if bone_mode in (2,3):  # if ==2 or ==3, then do rotation
 			for d, item in enumerate(morph.items):
@@ -105,18 +105,22 @@ def morph_scale(morph: pmxstruct.PmxMorph, scale: Union[List[float], float], bon
 				item: pmxstruct.PmxMorphItemBone  # type annotation for pycharm
 				# scale the morph XYZ
 				item.move = [x * s for x,s in zip(item.move, scale)]
-	elif morph.morphtype == 1:  # vertex
+	elif morph.morphtype == pmxstruct.MorphType.VERTEX:  # vertex
 		# for each item in this morph:
 		for d, item in enumerate(morph.items):
 			item: pmxstruct.PmxMorphItemVertex  # type annotation for pycharm
 			# scale the morph XYZ
 			item.move = [x * s for x, s in zip(item.move, scale)]
-	elif morph.morphtype in (3, 4, 5, 6, 7):  # UV  UV1 UV2 UV3 UV4
+	elif morph.morphtype in (pmxstruct.MorphType.UV,
+							 pmxstruct.MorphType.UV_EXT1,
+							 pmxstruct.MorphType.UV_EXT2,
+							 pmxstruct.MorphType.UV_EXT3,
+							 pmxstruct.MorphType.UV_EXT4):  # UV  UV1 UV2 UV3 UV4
 		for d, item in enumerate(morph.items):
 			item: pmxstruct.PmxMorphItemUV  # type annotation for pycharm
 			# scale the morph UV
 			item.move = [x * s for x, s in zip(item.move, scale)]
-	elif morph.morphtype == 8:  # material
+	elif morph.morphtype == pmxstruct.MorphType.MATERIAL:  # material
 		core.MY_PRINT_FUNC("material morph is WIP")
 		for d, item in enumerate(morph.items):
 			item: pmxstruct.PmxMorphItemMaterial  # type annotation for pycharm
@@ -175,11 +179,11 @@ def main(moreinfo=True):
 	# determine the morph type
 	morphtype = pmx.morphs[target_index].morphtype
 	core.MY_PRINT_FUNC("Found {} morph #{}: '{}' / '{}'".format(
-		mtype_dict[morphtype], target_index, pmx.morphs[target_index].name_jp, pmx.morphs[target_index].name_en))
+		morphtype, target_index, pmx.morphs[target_index].name_jp, pmx.morphs[target_index].name_en))
 	
 	# if it is a bone morph, ask for translation/rotation/both
 	bone_mode = 0
-	if morphtype == 2:
+	if morphtype == pmxstruct.MorphType.BONE:
 		bone_mode = core.MY_SIMPLECHOICE_FUNC((1,2,3),
 			["Bone morph detected: do you want to scale the motion(translation), rotation, or both?",
 			 "1 = motion(translation), 2 = rotation, 3 = both"])

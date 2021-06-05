@@ -207,7 +207,7 @@ class PmxMaterial(_BasePmx):
 				 alpha: float, specpower: float,
 				 edgeRGB: List[float], edgealpha: float, edgesize: float,
 				 tex_idx: int,
-				 sph_idx: int, sph_mode: int,
+				 sph_idx: int, sph_mode: SphMode,
 				 toon_idx: int, toon_mode: int,
 				 comment: str,
 				 faces_ct: int,
@@ -471,7 +471,7 @@ class PmxMorph(_BasePmx):
 	def __init__(self,
 				 name_jp: str, name_en: str,
 				 panel: int,
-				 morphtype: int,
+				 morphtype: MorphType,
 				 items: List[_BasePmxMorphItem],
 				 ):
 		self.name_jp = name_jp

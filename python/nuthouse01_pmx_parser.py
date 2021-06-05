@@ -269,7 +269,8 @@ def parse_pmx_materials(raw: bytearray) -> List[pmxstruct.PmxMaterial]:
 		# assemble all the info into a list
 		flaglist = [no_backface_culling, cast_ground_shadow, cast_shadow, receive_shadow, use_edge, vertex_color,
 					draw_as_points, draw_as_lines]
-		(sph_idx, sph_mode, toon_mode) = core.my_unpack(IDX_TEX + "b b", raw)
+		(sph_idx, sph_mode_int, toon_mode) = core.my_unpack(IDX_TEX + "b b", raw)
+		sph_mode = pmxstruct.SphMode(sph_mode_int)
 		if toon_mode == 0:
 			# toon is using a texture reference
 			toon_idx = core.my_unpack(IDX_TEX, raw)
@@ -377,30 +378,35 @@ def parse_pmx_morphs(raw: bytearray) -> List[pmxstruct.PmxMorph]:
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of morphs           =", i)
 	retme = []
 	for d in range(i):
-		(name_jp, name_en, panel, morphtype, itemcount) = core.my_unpack("t t b b i", raw)
+		(name_jp, name_en, panel, morphtype_int, itemcount) = core.my_unpack("t t b b i", raw)
+		morphtype = pmxstruct.MorphType(morphtype_int)
 		# print(name_jp, name_en)
 		these_items = []
 		# what to unpack varies on morph type, 9 possibilities + some for v2.1
-		if morphtype == 0:
+		if morphtype == pmxstruct.MorphType.GROUP:
 			# group
 			for z in range(itemcount):
 				(morph_idx, influence) = core.my_unpack(IDX_MORPH + "f", raw)
 				item = pmxstruct.PmxMorphItemGroup(morph_idx=morph_idx, value=influence)
 				these_items.append(item)
-		elif morphtype == 1:
+		elif morphtype == pmxstruct.MorphType.VERTEX:
 			# vertex
 			for z in range(itemcount):
 				(vert_idx, transX, transY, transZ) = core.my_unpack(IDX_VERT + "3f", raw)
 				item = pmxstruct.PmxMorphItemVertex(vert_idx=vert_idx, move=[transX, transY, transZ])
 				these_items.append(item)
-		elif morphtype == 2:
+		elif morphtype == pmxstruct.MorphType.BONE:
 			# bone
 			for z in range(itemcount):
 				(bone_idx, transX, transY, transZ, rotqX, rotqY, rotqZ, rotqW) = core.my_unpack(IDX_BONE + "3f 4f", raw)
 				rotX, rotY, rotZ = core.quaternion_to_euler([rotqW, rotqX, rotqY, rotqZ])
 				item = pmxstruct.PmxMorphItemBone(bone_idx=bone_idx, move=[transX, transY, transZ], rot=[rotX, rotY, rotZ])
 				these_items.append(item)
-		elif 3 <= morphtype <= 7:
+		elif morphtype in (pmxstruct.MorphType.UV,
+						   pmxstruct.MorphType.UV_EXT1,
+						   pmxstruct.MorphType.UV_EXT2,
+						   pmxstruct.MorphType.UV_EXT3,
+						   pmxstruct.MorphType.UV_EXT4):
 			# UV
 			# what these values do depends on the UV layer they are affecting, but the docs dont say what...
 			# oh well, i dont need to use them so i dont care :)
@@ -408,7 +414,7 @@ def parse_pmx_morphs(raw: bytearray) -> List[pmxstruct.PmxMorph]:
 				(vert_idx, A, B, C, D) = core.my_unpack(IDX_VERT + "4f", raw)
 				item = pmxstruct.PmxMorphItemUV(vert_idx=vert_idx, move=[A,B,C,D])
 				these_items.append(item)
-		elif morphtype == 8:
+		elif morphtype == pmxstruct.MorphType.MATERIAL:
 			# material
 			# this_item = core.my_unpack(IDX_MAT + "b 4f 3f    f 3f 4f f    4f 4f 4f", raw)
 			for z in range(itemcount):
@@ -422,13 +428,13 @@ def parse_pmx_morphs(raw: bytearray) -> List[pmxstruct.PmxMorph]:
 					texRGBA=[texR, texG, texB, texA], sphRGBA=[sphR, sphG, sphB, sphA], toonRGBA=[toonR, toonG, toonB, toonA]
 				)
 				these_items.append(item)
-		elif morphtype == 9:
+		elif morphtype == pmxstruct.MorphType.FLIP:
 			# (2.1 only) flip
 			for z in range(itemcount):
 				(morph_idx, influence) = core.my_unpack(IDX_MORPH + "f", raw)
 				item = pmxstruct.PmxMorphItemFlip(morph_idx=morph_idx, value=influence)
 				these_items.append(item)
-		elif morphtype == 10:
+		elif morphtype == pmxstruct.MorphType.IMPULSE:
 			# (2.1 only) impulse
 			for z in range(itemcount):
 				(rb_idx, is_local, movX, movY, movZ, rotX, rotY, rotZ) = core.my_unpack(IDX_RB + "b 3f 3f", raw)
@@ -749,7 +755,7 @@ def encode_pmx_materials(nice: List[pmxstruct.PmxMaterial]) -> bytearray:
 		# note: i structure the faces list into groups of 3 vertex indices, this is divided by 3 to match, so now i need to undivide
 		verts_ct = 3 * mat.faces_ct
 		packme = [mat.name_jp, mat.name_en, *mat.diffRGB, mat.alpha, *mat.specRGB, mat.specpower, *mat.ambRGB,
-				  flagsum, *mat.edgeRGB, mat.edgealpha, mat.edgesize, mat.tex_idx, mat.sph_idx, mat.sph_mode,
+				  flagsum, *mat.edgeRGB, mat.edgealpha, mat.edgesize, mat.tex_idx, mat.sph_idx, mat.sph_mode.value,
 				  mat.toon_mode, mat.toon_idx, mat.comment, verts_ct]
 		# the size for packing of the "toon_idx" arg depends on the "toon_mode" arg, but the number and order is the same
 		if mat.toon_mode:
@@ -843,28 +849,32 @@ def encode_pmx_morphs(nice: List[pmxstruct.PmxMorph]) -> bytearray:
 	fmt_morph_impulse = "%s b 3f 3f" % IDX_RB
 	for d, morph in enumerate(nice):
 		# (name_jp, name_en, panel, morphtype, itemcount)
-		out += core.my_pack(fmt_morph, [morph.name_jp, morph.name_en, morph.panel, morph.morphtype, len(morph.items)])
+		out += core.my_pack(fmt_morph, [morph.name_jp, morph.name_en, morph.panel, morph.morphtype.value, len(morph.items)])
 		
 		for z in morph.items:
 			# for each morph in the group morph, or vertex in the vertex morph, or bone in the bone morph....
 			# what to unpack varies on morph type, 9 possibilities + some for v2.1
-			if morph.morphtype == 0:  # group
+			if morph.morphtype == pmxstruct.MorphType.GROUP:  # group
 				z: pmxstruct.PmxMorphItemGroup
 				out += core.my_pack(fmt_morph_group, [z.morph_idx, z.value])
-			elif morph.morphtype == 1:  # vertex
+			elif morph.morphtype == pmxstruct.MorphType.VERTEX:  # vertex
 				z: pmxstruct.PmxMorphItemVertex
 				out += core.my_pack(fmt_morph_vert, [z.vert_idx, *z.move])
-			elif morph.morphtype == 2:  # bone
+			elif morph.morphtype == pmxstruct.MorphType.BONE:  # bone
 				z: pmxstruct.PmxMorphItemBone
 				(rotqW, rotqX, rotqY, rotqZ) = core.euler_to_quaternion(z.rot)
 				# (bone_idx, transX, transY, transZ, rotqX, rotqY, rotqZ, rotqW)
 				out += core.my_pack(fmt_morph_bone, [z.bone_idx, *z.move, rotqX, rotqY, rotqZ, rotqW])
-			elif 3 <= morph.morphtype <= 7:  # UV
+			elif morph.morphtype in (pmxstruct.MorphType.UV,
+									 pmxstruct.MorphType.UV_EXT1,
+									 pmxstruct.MorphType.UV_EXT2,
+									 pmxstruct.MorphType.UV_EXT3,
+									 pmxstruct.MorphType.UV_EXT4):
 				z: pmxstruct.PmxMorphItemUV
 				# what these values do depends on the UV layer they are affecting, but the docs dont say what...
 				# oh well, i dont need to use them so i dont care :)
 				out += core.my_pack(fmt_morph_uv, [z.vert_idx, *z.move])
-			elif morph.morphtype == 8:  # material
+			elif morph.morphtype == pmxstruct.MorphType.MATERIAL:  # material
 				z: pmxstruct.PmxMorphItemMaterial
 				# (mat_idx, is_add, diffR, diffG, diffB, diffA, specR, specG, specB) = core.unpack(IDX_MAT+"b 4f 3f", raw)
 				# (specpower, ambR, ambG, ambB, edgeR, edgeG, edgeB, edgeA, edgesize) = core.unpack("f 3f 4f f", raw)
@@ -872,10 +882,10 @@ def encode_pmx_morphs(nice: List[pmxstruct.PmxMorph]) -> bytearray:
 				packme = [z.mat_idx, z.is_add, *z.diffRGB, z.alpha, *z.specRGB, z.specpower, *z.ambRGB, *z.edgeRGB,
 						  z.edgealpha, z.edgesize, *z.texRGBA, *z.sphRGBA, *z.toonRGBA]
 				out += core.my_pack(fmt_morph_mat, packme)
-			elif morph.morphtype == 9:  # (2.1 only) flip
+			elif morph.morphtype == pmxstruct.MorphType.FLIP:  # (2.1 only) flip
 				z: pmxstruct.PmxMorphItemFlip
 				out += core.my_pack(fmt_morph_flip, [z.morph_idx, z.value])
-			elif morph.morphtype == 10:  # (2.1 only) impulse
+			elif morph.morphtype == pmxstruct.MorphType.IMPULSE:  # (2.1 only) impulse
 				z: pmxstruct.PmxMorphItemImpulse
 				# (rb_idx, is_local, movX, movY, movZ, rotX, rotY, rotZ)
 				out += core.my_pack(fmt_morph_impulse, [z.rb_idx, z.is_local, *z.move, *z.rot])

@@ -50,7 +50,7 @@ def main():
 		
 		# verify vertex morph
 		source_morph = source_pmx.morphs[source_morph_idx]
-		if source_morph.morphtype != 1:
+		if source_morph.morphtype != pmxstruct.MorphType.VERTEX:
 			print("err: for now, only support vertex morphs")
 			continue
 		
