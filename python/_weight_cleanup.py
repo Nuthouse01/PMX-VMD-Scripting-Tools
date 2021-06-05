@@ -78,9 +78,10 @@ def normalize_weights(pmx: pmxstruct.Pmx) -> int:
 	weight_fix = 0
 	
 	num_winnow = 0
-	num_normalize = 0
+	num_useless = 0
 	num_invalid = 0
 	num_merge = 0
+	num_normalize = 0
 	num_sort = 0
 	num_reduce = 0
 	
@@ -89,52 +90,62 @@ def normalize_weights(pmx: pmxstruct.Pmx) -> int:
 		# clean/normalize the weights
 		is_modified = False
 		
-		winnow = False
-		normalize = False
 		invalid = False
+		winnow = False
+		useless = False
 		merge = False
+		normalize = False
 		sort = False
 		reduce = False
 		
 		# vert.weight is a list of "boneidx,weight" pairs
-		# FIRST, winnow: every weight below EPSILON becomes zero
+		# FIRST, winnow: every weight below EPSILON is discarded
+		# SECOND, remove useless: everything with 0 weight is discarded
+		# THIRD, remove invalid: everything on bone -1 is discarded
+		# also toss all the [0,0] entries
 		# this applies to all weighttypes
-		for pair in vert.weight:
-			if pair[1] != 0 and pair[1] < EPSILON:
-				pair[1] = 0
+		# count backward so i can safely pop by index
+		for i in reversed(range(len(vert.weight))):
+			boneidx, val = vert.weight[i]
+			# 1) if it has weight 0 on bone 0, then pop it but don't count it as a modification of any kind
+			if boneidx == 0 and val == 0:
+				vert.weight.pop(i)
+			# 2) if the weight is attributed to an invalid bone index, then pop it
+			elif not (0 <= boneidx < len(pmx.bones)):
+				vert.weight.pop(i)
+				is_modified = True
+				invalid = True
+			# 3) if the weight is extremely small but not zero (because i wanna count zeros separately) then pop it
+			elif 0 < val < EPSILON:
+				vert.weight.pop(i)
 				is_modified = True
 				winnow = True
-		
-		# SECOND, strip out any useless or invalid pairs!
-		# count backward so i can safely pop by index
-		for i in reversed(list(range(len(vert.weight)))):
-			boneidx, val = vert.weight[i]
-			# if an entry has 0 weight, pop it
-			# if an entry refers to an invalid bone, pop it
-			if val == 0 or not (0 <= boneidx < len(pmx.bones)):
-				if not (boneidx == 0 and val == 0):
-					# idx=0 and val=0 is just a filler/placeholder, don't mark as modified for removing it
-					is_modified = True
-					invalid = True
+			# 4) if it has weight 0 on a REAL bone, then pop it & count it as useless
+			elif boneidx != 0 and val == 0:
 				vert.weight.pop(i)
+				is_modified = True
+				useless = True
 		
 		# THIRD, merge duplicate entries!
-		i = 0
-		while i < len(vert.weight):
-			# compare item i with each item AFTER it
+		# count backward so i can safely pop by index
+		for i in reversed(range(len(vert.weight))):  # COUNTING BACKWARDS 3 2 1
+			# compare item i with each item BEFORE it
+			# if there is a match, accumulate into the earlier index and delete i
 			# don't worry about ignoring the [0,0] they are already gone
-			k = i+1
-			while k < len(vert.weight):
+			for k in range(i):  # COUNTING FORWARDS 0 1 2
+				# if both i and k attribute their weight to the same bone,
 				if vert.weight[i][0] == vert.weight[k][0]:
 					# then this is a duplicate bone! first used at idx k
 					is_modified = True
 					merge = True
-					vert.weight[i][1] += vert.weight[k][1]  # combine this bone's weight with the second place it was used
-					vert.weight.pop(k)  # delete this second use of the bone
-				else:
-					k += 1
-			i += 1
-		
+					vert.weight[k][1] += vert.weight[i][1]  # add i into k
+					vert.weight.pop(i)  # delete this second use of the bone
+					break  # stop looking for any other match
+		# worst case example, all 4 are the same bone: 0 1 2 3
+		# i=3, k=0, match, add 3 into 0 then delete 3
+		# i=2, k=0, match, add 2 into 0 then delete 2
+		# i=1, k=0, match, add 1 into 0 then delete 1
+
 		# FOURTH, normalize if needed
 		# this is only really needed for BDEF4 but can be applied to all types so i'm gonna
 		# actually, it would be needed for BDEF2 if the epsilon trimming above cuts something out
@@ -157,7 +168,7 @@ def normalize_weights(pmx: pmxstruct.Pmx) -> int:
 		# if SDEF, do not sort! the order is significant, somehow
 		if vert.weighttype != pmxstruct.WeightMode.SDEF:
 			# save the order of items for comparison
-			weightidx = [foo for foo,_ in vert.weight]
+			# weightidx = [foo for foo,_ in vert.weight]
 			vert.weight.sort(reverse=True, key=lambda x: x[1])
 			# get the new order of items, if it is different then flag it as so
 			weightidx_new = [foo for foo,_ in vert.weight]
@@ -186,22 +197,25 @@ def normalize_weights(pmx: pmxstruct.Pmx) -> int:
 				reduce = True
 		
 		# SEVENTH, pad with 0,0 till appropriate size
+		# doesn't count as a change, its just a housekeeping thing
 		while len(vert.weight) < WEIGHTTYPE_TO_LEN[vert.weighttype]:
 			vert.weight.append([0,0])
 		
 		weight_fix += is_modified
 		
 		num_winnow += winnow
-		num_normalize += normalize
+		num_useless += useless
 		num_invalid += invalid
 		num_merge += merge
+		num_normalize += normalize
 		num_sort += sort
 		num_reduce += reduce
 		
 		pass  # close the for-each-vert loop
+	# debug printing, not visible in GUI
+	print("invalid %d, winnow %d, useless %d, merge %d, normalize %d, sort %d, reduce %d" %
+		  (num_invalid, num_winnow, num_useless, num_merge, num_normalize, num_sort, num_reduce))
 	# how many did I change? printing is handled outside
-	print("winnow %d, invalid %d, merge %d, normalize %d, sort %d, reduce %d" %
-		  (num_winnow, num_invalid, num_merge, num_normalize, num_sort, num_reduce))
 	return weight_fix
 
 def normalize_normals(pmx: pmxstruct.Pmx) -> Tuple[int,List[int]]:
