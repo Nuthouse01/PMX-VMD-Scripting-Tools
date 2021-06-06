@@ -5,8 +5,8 @@
 
 # first, system imports
 from typing import List, Union, Set
-from abc import ABC, abstractmethod
-from enum import Flag, Enum
+import abc
+import enum
 import traceback
 import sys
 
@@ -52,10 +52,10 @@ except ImportError as eee:
 # it also lets me detect any of them by isinstance(x, _BasePmx)
 # this also defines an "==" method so my structs can be compared
 # this also defines "idx_within" so if you forget the idx of a thing but still have its reference you can find its index again
-class _BasePmx(ABC):
-	@abstractmethod
+class _BasePmx(abc.ABC):
+	@abc.abstractmethod
 	def list(self) -> list: pass
-	@abstractmethod
+	@abc.abstractmethod
 	def _validate(self, parentlist=None):
 		""" This is overloaded for each class and contains the actual assertion statements.
 		Should not be called directly. """
@@ -126,11 +126,11 @@ def is_good_flag(thing) -> True:
 
 
 class _BasePmxMorphItem(_BasePmx):
-	@abstractmethod
+	@abc.abstractmethod
 	def list(self) -> list: pass
 
 
-class WeightMode(Enum):
+class WeightMode(enum.Enum):
 	# 0 = BDEF1 = [b1]
 	# 1 = BDEF2 = [b1, b2, b1w]
 	# 2 = BDEF4 = [b1, b2, b3, b4, b1w, b2w, b3w, b4w]
@@ -142,7 +142,7 @@ class WeightMode(Enum):
 	BDEF4 = 2
 	SDEF =  3
 	QDEF =  4  # (only in pmx v2.1)
-class SphMode(Enum):
+class SphMode(enum.Enum):
 	# 0 = disabled, 1 = multiply, 2 = additive, 3 = additional vec4*
 	DISABLE =  0
 	MULTIPLY = 1
@@ -152,7 +152,7 @@ class SphMode(Enum):
 	# This may conflict with other uses for the first additional vec4."
 	# I think this is the mode used for normal map usage?
 	SUBTEX = 3
-class MorphType(Enum):
+class MorphType(enum.Enum):
 	# morphtype
 	# 0 = group = (morph_idx, influence)
 	# 1 = vertex = (vert_idx, transX, transY, transZ)
@@ -177,17 +177,17 @@ class MorphType(Enum):
 	MATERIAL = 8
 	FLIP =     9  # (only in pmx v2.1)
 	IMPULSE =  10  # (only in pmx v2.1)
-class RigidBodyShape(Enum):
+class RigidBodyShape(enum.Enum):
 	# shape: 0=sphere, 1=box, 2=capsule
 	SPHERE =  0
 	BOX =     1
 	CAPSULE = 2
-class RigidBodyPhysMode(Enum):
+class RigidBodyPhysMode(enum.Enum):
 	# phys_mode: 0=follow bone, 1=physics, 2=physics rotate only (pivot on bone)
 	BONE =               0
 	PHYSICS =            1
 	PHYSICS_ROTATEONLY = 2
-class JointType(Enum):
+class JointType(enum.Enum):
 	# jointtype: 0=spring6DOF, all others are v2.1 only!!!! 1=6dof, 2=p2p, 3=conetwist, 4=slider, 5=hinge
 	SPRING_SIXDOF = 0
 	SIXDOF =        1  # (only in pmx v2.1)
@@ -195,7 +195,7 @@ class JointType(Enum):
 	CONETWIST =     3  # (only in pmx v2.1)
 	SLIDER =        4  # (only in pmx v2.1)
 	HINGE =         5  # (only in pmx v2.1)
-class MaterialFlags(Flag):
+class MaterialFlags(enum.Flag):
 	DOUBLE_SIDED =       (1 << 0)
 	CAST_GROUND_SHADOW = (1 << 1)
 	CAST_SHADOW =        (1 << 2)
@@ -414,7 +414,6 @@ class PmxMaterial(_BasePmx):
 
 class PmxBoneIkLink(_BasePmx):
 	# NOTE: to represent "no limits", the min and max should be None or omitted
-	# TODO: convert this to 3 lists for limitx, limity, limitz ?
 	def __init__(self,
 				 idx: int,
 				 # optional/conditional
