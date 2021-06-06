@@ -367,8 +367,9 @@ def parse_pmx_morphs(raw: bytearray) -> List[pmxstruct.PmxMorph]:
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of morphs           =", i)
 	retme = []
 	for d in range(i):
-		(name_jp, name_en, panel, morphtype_int, itemcount) = core.my_unpack("t t b b i", raw)
+		(name_jp, name_en, panel_int, morphtype_int, itemcount) = core.my_unpack("t t b b i", raw)
 		morphtype = pmxstruct.MorphType(morphtype_int)
+		panel = pmxstruct.MorphPanel(panel_int)
 		# print(name_jp, name_en)
 		these_items = []
 		# what to unpack varies on morph type, 9 possibilities + some for v2.1
@@ -845,7 +846,8 @@ def encode_pmx_morphs(nice: List[pmxstruct.PmxMorph]) -> bytearray:
 	fmt_morph_impulse = "%s b 3f 3f" % IDX_RB
 	for d, morph in enumerate(nice):
 		# (name_jp, name_en, panel, morphtype, itemcount)
-		out += core.my_pack(fmt_morph, [morph.name_jp, morph.name_en, morph.panel, morph.morphtype.value, len(morph.items)])
+		out += core.my_pack(fmt_morph,
+							[morph.name_jp, morph.name_en, morph.panel.value, morph.morphtype.value, len(morph.items)])
 		
 		# for each morph in the group morph, or vertex in the vertex morph, or bone in the bone morph....
 		# what to unpack varies on morph type, 9 possibilities + some for v2.1

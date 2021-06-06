@@ -6,12 +6,14 @@ try:
 	# these imports work if running from GUI
 	from . import nuthouse01_core as core
 	from . import nuthouse01_pmx_parser as pmxlib
+	from . import nuthouse01_pmx_struct as pmxstruct
 	from . import morph_scale
 except ImportError as eee:
 	try:
 		# these imports work if running from double-click on THIS script
 		import nuthouse01_core as core
 		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
 		import morph_scale
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
@@ -19,7 +21,7 @@ except ImportError as eee:
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = morph_scale = None
+		core = pmxlib = morph_scale = pmxstruct = None
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
@@ -66,10 +68,10 @@ def main(moreinfo=True):
 		morphtype = pmx.morphs[target_index].morphtype
 		core.MY_PRINT_FUNC("Found {} morph #{}: '{}' / '{}'".format(
 			morphtype, target_index, pmx.morphs[target_index].name_jp, pmx.morphs[target_index].name_en))
-		core.MY_PRINT_FUNC("Was group {}, now group 0 (hidden)".format(
-			pmx.morphs[target_index].panel))
+		core.MY_PRINT_FUNC("Was group {}, now group {}".format(
+			pmx.morphs[target_index].panel, pmxstruct.MorphPanel.HIDDEN))
 		# make the actual change
-		pmx.morphs[target_index].panel = 0
+		pmx.morphs[target_index].panel = pmxstruct.MorphPanel.HIDDEN
 		num_hidden += 1
 		pass
 	
@@ -83,10 +85,11 @@ def main(moreinfo=True):
 		while i < len(frame.items):  # for each item in that display group,
 			item = frame.items[i]
 			if item[0]:  # if it is a morph
+				# look up the morph
+				morph = pmx.morphs[item[1]]
 				# figure out what panel of this morph is
-				panel = pmx.morphs[item[1]].panel
-				# if this is an invalid panel #, delete it here
-				if not 1 <= panel <= 4:
+				# if it has an invalid panel #, delete it here
+				if morph.panel == pmxstruct.MorphPanel.HIDDEN:
 					frame.items.pop(i)
 				else:
 					i += 1

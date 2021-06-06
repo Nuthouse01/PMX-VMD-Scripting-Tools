@@ -133,10 +133,11 @@ def dispframe_fix(pmx: pmxstruct.Pmx, moreinfo=False):
 		while i < len(frame.items):  # for each item in that display group,
 			item = frame.items[i]
 			if item[0]:  # if it is a morph
+				# look up the morph
+				morph = pmx.morphs[item[1]]
 				# figure out what panel of this morph is
-				panel = pmx.morphs[item[1]].panel
-				# if this is an invalid panel #, delete it
-				if not 1 <= panel <= 4:
+				# if it has an invalid panel #, delete it here
+				if morph.panel == pmxstruct.MorphPanel.HIDDEN:
 					frame.items.pop(i)
 					hidden_morphs_removed += 1
 				# if this is valid but already in the set of used morphs, delete it
@@ -184,7 +185,8 @@ def dispframe_fix(pmx: pmxstruct.Pmx, moreinfo=False):
 		# if this morph is already displayed, skip
 		if d in displayed_morphs: continue
 		# if this morph is in a valid panel, add it to the list
-		if 1 <= morph.panel <= 4: undisplayed_morphs.append(d)
+		if not (morph.panel == pmxstruct.MorphPanel.HIDDEN):
+			undisplayed_morphs.append(d)
 	if undisplayed_morphs:
 		if moreinfo:
 			core.MY_PRINT_FUNC("added %d undisplayed morphs to Facials group" % len(undisplayed_morphs))

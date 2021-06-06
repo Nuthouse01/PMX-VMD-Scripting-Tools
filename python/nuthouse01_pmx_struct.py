@@ -152,6 +152,29 @@ class SphMode(enum.Enum):
 	# This may conflict with other uses for the first additional vec4."
 	# I think this is the mode used for normal map usage?
 	SUBTEX = 3
+class MorphPanel(enum.Enum):
+	# this controls wich "category" a morph goes into!
+	@classmethod
+	def _missing_(cls, value):
+		# when trying to get the enum from value, if the value isnt [0 - 4] then return 0 instead of crashing!
+		return MorphPanel(0)
+	# Value 	Group 		Panel in MMD
+	# 0 		Hidden 		None
+	# 1 		Eyebrows 	Bottom left
+	# 2 		Eyes 		Top left
+	# 3 		Mouth 		Top right
+	# 4 		Other 		Bottom right
+	HIDDEN =      0
+	BROW =        1
+	EYE =         2
+	MOUTH =       3
+	OTHER =       4
+	# # let's toss in some aliases cuz why not
+	# NONE =        0
+	# BOTTOMLEFT =  1
+	# TOPLEFT =     2
+	# TOPRIGHT =    3
+	# BOTTOMRIGHT = 4
 class MorphType(enum.Enum):
 	# morphtype
 	# 0 = group = (morph_idx, influence)
@@ -753,13 +776,13 @@ class PmxMorph(_BasePmx):
 	# thismorph = [name_jp, name_en, panel, morphtype, these_items]
 	def __init__(self,
 				 name_jp: str, name_en: str,
-				 panel: int,
+				 panel: MorphPanel,
 				 morphtype: MorphType,
 				 items: List[_BasePmxMorphItem],
 				 ):
 		self.name_jp = name_jp
 		self.name_en = name_en
-		# TODO: make "panel" an enum!
+		# panel: see MorphPanel enum definition for more info
 		self.panel = panel
 		# morphtype: see MorphType enum definition for more info
 		self.morphtype = morphtype
@@ -775,8 +798,8 @@ class PmxMorph(_BasePmx):
 		# name_jp, name_en: strings
 		assert isinstance(self.name_jp, str)
 		assert isinstance(self.name_en, str)
-		# panel: must be int
-		assert isinstance(self.panel, int)
+		# panel: MorphPanel enum
+		assert isinstance(self.panel, MorphPanel)
 		# morphtype: MorphType enum
 		assert isinstance(self.morphtype, MorphType)
 		# items: list of "pmx morph item" objects, specific to the morphtype
