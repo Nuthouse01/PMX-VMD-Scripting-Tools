@@ -660,6 +660,10 @@ def read_vmd(vmd_filename: str, moreinfo=False) -> vmdstruct.Vmd:
 def write_vmd(vmd_filename: str, vmd: vmdstruct.Vmd, moreinfo=False):
 	vmd_filename_clean = core.get_clean_basename(vmd_filename) + ".vmd"
 	# recives object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
+	
+	# first, verify that the data is valid before trying to write
+	vmd.validate()
+	
 	# assumes the calling function already verified correct file extension
 	core.MY_PRINT_FUNC("Begin encoding VMD file '%s'" % vmd_filename_clean)
 	core.set_encoding("shift_jis")
