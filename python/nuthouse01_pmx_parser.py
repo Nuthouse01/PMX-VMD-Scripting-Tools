@@ -469,7 +469,7 @@ def parse_pmx_rigidbodies(raw: bytearray) -> List[pmxstruct.PmxRigidBody]:
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of rigidbodies      =", i)
 	retme = []
 	for d in range(i):
-		(name_jp, name_en, bone_idx, group, nocollide_mask, shape_int) = core.my_unpack("t t" + IDX_BONE + "b H b", raw)
+		(name_jp, name_en, bone_idx, group, collide_mask, shape_int) = core.my_unpack("t t" + IDX_BONE + "b H b", raw)
 		shape = pmxstruct.RigidBodyShape(shape_int)
 		# print(name_jp, name_en)
 		# shape: 0=sphere, 1=box, 2=capsule
@@ -481,14 +481,24 @@ def parse_pmx_rigidbodies(raw: bytearray) -> List[pmxstruct.PmxRigidBody]:
 		# note: rotation comes in as XYZ radians, must convert to degrees for my struct
 		rot = [math.degrees(rotX), math.degrees(rotY), math.degrees(rotZ)]
 		
+		# NOTE: group & nocollide_set are [1-16], same as displayed in PMXE!
+		group += 1
+		# convert collide_mask (byte with 1 bit for each group it should collide with) to nocollide_set
+		nocollide_set = set()
+		for a in range(16):
+			# if the bit is NOT set in collide_mask, then add it to the no-collide set.
+			if not (1<<a) & collide_mask:
+				# add it to the set & unset that bit in the mask
+				nocollide_set.add(a+1)
+		
 		# display progress printouts
 		core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
 		# assemble the data into struct for returning
-		thisbody = pmxstruct.PmxRigidBody(name_jp=name_jp, name_en=name_en, bone_idx=bone_idx,
-			pos=[posX, posY, posZ], rot=rot, size=[sizeX, sizeY, sizeZ], shape=shape, group=group,
-			nocollide_mask=nocollide_mask, phys_mode=physmode, phys_mass=mass, phys_move_damp=move_damp,
-			phys_rot_damp=rot_damp, phys_repel=repel, phys_friction=friction
-		)
+		thisbody = pmxstruct.PmxRigidBody(name_jp=name_jp, name_en=name_en, bone_idx=bone_idx, pos=[posX, posY, posZ],
+										  rot=rot, size=[sizeX, sizeY, sizeZ], shape=shape, group=group,
+										  nocollide_set=nocollide_set, phys_mode=physmode, phys_mass=mass,
+										  phys_move_damp=move_damp, phys_rot_damp=rot_damp, phys_repel=repel,
+										  phys_friction=friction)
 		retme.append(thisbody)
 	return retme
 
@@ -917,7 +927,16 @@ def encode_pmx_rigidbodies(nice: List[pmxstruct.PmxRigidBody]) -> bytearray:
 		# note: my struct holds rotation as XYZ degrees, must convert to radians for file
 		rot = [math.radians(r) for r in b.rot]
 		
-		packme = [b.name_jp, b.name_en, b.bone_idx, b.group, b.nocollide_mask, b.shape.value, *b.size, *b.pos, *rot,
+		# NOTE: remember that group & nocollide set are all [1-16] while the binary wants [0-15]!!!!
+		group = b.group - 1
+		
+		# create collide_mask from the collide_set
+		# assume every group is marked to collide, then for each item in nocollide_set, unmark that bit
+		collide_mask = (1<<16)-1
+		for a in b.nocollide_set:
+			collide_mask &= ~(1<<(a-1))
+			
+		packme = [b.name_jp, b.name_en, b.bone_idx, group, collide_mask, b.shape.value, *b.size, *b.pos, *rot,
 				  b.phys_mass, b.phys_move_damp, b.phys_rot_damp, b.phys_repel, b.phys_friction, b.phys_mode.value]
 		out += core.my_pack(fmt_rbody, packme)
 	

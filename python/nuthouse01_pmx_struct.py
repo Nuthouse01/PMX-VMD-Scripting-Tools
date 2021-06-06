@@ -4,7 +4,7 @@
 
 
 # first, system imports
-from typing import List, Union
+from typing import List, Union, Set
 from abc import ABC, abstractmethod
 from enum import Flag, Enum
 
@@ -161,7 +161,6 @@ class MaterialFlags(Flag):
 # rigidbody group?
 # rigidbody group nocollide mask?
 
-# use flags for material stuff?
 
 class PmxHeader(_BasePmx):
 	# [ver, name_jp, name_en, comment_jp, comment_en]
@@ -209,14 +208,9 @@ class PmxVertex(_BasePmx):
 		self.norm = norm
 		self.uv = uv
 		self.edgescale = edgescale
-		# weighttype:
-		# 0 = BDEF1 = [b1]
-		# 1 = BDEF2 = [b1, b2, b1w]
-		# 2 = BDEF4 = [b1, b2, b3, b4, b1w, b2w, b3w, b4w]
-		# 3 = sdef =  [b1, b2, b1w]
-		# 4 = qdef =  [b1, b2, b3, b4, b1w, b2w, b3w, b4w]  (only in pmx v2.1)
+		# weighttype: see WeightMode for more info
 		self.weighttype = weighttype
-		# this is an ordered list of boneidx-weight pairs
+		# weight: this is an ordered list of boneidx-weight pairs
 		# the list can be 1 to 4 pairs depending on weighttype
 		self.weight = weight
 		# weight_sdef = [[c1, c2, c3], [r01, r02, r03], [r11, r12, r13]]
@@ -537,22 +531,10 @@ class PmxRigidBody(_BasePmx):
 	# note: this block is the order of args in the old system, does not represent order of args in .list() member
 	# thisbody = [name_jp, name_en, bone_idx, group, nocollide_mask, shape, sizeX, sizeY, sizeZ, posX, posY, posZ,
 	# 			rotX, rotY, rotZ, mass, move_damp, rot_damp, repel, friction, physmode]
-	def __init__(self, 
-				 name_jp: str, name_en: str, 
-				 bone_idx: int, 
-				 pos: List[float],
-				 rot: List[float],
-				 size: List[float],
-				 shape: RigidBodyShape,
-				 group: int, 
-				 nocollide_mask: int, 
-				 phys_mode: RigidBodyPhysMode,
-				 phys_mass: float=1.0,
-				 phys_move_damp: float=0.5,
-				 phys_rot_damp: float=0.5,
-				 phys_repel: float=0.0,
-				 phys_friction: float=0.5,
-				 ):
+	def __init__(self, name_jp: str, name_en: str, bone_idx: int, pos: List[float], rot: List[float], size: List[float],
+				 shape: RigidBodyShape, group: int, nocollide_set: Set[int], phys_mode: RigidBodyPhysMode,
+				 phys_mass: float = 1.0, phys_move_damp: float = 0.5, phys_rot_damp: float = 0.5,
+				 phys_repel: float = 0.0, phys_friction: float = 0.5):
 		assert len(pos) == 3
 		assert len(rot) == 3
 		assert len(size) == 3
@@ -561,18 +543,15 @@ class PmxRigidBody(_BasePmx):
 		self.bone_idx = bone_idx
 		self.pos = pos
 		self.rot = rot
-		# todo: what size means for each shape type
+		# todo: explain what size means for each shape type, its always 3 floats but they're used for different things
 		self.size = size
-		# shape: 0=sphere, 1=box, 2=capsule
+		# shape: see RigidBodyShape for more info
 		self.shape = shape
-		# group is int [0-15]
+		# group is int [1-16], same way its shown in PMXE
 		self.group = group
-		# RIGIDBODY_GROUP_COLLIDE_NONE = 0
-		# RIGIDBODY_GROUP_COLLIDE_ALL = sum([1<<i for i in range(16)])
-		# therefore, each 1 in this mask indicates a group that it WILL collide with!
-		# todo: replace this with a list of ints
-		self.nocollide_mask = nocollide_mask
-		# phys_mode: 0=follow bone, 1=physics, 2=physics rotate only (pivot on bone)
+		# nocollide_mask is a SET containing ints [1-16], same as shown in PMXE
+		self.nocollide_set = nocollide_set
+		# phys_mode: see RigidBodyPhysMode for more info
 		self.phys_mode = phys_mode
 		self.phys_mass = phys_mass
 		self.phys_move_damp = phys_move_damp
@@ -581,9 +560,9 @@ class PmxRigidBody(_BasePmx):
 		self.phys_friction = phys_friction
 		
 	def list(self) -> list:
-		return [self.name_jp, self.name_en, self.bone_idx, 
+		return [self.name_jp, self.name_en, self.bone_idx,
 				self.pos, self.rot, self.size, self.shape,
-				self.group, self.nocollide_mask, self.phys_mode,
+				self.group, sorted(list(self.nocollide_set)), self.phys_mode,
 				self.phys_mass, self.phys_move_damp, self.phys_rot_damp, self.phys_repel, self.phys_friction,
 				]
 

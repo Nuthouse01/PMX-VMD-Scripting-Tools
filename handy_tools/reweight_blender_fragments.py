@@ -284,9 +284,6 @@ def main(moreinfo=True):
 
 		# this gif is with these params: https://gyazo.com/3d143f33b79c1151c1ccbffcc578448b
 		
-		RIGIDBODY_GROUP_COLLIDE_NONE = 0
-		RIGIDBODY_GROUP_COLLIDE_ALL = sum([1<<i for i in range(16)])
-		
 		# groups: for now, since each fragment is only one body, i can just ignore groups stuff
 		# groups: later, if each fragment is several bodies... assign the groups in round-robin? each fragment will clip thru 1/15 of the
 		# other fragments but i think that's unavoidable. also need to reserve group16 for the floor! so set each fragment's cluster of
@@ -297,7 +294,7 @@ def main(moreinfo=True):
 		newbody_obj = pmxstruct.PmxRigidBody(
 			name_jp=newbody_name, name_en=newbody_name, bone_idx=all_bone_indices[fragnum],
 			pos=newbody_pos, rot=[0,0,0], size=[newbody_radius,0,0], shape=pmxstruct.RigidBodyShape.SPHERE,
-			group=0, nocollide_mask=RIGIDBODY_GROUP_COLLIDE_ALL, phys_mode=pmxstruct.RigidBodyPhysMode.PHYSICS, phys_mass=mass,
+			group=1, nocollide_set=set(), phys_mode=pmxstruct.RigidBodyPhysMode.PHYSICS, phys_mass=mass,
 			phys_move_damp=phys_move_damp, phys_rot_damp=phys_rot_damp, phys_repel=phys_repel, phys_friction=phys_friction
 		)
 		
