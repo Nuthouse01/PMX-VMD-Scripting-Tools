@@ -7,6 +7,8 @@
 from typing import List, Union, Set
 from abc import ABC, abstractmethod
 from enum import Flag, Enum
+import traceback
+import sys
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -24,6 +26,12 @@ except ImportError as eee:
 		exit()
 		core = None
 
+# TODO: redo imports for all files
+# TODO: investigate improved autoarmtwist
+# TODO: read that guys email about the "create ik from vmd" script
+# TODO: implement the "validate" functions for STRICT type-checking...
+#  what do i do if something fails the tests?
+# TODO: somewhere, check for NaN & quietly replace with 0
 
 ############################################################################################
 ######## IMPORTANT NOTES ###################################################################
@@ -47,14 +55,77 @@ except ImportError as eee:
 class _BasePmx(ABC):
 	@abstractmethod
 	def list(self) -> list: pass
+	@abstractmethod
+	def _validate(self, parentlist=None):
+		""" This is overloaded for each class and contains the actual assertion statements.
+		Should not be called directly. """
+		pass
+	def validate(self, parentlist=None) -> bool:
+		""" This performs type-checking and input validation on the item, as a way to protect against bad code
+		assigning invalid values or incorrect datatypes into my structures. If it fails it will raise an Exception
+		of some kind and probably print a stack trace I guess?"""
+		try:
+			# run all assertion checks on this item
+			self._validate(parentlist)
+			return True
+		except AssertionError:
+			# if there is an assertion error, print the raw traceback to default console
+			print("123")
+			traceback.print_exc()
+			print("123")
+			exc_type, exc_value, exc_traceback = sys.exc_info()
+			something = traceback.extract_tb(exc_traceback, limit=None)
+			
+			# print some more selective stack trace info to the GUI
+			# maybe print the whole stack trace to GUI console? it formats just fine
+			lowesttrace = something[-1]
+			print('VALIDATE ERROR: "{}" object failed validation check "{}" at line "{}" in nuthouse01_pmx_struct.py'.format(
+				self.__class__.__name__, lowesttrace.line, lowesttrace.lineno
+			))
+			
+			# determine "which index this is within the whole object" if possible???
+			if parentlist is not None:
+				idx = self.idx_within(parentlist)
+				if idx is not None:
+					print('object {} found at index {} of containing list'.format(self.__class__.__name__, idx))
+			raise RuntimeError("validation fail")
+		except RuntimeError:
+			# if there is a runtime error, only do the "determine which index this is" part
+			# determine "which index this is within the whole object" if possible???
+			if parentlist is not None:
+				idx = self.idx_within(parentlist)
+				if idx is not None:
+					print('object {} found at index {} of containing list'.format(self.__class__.__name__, idx))
+			raise RuntimeError("validation fail")
+
 	def __str__(self) -> str: return str(self.list())
 	def __eq__(self, other) -> bool:
 		if type(self) != type(other): return False
 		return self.list() == other.list()
 	def idx_within(self, L: List) -> Union[int, None]:
+		"""
+		If you have the object and the list it lives in, this will find where it is within the list.
+		:param L: the list it lives in
+		:return: the index if it is found; None otherwise
+		"""
 		for d, thing in enumerate(L):
 			if self is thing: return d
 		return None
+
+def is_good_vector(length:int, thing) -> True:
+	""" Used in the "validate" member of each class for code reuse... returns a bool so if an assertion fails, it
+	will point at the check for "is_good_vector" of a specific member of a specific object class, instead of pointing
+	at this used-everywhere function. """
+	# thing is a list, and has specific length, and all members are int/float
+	return isinstance(thing, (list, tuple)) \
+		   and len(thing) == length \
+		   and all(isinstance(a, (int,float)) for a in thing) # and all(float("-inf") < a < float("inf") for a in thing)
+def is_good_flag(thing) -> True:
+	""" Used in the "validate" member of each class for code reuse... returns a bool so if an assertion fails, it
+	will point at the check for "is_good_vector" of a specific member of a specific object class, instead of pointing
+	at this used-everywhere function. """
+	return (thing is 1) or (thing is 0) or (thing is True) or (thing is False)
+
 
 class _BasePmxMorphItem(_BasePmx):
 	@abstractmethod
@@ -99,6 +170,8 @@ class MorphType(Enum):
 	VERTEX =   1
 	BONE =     2
 	UV =       3
+	# note: UV_EXT1 thru UV_EXT4 follow a similar idea to UV morphs, but they modify the "addl_vec4" items instead of
+	# modifying the UV coordinates when used in a model. I've never seen a model that usefully uses them tho.
 	UV_EXT1 =  4
 	UV_EXT2 =  5
 	UV_EXT3 =  6
@@ -158,10 +231,6 @@ class MaterialFlags(Flag):
 		return s
 	
 	
-# rigidbody group?
-# rigidbody group nocollide mask?
-
-
 class PmxHeader(_BasePmx):
 	# [ver, name_jp, name_en, comment_jp, comment_en]
 	def __init__(self, 
@@ -177,7 +246,17 @@ class PmxHeader(_BasePmx):
 		self.comment_en = comment_en
 	def list(self):
 		return [self.ver, self.name_jp, self.name_en, self.comment_jp, self.comment_en]
-
+	def _validate(self, parentlist=None):
+		""" This performs type-checking and input validation on the item, as a way to protect against bad code
+		assigning invalid values or incorrect datatypes into my structures. If it fails it will raise an Exception
+		of some kind and probably print a stack trace I guess?"""
+		# ver: should always be either 2 or 2.1
+		assert (self.ver == 2) or (self.ver == 2.1)
+		# name_jp, name_en, comment_jp, comment_en: all strings
+		assert isinstance(self.name_jp, str)
+		assert isinstance(self.name_en, str)
+		assert isinstance(self.comment_jp, str)
+		assert isinstance(self.comment_en, str)
 
 class PmxVertex(_BasePmx):
 	# note: this block is the order of args in the old system, does not represent order of args in .list() member
@@ -220,6 +299,46 @@ class PmxVertex(_BasePmx):
 	def list(self) -> list:
 		return [self.pos, self.norm, self.uv, self.edgescale,
 				self.weighttype, self.weight, self.weight_sdef, self.addl_vec4s]
+	def _validate(self, parentlist=None):
+		""" This performs type-checking and input validation on the item, as a way to protect against bad code
+		assigning invalid values or incorrect datatypes into my structures. If it fails it will raise an Exception
+		of some kind and probably print a stack trace I guess?"""
+		# pos: XYZ position of object, list (or tuple) of 3 floats
+		assert is_good_vector(3, self.pos)
+		# norm: XYZ normal vector, list (or tuple) of 3 floats
+		assert is_good_vector(3, self.norm)
+		# uv: UV coordinates, list (or tuple) of 2 floats
+		# should usually be [0.0 - 1.0] but i'm not gonna strictly enforce that
+		assert is_good_vector(2, self.uv)
+		# edgescale: single float
+		assert isinstance(self.edgescale, (int,float))
+		# weighttype: WeightMode enum, if attempting to create from an invalid number then the enum will raise an error
+		assert isinstance(self.weighttype, WeightMode)
+		# weight_sdef: extra parameters only used in SDEF mode, so only check when in SDEF mode
+		if self.weighttype == WeightMode.SDEF:
+			# format is 3 lists of 3 floats
+			# [[c1, c2, c3], [r01, r02, r03], [r11, r12, r13]]
+			assert isinstance(self.weight_sdef, (list,tuple))
+			assert len(self.weight_sdef) == 3
+			for rc in self.weight_sdef:
+				assert is_good_vector(3, rc)
+		# weight: this is an ordered list of boneidx-weight pairs
+		# the list can be 1 to 4 pairs depending on weighttype, when written it will be padded out to fill as needed
+		assert isinstance(self.weight, (list,tuple))
+		assert 1 <= len(self.weight) <= 4
+		for pair in self.weight:
+			assert isinstance(pair, (list,tuple))
+			assert len(pair) == 2
+			# the boneidx MUST be a nonnegative int
+			assert isinstance(pair[0], int)
+			assert pair[0] >= 0
+			# the weight can be any float, should be [0.0 - 1.0] but i'm not gonna enforce that
+			assert isinstance(pair[1], (int,float))
+		# addl_vec4: an unknown number of vec4s. most models have none.
+		if self.addl_vec4s is not None:
+			assert isinstance(self.addl_vec4s, (list,tuple))
+			for vec4 in self.addl_vec4s:
+				assert is_good_vector(4, vec4)
 
 # face is just a list of ints, no struct needed
 
@@ -244,6 +363,9 @@ class PmxMaterial(_BasePmx):
 		self.edgeRGB = edgeRGB
 		self.edgealpha = edgealpha
 		self.edgesize = edgesize
+		# TODO: change how materials & textures are represented, make each material hold a string for each sph/tex/toon,
+		#  this will MASSIVELY change the texture-caring sections of my code but oh well, i should've done it like this in the
+		#  first place...
 		self.tex_idx = tex_idx
 		self.sph_idx = sph_idx
 		# sph_mode: see SphMode definition
@@ -261,9 +383,55 @@ class PmxMaterial(_BasePmx):
 				self.tex_idx, self.sph_idx, self.sph_mode, self.toon_idx, self.toon_mode,
 				self.comment, self.faces_ct, self.matflags,
 				]
+	def _validate(self, parentlist=None):
+		""" This performs type-checking and input validation on the item, as a way to protect against bad code
+		assigning invalid values or incorrect datatypes into my structures. If it fails it will raise an Exception
+		of some kind and probably print a stack trace I guess?"""
+		# name_jp, name_en: strings
+		assert isinstance(self.name_jp, str)
+		assert isinstance(self.name_en, str)
+		# diffRGB: diffuse RGB color, list of 3 floats
+		assert is_good_vector(3, self.diffRGB)
+		# specRGB: specular RGB color, list of 3 floats
+		assert is_good_vector(3, self.specRGB)
+		# ambRGB: ambient RGB color, list of 3 floats
+		assert is_good_vector(3, self.ambRGB)
+		# alpha: single float, alpha or opacity
+		assert isinstance(self.alpha, (int,float))
+		# specpower: specular exponent, "shininess", normally positive but not gonna strictly enforce that
+		assert isinstance(self.specpower, (int,float))
+		# edgeRGB: edge RGB color, list of 3 floats
+		assert is_good_vector(3, self.edgeRGB)
+		# edgealpha: single float, alpha or opacity for the edging
+		assert isinstance(self.edgealpha, (int,float))
+		# edgesize: thickness of edging effect
+		assert isinstance(self.edgesize, (int,float))
+		# tex_idx: int to reference one of the textures, or -1 if none
+		assert isinstance(self.tex_idx, int)
+		assert self.tex_idx >= -1
+		# sph_idx: int to reference one of the textures, or -1 if none
+		assert isinstance(self.sph_idx, int)
+		assert self.sph_idx >= -1
+		# sph_mode: SphMode enum
+		assert isinstance(self.sph_mode, SphMode)
+		# toon_mode: bool flag, should be True/False or 1/0
+		assert is_good_flag(self.toon_mode)
+		# toon_idx: int to reference one of the textures, or -1 if none
+		# if toon_mode = 1, then it references one of the builtin toons instead and MUST be [0 - 9]
+		assert isinstance(self.toon_idx, int)
+		if self.toon_mode: assert 0 <= self.toon_idx <= 9
+		else:              assert self.toon_idx >= -1
+		# comment: comment
+		assert isinstance(self.comment, str)
+		# faces_ct: int, MUST be nonnegative
+		assert isinstance(self.faces_ct, int)
+		assert self.faces_ct >= 0
+		# matflags: MaterialFlags enum
+		assert isinstance(self.matflags, MaterialFlags)
 
 class PmxBoneIkLink(_BasePmx):
 	# NOTE: to represent "no limits", the min and max should be None or omitted
+	# TODO: convert this to 3 lists for limitx, limity, limitz ?
 	def __init__(self,
 				 idx: int,
 				 # optional/conditional
@@ -274,10 +442,22 @@ class PmxBoneIkLink(_BasePmx):
 			assert len(limit_min) == 3
 			assert len(limit_max) == 3
 		self.idx = idx
+		# list of limits in degrees, or none
 		self.limit_min = limit_min
+		# list of limits in degrees, or none
 		self.limit_max = limit_max
 	def list(self) -> list:
 		return [self.idx, self.limit_min, self.limit_max]
+	def _validate(self, parentlist=None):
+		""" This performs type-checking and input validation on the item, as a way to protect against bad code
+		assigning invalid values or incorrect datatypes into my structures. If it fails it will raise an Exception
+		of some kind and probably print a stack trace I guess?"""
+		# idx: bone index, must be int
+		assert isinstance(self.idx, int)
+		# limit_min, limit_max: either both are None or both are good vec3
+		# if not None, realistic values would be -360 to +360 but i wont enforce that
+		assert (self.limit_min is None and self.limit_max is None) \
+			   or (is_good_vector(3, self.limit_min) and is_good_vector(3, self.limit_max))
 
 class PmxBone(_BasePmx):
 	# note: this block is the order of args in the old system, does not represent order of args in .list() member
@@ -377,6 +557,78 @@ class PmxBone(_BasePmx):
 				self.has_ik, self.ik_target_idx, self.ik_numloops, self.ik_angle,
 				None if self.ik_links is None else [i.list() for i in self.ik_links],
 				]
+	def _validate(self, parentlist=None):
+		""" This performs type-checking and input validation on the item, as a way to protect against bad code
+		assigning invalid values or incorrect datatypes into my structures. If it fails it will raise an Exception
+		of some kind and probably print a stack trace I guess?"""
+		# name_jp, name_en: strings
+		assert isinstance(self.name_jp, str)
+		assert isinstance(self.name_en, str)
+		# pos: XYZ position of object, list (or tuple) of 3 floats
+		assert is_good_vector(3, self.pos)
+		# parent_idx: int reference to another bone
+		assert isinstance(self.parent_idx, int)
+		# deform_layer: int, should always be nonnegative but i won't enforce that
+		assert isinstance(self.deform_layer, int)
+		# deform_after_phys: bool flag
+		assert is_good_flag(self.deform_after_phys)
+		# has_rotate: bool flag
+		assert is_good_flag(self.has_rotate)
+		# has_translate: bool flag
+		assert is_good_flag(self.has_translate)
+		# has_visible: bool flag
+		assert is_good_flag(self.has_visible)
+		# has_enabled: bool flag
+		assert is_good_flag(self.has_enabled)
+		# tail_usebonelink: bool flag
+		assert is_good_flag(self.tail_usebonelink)
+		# tail: if use_bonelink == 1, it's a refernce to a bone, so must be int
+		# if use_bonelink == 0, it's a vec3 offset
+		if self.tail_usebonelink:
+			assert isinstance(self.tail, int)
+		else:
+			assert is_good_vector(3, self.tail)
+		# inherit_rot, inherit_trans: bool flag
+		assert is_good_flag(self.inherit_rot)
+		assert is_good_flag(self.inherit_trans)
+		if self.inherit_rot or self.inherit_trans:
+			# inherit_parent_idx, inherit_ratio: only matter if either inherit_rot or inherit_trans are enabled!
+			# inherit_parent_idx: reference to a bone, so must be int
+			assert isinstance(self.inherit_parent_idx, int)
+			# inherit_ratio: float
+			assert isinstance(self.inherit_ratio, (int,float))
+		# has_fixedaxis: bool flag
+		assert is_good_flag(self.has_fixedaxis)
+		if self.has_fixedaxis:
+			# fixedaxis: vec3 indicates the direction of the axis it is constrained to
+			assert is_good_vector(3, self.fixedaxis)
+		# has_localaxis: bool flag
+		assert is_good_flag(self.has_localaxis)
+		if self.has_localaxis:
+			# localaxis_x: vec3 indicates the direction of X axis in new coordinate system
+			assert is_good_vector(3, self.localaxis_x)
+			# localaxis_z: vec3 indicates the direction of Z axis in new coordinate system
+			assert is_good_vector(3, self.localaxis_z)
+		# has_externalparent: bool flag
+		assert is_good_flag(self.has_externalparent)
+		if self.has_externalparent:
+			# externalparent: int, normally nonnegative, but idk how this is actually used
+			assert isinstance(self.externalparent, int)
+		# has_ik: bool flag
+		assert is_good_flag(self.has_ik)
+		if self.has_ik:
+			# ik_target_idx: bone index
+			assert isinstance(self.ik_target_idx, int)
+			# ik_numloops: int
+			assert isinstance(self.ik_numloops, int)
+			# ik_angle: float, degrees
+			assert isinstance(self.ik_angle, (int,float))
+			# ik_links: any-length list of PmxBoneIkLink objects
+			assert isinstance(self.ik_links, (list,tuple))
+			for a in self.ik_links:
+				assert isinstance(a, PmxBoneIkLink)
+				# call the validate member of this sub-object
+				assert a.validate(parentlist=self.ik_links)
 
 
 class PmxMorphItemGroup(_BasePmxMorphItem):
@@ -385,7 +637,12 @@ class PmxMorphItemGroup(_BasePmxMorphItem):
 		self.value = value
 	def list(self) -> list:
 		return [self.morph_idx, self.value]
-	
+	def _validate(self, parentlist=None):
+		# morph_idx: must be int
+		assert isinstance(self.morph_idx, int)
+		# value: must be float
+		assert isinstance(self.value, (int,float))
+
 class PmxMorphItemVertex(_BasePmxMorphItem):
 	def __init__(self, vert_idx: int, move: List[float]):
 		assert len(move) == 3
@@ -393,7 +650,12 @@ class PmxMorphItemVertex(_BasePmxMorphItem):
 		self.move = move
 	def list(self) -> list:
 		return [self.vert_idx, self.move]
-	
+	def _validate(self, parentlist=None):
+		# vert_idx: must be int
+		assert isinstance(self.vert_idx, int)
+		# move: must be vec3
+		assert is_good_vector(3, self.move)
+
 class PmxMorphItemBone(_BasePmxMorphItem):
 	def __init__(self, bone_idx: int, move: List[float], rot: List[float]):
 		assert len(move) == 3
@@ -403,6 +665,13 @@ class PmxMorphItemBone(_BasePmxMorphItem):
 		self.rot = rot
 	def list(self) -> list:
 		return [self.bone_idx, self.move, self.rot]
+	def _validate(self, parentlist=None):
+		# bone_idx: must be int
+		assert isinstance(self.bone_idx, int)
+		# move: must be vec3
+		assert is_good_vector(3, self.move)
+		# rot: must be vec3
+		assert is_good_vector(3, self.rot)
 
 
 class PmxMorphItemUV(_BasePmxMorphItem):
@@ -412,6 +681,13 @@ class PmxMorphItemUV(_BasePmxMorphItem):
 		self.move = move
 	def list(self) -> list:
 		return [self.vert_idx, self.move]
+	def _validate(self, parentlist=None):
+		# vert_idx: must be int
+		assert isinstance(self.vert_idx, int)
+		# move: must be vec4
+		# NOTE: for a "normal" uv morph the last 2 elements are zeros
+		# TODO: make separate logic for "normal" uv?
+		assert is_good_vector(4, self.move)
 
 
 class PmxMorphItemMaterial(_BasePmxMorphItem):
@@ -436,6 +712,7 @@ class PmxMorphItemMaterial(_BasePmxMorphItem):
 		assert len(sphRGBA) == 4
 		assert len(toonRGBA) == 4
 		self.mat_idx = mat_idx
+		# is_add: if true, this is "additive" mode, if false, this is "multiply" mode
 		self.is_add = is_add
 		self.diffRGB = diffRGB
 		self.specRGB = specRGB
@@ -458,6 +735,33 @@ class PmxMorphItemMaterial(_BasePmxMorphItem):
 				self.edgeRGB, self.edgealpha, self.edgesize,
 				self.texRGBA, self.sphRGBA, self.toonRGBA,
 				]
+	def _validate(self, parentlist=None):
+		# mat_idx: must be int
+		assert isinstance(self.mat_idx, int)
+		# is_add: bool flag
+		assert is_good_flag(self.is_add)
+		# diffRGB: diffuse RGB color, list of 3 floats
+		assert is_good_vector(3, self.diffRGB)
+		# specRGB: specular RGB color, list of 3 floats
+		assert is_good_vector(3, self.specRGB)
+		# ambRGB: ambient RGB color, list of 3 floats
+		assert is_good_vector(3, self.ambRGB)
+		# alpha: single float, alpha or opacity
+		assert isinstance(self.alpha, (int,float))
+		# specpower: specular exponent, "shininess", normally positive
+		assert isinstance(self.specpower, (int,float))
+		# edgeRGB: edge RGB color, list of 3 floats
+		assert is_good_vector(3, self.edgeRGB)
+		# edgealpha: single float, alpha or opacity for the edging
+		assert isinstance(self.edgealpha, (int,float))
+		# edgesize: thickness of edging effect
+		assert isinstance(self.edgesize, (int,float))
+		# texRGBA: vec4 that modifies the texture
+		assert is_good_vector(4, self.texRGBA)
+		# sphRGBA: vec4 that modifies the SPH
+		assert is_good_vector(4, self.sphRGBA)
+		# toonRGBA: vec4 that modifies the toon
+		assert is_good_vector(4, self.toonRGBA)
 
 
 class PmxMorphItemFlip(_BasePmxMorphItem):
@@ -466,6 +770,11 @@ class PmxMorphItemFlip(_BasePmxMorphItem):
 		self.value = value
 	def list(self) -> list:
 		return [self.morph_idx, self.value]
+	def _validate(self, parentlist=None):
+		# morph_idx: must be int
+		assert isinstance(self.morph_idx, int)
+		# value: must be float
+		assert isinstance(self.value, (int,float))
 
 
 class PmxMorphItemImpulse(_BasePmxMorphItem):
@@ -478,6 +787,15 @@ class PmxMorphItemImpulse(_BasePmxMorphItem):
 		self.rot = rot
 	def list(self) -> list:
 		return [self.rb_idx, self.is_local, self.move, self.rot]
+	def _validate(self, parentlist=None):
+		# rb_idx: must be int
+		assert isinstance(self.rb_idx, int)
+		# is_local: bool flag I think? never used this one
+		assert is_good_flag(self.is_local)
+		# move: must be vec3
+		assert is_good_vector(3, self.move)
+		# rot: must be vec3
+		assert is_good_vector(3, self.rot)
 
 
 class PmxMorph(_BasePmx):
@@ -490,24 +808,32 @@ class PmxMorph(_BasePmx):
 				 ):
 		self.name_jp = name_jp
 		self.name_en = name_en
+		# TODO: make "panel" an enum!
 		self.panel = panel
-		# morphtype
-		# 0 = group = (morph_idx, influence)
-		# 1 = vertex = (vert_idx, transX, transY, transZ)
-		# 2 = bone = (bone_idx, transX, transY, transZ, rotX, rotY, rotZ, rotW)
-		# 3/4/5/6/7 = uv = (vert_idx, A, B, C, D)
-		# 8 = material =
-		# (mat_idx, is_add, diffR, diffG, diffB, diffA, specR, specG, specB) = core.unpack(IDX_MAT+"b 4f 3f", raw)
-		# (specpower, ambR, ambG, ambB, edgeR, edgeG, edgeB, edgeA, edgesize) = core.unpack("f 3f 4f f", raw)
-		# (texR, texG, texB, texA, sphR, sphG, sphB, sphA, toonR, toonG, toonB, toonA) = core.unpack("4f 4f 4f", raw)
-		# 9 = flip = (morph_idx, influence)  (pmx v2.1 only)
-		# 10 = impulse = (rb_idx, is_local, movX, movY, movZ, rotX, rotY, rotZ)   (pmx v2.1 only)
+		# morphtype: see MorphType enum definition for more info
 		self.morphtype = morphtype
 		self.items = items
 	def list(self) -> list:
 		return [self.name_jp, self.name_en, self.panel, self.morphtype,
 				[i.list() for i in self.items],
 				]
+	def _validate(self, parentlist=None):
+		""" This performs type-checking and input validation on the item, as a way to protect against bad code
+		assigning invalid values or incorrect datatypes into my structures. If it fails it will raise an Exception
+		of some kind and probably print a stack trace I guess?"""
+		# name_jp, name_en: strings
+		assert isinstance(self.name_jp, str)
+		assert isinstance(self.name_en, str)
+		# panel: must be int
+		assert isinstance(self.panel, int)
+		# morphtype: MorphType enum
+		assert isinstance(self.morphtype, MorphType)
+		# items: list of "pmx morph item" objects, specific to the morphtype
+		assert isinstance(self.items, (list,tuple))
+		for a in self.items:
+			# TODO: validate that it is the RIGHT KIND of member, and corresponds to the self.morphtype value!
+			assert isinstance(a, _BasePmxMorphItem)
+			assert a.validate(parentlist=self.items)
 
 
 class PmxFrame(_BasePmx):
@@ -519,14 +845,33 @@ class PmxFrame(_BasePmx):
 				 ):
 		self.name_jp = name_jp
 		self.name_en = name_en
-		# "special" frames are root and facials. name/position cannot be edited in PMXE, but they're otherwise ordinary frames.
+		# "special" frames are "root" and "facials". exactly those 2 should be marked as special, no more no less.
+		# if special, name/position cannot be edited in PMXE, but they're otherwise ordinary frames.
 		self.is_special = is_special
 		# each "item" in the list of items is [is_morph, idx]
 		# TODO: make simply "FrameItem" object just so it's objects all the way down
 		self.items = items
 	def list(self) -> list:
 		return [self.name_jp, self.name_en, self.is_special, self.items]
-		
+	def _validate(self, parentlist=None):
+		""" This performs type-checking and input validation on the item, as a way to protect against bad code
+		assigning invalid values or incorrect datatypes into my structures. If it fails it will raise an Exception
+		of some kind and probably print a stack trace I guess?"""
+		# name_jp, name_en: strings
+		assert isinstance(self.name_jp, str)
+		assert isinstance(self.name_en, str)
+		# is_special: bool flag
+		assert is_good_flag(self.is_special)
+		# items: call validate member of each thing in the list
+		assert isinstance(self.items, (list,tuple))
+		for a in self.items:
+			assert isinstance(a, (list,tuple))
+			assert len(a) == 2
+			# a[0] is a flag: if true, its a morph, if false, it's a bone
+			assert is_good_flag(a[0])
+			# a[1] is an int index that references a bone or a morph
+			assert isinstance(a[1], int)
+
 class PmxRigidBody(_BasePmx):
 	# note: this block is the order of args in the old system, does not represent order of args in .list() member
 	# thisbody = [name_jp, name_en, bone_idx, group, nocollide_mask, shape, sizeX, sizeY, sizeZ, posX, posY, posZ,
@@ -549,7 +894,7 @@ class PmxRigidBody(_BasePmx):
 		self.shape = shape
 		# group is int [1-16], same way its shown in PMXE
 		self.group = group
-		# nocollide_mask is a SET containing ints [1-16], same as shown in PMXE
+		# nocollide_set is a SET containing ints [1-16], same as shown in PMXE
 		self.nocollide_set = nocollide_set
 		# phys_mode: see RigidBodyPhysMode for more info
 		self.phys_mode = phys_mode
@@ -558,13 +903,50 @@ class PmxRigidBody(_BasePmx):
 		self.phys_rot_damp = phys_rot_damp
 		self.phys_repel = phys_repel
 		self.phys_friction = phys_friction
-		
 	def list(self) -> list:
 		return [self.name_jp, self.name_en, self.bone_idx,
 				self.pos, self.rot, self.size, self.shape,
 				self.group, sorted(list(self.nocollide_set)), self.phys_mode,
 				self.phys_mass, self.phys_move_damp, self.phys_rot_damp, self.phys_repel, self.phys_friction,
 				]
+	def _validate(self, parentlist=None):
+		""" This performs type-checking and input validation on the item, as a way to protect against bad code
+		assigning invalid values or incorrect datatypes into my structures. If it fails it will raise an Exception
+		of some kind and probably print a stack trace I guess?"""
+		# name_jp, name_en: strings
+		assert isinstance(self.name_jp, str)
+		assert isinstance(self.name_en, str)
+		# bone_idx: int references a bone
+		assert isinstance(self.bone_idx, int)
+		# pos: X Y Z position vec3
+		assert is_good_vector(3, self.pos)
+		# rot: X Y Z rotation vec3
+		assert is_good_vector(3, self.rot)
+		# size: X Y Z size vec3
+		assert is_good_vector(3, self.size)
+		# shape: RigidBodyShape enum
+		assert isinstance(self.shape, RigidBodyShape)
+		# group: int [1 - 16]
+		assert isinstance(self.group, int)
+		assert 1 <= self.group <= 16
+		# nocollide_set: SET of ints each [1 - 16]
+		assert isinstance(self.nocollide_set, set)
+		for a in self.nocollide_set:
+			assert isinstance(a, int)
+			assert 1 <= a <= 16
+		# phys_mode: RigidBodyPhysMode enum 
+		assert isinstance(self.phys_mode, RigidBodyPhysMode)
+		# phys_mass: float
+		assert isinstance(self.phys_mass, (int,float))
+		# phys_move_damp, phys_rot_damp, phys_repel, phys_friction: float range [0.0 - 1.0]
+		assert isinstance(self.phys_move_damp, (int,float))
+		assert isinstance(self.phys_rot_damp, (int,float))
+		assert isinstance(self.phys_repel, (int,float))
+		assert isinstance(self.phys_friction, (int,float))
+		assert 0.0 <= self.phys_move_damp <= 1.0
+		assert 0.0 <= self.phys_rot_damp <= 1.0
+		assert 0.0 <= self.phys_repel <= 1.0
+		assert 0.0 <= self.phys_friction <= 1.0
 
 
 class PmxJoint(_BasePmx):
@@ -608,13 +990,41 @@ class PmxJoint(_BasePmx):
 		self.rotmin = rotmin
 		self.rotmax = rotmax
 		self.rotspring = rotspring
-		
 	def list(self) -> list:
 		return [self.name_jp, self.name_en, self.jointtype, self.rb1_idx, self.rb2_idx,
 				self.pos, self.rot,
 				self.movemin, self.movemax, self.movespring,
 				self.rotmin, self.rotmax, self.rotspring,
 				]
+	def _validate(self, parentlist=None):
+		""" This performs type-checking and input validation on the item, as a way to protect against bad code
+		assigning invalid values or incorrect datatypes into my structures. If it fails it will raise an Exception
+		of some kind and probably print a stack trace I guess?"""
+		# name_jp, name_en: strings
+		assert isinstance(self.name_jp, str)
+		assert isinstance(self.name_en, str)
+		# jointtype: JointType enum
+		assert isinstance(self.jointtype, JointType)
+		# rb1_idx, rb2_idx: rigid body index, int
+		assert isinstance(self.rb1_idx, int)
+		assert isinstance(self.rb2_idx, int)
+		# pos: X Y Z position vec3
+		assert is_good_vector(3, self.pos)
+		# rot: X Y Z rotation vec3
+		assert is_good_vector(3, self.rot)
+		# movemin: X Y Z minimum movement limits, vec3
+		# movemax: X Y Z maximum movement limits, vec3
+		# movespring: X Y Z movement springiness, vec3
+		assert is_good_vector(3, self.movemin)
+		assert is_good_vector(3, self.movemax)
+		assert is_good_vector(3, self.movespring)
+		# rotmin: X Y Z minimum rotation limits, vec3
+		# rotmax: X Y Z maximum rotation limits, vec3
+		# rotspring: X Y Z rotation springiness, vec3
+		assert is_good_vector(3, self.rotmin)
+		assert is_good_vector(3, self.rotmax)
+		assert is_good_vector(3, self.rotspring)
+
 
 class PmxSoftBody(_BasePmx):
 	# i don't plan to support v2.1 so I'm not gonna try to hard to understand the meaning of these data fields
@@ -680,6 +1090,9 @@ class PmxSoftBody(_BasePmx):
 				self.v_it, self.p_it, self.d_it, self.c_it,
 				self.mat_lst, self.mat_ast, self.mat_vst,
 				self.anchors_list, self.vertex_pin_list]
+	def _validate(self, parentlist=None):
+		# i don't give a flying fuck about the softbodies
+		pass
 
 
 class Pmx(_BasePmx):
@@ -724,10 +1137,62 @@ class Pmx(_BasePmx):
 				[i.list() for i in self.joints],		#9
 				[i.list() for i in self.softbodies],	#10
 				]
-
+	def _validate(self, parentlist=None):
+		# header: PmxHeader object
+		assert isinstance(self.header, PmxHeader)
+		assert self.header.validate()
+		# verts: list of PmxVertex objects
+		assert isinstance(self.verts, (list,tuple))
+		for v in self.verts:
+			assert isinstance(v, PmxVertex)
+			assert v.validate(parentlist=self.verts)
+		# faces: list of faces, where each face is a list of 3 ints (vertex references)
+		assert isinstance(self.faces, (list,tuple))
+		for f in self.faces:
+			assert isinstance(f, (list,tuple))
+			for ff in f:
+				assert isinstance(ff, int)
+		# textures: list of strings
+		assert isinstance(self.textures, (list,tuple))
+		for t in self.textures:
+			assert isinstance(t, str)
+		# materials: list of PmxMaterial objects
+		assert isinstance(self.materials, (list,tuple))
+		for v in self.materials:
+			assert isinstance(v, PmxMaterial)
+			assert v.validate(parentlist=self.materials)
+		# bones: list of PmxBone objects
+		assert isinstance(self.bones, (list,tuple))
+		for v in self.bones:
+			assert isinstance(v, PmxBone)
+			assert v.validate(parentlist=self.bones)
+		# morphs: list of PmxMorph objects
+		assert isinstance(self.morphs, (list,tuple))
+		for v in self.morphs:
+			assert isinstance(v, PmxMorph)
+			assert v.validate(parentlist=self.morphs)
+		# frames: list of PmxFrame objects
+		assert isinstance(self.frames, (list,tuple))
+		for v in self.frames:
+			assert isinstance(v, PmxFrame)
+			assert v.validate(parentlist=self.frames)
+		# rigidbodies: list of PmxRigidBody objects
+		assert isinstance(self.rigidbodies, (list,tuple))
+		for v in self.rigidbodies:
+			assert isinstance(v, PmxRigidBody)
+			assert v.validate(parentlist=self.rigidbodies)
+		# softbodies: list of PmxSoftBody objects, or None
+		if self.softbodies is not None:
+			assert isinstance(self.softbodies, (list,tuple))
+			for v in self.softbodies:
+				assert isinstance(v, PmxSoftBody)
+				assert v.validate(parentlist=self.softbodies)
+		pass
 
 		
 if __name__ == '__main__':
+	ppp = PmxBoneIkLink(idx="hello")
+	ppp.validate()
 	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
 	core.pause_and_quit("you are not supposed to directly run this file haha")
 
