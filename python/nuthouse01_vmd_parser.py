@@ -334,7 +334,7 @@ def parse_vmd_shadowframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdSha
 			v = round(10000 - (v * 100000))
 			# stored as 0.0 to 0.1 ??? why would it use this range!? also its range-inverted
 			# [0,9999] -> [0.1, 0.0]
-			shadowmode = vmdstruct.IntEnum(m)
+			shadowmode = vmdstruct.ShadowMode(m)
 			shadowframe_list.append(vmdstruct.VmdShadowFrame(f=f, mode=shadowmode, val=v))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
