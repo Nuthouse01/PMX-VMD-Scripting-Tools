@@ -70,16 +70,14 @@ class _BasePmx(ABC):
 			return True
 		except AssertionError:
 			# if there is an assertion error, print the raw traceback to default console
-			print("123")
 			traceback.print_exc()
-			print("123")
 			exc_type, exc_value, exc_traceback = sys.exc_info()
 			something = traceback.extract_tb(exc_traceback, limit=None)
 			
 			# print some more selective stack trace info to the GUI
 			# maybe print the whole stack trace to GUI console? it formats just fine
 			lowesttrace = something[-1]
-			print('VALIDATE ERROR: "{}" object failed validation check "{}" at line "{}" in nuthouse01_pmx_struct.py'.format(
+			core.MY_PRINT_FUNC('VALIDATE ERROR: "{}" object failed validation check "{}" at line "{}" in nuthouse01_pmx_struct.py'.format(
 				self.__class__.__name__, lowesttrace.line, lowesttrace.lineno
 			))
 			
@@ -87,7 +85,7 @@ class _BasePmx(ABC):
 			if parentlist is not None:
 				idx = self.idx_within(parentlist)
 				if idx is not None:
-					print('object {} found at index {} of containing list'.format(self.__class__.__name__, idx))
+					core.MY_PRINT_FUNC('Object {} found at index {} of containing list'.format(self.__class__.__name__, idx))
 			raise RuntimeError("validation fail")
 		except RuntimeError:
 			# if there is a runtime error, only do the "determine which index this is" part
@@ -95,7 +93,7 @@ class _BasePmx(ABC):
 			if parentlist is not None:
 				idx = self.idx_within(parentlist)
 				if idx is not None:
-					print('object {} found at index {} of containing list'.format(self.__class__.__name__, idx))
+					core.MY_PRINT_FUNC('Object {} found at index {} of containing list'.format(self.__class__.__name__, idx))
 			raise RuntimeError("validation fail")
 
 	def __str__(self) -> str: return str(self.list())
@@ -251,7 +249,7 @@ class PmxHeader(_BasePmx):
 		assigning invalid values or incorrect datatypes into my structures. If it fails it will raise an Exception
 		of some kind and probably print a stack trace I guess?"""
 		# ver: should always be either 2 or 2.1
-		assert (self.ver == 2) or (self.ver == 2.1)
+		assert (self.ver == 2.0) or (self.ver == 2.1)
 		# name_jp, name_en, comment_jp, comment_en: all strings
 		assert isinstance(self.name_jp, str)
 		assert isinstance(self.name_en, str)
@@ -272,17 +270,6 @@ class PmxVertex(_BasePmx):
 				 weight_sdef: List[List[float]]=None,
 				 addl_vec4s: List[List[float]]=None,
 				 ):
-		assert len(pos) == 3
-		assert len(norm) == 3
-		assert len(uv) == 2
-		if weighttype == WeightMode.SDEF and weight_sdef is not None:
-			# weight_sdef doesn't need to exist now, but because weighttype == 3 it DOES need to exist and be valid before write-time
-			assert len(weight_sdef) == 3  # 3 sublists,
-			for rc in weight_sdef:
-				assert len(rc) == 3  # each sublist is 3 floats
-		if addl_vec4s is None: addl_vec4s = []
-		for av in addl_vec4s:
-			assert len(av) == 4
 		self.pos = pos
 		self.norm = norm
 		self.uv = uv
@@ -349,10 +336,6 @@ class PmxMaterial(_BasePmx):
 				 alpha: float, specpower: float, edgeRGB: List[float], edgealpha: float, edgesize: float, tex_idx: int,
 				 sph_idx: int, sph_mode: SphMode, toon_idx: int, toon_mode: int, comment: str, faces_ct: int,
 				 matflags: MaterialFlags):
-		assert len(diffRGB) == 3
-		assert len(specRGB) == 3
-		assert len(ambRGB) == 3
-		assert len(edgeRGB) == 3
 		self.name_jp = name_jp
 		self.name_en = name_en
 		self.diffRGB = diffRGB
@@ -438,9 +421,6 @@ class PmxBoneIkLink(_BasePmx):
 				 limit_min: List[float]=None,
 				 limit_max: List[float]=None,
 				 ):
-		if limit_min is not None or limit_max is not None: # either both should be present, or neither
-			assert len(limit_min) == 3
-			assert len(limit_max) == 3
 		self.idx = idx
 		# list of limits in degrees, or none
 		self.limit_min = limit_min
@@ -495,21 +475,6 @@ class PmxBone(_BasePmx):
 				 ik_angle: float=None,
 				 ik_links: List[PmxBoneIkLink]=None,
 				 ):
-		assert len(pos) == 3
-		if tail_usebonelink:
-			assert isinstance(tail, int)
-		else:
-			assert len(tail) == 3
-		if has_fixedaxis and fixedaxis is not None:
-			# fixedaxis doesn't need to exist now, but because has_fixedaxis == True it DOES need to exist and be valid before write-time
-			assert len(fixedaxis) == 3
-		if has_localaxis:
-			if localaxis_x is not None:
-				# localaxis_x doesn't need to exist now, but because has_localaxis == True it DOES need to exist and be valid before write-time
-				assert len(localaxis_x) == 3
-			if localaxis_z is not None:
-				# localaxis_z doesn't need to exist now, but because has_localaxis == True it DOES need to exist and be valid before write-time
-				assert len(localaxis_z) == 3
 		self.name_jp = name_jp
 		self.name_en = name_en
 		self.pos = pos
@@ -645,7 +610,6 @@ class PmxMorphItemGroup(_BasePmxMorphItem):
 
 class PmxMorphItemVertex(_BasePmxMorphItem):
 	def __init__(self, vert_idx: int, move: List[float]):
-		assert len(move) == 3
 		self.vert_idx = vert_idx
 		self.move = move
 	def list(self) -> list:
@@ -658,8 +622,6 @@ class PmxMorphItemVertex(_BasePmxMorphItem):
 
 class PmxMorphItemBone(_BasePmxMorphItem):
 	def __init__(self, bone_idx: int, move: List[float], rot: List[float]):
-		assert len(move) == 3
-		assert len(rot) == 3
 		self.bone_idx = bone_idx
 		self.move = move
 		self.rot = rot
@@ -676,7 +638,6 @@ class PmxMorphItemBone(_BasePmxMorphItem):
 
 class PmxMorphItemUV(_BasePmxMorphItem):
 	def __init__(self, vert_idx: int, move: List[float]):
-		assert len(move) == 4
 		self.vert_idx = vert_idx
 		self.move = move
 	def list(self) -> list:
@@ -704,13 +665,6 @@ class PmxMorphItemMaterial(_BasePmxMorphItem):
 				 sphRGBA: List[float],
 				 toonRGBA: List[float],
 				 ):
-		assert len(diffRGB) == 3
-		assert len(specRGB) == 3
-		assert len(ambRGB) == 3
-		assert len(edgeRGB) == 3
-		assert len(texRGBA) == 4
-		assert len(sphRGBA) == 4
-		assert len(toonRGBA) == 4
 		self.mat_idx = mat_idx
 		# is_add: if true, this is "additive" mode, if false, this is "multiply" mode
 		self.is_add = is_add
@@ -779,8 +733,6 @@ class PmxMorphItemFlip(_BasePmxMorphItem):
 
 class PmxMorphItemImpulse(_BasePmxMorphItem):
 	def __init__(self, rb_idx: int, is_local: bool, move: List[float], rot: List[float]):
-		assert len(move) == 3
-		assert len(rot) == 3
 		self.rb_idx = rb_idx
 		self.is_local = is_local
 		self.move = move
@@ -880,9 +832,6 @@ class PmxRigidBody(_BasePmx):
 				 shape: RigidBodyShape, group: int, nocollide_set: Set[int], phys_mode: RigidBodyPhysMode,
 				 phys_mass: float = 1.0, phys_move_damp: float = 0.5, phys_rot_damp: float = 0.5,
 				 phys_repel: float = 0.0, phys_friction: float = 0.5):
-		assert len(pos) == 3
-		assert len(rot) == 3
-		assert len(size) == 3
 		self.name_jp = name_jp
 		self.name_en = name_en
 		self.bone_idx = bone_idx
@@ -968,14 +917,6 @@ class PmxJoint(_BasePmx):
 				 rotmax: List[float],
 				 rotspring: List[float],
 				 ):
-		assert len(pos) == 3
-		assert len(rot) == 3
-		assert len(movemin) == 3
-		assert len(movemax) == 3
-		assert len(movespring) == 3
-		assert len(rotmin) == 3
-		assert len(rotmax) == 3
-		assert len(rotspring) == 3
 		self.name_jp = name_jp
 		self.name_en = name_en
 		# jointtype: 0=spring6DOF, all others are v2.1 only!!!! 1=6dof, 2=p2p, 3=conetwist, 4=slider, 5=hinge
@@ -1191,9 +1132,6 @@ class Pmx(_BasePmx):
 
 		
 if __name__ == '__main__':
-	ppp = PmxBoneIkLink(idx="hello")
-	ppp.validate()
-	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
 	core.pause_and_quit("you are not supposed to directly run this file haha")
 
 

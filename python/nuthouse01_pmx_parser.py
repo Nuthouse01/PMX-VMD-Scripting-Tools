@@ -1054,6 +1054,9 @@ def write_pmx(pmx_filename: str, pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 	PMX_MOREINFO = moreinfo
 	pmx_filename_clean = core.get_clean_basename(pmx_filename) + ".pmx"
 	# recives object 	(......)
+	# before writing, validate that the object is properly structured
+	# if it fails, it prints a bunch & raises a RuntimeError
+	pmx.validate()
 	# assumes the calling function already verified correct file extension
 	core.MY_PRINT_FUNC("Begin encoding PMX file '%s'" % pmx_filename_clean)
 
