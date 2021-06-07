@@ -60,7 +60,8 @@ PRINT_FOUND_UNUSED_BONES = False
 
 # these are common bones that are unused but should not be deleted
 # glasses, dummy_L, dummy_R, view cnt, motherbone, edge adjust
-BONES_TO_PROTECT = ["メガネ", "左ダミー", "右ダミー", "操作中心", "全ての親", "エッジ調整"]
+BONES_TO_PROTECT = ["メガネ", "左ダミー", "右ダミー", "左手ダミー", "右手ダミー",
+					"操作中心", "全ての親", "エッジ調整", "LS_Center", ]
 
 helptext = '''====================
 prune_unused_bones:
