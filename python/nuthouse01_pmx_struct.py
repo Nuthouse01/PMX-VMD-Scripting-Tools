@@ -29,8 +29,6 @@ except ImportError as eee:
 # TODO: redo imports for all files
 # TODO: investigate improved autoarmtwist
 # TODO: read that guys email about the "create ik from vmd" script
-# TODO: implement the "validate" functions for STRICT type-checking...
-#  what do i do if something fails the tests?
 # TODO: somewhere, check for NaN & quietly replace with 0
 
 ############################################################################################
@@ -369,9 +367,6 @@ class PmxMaterial(_BasePmx):
 		self.edgeRGB = edgeRGB
 		self.edgealpha = edgealpha
 		self.edgesize = edgesize
-		# TODO: change how materials & textures are represented, make each material hold a string for each sph/tex/toon,
-		#  this will MASSIVELY change the texture-caring sections of my code but oh well, i should've done it like this in the
-		#  first place...
 		self.tex_path = tex_path
 		self.toon_path = toon_path
 		self.sph_path = sph_path
@@ -914,10 +909,10 @@ class PmxRigidBody(_BasePmx):
 		assert isinstance(self.phys_rot_damp, (int,float))
 		assert isinstance(self.phys_repel, (int,float))
 		assert isinstance(self.phys_friction, (int,float))
-		assert 0.0 <= self.phys_move_damp <= 1.0
-		assert 0.0 <= self.phys_rot_damp <= 1.0
-		assert 0.0 <= self.phys_repel <= 1.0
-		assert 0.0 <= self.phys_friction <= 1.0
+		# assert 0.0 <= self.phys_move_damp <= 1.0
+		# assert 0.0 <= self.phys_rot_damp <= 1.0
+		# assert 0.0 <= self.phys_repel <= 1.0
+		# assert 0.0 <= self.phys_friction <= 1.0
 
 
 class PmxJoint(_BasePmx):
