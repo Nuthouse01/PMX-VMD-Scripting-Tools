@@ -256,17 +256,17 @@ def combine_tex_reference(pmx: pmxstruct.Pmx, dupe_to_master_map: Dict[int,int])
 	for mat in pmx.materials:
 		mat: pmxstruct.PmxMaterial
 		# no need to filter for -1s, because -1 isn't in the dupe_to_master_map and wont be changed by idx_shift_map
-		if mat.tex_idx in dupe_to_master_map:  # tex id
-			mat.tex_idx = dupe_to_master_map[mat.tex_idx]
+		if mat.tex_path in dupe_to_master_map:  # tex id
+			mat.tex_path = dupe_to_master_map[mat.tex_path]
 		# remap regardless of whether it is replaced with master or not
-		mat.tex_idx = newval_from_range_map(mat.tex_idx, idx_shift_map)
-		if mat.sph_idx in dupe_to_master_map:  # sph id
-			mat.sph_idx = dupe_to_master_map[mat.sph_idx]
-		mat.sph_idx = newval_from_range_map(mat.sph_idx, idx_shift_map)
+		mat.tex_path = newval_from_range_map(mat.tex_path, idx_shift_map)
+		if mat.sph_path in dupe_to_master_map:  # sph id
+			mat.sph_path = dupe_to_master_map[mat.sph_path]
+		mat.sph_path = newval_from_range_map(mat.sph_path, idx_shift_map)
 		if mat.toon_mode == 0:
-			if mat.toon_idx in dupe_to_master_map:  # toon id
-				mat.toon_idx = dupe_to_master_map[mat.toon_idx]
-			mat.toon_idx = newval_from_range_map(mat.toon_idx, idx_shift_map)
+			if mat.toon_path in dupe_to_master_map:  # toon id
+				mat.toon_path = dupe_to_master_map[mat.toon_path]
+			mat.toon_path = newval_from_range_map(mat.toon_path, idx_shift_map)
 	return
 
 
@@ -346,17 +346,17 @@ def categorize_files(pmx_dict: Dict[str, pmxstruct.Pmx], exist_files: List[str],
 		# material > index > thispmx_recordlist
 		for mat in pmx.materials:
 			mat: pmxstruct.PmxMaterial
-			texid = mat.tex_idx
+			texid = mat.tex_path
 			# filter out -1 which means "no file reference"
 			if texid != -1:
 				thispmx_recordlist[texid].usage.add(FOLDER_TEX)
 				thispmx_recordlist[texid].numused += 1
-			sphid = mat.sph_idx
+			sphid = mat.sph_path
 			if sphid != -1:
 				thispmx_recordlist[sphid].usage.add(FOLDER_SPH)
 				thispmx_recordlist[sphid].numused += 1
 			if mat.toon_mode == 0:
-				toonid = mat.toon_idx
+				toonid = mat.toon_path
 				if toonid != -1:
 					thispmx_recordlist[toonid].usage.add(FOLDER_TOON)
 					thispmx_recordlist[toonid].numused += 1

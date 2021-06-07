@@ -9,7 +9,7 @@
 
 # this file fully parses a PMX file and returns all of the data it contained, structured as a list of lists
 # first, system imports
-from typing import List
+from typing import List, Tuple
 import math
 
 # second, wrap custom imports with a try-except to catch it if files are missing
@@ -79,7 +79,21 @@ TODO: for non-vertex, value of -1 means N/A
 for vertex, N/A is not possible
 """
 
+# this relates the 'index' to the displayed path/name for each builtin toon
+BUILTIN_TOON_DICT = {
+	0: "toon01.bmp",
+	1: "toon02.bmp",
+	2: "toon03.bmp",
+	3: "toon04.bmp",
+	4: "toon05.bmp",
+	5: "toon06.bmp",
+	6: "toon07.bmp",
+	7: "toon08.bmp",
+	8: "toon09.bmp",
+	9: "toon10.bmp",
+}
 
+BUILTIN_TOON_DICT_REVERSE = {v: k for k, v in BUILTIN_TOON_DICT.items()}
 
 # return conventions: to handle fields that may or may not exist, many things are lists that don't strictly need to be
 # if the data doesn't exist, it is an empty list
@@ -249,7 +263,7 @@ def parse_pmx_textures(raw: bytearray) -> List[str]:
 		retme.append(filepath)
 	return retme
 
-def parse_pmx_materials(raw: bytearray) -> List[pmxstruct.PmxMaterial]:
+def parse_pmx_materials(raw: bytearray, textures: List[str]) -> List[pmxstruct.PmxMaterial]:
 	# first item is int, how many materials
 	i = core.my_unpack("i", raw)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of materials        =", i)
@@ -258,10 +272,8 @@ def parse_pmx_materials(raw: bytearray) -> List[pmxstruct.PmxMaterial]:
 		(name_jp, name_en, diffR, diffG, diffB, diffA, specR, specG, specB, specpower) = core.my_unpack("t t 4f 4f", raw)
 		# print(name_jp, name_en)
 		(ambR, ambG, ambB, flags, edgeR, edgeG, edgeB, edgeA, edgescale, tex_idx) = core.my_unpack("3f B 5f" + IDX_TEX, raw)
-		matflags = pmxstruct.MaterialFlags(flags)
-		(sph_idx, sph_mode_int, toon_mode) = core.my_unpack(IDX_TEX + "b b", raw)
-		sph_mode = pmxstruct.SphMode(sph_mode_int)
-		if toon_mode == 0:
+		(sph_idx, sph_mode_int, builtin_toon) = core.my_unpack(IDX_TEX + "b b", raw)
+		if builtin_toon == 0:
 			# toon is using a texture reference
 			toon_idx = core.my_unpack(IDX_TEX, raw)
 		else:
@@ -270,14 +282,27 @@ def parse_pmx_materials(raw: bytearray) -> List[pmxstruct.PmxMaterial]:
 		(comment, surface_ct) = core.my_unpack("t i", raw)
 		# note: i structure the faces list into groups of 3 vertex indices, this is divided by 3 to match
 		faces_ct = int(surface_ct / 3)
+		sph_mode = pmxstruct.SphMode(sph_mode_int)
+		matflags = pmxstruct.MaterialFlags(flags)
 		
+		# convert tex_idx/sph_idx/toon_idx into the respective strings
+		try:
+			if tex_idx == -1:  tex_path = ""
+			else:              tex_path = textures[tex_idx]
+			if sph_idx == -1:  sph_path = ""
+			else:              sph_path = textures[sph_idx]
+			if toon_idx == -1: toon_path = ""
+			elif builtin_toon:    toon_path = BUILTIN_TOON_DICT[toon_idx]  # using a builtin toon
+			else:              toon_path = textures[toon_idx]  # using a nonstandard toon
+		except (IndexError, KeyError):
+			raise RuntimeError("ERROR: material texture references are busted yo")
+
 		# assemble all the data into a struct for returning
 		thismat = pmxstruct.PmxMaterial(name_jp=name_jp, name_en=name_en, diffRGB=[diffR, diffG, diffB],
 										specRGB=[specR, specG, specB], ambRGB=[ambR, ambG, ambB], alpha=diffA,
 										specpower=specpower, edgeRGB=[edgeR, edgeG, edgeB], edgealpha=edgeA,
-										edgesize=edgescale, tex_idx=tex_idx, sph_idx=sph_idx, sph_mode=sph_mode,
-										toon_idx=toon_idx, toon_mode=toon_mode, comment=comment, faces_ct=faces_ct,
-										matflags=matflags)
+										edgesize=edgescale, tex_path=tex_path, toon_path=toon_path, sph_path=sph_path,
+										sph_mode=sph_mode, comment=comment, faces_ct=faces_ct, matflags=matflags)
 		
 		retme.append(thismat)
 	return retme
@@ -569,22 +594,35 @@ def parse_pmx_softbodies(raw: bytearray) -> List[pmxstruct.PmxSoftBody]:
 
 ########################################################################################################################
 
-def encode_pmx_lookahead(thispmx: pmxstruct.Pmx) -> tuple:
-	# takes the ENTIRE pmx list-form as its input, not juse one section
-	# need to do some lookahead scanning before I can properly begin with the header and whatnot
+def encode_pmx_lookahead(thispmx: pmxstruct.Pmx) -> Tuple[List[int], List[str]]:
+	"""
+	Count various things that need to be known ahead of time before I start packing.
+	Specifically i need to get the "addl vec4 per vertex" and count the # of each type of thing.
+	ALSO, build the list of unique filepaths among the materials.
+	:param thispmx: entire PMX object
+	:return: ([addl_vec4s, num_verts, num_tex, num_mat, num_bone, num_morph, num_rb, num_joint], tex_list)
+	"""
 	# specifically i need to get the "addl vec4 per vertex" and count the # of each type of thing
 	addl_vec4s = max(len(v.addl_vec4s) for v in thispmx.verts)
 	num_verts = len(thispmx.verts)
-	num_tex = len(thispmx.textures)
+	# count the number of unique filepaths among all materials, excluding the builtin toons
+	tex_list = []
+	for mat in thispmx.materials:
+		tex_list.append(mat.tex_path)
+		tex_list.append(mat.sph_path)
+		if mat.toon_path not in BUILTIN_TOON_DICT_REVERSE:
+			tex_list.append(mat.toon_path)
+	num_tex = len(tex_list)
 	num_mat = len(thispmx.materials)
 	num_bone = len(thispmx.bones)
 	num_morph = len(thispmx.morphs)
 	num_rb = len(thispmx.rigidbodies)
 	num_joint = len(thispmx.joints)
-	retme = (addl_vec4s, num_verts, num_tex, num_mat, num_bone, num_morph, num_rb, num_joint)
-	return retme
+	retme = [addl_vec4s, num_verts, num_tex, num_mat, num_bone, num_morph, num_rb, num_joint]
+	return retme, tex_list
 
-def encode_pmx_header(nice: pmxstruct.PmxHeader, lookahead: tuple) -> bytearray:
+def encode_pmx_header(nice: pmxstruct.PmxHeader, lookahead: List[int]) -> bytearray:
+	# in hindsight this is not the best code i've ever written, but it works
 	expectedmagic = bytearray([0x50, 0x4D, 0x58, 0x20])
 	fmt_magic = "4s f b"
 	# note: hardcoding number of globals as 8 when the format is technically flexible
@@ -594,7 +632,7 @@ def encode_pmx_header(nice: pmxstruct.PmxHeader, lookahead: tuple) -> bytearray:
 	# now build the list of 8 global flags
 	fmt_globals = str(numglobal) + "b"
 	globalflags = [-1] * 8
-	# byte 0: encoding
+	# byte 0: encoding, i get to simply choose this
 	if ENCODE_WITH_UTF8:
 		core.set_encoding("utf_8")
 		globalflags[0] = 1
@@ -712,7 +750,7 @@ def encode_pmx_vertices(nice: List[pmxstruct.PmxVertex]) -> bytearray:
 		core.print_progress_oneline(ENCODE_PERCENT_VERT * d / i)
 	return out
 
-def encode_pmx_surfaces(nice: list) -> bytearray:
+def encode_pmx_surfaces(nice: List[List[int]]) -> bytearray:
 	# surfaces is just another name for faces
 	# first item is int, how many !vertex indices! there are, NOT the actual number of faces
 	# each face is 3 vertex indices
@@ -726,7 +764,7 @@ def encode_pmx_surfaces(nice: list) -> bytearray:
 		core.print_progress_oneline(ENCODE_PERCENT_VERT + (ENCODE_PERCENT_FACE * d / i))
 	return out
 
-def encode_pmx_textures(nice: list) -> bytearray:
+def encode_pmx_textures(nice: List[str]) -> bytearray:
 	# first item is int, how many textures
 	i = len(nice)
 	out = core.my_pack("i", i)
@@ -735,7 +773,7 @@ def encode_pmx_textures(nice: list) -> bytearray:
 		out += core.my_pack("t", filepath)
 	return out
 
-def encode_pmx_materials(nice: List[pmxstruct.PmxMaterial]) -> bytearray:
+def encode_pmx_materials(nice: List[pmxstruct.PmxMaterial], tex_list: List[str]) -> bytearray:
 	# first item is int, how many materials
 	i = len(nice)
 	out = core.my_pack("i", i)
@@ -748,11 +786,27 @@ def encode_pmx_materials(nice: List[pmxstruct.PmxMaterial]) -> bytearray:
 		flagsum = mat.matflags.value
 		# note: i structure the faces list into groups of 3 vertex indices, this is divided by 3 to match, so now i need to undivide
 		verts_ct = 3 * mat.faces_ct
+		# convert the texture strings back into int references, also get builtin_toon back
+		# i just built 'tex_list' from the materials so these lookups are guaranteed to succeed
+		if mat.tex_path == "": tex_idx = -1
+		else:                  tex_idx = tex_list.index(mat.tex_path)
+		if mat.sph_path == "": sph_idx = -1
+		else:                  sph_idx = tex_list.index(mat.sph_path)
+		if mat.toon_path in BUILTIN_TOON_DICT_REVERSE:
+			# then this is a builtin toon!
+			builtin_toon = 1
+			toon_idx = BUILTIN_TOON_DICT_REVERSE[mat.toon_path]
+		else:
+			# this is a nonstandard toon, look up the same as the tex or sph
+			builtin_toon = 0
+			if mat.toon_path == "": toon_idx = -1
+			else:                   toon_idx = tex_list.index(mat.toon_path)
+		# now put 'em all together in the proper order
 		packme = [mat.name_jp, mat.name_en, *mat.diffRGB, mat.alpha, *mat.specRGB, mat.specpower, *mat.ambRGB,
-				  flagsum, *mat.edgeRGB, mat.edgealpha, mat.edgesize, mat.tex_idx, mat.sph_idx, mat.sph_mode.value,
-				  mat.toon_mode, mat.toon_idx, mat.comment, verts_ct]
-		# the size for packing of the "toon_idx" arg depends on the "toon_mode" arg, but the number and order is the same
-		if mat.toon_mode:
+				  flagsum, *mat.edgeRGB, mat.edgealpha, mat.edgesize, tex_idx, sph_idx, mat.sph_mode.value,
+				  builtin_toon, toon_idx, mat.comment, verts_ct]
+		# the size for packing of the "toon_idx" arg depends on the "builtin_toon" arg, but the number and order is the same
+		if builtin_toon:
 			# toon is using one of the builtin toons, toon01.bmp thru toon10.bmp (values 0-9)
 			out += core.my_pack(mat_fmtB, packme)
 		else:
@@ -1012,8 +1066,8 @@ def read_pmx(pmx_filename: str, moreinfo=False) -> pmxstruct.Pmx:
 	core.MY_PRINT_FUNC("...model name   = JP:'%s' / EN:'%s'" % (A.name_jp, A.name_en))
 	B = parse_pmx_vertices(pmx_bytes)
 	C = parse_pmx_surfaces(pmx_bytes)
-	D = parse_pmx_textures(pmx_bytes)
-	E = parse_pmx_materials(pmx_bytes)
+	tex_list = parse_pmx_textures(pmx_bytes)
+	E = parse_pmx_materials(pmx_bytes, tex_list)
 	F = parse_pmx_bones(pmx_bytes)
 	G = parse_pmx_morphs(pmx_bytes)
 	H = parse_pmx_dispframes(pmx_bytes)
@@ -1035,7 +1089,7 @@ def read_pmx(pmx_filename: str, moreinfo=False) -> pmxstruct.Pmx:
 	retme = pmxstruct.Pmx(header=A,
 						  verts=B,
 						  faces=C,
-						  texes=D,
+						  # texes=D,
 						  mats=E,
 						  bones=F,
 						  morphs=G,
@@ -1079,12 +1133,12 @@ def write_pmx(pmx_filename: str, pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 	ENCODE_PERCENT_MORPH = total_morph / ALLPROGRESSIZE
 	
 	core.print_progress_oneline(0)
-	lookahead = encode_pmx_lookahead(pmx)
+	lookahead, tex_list = encode_pmx_lookahead(pmx)
 	output_bytes += encode_pmx_header(pmx.header, lookahead)
 	output_bytes += encode_pmx_vertices(pmx.verts)
 	output_bytes += encode_pmx_surfaces(pmx.faces)
-	output_bytes += encode_pmx_textures(pmx.textures)
-	output_bytes += encode_pmx_materials(pmx.materials)
+	output_bytes += encode_pmx_textures(tex_list)
+	output_bytes += encode_pmx_materials(pmx.materials, tex_list)
 	output_bytes += encode_pmx_bones(pmx.bones)
 	output_bytes += encode_pmx_morphs(pmx.morphs)
 	output_bytes += encode_pmx_dispframes(pmx.frames)

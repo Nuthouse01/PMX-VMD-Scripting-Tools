@@ -356,8 +356,8 @@ class PmxVertex(_BasePmx):
 
 class PmxMaterial(_BasePmx):
 	def __init__(self, name_jp: str, name_en: str, diffRGB: List[float], specRGB: List[float], ambRGB: List[float],
-				 alpha: float, specpower: float, edgeRGB: List[float], edgealpha: float, edgesize: float, tex_idx: int,
-				 sph_idx: int, sph_mode: SphMode, toon_idx: int, toon_mode: int, comment: str, faces_ct: int,
+				 alpha: float, specpower: float, edgeRGB: List[float], edgealpha: float, edgesize: float, tex_path: str,
+				 toon_path: str, sph_path: str, sph_mode: SphMode, comment: str, faces_ct: int,
 				 matflags: MaterialFlags):
 		self.name_jp = name_jp
 		self.name_en = name_en
@@ -372,13 +372,11 @@ class PmxMaterial(_BasePmx):
 		# TODO: change how materials & textures are represented, make each material hold a string for each sph/tex/toon,
 		#  this will MASSIVELY change the texture-caring sections of my code but oh well, i should've done it like this in the
 		#  first place...
-		self.tex_idx = tex_idx
-		self.sph_idx = sph_idx
+		self.tex_path = tex_path
+		self.toon_path = toon_path
+		self.sph_path = sph_path
 		# sph_mode: see SphMode definition
 		self.sph_mode = sph_mode
-		self.toon_idx = toon_idx
-		# toon_mode: 0 = tex reference, 1 = one of the builtin toons, toon01.bmp thru toon10.bmp (values 0-9)
-		self.toon_mode = toon_mode
 		self.comment = comment
 		self.faces_ct = faces_ct
 		# flaglist: see MaterialFlags definition
@@ -386,7 +384,7 @@ class PmxMaterial(_BasePmx):
 	def list(self) -> list:
 		return [self.name_jp, self.name_en, self.diffRGB, self.specRGB, self.ambRGB, self.alpha, self.specpower,
 				self.edgeRGB, self.edgealpha, self.edgesize,
-				self.tex_idx, self.sph_idx, self.sph_mode, self.toon_idx, self.toon_mode,
+				self.tex_path, self.toon_path, self.sph_path, self.sph_mode,
 				self.comment, self.faces_ct, self.matflags,
 				]
 	def _validate(self, parentlist=None):
@@ -412,21 +410,14 @@ class PmxMaterial(_BasePmx):
 		assert isinstance(self.edgealpha, (int,float))
 		# edgesize: thickness of edging effect
 		assert isinstance(self.edgesize, (int,float))
-		# tex_idx: int to reference one of the textures, or -1 if none
-		assert isinstance(self.tex_idx, int)
-		assert self.tex_idx >= -1
-		# sph_idx: int to reference one of the textures, or -1 if none
-		assert isinstance(self.sph_idx, int)
-		assert self.sph_idx >= -1
+		# tex_idx: str filepath to texture
+		assert isinstance(self.tex_path, str)
+		# sph_idx: str filepath to SPH
+		assert isinstance(self.sph_path, str)
+		# toon_idx: str filepath to toon
+		assert isinstance(self.toon_path, str)
 		# sph_mode: SphMode enum
 		assert isinstance(self.sph_mode, SphMode)
-		# toon_mode: bool flag, should be True/False or 1/0
-		assert is_good_flag(self.toon_mode)
-		# toon_idx: int to reference one of the textures, or -1 if none
-		# if toon_mode = 1, then it references one of the builtin toons instead and MUST be [0 - 9]
-		assert isinstance(self.toon_idx, int)
-		if self.toon_mode: assert 0 <= self.toon_idx <= 9
-		else:              assert self.toon_idx >= -1
 		# comment: comment
 		assert isinstance(self.comment, str)
 		# faces_ct: int, MUST be nonnegative
@@ -1073,7 +1064,7 @@ class Pmx(_BasePmx):
 				 header: PmxHeader,
 				 verts: List[PmxVertex],
 				 faces: List[List[int]],
-				 texes: List[str],
+				 # texes: List[str],
 				 mats: List[PmxMaterial],
 				 bones: List[PmxBone],
 				 morphs: List[PmxMorph],
@@ -1088,7 +1079,7 @@ class Pmx(_BasePmx):
 		self.header = header
 		self.verts = verts
 		self.faces = faces
-		self.textures = texes
+		# self.textures = texes
 		self.materials = mats
 		self.bones = bones
 		self.morphs = morphs
@@ -1100,7 +1091,7 @@ class Pmx(_BasePmx):
 		return [self.header.list(),						#0
 				[i.list() for i in self.verts],			#1
 				self.faces,								#2
-				self.textures,							#3
+				# self.textures,							#3
 				[i.list() for i in self.materials],		#4
 				[i.list() for i in self.bones],			#5
 				[i.list() for i in self.morphs],		#6
@@ -1124,10 +1115,10 @@ class Pmx(_BasePmx):
 			assert isinstance(f, (list,tuple))
 			for ff in f:
 				assert isinstance(ff, int)
-		# textures: list of strings
-		assert isinstance(self.textures, (list,tuple))
-		for t in self.textures:
-			assert isinstance(t, str)
+		# # textures: list of strings
+		# assert isinstance(self.textures, (list,tuple))
+		# for t in self.textures:
+		# 	assert isinstance(t, str)
 		# materials: list of PmxMaterial objects
 		assert isinstance(self.materials, (list,tuple))
 		for v in self.materials:
