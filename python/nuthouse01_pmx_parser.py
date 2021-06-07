@@ -605,13 +605,19 @@ def encode_pmx_lookahead(thispmx: pmxstruct.Pmx) -> Tuple[List[int], List[str]]:
 	# specifically i need to get the "addl vec4 per vertex" and count the # of each type of thing
 	addl_vec4s = max(len(v.addl_vec4s) for v in thispmx.verts)
 	num_verts = len(thispmx.verts)
-	# count the number of unique filepaths among all materials, excluding the builtin toons
+	# built the ordered list of unique filepaths among all materials, excluding the builtin toons
 	tex_list = []
 	for mat in thispmx.materials:
-		tex_list.append(mat.tex_path)
-		tex_list.append(mat.sph_path)
+		if mat.tex_path not in tex_list:
+			tex_list.append(mat.tex_path)
+		if mat.sph_path not in tex_list:
+			tex_list.append(mat.sph_path)
 		if mat.toon_path not in BUILTIN_TOON_DICT_REVERSE:
-			tex_list.append(mat.toon_path)
+			if mat.toon_path not in tex_list:
+				tex_list.append(mat.toon_path)
+	# remove the empty string from the list, if it's in there
+	if "" in tex_list:
+		tex_list.remove("")
 	num_tex = len(tex_list)
 	num_mat = len(thispmx.materials)
 	num_bone = len(thispmx.bones)
