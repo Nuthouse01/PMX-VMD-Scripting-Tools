@@ -84,9 +84,9 @@ def main(moreinfo=True):
 		i = 0
 		while i < len(frame.items):  # for each item in that display group,
 			item = frame.items[i]
-			if item[0]:  # if it is a morph
+			if item.is_morph:  # if it is a morph
 				# look up the morph
-				morph = pmx.morphs[item[1]]
+				morph = pmx.morphs[item.idx]
 				# figure out what panel of this morph is
 				# if it has an invalid panel #, delete it here
 				if morph.panel == pmxstruct.MorphPanel.HIDDEN:

@@ -809,24 +809,37 @@ class PmxMorph(_BasePmx):
 			assert isinstance(a, _BasePmxMorphItem)
 			assert a.validate(parentlist=self.items)
 
+class PmxFrameItem(_BasePmx):
+	def __init__(self, is_morph: bool, idx: int):
+		# is_morph: if true, this index references a morph. if false, this index references a bone.
+		self.is_morph = is_morph
+		# idx: int, references a bone or a morph.
+		self.idx = idx
+	def list(self) -> list:
+		return [self.is_morph, self.idx]
+	def _validate(self, parentlist=None):
+		# is_morph: bool flag
+		assert is_good_flag(self.is_morph)
+		# idx: reference to a bone or morph
+		assert isinstance(self.idx, int)
+
 
 class PmxFrame(_BasePmx):
 	# thisframe = [name_jp, name_en, is_special, these_items]
 	def __init__(self, 
 				 name_jp: str, name_en: str, 
 				 is_special: bool, 
-				 items: List[List[int]],
+				 items: List[PmxFrameItem],
 				 ):
 		self.name_jp = name_jp
 		self.name_en = name_en
 		# "special" frames are "root" and "facials". exactly those 2 should be marked as special, no more no less.
 		# if special, name/position cannot be edited in PMXE, but they're otherwise ordinary frames.
 		self.is_special = is_special
-		# each "item" in the list of items is [is_morph, idx]
-		# TODO: make simply "FrameItem" object just so it's objects all the way down
+		# "items" is a list of PmxFrameItem objects
 		self.items = items
 	def list(self) -> list:
-		return [self.name_jp, self.name_en, self.is_special, self.items]
+		return [self.name_jp, self.name_en, self.is_special, [a.list() for a in self.items]]
 	def _validate(self, parentlist=None):
 		""" This performs type-checking and input validation on the item, as a way to protect against bad code
 		assigning invalid values or incorrect datatypes into my structures. If it fails it will raise an Exception
@@ -839,12 +852,8 @@ class PmxFrame(_BasePmx):
 		# items: call validate member of each thing in the list
 		assert isinstance(self.items, (list,tuple))
 		for a in self.items:
-			assert isinstance(a, (list,tuple))
-			assert len(a) == 2
-			# a[0] is a flag: if true, its a morph, if false, it's a bone
-			assert is_good_flag(a[0])
-			# a[1] is an int index that references a bone or a morph
-			assert isinstance(a[1], int)
+			assert isinstance(a, PmxFrameItem)
+			assert a.validate(parentlist=self.items)
 
 class PmxRigidBody(_BasePmx):
 	# note: this block is the order of args in the old system, does not represent order of args in .list() member

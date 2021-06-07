@@ -452,12 +452,9 @@ def parse_pmx_dispframes(raw: bytearray) -> List[pmxstruct.PmxFrame]:
 		these_items = []
 		for z in range(itemcount):
 			is_morph = core.my_unpack("b", raw)
-			if is_morph:
-				morph_idx = core.my_unpack(IDX_MORPH, raw)
-				this_item = [is_morph, morph_idx]
-			else:
-				bone_idx = core.my_unpack(IDX_BONE, raw)
-				this_item = [is_morph, bone_idx]
+			if is_morph: idx = core.my_unpack(IDX_MORPH, raw)
+			else:        idx = core.my_unpack(IDX_BONE, raw)
+			this_item = pmxstruct.PmxFrameItem(is_morph=is_morph, idx=idx)
 			these_items.append(this_item)
 		# assemble the data into struct for returning
 		thisframe = pmxstruct.PmxFrame(name_jp=name_jp, name_en=name_en, is_special=is_special, items=these_items)
@@ -912,11 +909,9 @@ def encode_pmx_dispframes(nice: List[pmxstruct.PmxFrame]) -> bytearray:
 		# (name_jp, name_en, is_special, itemcount)
 		out += core.my_pack(fmt_frame, [frame.name_jp, frame.name_en, frame.is_special, len(frame.items)])
 		
-		for entry in frame.items:
-			if entry[0]:  # entry[0] means is_morph
-				out += core.my_pack(fmt_frame_item_morph, entry)
-			else:
-				out += core.my_pack(fmt_frame_item_bone, entry)
+		for item in frame.items:
+			if item.is_morph: out += core.my_pack(fmt_frame_item_morph, [item.is_morph, item.idx])
+			else:             out += core.my_pack(fmt_frame_item_bone, [item.is_morph, item.idx])
 	return out
 
 def encode_pmx_rigidbodies(nice: List[pmxstruct.PmxRigidBody]) -> bytearray:
