@@ -228,6 +228,7 @@ morph_dict = {
 "ハイライト消し": "highlight off",
 "瞳小": "scared", # "pupil"
 "恐ろしい子!": "white eyes", # literally "scary child!" who the hell thought that was a good name?
+"おそろしい子!": "white eyes", # phonetically the same as ^
 "ぺろっ": "tongue out",  # phonetically "perrow"
 "べー": "beeeeh", # another way of doing "tongue out" but google likes to turn this into 'base'
 "あ": "A",
