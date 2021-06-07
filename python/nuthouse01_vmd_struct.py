@@ -245,12 +245,11 @@ class VmdCamFrame(_BaseVmd):
 class VmdLightFrame(_BaseVmd):
 	def __init__(self,
 				 f: int,
-				 color: List[int],
+				 color: List[float],
 				 pos: List[float]
 				 ):
 		self.f = f
-		# TODO: change color to be floats?
-		self.color = color  # R G B int [0-255]
+		self.color = color  # R G B float [0.0 - 1.0]
 		self.pos = pos  # X Y Z
 	def list(self) -> list:
 		return [self.f, *self.color, *self.pos]
@@ -262,12 +261,10 @@ class VmdLightFrame(_BaseVmd):
 		assert is_good_vector(3, self.pos)
 		for a in self.pos:
 			assert -1.0 <= a <= 1.0
-		# color: R G B list of 3 ints, each range [0 - 255]
-		assert isinstance(self.color, (list,tuple))
-		assert len(self.color) == 3
+		# color: R G B list of 3 floats, each range [0.0 - 1.0]
+		assert is_good_vector(3, self.color)
 		for a in self.color:
-			assert isinstance(a, int)
-			assert 0 <= a <= 255
+			assert 0.0 <= a <= 1.0
 
 
 class VmdShadowFrame(_BaseVmd):

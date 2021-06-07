@@ -303,9 +303,9 @@ def parse_vmd_lightframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdLigh
 	for i in range(lightframe_ct):
 		try:
 			(f, r, g, b, x, y, z) = core.my_unpack(fmt_lightframe, raw)
-			# the r g b actually come back as floats [0.0-1.0), representing (int)/256, i'll convert them back to ints
+			# the r g b actually come back as floats [0.0 - 1.0]
 			lightframe_list.append(vmdstruct.VmdLightFrame(f=f,
-												 color=[round(j*256) for j in (r,g,b)],
+												 color=[r,g,b],
 												 pos=[x,y,z]))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
@@ -495,10 +495,8 @@ def encode_vmd_lightframe(nice:List[vmdstruct.VmdLightFrame], moreinfo:bool) -> 
 	output += core.my_pack(fmt_number, len(nice))
 	# then, all the actual frames
 	for i,frame in enumerate(nice):
-		# the RGB come in as ints, but are actually stored as floats... convert them back to floats for packing
-		colors = [j / 256 for j in frame.color]
 		try:
-			output += core.my_pack(fmt_lightframe, [frame.f, *colors, *frame.pos])
+			output += core.my_pack(fmt_lightframe, [frame.f, *frame.color, *frame.pos])
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
