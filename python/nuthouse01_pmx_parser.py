@@ -81,16 +81,16 @@ for vertex, N/A is not possible
 
 # this relates the 'index' to the displayed path/name for each builtin toon
 BUILTIN_TOON_DICT = {
-	0: "toon01.bmp",
-	1: "toon02.bmp",
-	2: "toon03.bmp",
-	3: "toon04.bmp",
-	4: "toon05.bmp",
-	5: "toon06.bmp",
-	6: "toon07.bmp",
-	7: "toon08.bmp",
-	8: "toon09.bmp",
-	9: "toon10.bmp",
+	"toon01.bmp": 0,
+	"toon02.bmp": 1,
+	"toon03.bmp": 2,
+	"toon04.bmp": 3,
+	"toon05.bmp": 4,
+	"toon06.bmp": 5,
+	"toon07.bmp": 6,
+	"toon08.bmp": 7,
+	"toon09.bmp": 8,
+	"toon10.bmp": 9,
 }
 
 BUILTIN_TOON_DICT_REVERSE = {v: k for k, v in BUILTIN_TOON_DICT.items()}
@@ -292,7 +292,7 @@ def parse_pmx_materials(raw: bytearray, textures: List[str]) -> List[pmxstruct.P
 			if sph_idx == -1:  sph_path = ""
 			else:              sph_path = textures[sph_idx]
 			if toon_idx == -1: toon_path = ""
-			elif builtin_toon:    toon_path = BUILTIN_TOON_DICT[toon_idx]  # using a builtin toon
+			elif builtin_toon:    toon_path = BUILTIN_TOON_DICT_REVERSE[toon_idx]  # using a builtin toon
 			else:              toon_path = textures[toon_idx]  # using a nonstandard toon
 		except (IndexError, KeyError):
 			raise RuntimeError("ERROR: material texture references are busted yo")
@@ -612,7 +612,7 @@ def encode_pmx_lookahead(thispmx: pmxstruct.Pmx) -> Tuple[List[int], List[str]]:
 			tex_list.append(mat.tex_path)
 		if mat.sph_path not in tex_list:
 			tex_list.append(mat.sph_path)
-		if mat.toon_path not in BUILTIN_TOON_DICT_REVERSE:
+		if mat.toon_path not in BUILTIN_TOON_DICT:
 			if mat.toon_path not in tex_list:
 				tex_list.append(mat.toon_path)
 	# remove the empty string from the list, if it's in there
@@ -798,10 +798,10 @@ def encode_pmx_materials(nice: List[pmxstruct.PmxMaterial], tex_list: List[str])
 		else:                  tex_idx = tex_list.index(mat.tex_path)
 		if mat.sph_path == "": sph_idx = -1
 		else:                  sph_idx = tex_list.index(mat.sph_path)
-		if mat.toon_path in BUILTIN_TOON_DICT_REVERSE:
+		if mat.toon_path in BUILTIN_TOON_DICT:
 			# then this is a builtin toon!
 			builtin_toon = 1
-			toon_idx = BUILTIN_TOON_DICT_REVERSE[mat.toon_path]
+			toon_idx = BUILTIN_TOON_DICT[mat.toon_path]
 		else:
 			# this is a nonstandard toon, look up the same as the tex or sph
 			builtin_toon = 0
