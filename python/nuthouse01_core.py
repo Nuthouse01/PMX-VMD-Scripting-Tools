@@ -212,6 +212,38 @@ def recursively_compare(A,B):
 		return float("inf")
 	return 0
 
+def new_recursive_compare(L, R):
+	diffcount = 0
+	maxdiff = 0
+	if isinstance(L, (list,tuple)) and isinstance(R, (list,tuple)):
+		# if both are listlike, recurse on each element of 'em
+		if len(L) != len(R):
+			diffcount += 1
+		# walk down both for as long as it will go, i guess?
+		for d,(LL, RR) in enumerate(zip(L, R)):
+			thisdiff, thismax = new_recursive_compare(LL, RR)
+			diffcount += thisdiff
+			maxdiff = max(maxdiff, thismax)
+	elif hasattr(L,"validate") and hasattr(R,"validate"):
+		# for my custom classes, look over the members with "vars" because its fancy
+		Lvars = sorted(list(vars(L).items()))
+		Rvars = sorted(list(vars(R).items()))
+		for (nameL, LL), (nameR, RR) in zip(Lvars, Rvars):
+			thisdiff, thismax = new_recursive_compare(LL, RR)
+			diffcount += thisdiff
+			maxdiff = max(maxdiff, thismax)
+	elif isinstance(L, float) and isinstance(R, float):
+		# for floats specifically, replace exact compare with approximate compare
+		diff = abs(L - R)
+		maxdiff = diff
+		if L != R:
+			diffcount += 1
+	else:
+		# if not float and not list, then use standard compare
+		if L != R:
+			diffcount += 1
+	return diffcount, maxdiff
+
 def flatten(x: Sequence) -> list:
 	"""
 	Recursively flatten a list of lists (or tuples). Empty lists get replaced with "None" instead of completely vanishing.
