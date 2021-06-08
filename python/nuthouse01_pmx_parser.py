@@ -594,17 +594,14 @@ def parse_pmx_softbodies(raw: bytearray) -> List[pmxstruct.PmxSoftBody]:
 
 ########################################################################################################################
 
-def encode_pmx_lookahead(thispmx: pmxstruct.Pmx) -> Tuple[List[int], List[str]]:
+def build_texture_list(thispmx: pmxstruct.Pmx) -> List[str]:
 	"""
-	Count various things that need to be known ahead of time before I start packing.
-	Specifically i need to get the "addl vec4 per vertex" and count the # of each type of thing.
-	ALSO, build the list of unique filepaths among the materials.
+	Build a list of every unique texture path string that is present in the model, in the order they are encountered.
+	This does not include the "builtin toon" names, does not include "does not reference a file", does not include any
+	duplicate entries.
 	:param thispmx: entire PMX object
-	:return: ([addl_vec4s, num_verts, num_tex, num_mat, num_bone, num_morph, num_rb, num_joint], tex_list)
+	:return: list of filepath strings
 	"""
-	# specifically i need to get the "addl vec4 per vertex" and count the # of each type of thing
-	addl_vec4s = max(len(v.addl_vec4s) for v in thispmx.verts)
-	num_verts = len(thispmx.verts)
 	# built the ordered list of unique filepaths among all materials, excluding the builtin toons
 	tex_list = []
 	for mat in thispmx.materials:
@@ -618,6 +615,21 @@ def encode_pmx_lookahead(thispmx: pmxstruct.Pmx) -> Tuple[List[int], List[str]]:
 	# remove the empty string from the list, if it's in there
 	if "" in tex_list:
 		tex_list.remove("")
+	return tex_list
+
+def encode_pmx_lookahead(thispmx: pmxstruct.Pmx) -> Tuple[List[int], List[str]]:
+	"""
+	Count various things that need to be known ahead of time before I start packing.
+	Specifically i need to get the "addl vec4 per vertex" and count the # of each type of thing.
+	ALSO, build the list of unique filepaths among the materials.
+	:param thispmx: entire PMX object
+	:return: ([addl_vec4s, num_verts, num_tex, num_mat, num_bone, num_morph, num_rb, num_joint], tex_list)
+	"""
+	# specifically i need to get the "addl vec4 per vertex" and count the # of each type of thing
+	addl_vec4s = max(len(v.addl_vec4s) for v in thispmx.verts)
+	num_verts = len(thispmx.verts)
+	# built the ordered list of unique filepaths among all materials, excluding the builtin toons
+	tex_list = build_texture_list(thispmx)
 	num_tex = len(tex_list)
 	num_mat = len(thispmx.materials)
 	num_bone = len(thispmx.bones)
