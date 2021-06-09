@@ -789,9 +789,24 @@ class PmxMorph(_BasePmx):
 		assert isinstance(self.morphtype, MorphType)
 		# items: list of "pmx morph item" objects, specific to the morphtype
 		assert isinstance(self.items, (list,tuple))
+		# validate that it is the RIGHT KIND of member, that corresponds to the self.morphtype value!
+		DICT_MORPHTYPE_T0_CLASS = {
+			MorphType.VERTEX:   PmxMorphItemVertex,
+			MorphType.GROUP:    PmxMorphItemGroup,
+			MorphType.BONE:     PmxMorphItemBone,
+			MorphType.UV:       PmxMorphItemUV,
+			MorphType.UV_EXT1:  PmxMorphItemUV,
+			MorphType.UV_EXT2:  PmxMorphItemUV,
+			MorphType.UV_EXT3:  PmxMorphItemUV,
+			MorphType.UV_EXT4:  PmxMorphItemUV,
+			MorphType.MATERIAL: PmxMorphItemMaterial,
+			MorphType.FLIP:     PmxMorphItemFlip,
+			MorphType.IMPULSE:  PmxMorphItemImpulse,
+		}
+		expected_item_class = DICT_MORPHTYPE_T0_CLASS[self.morphtype]
 		for a in self.items:
-			# TODO: validate that it is the RIGHT KIND of member, and corresponds to the self.morphtype value!
-			assert isinstance(a, _BasePmxMorphItem)
+			assert isinstance(a, (expected_item_class,))
+			a : _BasePmxMorphItem  # will this make pycharm shut up?
 			assert a.validate(parentlist=self.items)
 
 class PmxFrameItem(_BasePmx):
