@@ -29,7 +29,6 @@ except ImportError as eee:
 # TODO: redo imports for all files
 # TODO: investigate improved autoarmtwist
 # TODO: read that guys email about the "create ik from vmd" script
-# TODO: somewhere, check for NaN & quietly replace with 0
 
 ############################################################################################
 ######## IMPORTANT NOTES ###################################################################
