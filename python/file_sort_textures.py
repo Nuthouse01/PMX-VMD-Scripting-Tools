@@ -226,19 +226,14 @@ def apply_file_renaming(pmx_dict: Dict[str, pmxstruct.Pmx], filerecord_list: Lis
 					p.newname = None
 	
 	# second, rename entries in PMX file(s)
-	for pmxname, pmx in pmx_dict.items():
-		count = 0
-		for p in filerecord_list:
-			if p.newname is not None:
-				find = p.used_pmx[pmxname]
-				count += texname_find_and_replace(pmx, find, p.newname)
-	# for p in filerecord_list:
-	# 	# if i have a new name for this file,
-	# 	if p.newname is not None:
-	# 		# then iterate over each PMX this file is used by,
-	# 		for thispmx_name, thispmx_idx in p.used_pmx.items():
-	# 			# acutally write the new name into the correct location within the correct pmx obj
-	# 			pmx_dict[thispmx_name].textures[thispmx_idx] = p.newname
+	for pmxpath, pmx in pmx_dict.items():  					      # for every pmx,
+		for p in filerecord_list:                                 # for every file,
+			if p.newname is not None and pmxpath in p.used_pmx:   # is that file used in that pmx? if yes,
+				find = p.used_pmx[pmxpath]                        # get how it is actually used in the pmx
+				replace = p.newname                               # get the name i want it to have
+				if find != replace:                               # if they do not match,
+					texname_find_and_replace(pmx, find, replace)  # do the find and replace
+					p.used_pmx[pmxpath] = replace                 # update the 'how this is used' dict
 	core.MY_PRINT_FUNC("...done renaming!")
 	return
 
@@ -301,7 +296,7 @@ def normalize_texture_paths(pmx: pmxstruct.Pmx, exist_files: List[str]) -> int:
 				if other_norm.lower() == tex.lower():
 					# if both paths are the same after normalize & lower, then its a match!
 					# set this one to the strip/normalize version of other
-					# print("*", tex, other_norm)
+					# print("*", tex, other)
 					tex = other_norm
 					break
 		# if it changed, count it and add an entry in the map
