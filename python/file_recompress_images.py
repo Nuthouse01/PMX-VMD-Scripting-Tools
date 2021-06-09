@@ -147,7 +147,7 @@ def main(moreinfo=False):
 	# 	for each pmx, for each file on disk, match against files used in textures (case-insensitive) and replace with canonical name-on-disk
 	#	also fill out how much and how each file is used, and unify dupes between files, all that good stuff
 	
-	filerecord_list = file_sort_textures.categorize_files(all_pmx_obj, relevant_exist_files, moreinfo)
+	filerecord_list = file_sort_textures.build_filerecord_list(all_pmx_obj, relevant_exist_files, moreinfo)
 	
 	# =========================================================================================================
 	# =========================================================================================================
