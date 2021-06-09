@@ -376,8 +376,14 @@ def prompt_user_filename(extensions_in: str) -> str:
 		if not valid_ext:
 			MY_PRINT_FUNC("Err: given file must have %s extension" % extensions)
 		elif not path.isfile(name):
-			MY_PRINT_FUNC(path.abspath(name))
 			MY_PRINT_FUNC("Err: given file does not exist, did you type it wrong?")
+			abspath = path.abspath(name)
+			# find the point where the filepath breaks!
+			shorterpath = abspath
+			while not path.exists(shorterpath): shorterpath = path.split(shorterpath)[0]
+			whereitbreaks = (" " * len(shorterpath)) + " ^^^^"
+			MY_PRINT_FUNC(abspath)
+			MY_PRINT_FUNC(whereitbreaks)
 		else:
 			break
 	# it exists, so make it absolute
