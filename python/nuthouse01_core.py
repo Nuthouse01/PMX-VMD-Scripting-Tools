@@ -1303,7 +1303,18 @@ def _unpack_other(fmt:str, raw:bytearray) -> list:
 		newerr = RuntimeError(newerrstr)
 		raise newerr
 	# convert from tuple to list
-	return list(r)
+	retme = list(r)
+	# new: check for NaN and replace with 0
+	for i in range(len(retme)):
+		foo = retme[i]
+		if isinstance(foo, float):
+			if math.isnan(foo):
+				retme[i] = 0.0
+				MY_PRINT_FUNC("Warning: found NaN in place of float shortly before bytepos %d, replaced with 0.0" % UNPACKER_READFROM_BYTE)
+			if math.isinf(foo):
+				retme[i] = 0.0
+				MY_PRINT_FUNC("Warning: found INF in place of float shortly before bytepos %d, replaced with 0.0" % UNPACKER_READFROM_BYTE)
+	return retme
 
 def _unpack_text(fmt:str, raw:bytearray) -> str:
 	"""
