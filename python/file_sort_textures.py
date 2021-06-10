@@ -237,22 +237,28 @@ def apply_file_renaming(pmx_dict: Dict[str, pmxstruct.Pmx], filerecord_list: Lis
 	core.MY_PRINT_FUNC("...done renaming!")
 	return
 
-def texname_find_and_replace(pmx: pmxstruct.Pmx, find:str, replace:str) -> int:
+def texname_find_and_replace(pmx: pmxstruct.Pmx, find:str, replace:str, sanitize=False) -> int:
 	"""
 	Look thru all filepaths in given pmx, if any EXACTLY match 'find' then replace them with 'replace'.
 	If 'find' is one of the builtin toons it WILL match it & replace it everywher in the model.
 	:param pmx: pmx obj to update/modify
 	:param find: filepath to look for in PmxMaterial.tex_path/sph_path/toon_path
 	:param replace: new filepath to replace the old one
+	:param sanitize: default false. if true, call strip/normpath/lower on both before comparing equality.
 	:return: number of places that were changed
 	"""
 	if find == replace:
 		return 0
 	count = 0
+	if sanitize:
+		find = os.path.normpath(find.strip()).lower()
 	filepath_member_names = ["tex_path","sph_path","toon_path"]
 	for mat in pmx.materials:
 		for member in filepath_member_names:
-			if getattr(mat, member) == find:
+			curr = getattr(mat, member)
+			if sanitize:
+				curr = os.path.normpath(curr.strip()).lower()
+			if curr == find:
 				setattr(mat, member, replace)
 				count += 1
 	return count
@@ -313,7 +319,7 @@ def normalize_texture_paths(pmx: pmxstruct.Pmx, exist_files: List[str]) -> int:
 	# 	print(pair)
 	# stats
 	num_modified = len(tex_update_map)
-	num_unified = len(tex_update_map) - len(set(tex_update_map.values()))
+	# num_unified = len(tex_update_map) - len(set(tex_update_map.values()))
 	return num_modified
 
 
@@ -358,7 +364,6 @@ def build_filerecord_list(pmx_dict: Dict[str, pmxstruct.Pmx], exist_files: List[
 			# add it to the list
 			thispmx_recordlist.append(record)
 			
-		x = 4
 		###################################################################
 		###################################################################
 		# 3. populate the filerecord items with the number-used and how-used data

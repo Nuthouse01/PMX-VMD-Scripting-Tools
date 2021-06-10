@@ -1,3 +1,5 @@
+# Nuthouse01 - 6/3/2021 - v5.08
+
 """
 DO FEET THE BEST WAY
 !!!
@@ -97,7 +99,10 @@ def main():
 	
 	print("partial-rotated %d verts" % count)
 	
-	newmorph = pmxstruct.PmxMorph("v-rot", "v-rot", 1, 1, newmorphitems)
+	newmorph = pmxstruct.PmxMorph("v-rot", "v-rot",
+								  morphtype=pmxstruct.MorphType.VERTEX,
+								  panel=pmxstruct.MorphPanel.OTHER,
+								  items=newmorphitems)
 	pmx.morphs.append(newmorph)
 	# done iter, now write
 	OUT = core.get_unused_file_name("NEW.pmx")

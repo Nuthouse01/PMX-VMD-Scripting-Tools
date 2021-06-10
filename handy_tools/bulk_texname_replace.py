@@ -76,13 +76,8 @@ def main():
 	# now do find & replace!
 	# for each pmx,
 	for this_pmx_name, this_pmx_obj in all_pmx_obj.items():
-		howmany = 0
-		# for each texture string,
-		for d, tex in enumerate(this_pmx_obj.textures):
-			tex = os.path.normpath(tex.strip())
-			if tex.lower() == findme.lower():
-				this_pmx_obj.textures[d] = replacewith
-				howmany += 1
+		# do find-and-replace
+		howmany = file_sort_textures.texname_find_and_replace(this_pmx_obj, findme, replacewith, sanitize=True)
 		# then report how many
 		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("'%s': replaced %d" % (this_pmx_name, howmany))
