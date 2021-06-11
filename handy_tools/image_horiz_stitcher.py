@@ -1,4 +1,4 @@
-
+_SCRIPT_VERSION = "Nuthouse01 - 8/24/2020 - v5.00"
 
 
 from PIL import Image

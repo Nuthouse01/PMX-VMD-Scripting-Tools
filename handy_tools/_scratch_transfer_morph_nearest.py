@@ -1,4 +1,4 @@
-# Nuthouse01 - 6/10/2021 - v6.00
+_SCRIPT_VERSION = "Nuthouse01 - 6/10/2021 - v6.00"
 
 import sys
 try:
@@ -118,7 +118,7 @@ def main():
 	return None
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 10/10/2020 - v5.03")
+	print(_SCRIPT_VERSION)
 	if DEBUG:
 		main()
 	else:

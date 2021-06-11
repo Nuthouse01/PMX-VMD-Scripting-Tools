@@ -1,4 +1,4 @@
-# Nuthouse01 - 6/10/2021 - v6.00
+_SCRIPT_VERSION = "Nuthouse01 - 6/10/2021 - v6.00"
 
 """
 DO FEET THE BEST WAY
@@ -112,5 +112,6 @@ def main():
 
 
 if __name__ == "__main__":
+	print(_SCRIPT_VERSION)
 	main()
 

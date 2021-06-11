@@ -1,4 +1,4 @@
-# Nuthouse01 - 6/10/2021 - v6.00
+_SCRIPT_VERSION = "Nuthouse01 - 6/10/2021 - v6.00"
 # this one is for you, syblomic-dash
 
 import sys
@@ -96,7 +96,7 @@ def main():
 	
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 12/28/2020 - v5.05")
+	print(_SCRIPT_VERSION)
 	if DEBUG:
 		main()
 	else:
