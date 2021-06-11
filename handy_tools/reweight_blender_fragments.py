@@ -1,4 +1,4 @@
-# Nuthouse01 - 6/3/2021 - v5.08
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -252,8 +252,8 @@ def main(moreinfo=True):
 		# for each vertex in this fragment, give it 100% weight on that bone
 		for v_id in all_vert_sets[fragnum]:
 			v = pmx.verts[v_id]
-			v.weighttype = 0 # BDEF1
-			v.weight = [thisboneindex]
+			v.weighttype = pmxstruct.WeightMode.BDEF1 # BDEF1
+			v.weight = [[thisboneindex, 1]]
 		pass
 	
 	# RIGID BODIES
@@ -284,9 +284,6 @@ def main(moreinfo=True):
 
 		# this gif is with these params: https://gyazo.com/3d143f33b79c1151c1ccbffcc578448b
 		
-		RIGIDBODY_GROUP_COLLIDE_NONE = 0
-		RIGIDBODY_GROUP_COLLIDE_ALL = sum([1<<i for i in range(16)])
-		
 		# groups: for now, since each fragment is only one body, i can just ignore groups stuff
 		# groups: later, if each fragment is several bodies... assign the groups in round-robin? each fragment will clip thru 1/15 of the
 		# other fragments but i think that's unavoidable. also need to reserve group16 for the floor! so set each fragment's cluster of
@@ -296,8 +293,8 @@ def main(moreinfo=True):
 		# all the others are set to bone -1 and connected to the mainbody via joints
 		newbody_obj = pmxstruct.PmxRigidBody(
 			name_jp=newbody_name, name_en=newbody_name, bone_idx=all_bone_indices[fragnum],
-			pos=newbody_pos, rot=[0,0,0], size=[newbody_radius,0,0], shape=0,
-			group=0, nocollide_mask=RIGIDBODY_GROUP_COLLIDE_ALL, phys_mode=1, phys_mass=mass,
+			pos=newbody_pos, rot=[0,0,0], size=[newbody_radius,0,0], shape=pmxstruct.RigidBodyShape.SPHERE,
+			group=1, nocollide_set=set(), phys_mode=pmxstruct.RigidBodyPhysMode.PHYSICS, phys_mass=mass,
 			phys_move_damp=phys_move_damp, phys_rot_damp=phys_rot_damp, phys_repel=phys_repel, phys_friction=phys_friction
 		)
 		
@@ -328,7 +325,7 @@ def main(moreinfo=True):
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 6/3/2021 - v5.08")
+	print(_SCRIPT_VERSION)
 	# print info to explain the purpose of this file
 	core.MY_PRINT_FUNC(helptext)
 	core.MY_PRINT_FUNC("")

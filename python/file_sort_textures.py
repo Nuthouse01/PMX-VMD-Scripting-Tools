@@ -1,4 +1,4 @@
-# Nuthouse01 - 1/24/2021 - v5.06
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -90,7 +90,8 @@ remove_re = re.compile(remove_pattern)
 # a struct to bundle all the relevant info about a file that is on disk or used by PMX
 class FileRecord:
 	def __init__(self, name, exists):
-		# the "clean" name this file uses on disk: relative to startpath and separator-normalized
+		# the "current name" name this file uses in the PMX: relative to startpath and separator-normalized 
+		# (because these are made after normalize_texture_paths() is called).
 		# or, if it does not exist on disk, whatever name shows up in the PMX entry
 		self.name = name
 		# true if this is a real file that exists on disk
@@ -225,58 +226,110 @@ def apply_file_renaming(pmx_dict: Dict[str, pmxstruct.Pmx], filerecord_list: Lis
 					p.newname = None
 	
 	# second, rename entries in PMX file(s)
-	for p in filerecord_list:
-		# if i have a new name for this file,
-		if p.newname is not None:
-			# then iterate over each PMX this file is used by,
-			for thispmx_name, thispmx_idx in p.used_pmx.items():
-				# acutally write the new name into the correct location within the correct pmx obj
-				pmx_dict[thispmx_name].textures[thispmx_idx] = p.newname
+	for pmxpath, pmx in pmx_dict.items():  					      # for every pmx,
+		for p in filerecord_list:                                 # for every file,
+			if p.newname is not None and pmxpath in p.used_pmx:   # is that file used in that pmx? if yes,
+				find = p.used_pmx[pmxpath]                        # get how it is actually used in the pmx
+				replace = p.newname                               # get the name i want it to have
+				if find != replace:                               # if they do not match,
+					texname_find_and_replace(pmx, find, replace)  # do the find and replace
+					p.used_pmx[pmxpath] = replace                 # update the 'how this is used' dict
 	core.MY_PRINT_FUNC("...done renaming!")
 	return
 
-
-def combine_tex_reference(pmx: pmxstruct.Pmx, dupe_to_master_map: Dict[int,int]):
+def texname_find_and_replace(pmx: pmxstruct.Pmx, find:str, replace:str, sanitize=False) -> int:
 	"""
-	Update a PMX object by merging several of its texture entries.
-	Deciding which textures to merge is done outside this level.
-	
-	:param pmx: pmx obj to update
-	:param dupe_to_master_map: dict where keys are dupes to remove, values are what to replace with
+	Look thru all filepaths in given pmx, if any EXACTLY match 'find' then replace them with 'replace'.
+	If 'find' is one of the builtin toons it WILL match it & replace it everywher in the model.
+	:param pmx: pmx obj to update/modify
+	:param find: filepath to look for in PmxMaterial.tex_path/sph_path/toon_path
+	:param replace: new filepath to replace the old one
+	:param sanitize: default false. if true, call strip/normpath/lower on both before comparing equality.
+	:return: number of places that were changed
 	"""
-	# now modify this PMX to resolve/consolidate/unify the duplicates:
-	# first: make dellist & idx_shift_map
-	dellist = sorted(list(dupe_to_master_map.keys()))
-	# make the idx_shift_map
-	idx_shift_map = delme_list_to_rangemap(dellist)
-	# second: delete the acutal textures from the actual texture list
-	for i in reversed(dellist):
-		pmx.textures.pop(i)
-	# third: iter over materials, use dupe_to_master_map to replace dupe with master and newval_from_range_map to account for dupe deletion
+	if find == replace:
+		return 0
+	count = 0
+	if sanitize:
+		find = os.path.normpath(find.strip()).lower()
+	filepath_member_names = ["tex_path","sph_path","toon_path"]
 	for mat in pmx.materials:
-		mat: pmxstruct.PmxMaterial
-		# no need to filter for -1s, because -1 isn't in the dupe_to_master_map and wont be changed by idx_shift_map
-		if mat.tex_idx in dupe_to_master_map:  # tex id
-			mat.tex_idx = dupe_to_master_map[mat.tex_idx]
-		# remap regardless of whether it is replaced with master or not
-		mat.tex_idx = newval_from_range_map(mat.tex_idx, idx_shift_map)
-		if mat.sph_idx in dupe_to_master_map:  # sph id
-			mat.sph_idx = dupe_to_master_map[mat.sph_idx]
-		mat.sph_idx = newval_from_range_map(mat.sph_idx, idx_shift_map)
-		if mat.toon_mode == 0:
-			if mat.toon_idx in dupe_to_master_map:  # toon id
-				mat.toon_idx = dupe_to_master_map[mat.toon_idx]
-			mat.toon_idx = newval_from_range_map(mat.toon_idx, idx_shift_map)
-	return
+		for member in filepath_member_names:
+			curr = getattr(mat, member)
+			if sanitize:
+				curr = os.path.normpath(curr.strip()).lower()
+			if curr == find:
+				setattr(mat, member, replace)
+				count += 1
+	return count
 
-
-def categorize_files(pmx_dict: Dict[str, pmxstruct.Pmx], exist_files: List[str], moreinfo: bool) -> List[FileRecord]:
+# every possible permutation for referring to a specific real file on disk will be renamed to the exact same string
+def normalize_texture_paths(pmx: pmxstruct.Pmx, exist_files: List[str]) -> int:
 	"""
-	Categorize file usage and normalize cases and separators within PMX files and across PMX files.
-	First, normalize file uses within each PMX to match the exact case/separators used on disk.
-	Second, unify duplicate texture references within each PMX.
-	Then, build the FileRecord obj for each tex reference and count how many times & how it is used in the PMX.
-	Finally, unify FileRecord objects across all PMX files.
+	Normalize all filepaths that the PMX uses to reference textures. Strip whitespace and standardize the folder
+	separators. If it references a real file on disk, match the case of that real filepath. If not, match the case
+	of the first reference to that non-existent file.
+	:param pmx: pmx obj to update/modify
+	:param exist_files: list of strings which are relative filepaths for files I located on disk
+	:return: number of unique textures that were changed
+	"""
+	# TODO: return number unified? or number changed?
+	# TODO: this is pretty good, probably want this in model_overall_cleanup!
+	start_tex_list = pmxlib.build_texture_list(pmx)
+	tex_update_map = {}
+	for d,starttex in enumerate(start_tex_list):
+		tex = starttex
+		# first, strip leading/trailing whitespace
+		# NOTE: mmd will work just fine if the texture has trailing whitespace, but my system will not!
+		tex = tex.strip()
+		# standardize the file separators
+		tex = os.path.normpath(tex)
+		# if it matches an existing file, replace it with that clean existing file path
+		# that way it matches the case of the file on disk
+		match = False
+		for ef in exist_files:
+			# Windows doesn't care about case when resolving file paths, so neither do i
+			if tex.lower() == ef.lower():
+				tex = ef
+				match = True
+				break
+		# if it does not match a file on disk, compare against other tex paths in teh PMX and try to unify with one of them
+		if not match:
+			# compare against each tex reference that comes before this
+			for i in range(d):
+				other = start_tex_list[i]
+				other_norm = os.path.normpath(other.strip())
+				if other_norm.lower() == tex.lower():
+					# if both paths are the same after normalize & lower, then its a match!
+					# set this one to the strip/normalize version of other
+					# print("*", tex, other)
+					tex = other_norm
+					break
+		# if it changed, count it and add an entry in the map
+		if starttex != tex:
+			tex_update_map[starttex] = tex
+	# now i have an entry in the map! so, use this map to find-and-replace
+	# this skips over the builtin toons, also, since those aren't returned by pmxlib.build_texture_list()
+	# it's safe to do the find-and-replace right now, silently, because none of these changes 
+	# are FUNCTIONAL, all the filepaths are still equivalent as far as windows is concerned.
+	num_replaced = 0
+	for find,replace in tex_update_map.items():
+		num_replaced += texname_find_and_replace(pmx, find, replace)
+	# for pair in tex_update_map.items():
+	# 	print(pair)
+	# stats
+	num_modified = len(tex_update_map)
+	# num_unified = len(tex_update_map) - len(set(tex_update_map.values()))
+	return num_modified
+
+
+def build_filerecord_list(pmx_dict: Dict[str, pmxstruct.Pmx], exist_files: List[str], moreinfo: bool) -> List[FileRecord]:
+	"""
+	Build the FileRecord list that describes every file on disk + every file referenced in every PMX, as well as
+	how and how many times each is used. NOTE: this silently makes minor changes to the PMX objects, such as changing
+	the case/separators for each filepath. But these changes should be Windows-equivalent.
+	1) Normalize cases & separators within each file, 2) count the times/ways each file is used, 3) unify cases &
+	separators across multiple files, 4) return.
 	
 	:param pmx_dict: dict of PMX objects, key is path relative to startpath, value is actual PMX obj
 	:param exist_files: list of strings which are relative filepaths for files I located on disk
@@ -286,122 +339,105 @@ def categorize_files(pmx_dict: Dict[str, pmxstruct.Pmx], exist_files: List[str],
 	
 	recordlist = []
 	num_unify_within_pmx = 0
-	num_nullify = 0
+	merge_across_pmx = 0
 	
 	for pmxpath, pmx in pmx_dict.items():
 		if DEBUG: print(pmxpath)
-		null_texture_dict = dict()
-		# for each texture,
-		for d, tex in enumerate(pmx.textures):
-			# NOTE: mmd will work just fine if the texture has trailing whitespace, but my system will not!
-			# first, strip leading/trailing whitespace
-			tex = tex.strip()
-			# if it is just whitepace or empty, then queue it up to be nullified (mapped to -1 and deleted)
-			if tex == "" or tex.isspace():
-				null_texture_dict[d] = -1
-				continue
-			# if it matches an existing file, replace it with that clean existing file path
-			for ef in exist_files:
-				if os.path.normpath(tex.lower()) == ef.lower():
-					pmx.textures[d] = ef
-					break
-		if null_texture_dict:
-			num_nullify += len(null_texture_dict)
-			if DEBUG: print("nullifying", null_texture_dict)
-			combine_tex_reference(pmx, null_texture_dict)
 		
-		# remove theoretical duplicates from the PMX... not likely but possible. cases can be different.
-		# compare each tex against each other tex to find which ones match
-		dupe_to_master_map = dict()
-		for dj, tj in enumerate(pmx.textures):
-			tjn = os.path.normpath(tj.lower())
-			for dk in range(dj + 1, len(pmx.textures)):
-				tk = pmx.textures[dk]
-				# skip if no match
-				if os.path.normpath(tk.lower()) != tjn: continue
-				# if there is a match,then this is a dupe!
-				# skip if this is something I already know about (detected dupe from other side)
-				if dk in dupe_to_master_map: continue
-				# if this is one I don't already know about, then mark the mapping and I'll delete it later
-				# higher-index one will get replaced by lower-index one
-				dupe_to_master_map[dk] = dj
-		# now all within-pmx dupes have been found & marked with their master... so combine them!
-		if dupe_to_master_map:
-			num_unify_within_pmx += len(dupe_to_master_map)
-			if DEBUG: print("unifying", dupe_to_master_map)
-			combine_tex_reference(pmx, dupe_to_master_map)
+		###################################################################
+		###################################################################
+		# 1. normalize the texture paths to match the files on disk and make them """unique""" within this one pmx
+		num_unify_within_pmx += normalize_texture_paths(pmx, exist_files)
 		
+		###################################################################
+		###################################################################
+		# 2. build the filerecord items for this pmx
 		thispmx_recordlist = []
+		# create (again) the ordered list of unique texpaths in this pmx
+		thispmx_texpaths = pmxlib.build_texture_list(pmx)
 		# now that they are unique, for each tex:
-		for d, tex in enumerate(pmx.textures):
-			# create the actual "FileRecord" entry
+		for tex in thispmx_texpaths:
+			# create the actual "FileRecord" entry, whether it exists or not doesnt matter yet.
 			record = FileRecord(tex, False)
-			# all I know about it so far is that it is used by this pmx file at this index
-			record.used_pmx[pmxpath] = d
-			# add it to the list for this specific pmx
+			# THIS is the actual string used in the pmx, and which pmx used it like that
+			record.used_pmx[pmxpath] = tex
+			# add it to the list
 			thispmx_recordlist.append(record)
-		
-		# used files get sorted by HOW they are used... so go find that info now
-		# files are only used in materials pmx[4], and only tex=19/sph=20/toon=23 (only if 22==0)
-		# material > index > thispmx_recordlist
+			
+		###################################################################
+		###################################################################
+		# 3. populate the filerecord items with the number-used and how-used data
 		for mat in pmx.materials:
-			mat: pmxstruct.PmxMaterial
-			texid = mat.tex_idx
-			# filter out -1 which means "no file reference"
-			if texid != -1:
-				thispmx_recordlist[texid].usage.add(FOLDER_TEX)
-				thispmx_recordlist[texid].numused += 1
-			sphid = mat.sph_idx
-			if sphid != -1:
-				thispmx_recordlist[sphid].usage.add(FOLDER_SPH)
-				thispmx_recordlist[sphid].numused += 1
-			if mat.toon_mode == 0:
-				toonid = mat.toon_idx
-				if toonid != -1:
-					thispmx_recordlist[toonid].usage.add(FOLDER_TOON)
-					thispmx_recordlist[toonid].numused += 1
-			pass
-		
-		# finally, add these new records onto the 'everything' list
+			if mat.tex_path != "":
+				try:
+					idx = thispmx_texpaths.index(mat.tex_path)
+					thispmx_recordlist[idx].numused += 1
+					thispmx_recordlist[idx].usage.add(FOLDER_TEX)
+				except ValueError:
+					pass
+			if mat.sph_path != "":
+				try:
+					idx = thispmx_texpaths.index(mat.sph_path)
+					thispmx_recordlist[idx].numused += 1
+					thispmx_recordlist[idx].usage.add(FOLDER_SPH)
+				except ValueError:
+					pass
+			if mat.toon_path != "" and mat.toon_path not in pmxlib.BUILTIN_TOON_DICT:
+				try:
+					idx = thispmx_texpaths.index(mat.toon_path)
+					thispmx_recordlist[idx].numused += 1
+					thispmx_recordlist[idx].usage.add(FOLDER_TOON)
+				except ValueError:
+					pass
+		# append the this-pmx data onto the all-pmx data
 		recordlist.extend(thispmx_recordlist)
-		pass
+	###################################################################
+	###################################################################
+	# 4. add filerecords for all the files I know exist
+	exist_not_used_list = [FileRecord(f, exists=True) for f in exist_files]
+	recordlist.extend(exist_not_used_list)
+	
+	###################################################################
+	###################################################################
+	# 5. unify FileRecord objects across all PMXes
+	# now i have the list of filerecords for all PMXes
+	# next search them for duplicates & unify the "used_pmx" member when i do
+	for L,Lfile in enumerate(recordlist):
+		# apply lower
+		Llower = Lfile.name.lower()
+		# count backward so i can safely pop by index
+		# compare L against everything after it
+		for R in reversed(range(L+1, len(recordlist))):
+			Rfile = recordlist[R]
+			Rlower = Rfile.name.lower()
+			# are they referring to the same file?
+			if Llower == Rlower:
+				# then unify their data (into L) and discard R
+				Lfile.used_pmx.update(Rfile.used_pmx)  # this is a dict, and the keys should be unique, so unison them
+				Lfile.exists |= Rfile.exists  # exists is true if either is true
+				Lfile.usage.update(Rfile.usage)  # this is a set, unison
+				Lfile.numused += Rfile.numused  # numused is a number, sum
+				recordlist.pop(R)
+				
+	###################################################################
+	###################################################################
+	# 6. apply any changes that come from unifying across all PMXes
+	# next i need to update the references in each PMX
+	for record in recordlist:                                     # for every file,
+		for pmxpath, pmx in pmx_dict.items():                     # for every pmx,
+			if pmxpath in record.used_pmx:                        # is that file used in that pmx? if yes,
+				find = record.used_pmx[pmxpath]                   # get how it is actually used in the pmx
+				replace = record.name                             # get the name i want it to have
+				if find != replace:                               # if they do not match,
+					texname_find_and_replace(pmx, find, replace)  # do the find and replace
+					record.used_pmx[pmxpath] = replace            # update the 'how this is used' dict
+					merge_across_pmx += 1                         # count it
+	# done!
+
 	# stats
 	if moreinfo:
-		if num_nullify: core.MY_PRINT_FUNC("Nullified %d tex references that were just blank" % num_nullify)
 		if num_unify_within_pmx: core.MY_PRINT_FUNC("Unified %d tex references within PMXes" % num_unify_within_pmx)
-		
-	# next, append all the files I know exist, will cause many dupes but this is how i get "exist but not used" files in there
-	recordlist.extend([FileRecord(f, True) for f in exist_files])
-	
-	# finally, unify all tex among all pmx that reference the same file: basically the same approach as unifying tex within a pmx file
-	# there is only one actual file on disk, even if each PMX references it. therefore there should only be one entry.
-	dj = 0
-	num_unify_across_pmx = 0
-	while dj < len(recordlist):
-		tjn = os.path.normpath(recordlist[dj].name.lower())
-		dk = dj + 1
-		while dk < len(recordlist):
-			tkn = os.path.normpath(recordlist[dk].name.lower())
-			if tjn != tkn:
-				# if no match, do nothing
-				dk += 1
-			else:
-				# if they match, unify & eventually pop dk
-				recordlist[dj].exists |= recordlist[dk].exists  # exists is true if either is true
-				recordlist[dj].used_pmx.update(recordlist[dk].used_pmx)  # used_pmx is a set, unison
-				recordlist[dj].usage.update(recordlist[dk].usage)  # usage is a set, unison
-				recordlist[dj].numused += recordlist[dk].numused  # numused is a number, sum
-				# lastly, change the PMX entry of the one being deleted to exactly match the one i'm keeping
-				if recordlist[dj].name != recordlist[dk].name:
-					num_unify_across_pmx += 1
-					for pmxpath, idx in recordlist[dj].used_pmx.items():
-						pmx_dict[pmxpath].textures[idx] = recordlist[dj].name
-				recordlist.pop(dk)
-		# always inc dj
-		dj += 1
-	if moreinfo:
-		if num_unify_across_pmx: core.MY_PRINT_FUNC("Unified %d tex references across PMXes" % num_unify_across_pmx)
-	
+		if merge_across_pmx: core.MY_PRINT_FUNC("Unified %d tex references across PMXes" % merge_across_pmx)
 	return recordlist
 
 
@@ -513,7 +549,7 @@ def main(moreinfo=False):
 	# 	for each pmx, for each file on disk, match against files used in textures (case-insensitive) and replace with canonical name-on-disk
 	#	also fill out how much and how each file is used, and unify dupes between files, all that good stuff
 	
-	filerecord_list = categorize_files(all_pmx_obj, relevant_exist_files, moreinfo)
+	filerecord_list = build_filerecord_list(all_pmx_obj, relevant_exist_files, moreinfo)
 	
 	# =========================================================================================================
 	# =========================================================================================================
@@ -800,7 +836,7 @@ def main(moreinfo=False):
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 1/24/2021 - v5.06")
+	print(_SCRIPT_VERSION)
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

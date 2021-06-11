@@ -1,3 +1,5 @@
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 9/13/2020 - 5.01"
+
 """Usage: python matchcolors.py good.jpg bad.jpg save-corrected-as.jpg"""
 
 from imageio import imread, imsave
@@ -73,6 +75,7 @@ def main():
 	imsave(saveas, corrected)
 
 if __name__ == "__main__":
+	print(_SCRIPT_VERSION)
 	main()
 	
 	

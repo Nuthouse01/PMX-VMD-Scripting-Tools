@@ -1,4 +1,4 @@
-# Nuthouse01 - 10/10/2020 - v5.03
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -68,9 +68,9 @@ def main(moreinfo=True):
 	# 3=UV
 	# 8=material
 	core.MY_PRINT_FUNC("Found {} morph #{}: '{}' / '{}'".format(
-		mtype_dict[morphtype], target_index, pmx.morphs[target_index].name_jp, pmx.morphs[target_index].name_en))
+		morphtype, target_index, pmx.morphs[target_index].name_jp, pmx.morphs[target_index].name_en))
 	
-	if morphtype == 1: # vertex
+	if morphtype == pmxstruct.MorphType.VERTEX: # vertex
 		# for each item in this morph:
 		item:pmxstruct.PmxMorphItemVertex  # type annotation for pycharm
 		for d, item in enumerate(pmx.morphs[target_index].items):
@@ -80,7 +80,7 @@ def main(moreinfo=True):
 			pmx.verts[item.vert_idx].pos[2] += item.move[2]
 			# invert the morph
 		morph_scale.morph_scale(pmx.morphs[target_index], -1)
-	elif morphtype == 3: # UV
+	elif morphtype == pmxstruct.MorphType.UV: # UV
 		item:pmxstruct.PmxMorphItemUV  # type annotation for pycharm
 		for d, item in enumerate(pmx.morphs[target_index].items):
 			# (vert_idx, A, B, C, D)
@@ -89,8 +89,9 @@ def main(moreinfo=True):
 			pmx.verts[item.vert_idx].uv[1] += item.move[1]
 			# invert the morph
 		morph_scale.morph_scale(pmx.morphs[target_index], -1)
-	elif morphtype in (4,5,6,7): # UV1 UV2 UV3 UV4
-		whichuv = morphtype - 4
+	elif morphtype in (pmxstruct.MorphType.UV_EXT1, pmxstruct.MorphType.UV_EXT2,
+					   pmxstruct.MorphType.UV_EXT3, pmxstruct.MorphType.UV_EXT4): # UV1 UV2 UV3 UV4
+		whichuv = morphtype.value - pmxstruct.MorphType.UV_EXT1.value
 		item:pmxstruct.PmxMorphItemUV  # type annotation for pycharm
 		for d, item in enumerate(pmx.morphs[target_index].items):
 			# apply the offset
@@ -100,7 +101,7 @@ def main(moreinfo=True):
 			pmx.verts[item.vert_idx].addl_vec4s[whichuv][3] += item.move[3]
 			# invert the morph
 		morph_scale.morph_scale(pmx.morphs[target_index], -1)
-	elif morphtype == 8: # material
+	elif morphtype == pmxstruct.MorphType.MATERIAL: # material
 		core.MY_PRINT_FUNC("WIP")
 		# todo
 		# to invert a material morph means inverting the material's visible/notvisible state as well as flipping the morph
@@ -123,7 +124,7 @@ def main(moreinfo=True):
 
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 10/10/2020 - v5.03")
+	print(_SCRIPT_VERSION)
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

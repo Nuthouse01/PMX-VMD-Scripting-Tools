@@ -1,16 +1,18 @@
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 
 import sys
 try:
 	sys.path.append("../")
 	from python import nuthouse01_core as core
 	from python import nuthouse01_pmx_parser as pmxlib
+	from python import nuthouse01_pmx_struct as pmxstruct
 except ImportError as eee:
 	print(eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 	print("...press ENTER to exit...")
 	input()
 	exit()
-	core = pmxlib = None
+	core = pmxlib = pmxstruct = None
 
 
 # GOAL: sort vertices by UV coordinates
@@ -60,10 +62,14 @@ def main():
 	# now update all morphs
 	print("doing morphs")
 	for m in pmx.morphs:
-		if m.morphtype == 1:  #vertex
+		if m.morphtype == pmxstruct.MorphType.VERTEX:  #vertex
 			for item in m.items:
 				item.vert_idx = old_to_new[item.vert_idx]
-		if 3 <= m.morphtype <= 7: # uv
+		if m.morphtype in (pmxstruct.MorphType.UV,
+						   pmxstruct.MorphType.UV_EXT1,
+						   pmxstruct.MorphType.UV_EXT2,
+						   pmxstruct.MorphType.UV_EXT3,
+						   pmxstruct.MorphType.UV_EXT4, ): # uv
 			for item in m.items:
 				item.vert_idx = old_to_new[item.vert_idx]
 		
@@ -75,5 +81,6 @@ def main():
 	
 
 if __name__ == "__main__":
+	print(_SCRIPT_VERSION)
 	main()
 

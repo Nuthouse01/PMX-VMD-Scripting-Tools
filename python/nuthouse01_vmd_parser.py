@@ -1,4 +1,4 @@
-# Nuthouse01 - 1/24/2021 - v5.06
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 # massive thanks and credit to "Isometric" for helping me discover the quaternion transformation method used in mmd!!!!
@@ -303,9 +303,9 @@ def parse_vmd_lightframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdLigh
 	for i in range(lightframe_ct):
 		try:
 			(f, r, g, b, x, y, z) = core.my_unpack(fmt_lightframe, raw)
-			# the r g b actually come back as floats [0.0-1.0), representing (int)/256, i'll convert them back to ints
+			# the r g b actually come back as floats [0.0 - 1.0]
 			lightframe_list.append(vmdstruct.VmdLightFrame(f=f,
-												 color=[round(j*256) for j in (r,g,b)],
+												 color=[r,g,b],
 												 pos=[x,y,z]))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
@@ -334,7 +334,8 @@ def parse_vmd_shadowframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdSha
 			v = round(10000 - (v * 100000))
 			# stored as 0.0 to 0.1 ??? why would it use this range!? also its range-inverted
 			# [0,9999] -> [0.1, 0.0]
-			shadowframe_list.append(vmdstruct.VmdShadowFrame(f=f, mode=m, val=v))
+			shadowmode = vmdstruct.ShadowMode(m)
+			shadowframe_list.append(vmdstruct.VmdShadowFrame(f=f, mode=shadowmode, val=v))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("frame=", i)
@@ -494,10 +495,8 @@ def encode_vmd_lightframe(nice:List[vmdstruct.VmdLightFrame], moreinfo:bool) -> 
 	output += core.my_pack(fmt_number, len(nice))
 	# then, all the actual frames
 	for i,frame in enumerate(nice):
-		# the RGB come in as ints, but are actually stored as floats... convert them back to floats for packing
-		colors = [j / 256 for j in frame.color]
 		try:
-			output += core.my_pack(fmt_lightframe, [frame.f, *colors, *frame.pos])
+			output += core.my_pack(fmt_lightframe, [frame.f, *frame.color, *frame.pos])
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
@@ -519,7 +518,7 @@ def encode_vmd_shadowframe(nice:List[vmdstruct.VmdShadowFrame], moreinfo:bool) -
 		# convert it back to its natural form for packing
 		val = (10000 - frame.val) / 100000
 		try:
-			output += core.my_pack(fmt_shadowframe, [frame.f, frame.mode, val])
+			output += core.my_pack(fmt_shadowframe, [frame.f, frame.mode.value, val])
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
@@ -659,6 +658,10 @@ def read_vmd(vmd_filename: str, moreinfo=False) -> vmdstruct.Vmd:
 def write_vmd(vmd_filename: str, vmd: vmdstruct.Vmd, moreinfo=False):
 	vmd_filename_clean = core.get_clean_basename(vmd_filename) + ".vmd"
 	# recives object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
+	
+	# first, verify that the data is valid before trying to write
+	vmd.validate()
+	
 	# assumes the calling function already verified correct file extension
 	core.MY_PRINT_FUNC("Begin encoding VMD file '%s'" % vmd_filename_clean)
 	core.set_encoding("shift_jis")
@@ -745,7 +748,7 @@ def main():
 ########################################################################################################################
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 1/24/2021 - v5.06")
+	print(_SCRIPT_VERSION)
 	if DEBUG:
 		main()
 	else:

@@ -1,4 +1,4 @@
-# Nuthouse01 - 10/10/2020 - v5.03
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -65,27 +65,29 @@ def apply_morph_remapping(pmx: pmxstruct.Pmx, morph_dellist, morph_shiftmap):
 		while i < len(frame.items):
 			item = frame.items[i]
 			# if this item is a bone, skip it
-			if not item[0]:
+			if not item.is_morph:
 				i += 1
 			else:
 				# if this is one of the morphs being deleted, delete it here too. otherwise remap.
-				if core.binary_search_isin(item[1], morph_dellist):
+				if core.binary_search_isin(item.idx, morph_dellist):
 					frame.items.pop(i)
 				else:
-					item[1] = newval_from_range_map(item[1], morph_shiftmap)
+					item.idx = newval_from_range_map(item.idx, morph_shiftmap)
 					i += 1
 	
 	# group/flip morphs:
 	for d, morph in enumerate(pmx.morphs):
 		# group/flip = 0/9
-		if morph.morphtype not in (0, 9): continue
+		if morph.morphtype not in (pmxstruct.MorphType.GROUP, pmxstruct.MorphType.FLIP): continue
 		i = 0
 		while i < len(morph.items):
+			it = morph.items[i]
+			it : pmxstruct.PmxMorphItemGroup
 			# if this is one of the morphs being deleted, delete it here too. otherwise remap.
-			if core.binary_search_isin(morph.items[i].morph_idx, morph_dellist):
+			if core.binary_search_isin(it.morph_idx, morph_dellist):
 				morph.items.pop(i)
 			else:
-				morph.items[i].morph_idx = newval_from_range_map(morph.items[i].morph_idx, morph_shiftmap)
+				it.morph_idx = newval_from_range_map(it.morph_idx, morph_shiftmap)
 				i += 1
 	return pmx
 
@@ -113,7 +115,7 @@ def morph_winnow(pmx: pmxstruct.Pmx, moreinfo=False):
 	# for each morph:
 	for d,morph in enumerate(pmx.morphs):
 		# if not a vertex morph, skip it
-		if morph.morphtype != 1: continue
+		if morph.morphtype != pmxstruct.MorphType.VERTEX: continue
 		# for each vert in this vertex morph:
 		i = 0
 		this_vert_dropped = 0  # lines dropped from this morph
@@ -173,7 +175,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
+	print(_SCRIPT_VERSION)
 	if DEBUG:
 		main()
 	else:

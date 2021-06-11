@@ -1,4 +1,4 @@
-# Nuthouse01 - 1/29/2021 - v5.07
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -147,7 +147,7 @@ def main(moreinfo=False):
 	# 	for each pmx, for each file on disk, match against files used in textures (case-insensitive) and replace with canonical name-on-disk
 	#	also fill out how much and how each file is used, and unify dupes between files, all that good stuff
 	
-	filerecord_list = file_sort_textures.categorize_files(all_pmx_obj, relevant_exist_files, moreinfo)
+	filerecord_list = file_sort_textures.build_filerecord_list(all_pmx_obj, relevant_exist_files, moreinfo)
 	
 	# =========================================================================================================
 	# =========================================================================================================
@@ -403,7 +403,7 @@ def main(moreinfo=False):
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 1/29/2021 - v5.07")
+	print(_SCRIPT_VERSION)
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

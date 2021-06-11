@@ -1,4 +1,4 @@
-
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 09/13/2020 - v5.01"
 from PIL import Image
 from progprint import progprint, progclean
 import numpy as np
@@ -123,16 +123,6 @@ def main():
 	print("done!")
 	return None
 if __name__ == "__main__":
+	print(_SCRIPT_VERSION)
 	main()
-
-
-
-
-
-
-
-
-
-
-
 

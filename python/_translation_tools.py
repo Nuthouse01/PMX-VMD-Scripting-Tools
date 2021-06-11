@@ -1,4 +1,4 @@
-# Nuthouse01 - 1/24/2021 - v5.06
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -141,8 +141,8 @@ half_to_full_dict = {
 # this dict is added to both "words" and "morphs"... just in one place so I can keep thing straight
 symbols_dict = {
 "×": "x",  # x0215 multiply symbol
-"↑": "|^|", # x2191, NOTE: backslashes work poorly so /\ doesn't work right
-"↓": "|v|", # x2193, NOTE: backslashes work poorly so \/ doesn't work right
+"↑": "^^^", # x2191, NOTE: backslashes work poorly so /\ doesn't work right
+"↓": "vvv", # x2193, NOTE: backslashes work poorly so \/ doesn't work right
 "→": "->", # x2192
 "←": "<-", # x2190
 "ω": "w", # "omega"
@@ -154,6 +154,7 @@ symbols_dict = {
 "∨": "V",  #x2228 "logical or"
 "▼": "V open",  #0x25bc
 "▽": "V open",  #0x25bd
+"∇": "V open",  #?
 "★": "*",  #x2605
 "☆": "*",  #x2606
 "〜": "~",  # x301C wave dash, not a "fullwidth tilde"
@@ -227,6 +228,7 @@ morph_dict = {
 "ハイライト消し": "highlight off",
 "瞳小": "scared", # "pupil"
 "恐ろしい子!": "white eyes", # literally "scary child!" who the hell thought that was a good name?
+"おそろしい子!": "white eyes", # phonetically the same as ^
 "ぺろっ": "tongue out",  # phonetically "perrow"
 "べー": "beeeeh", # another way of doing "tongue out" but google likes to turn this into 'base'
 "あ": "A",
@@ -522,6 +524,7 @@ words_dict = {
 "睫": "eyelash",  # also somehow "matsuge"
 "よだれ": "drool",
 "まゆ": "brow",
+"まゆ毛": "brow",
 "眉毛": "brow",
 "眉": "brow",
 "発光": "glow",

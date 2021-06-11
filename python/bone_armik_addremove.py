@@ -1,4 +1,4 @@
-# Nuthouse01 - 10/10/2020 - v5.03
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -200,13 +200,14 @@ def main(moreinfo=True):
 			# then add to dispframe
 			# first, does the frame already exist?
 			f = core.my_list_search(pmx.frames, lambda x: x.name_jp == jp_newik, getitem=True)
+			newframeitem = pmxstruct.PmxFrameItem(is_morph=False, idx=shoulder_idx + 4)
 			if f is None:
 				# need to create the new dispframe! easy
-				newframe = pmxstruct.PmxFrame(name_jp=jp_newik, name_en=en_newik, is_special=False, items=[[0, shoulder_idx + 4]])
+				newframe = pmxstruct.PmxFrame(name_jp=jp_newik, name_en=en_newik, is_special=False, items=[newframeitem])
 				pmx.frames.append(newframe)
 			else:
 				# frame already exists, also easy
-				f.items.append([0, shoulder_idx + 4])
+				f.items.append(newframeitem)
 	else:
 		# remove IK branch
 		core.MY_PRINT_FUNC(">>>> Removing arm IK <<<")
@@ -243,7 +244,7 @@ def main(moreinfo=True):
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
+	print(_SCRIPT_VERSION)
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

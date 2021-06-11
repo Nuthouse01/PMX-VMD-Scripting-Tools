@@ -1,3 +1,5 @@
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
+
 """
 DO FEET THE BEST WAY
 !!!
@@ -72,20 +74,19 @@ def main():
 		item:pmxstruct.PmxMorphItemVertex
 		
 		v = pmx.verts[item.vert_idx]
-		wtype = v.weighttype
 		w = v.weight
 		# already know its all mode1
 		
 		rot = 0
 		# only care about BDEF2, right? or sdef
 		# if not a bdef2 vertex, then rot=0 meaning no change
-		if wtype == 1 or wtype == 3:
+		if v.weighttype in (pmxstruct.WeightMode.BDEF2, pmxstruct.WeightMode.SDEF):
 			for b,r in zip(matchbones, rotamt):
 				# get the weight %, multiply it by how much the bone is rotated by
-				if w[0] == b:
-					rot += r * w[2]
-				elif w[1] == b:
-					rot += r * (1-w[2])
+				if w[0][0] == b:
+					rot += r * w[0][1]
+				elif w[1][0] == b:
+					rot += r * w[1][1]
 			# count how many actually get rotated
 			if rot != 0: count += 1
 		# convert from degrees to radians for rotate2d()
@@ -98,7 +99,10 @@ def main():
 	
 	print("partial-rotated %d verts" % count)
 	
-	newmorph = pmxstruct.PmxMorph("v-rot", "v-rot", 1, 1, newmorphitems)
+	newmorph = pmxstruct.PmxMorph("v-rot", "v-rot",
+								  morphtype=pmxstruct.MorphType.VERTEX,
+								  panel=pmxstruct.MorphPanel.OTHER,
+								  items=newmorphitems)
 	pmx.morphs.append(newmorph)
 	# done iter, now write
 	OUT = core.get_unused_file_name("NEW.pmx")
@@ -108,5 +112,6 @@ def main():
 
 
 if __name__ == "__main__":
+	print(_SCRIPT_VERSION)
 	main()
 

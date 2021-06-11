@@ -1,4 +1,4 @@
-# Nuthouse01 - 10/10/2020 - v5.03
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -60,7 +60,8 @@ PRINT_FOUND_UNUSED_BONES = False
 
 # these are common bones that are unused but should not be deleted
 # glasses, dummy_L, dummy_R, view cnt, motherbone, edge adjust
-BONES_TO_PROTECT = ["メガネ", "左ダミー", "右ダミー", "操作中心", "全ての親", "エッジ調整"]
+BONES_TO_PROTECT = ["メガネ", "左ダミー", "右ダミー", "左手ダミー", "右手ダミー",
+					"操作中心", "全ての親", "エッジ調整", "LS_Center", ]
 
 helptext = '''====================
 prune_unused_bones:
@@ -168,27 +169,11 @@ def identify_unused_bones(pmx: pmxstruct.Pmx, moreinfo: bool) -> List[int]:
 	# second: bones used by a vertex i.e. has nonzero weight
 	# any vertex that has nonzero weight for that bone
 	for vert in pmx.verts:
-		weighttype = vert.weighttype
-		weights = vert.weight
-		if weighttype==0:
-			true_used_bones.add(weights[0])
-			core.increment_occurance_dict(vertex_ct,weights[0])
-		elif weighttype==1 or weighttype==3:
-			# b1, b2, b1w
-			# if b1w = 0, then skip b1
-			if weights[2] != 0:
-				true_used_bones.add(weights[0])
-				core.increment_occurance_dict(vertex_ct,weights[0])
-			# if b1w = 1, then skip b2
-			if weights[2] != 1:
-				true_used_bones.add(weights[1])
-				core.increment_occurance_dict(vertex_ct,weights[1])
-		elif weighttype==2 or weighttype==4:
-			for i in range(4):
-				if weights[i+4] != 0:
-					true_used_bones.add(weights[i])
-					core.increment_occurance_dict(vertex_ct, weights[i])
-		
+		for boneidx, weightval in vert.weight:
+			if weightval != 0:
+				true_used_bones.add(boneidx)
+				core.increment_occurance_dict(vertex_ct, boneidx)
+				
 	# NOTE: some vertices/rigidbodies depend on "invalid" (-1) bones, clean that up here
 	true_used_bones.discard(-1)
 	
@@ -299,45 +284,25 @@ def apply_bone_remapping(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shift
 	# just remap the bones that have weight
 	# any references to bones being deleted will definitely have 0 weight, and therefore it doesn't matter what they reference afterwards
 	for d, vert in enumerate(pmx.verts):
-		weighttype = vert.weighttype
-		weights = vert.weight
-		if weighttype == 0:
-			# just remap, this cannot have 0 weight
-			weights[0] = newval_from_range_map(weights[0], bone_shiftmap)
-		elif weighttype == 1 or weighttype == 3:
-			# b1, b2, b1w
-			# if b1w == 0, zero out b1
-			if weights[2] == 0:
-				weights[0] = 0
-			else:
-				weights[0] = newval_from_range_map(weights[0], bone_shiftmap)
-			# if b1w == 1, then b2w == 0 so zero out b2
-			if weights[2] == 1:
-				weights[1] = 0
-			else:
-				weights[1] = newval_from_range_map(weights[1], bone_shiftmap)
-		elif weighttype == 2 or weighttype == 4:
-			for i in range(4):
-				# if weight == 0, then change its bone to 0. otherwise, remap
-				if weights[i + 4] == 0:
-					weights[i] = 0
-				else:
-					weights[i] = newval_from_range_map(weights[i], bone_shiftmap)
+		for pair in vert.weight:
+			pair[0] = newval_from_range_map(int(pair[0]), bone_shiftmap)
 	# done with verts
 	
 	core.print_progress_oneline(1 / 5)
 	# MORPHS:
 	for d, morph in enumerate(pmx.morphs):
 		# only operate on bone morphs
-		if morph.morphtype != 2: continue
+		if morph.morphtype != pmxstruct.MorphType.BONE: continue
 		# first, it is plausible that bone morphs could reference otherwise unused bones, so I should check for and delete those
 		i = 0
 		while i < len(morph.items):
+			it = morph.items[i]
+			it: pmxstruct.PmxMorphItemBone
 			# if the bone being manipulated is in the list of bones being deleted, delete it here too. otherwise remap.
-			if core.binary_search_isin(morph.items[i].bone_idx, bone_dellist):
+			if core.binary_search_isin(it.bone_idx, bone_dellist):
 				morph.items.pop(i)
 			else:
-				morph.items[i].bone_idx = newval_from_range_map(morph.items[i].bone_idx, bone_shiftmap)
+				it.bone_idx = newval_from_range_map(it.bone_idx, bone_shiftmap)
 				i += 1
 	# done with morphs
 	
@@ -348,14 +313,14 @@ def apply_bone_remapping(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shift
 		while i < len(frame.items):
 			item = frame.items[i]
 			# if this item is a morph, skip it
-			if item[0]:
+			if item.is_morph:
 				i += 1
 			else:
 				# if this is one of the bones being deleted, delete it here too. otherwise remap.
-				if core.binary_search_isin(item[1], bone_dellist):
+				if core.binary_search_isin(item.idx, bone_dellist):
 					frame.items.pop(i)
 				else:
-					item[1] = newval_from_range_map(item[1], bone_shiftmap)
+					item.idx = newval_from_range_map(item.idx, bone_shiftmap)
 					i += 1
 	# done with frames
 	
@@ -445,7 +410,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
+	print(_SCRIPT_VERSION)
 	if DEBUG:
 		main()
 	else:

@@ -1,4 +1,4 @@
-# Nuthouse01 - 6/3/2021 - v5.08
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -80,7 +80,7 @@ def alphamorph_correct(pmx: pmxstruct.Pmx, moreinfo=False):
 	# for each morph:
 	for d,morph in enumerate(pmx.morphs):
 		# if not a material morph, skip it
-		if morph.morphtype != 8: continue
+		if morph.morphtype != pmxstruct.MorphType.MATERIAL: continue
 		this_num_fixed = 0
 		# for each material in this material morph:
 		for dd,matitem in enumerate(morph.items):
@@ -119,12 +119,15 @@ def alphamorph_correct(pmx: pmxstruct.Pmx, moreinfo=False):
 	mats_fixed = 0
 	for d,mat in enumerate(pmx.materials):
 		# if opacity is zero AND edge is enabled AND edge has nonzero opacity AND edge has nonzero size
-		if mat.alpha == 0 and mat.flaglist[4] and mat.edgealpha != 0 and mat.edgesize != 0:
+		if mat.alpha == 0 \
+				and pmxstruct.MaterialFlags.USE_EDGING in mat.matflags \
+				and mat.edgealpha != 0 \
+				and mat.edgesize != 0:
 			this_num_edgefixed = 0
 			# THEN check for any material morphs that add opacity to this material
 			for d2,morph in enumerate(pmx.morphs):
 				# if not a material morph, skip it
-				if morph.morphtype != 8: continue
+				if morph.morphtype != pmxstruct.MorphType.MATERIAL: continue
 				# for each material in this material morph:
 				for matitem in morph.items:
 					# if not operating on the right material, skip it
@@ -172,7 +175,7 @@ def main():
 	core.pause_and_quit("Done with everything! Goodbye!")
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
+	print(_SCRIPT_VERSION)
 	if DEBUG:
 		main()
 	else:

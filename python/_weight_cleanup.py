@@ -1,4 +1,4 @@
-# Nuthouse01 - 6/3/2021 - v5.08
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -44,6 +44,11 @@ iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_weightfi
 # epsilon: a number very close to zero. weights below this value become zero.
 EPSILON = 0.00001  # = 1e-5 = 0.001%
 
+WEIGHTTYPE_TO_LEN = {pmxstruct.WeightMode.BDEF1:1,
+					 pmxstruct.WeightMode.BDEF2:2,
+					 pmxstruct.WeightMode.BDEF4:4,
+					 pmxstruct.WeightMode.SDEF: 2,
+					 pmxstruct.WeightMode.QDEF: 4}
 
 def showhelp():
 	# print info to explain the purpose of this file
@@ -62,7 +67,9 @@ def showprompt():
 def normalize_weights(pmx: pmxstruct.Pmx) -> int:
 	"""
 	Normalize weights for verts in the PMX object. Also "clean" the weights by removing bones with 0 weight, reducing
-	weight type to lowest possible, and sorting them by greatest weight. Return the # of vertices that were modified.
+	weight type to lowest possible, and sorting them by greatest weight.
+	Finally, it removes weight for any bones that have <0.001% weight, because it's imperceptible anyways.
+	Return the # of vertices that were modified.
 	
 	:param pmx: PMX object
 	:return: int, # of vertices that were modified
@@ -70,123 +77,144 @@ def normalize_weights(pmx: pmxstruct.Pmx) -> int:
 	# number of vertices fixed
 	weight_fix = 0
 	
+	num_winnow = 0
+	num_useless = 0
+	num_invalid = 0
+	num_merge = 0
+	num_normalize = 0
+	num_sort = 0
+	num_reduce = 0
+	
 	# for each vertex:
 	for d, vert in enumerate(pmx.verts):
 		# clean/normalize the weights
-		weighttype = vert.weighttype
-		w = vert.weight
-		# type0=BDEF1, one bone has 100% weight
-		# do nothing
-		# type1=BDEF2, 2 bones 1 weight (other is implicit)
-		# merge, see if it can reduce to BDEF1
-		# type2=BDEF4, 4 bones 4 weights
-		# normalize, merge, see if it can reduce to BDEF1/2
-		# type3=SDEF, 2 bones 1 weight and 12 values i don't understand.
-		# nothing
-		# type4=QDEF, 4 bones 4 weights
-		# normalize, merge
+		is_modified = False
 		
-		if weighttype == 0:  # BDEF1
-			# nothing to be fixed here
-			continue
-		elif weighttype == 1:  # BDEF2
-			# no need to normalize because the 2nd weight is implicit, not explicit
-			# only merge dupes, look for reason to reduce to BDEF1: bones are same, weight is 0/1
-			if w[0] == w[1] or w[2] >= 1-EPSILON:  # same bones handled the same way as firstbone with weight 1
-				weight_fix += 1
-				vert.weighttype = 0  # set to BDEF1
-				vert.weight = [w[0]]
-			elif w[2] <= EPSILON:  # firstbone has weight 0
-				weight_fix += 1
-				vert.weighttype = 0  # set to BDEF1
-				vert.weight = [w[1]]
-			continue
-		elif weighttype == 2 or weighttype == 4:  # BDEF4/QDEF
-			# qdef: check for dupes and also normalize
-			bones = w[0:4]
-			weights = w[4:8]
-			is_modified = False
-			
-			# weights that are very close to zero should become zero
-			for i in range(4):
-				if 0 < weights[i] <= EPSILON:
+		invalid = False
+		winnow = False
+		useless = False
+		merge = False
+		normalize = False
+		sort = False
+		reduce = False
+		
+		# vert.weight is a list of "boneidx,weight" pairs
+		# FIRST, winnow: every weight below EPSILON is discarded
+		# SECOND, remove useless: everything with 0 weight is discarded
+		# THIRD, remove invalid: everything on bone -1 is discarded
+		# also toss all the [0,0] entries
+		# this applies to all weighttypes
+		# count backward so i can safely pop by index
+		for i in reversed(range(len(vert.weight))):
+			boneidx, val = vert.weight[i]
+			# 1) if it has weight 0 on bone 0, then pop it but don't count it as a modification of any kind
+			if boneidx == 0 and val == 0:
+				vert.weight.pop(i)
+			# 2) if the weight is attributed to an invalid bone index, then pop it
+			elif not (0 <= boneidx < len(pmx.bones)):
+				vert.weight.pop(i)
+				is_modified = True
+				invalid = True
+			# 3) if the weight is extremely small but not zero (because i wanna count zeros separately) then pop it
+			elif 0 < val < EPSILON:
+				vert.weight.pop(i)
+				is_modified = True
+				winnow = True
+			# 4) if it has weight 0 on a REAL bone, then pop it & count it as useless
+			elif boneidx != 0 and val == 0:
+				vert.weight.pop(i)
+				is_modified = True
+				useless = True
+		
+		# THIRD, merge duplicate entries!
+		# count backward so i can safely pop by index
+		for i in reversed(range(len(vert.weight))):  # COUNTING BACKWARDS 3 2 1
+			# compare item i with each item BEFORE it
+			# if there is a match, accumulate into the earlier index and delete i
+			# don't worry about ignoring the [0,0] they are already gone
+			for k in range(i):  # COUNTING FORWARDS 0 1 2
+				# if both i and k attribute their weight to the same bone,
+				if vert.weight[i][0] == vert.weight[k][0]:
+					# then this is a duplicate bone! first used at idx k
 					is_modified = True
-					weights[i] = 0
+					merge = True
+					vert.weight[k][1] += vert.weight[i][1]  # add i into k
+					vert.weight.pop(i)  # delete this second use of the bone
+					break  # stop looking for any other match
+		# worst case example, all 4 are the same bone: 0 1 2 3
+		# i=3, k=0, match, add 3 into 0 then delete 3
+		# i=2, k=0, match, add 2 into 0 then delete 2
+		# i=1, k=0, match, add 1 into 0 then delete 1
+
+		# FOURTH, normalize if needed
+		# this is only really needed for BDEF4 but can be applied to all types so i'm gonna
+		# actually, it would be needed for BDEF2 if the epsilon trimming above cuts something out
+		weightidx = [foo for foo, _ in vert.weight]
+		weightvals = [bar for _, bar in vert.weight]
+		if round(sum(weightvals), 6) != 1.0:
+			try:
+				# normalize to a sum of 1
+				weightvals = core.normalize_sum(weightvals)
+				# re-write it back into the pattern
+				vert.weight = [list(a) for a in zip(weightidx, weightvals)]
+			except ZeroDivisionError:
+				core.MY_PRINT_FUNC("Warning: vert %d has BDEF4 weights that sum to 0, repairing" % d)
+				# force the leading bone to have full weight i guess? better than zero-sum
+				vert.weight[0][1] = 1
+			is_modified = True
+			normalize = True
 			
-			# unify dupes
-			usedbones = []
-			for i in range(4):
-				# bone=0 and weight=0 means just a placeholder, ignore it
-				if not (bones[i] == 0 and weights[i] == 0.0) and (bones[i] in usedbones):
-					is_modified = True  # then this is a duplicate bone!
-					where = usedbones.index(bones[i])  # find index where it was first used
-					weights[where] += weights[i]  # combine this bone's weight with the first place it was used
-					bones[i] = 0  # set this bone to null
-					weights[i] = 0.0  # set this weight to 0
-				# add to list of usedbones regardless of whether first or dupe
-				usedbones.append(bones[i])
-				
-			# sort by greatest weight
-			before = tuple(bones)
-			together = list(zip(bones, weights))  # zip
-			together.sort(reverse=True, key=lambda x: x[1])  # sort
-			a, b = zip(*together)  # unzip
-			if hash(before) != hash(a):  # did the order change?
+		# FIFTH, sort! descending by strength
+		# if SDEF, do not sort! the order is significant, somehow
+		if vert.weighttype != pmxstruct.WeightMode.SDEF:
+			# save the order of items for comparison
+			# weightidx = [foo for foo,_ in vert.weight]
+			vert.weight.sort(reverse=True, key=lambda x: x[1])
+			# get the new order of items, if it is different then flag it as so
+			weightidx_new = [foo for foo,_ in vert.weight]
+			if weightidx_new != weightidx:
 				is_modified = True
-				bones = list(a)
-				weights = list(b)
-				
-			# normalize if needed
-			s = sum(weights)
-			if round(s, 6) != 1.0:
-				try:
-					weights = core.normalize_sum(weights)
-				except ZeroDivisionError:
-					core.MY_PRINT_FUNC("Error: vert %d has BDEF4 weights that sum to 0, cannot normalize" % d)
-					continue
-				# it needs it, do it
-				weights = [t / s for t in weights]
+				sort = True
+		
+		# SIXTH, pick new weighttype based on how many pairs are left!
+		# all the [0,0] placeholder should be gone so just use the raw length
+		if vert.weighttype == pmxstruct.WeightMode.QDEF:  # QDEF
+			# if vert is QDEF type, it stays qdef type. no matter what. I don't understand it so i'm not taking chances.
+			pass
+		elif len(vert.weight) == 1:
+			# BDEF1/BDEF2/BDEF4/SDEF modes go to BDEF1 if there is only 1 thing left
+			if vert.weighttype != pmxstruct.WeightMode.BDEF1:
+				vert.weighttype = pmxstruct.WeightMode.BDEF1
 				is_modified = True
-				
-				try:
-					# where is the first 0 in the weight list? i know it is sorted descending
-					i = weights.index(0)
-					if i == 1:  # first zero at 1, therefore has 1 entry, therefore force to be BDEF1!
-						weight_fix += 1
-						vert.weighttype = 0  # set to BDEF1
-						vert.weight = [bones[0]]
-						continue
-					if weighttype == 2:  # BDEF4 ONLY: check if it can be reduced to BDEF2
-						if i == 2:  # first zero at 2, therefore has 2 nonzero entries, therefore force to be BDEF2!
-							weight_fix += 1
-							vert.weighttype = 1  # set to BDEF2
-							vert.weight = [bones[0], bones[1], weights[0]]
-							continue
-						# if i == 3, fall thru
-				except ValueError:
-					pass  # if '0' not found in list, it is using all 4, fall thru
-			
-			# is QDEF, or was BDEF and determined to still be BDEF4
-			# type stays the same, but have i changed the values? if so store and increment
-			if is_modified:
-				w[0:4] = bones
-				w[4:8] = weights
-				weight_fix += 1
-		elif weighttype == 3:  # SDEF
-			# the order of the bones makes a very very slight difference, so dont try to reorder them
-			# do try to compress to BDEF1 if the bones are the same or if one has 100 or 0 weight
-			if w[0] == w[1] or w[2] == 1:  # same bones handled the same way as firstbone with weight 1
-				weight_fix += 1
-				vert.weighttype = 0  # set to BDEF1
-				vert.weight = [w[0]]
-			elif w[2] == 0:  # firstbone has weight 0
-				weight_fix += 1
-				vert.weighttype = 0  # set to BDEF1
-				vert.weight = [w[1]]
-			continue
-		else:
-			core.MY_PRINT_FUNC("ERROR: invalid weight type for vertex %d" % d)
+				reduce = True
+		elif len(vert.weight) == 2:
+			# BDEF2/SDEF stay the same
+			# BDEF4 changes to bdef2
+			# QDEF doesn't hit here
+			if vert.weighttype == pmxstruct.WeightMode.BDEF4:  # BDEF4
+				vert.weighttype = pmxstruct.WeightMode.BDEF2
+				is_modified = True
+				reduce = True
+		
+		# SEVENTH, pad with 0,0 till appropriate size
+		# doesn't count as a change, its just a housekeeping thing
+		while len(vert.weight) < WEIGHTTYPE_TO_LEN[vert.weighttype]:
+			vert.weight.append([0,0])
+		
+		weight_fix += is_modified
+		
+		num_winnow += winnow
+		num_useless += useless
+		num_invalid += invalid
+		num_merge += merge
+		num_normalize += normalize
+		num_sort += sort
+		num_reduce += reduce
+		
 		pass  # close the for-each-vert loop
+	# debug printing, not visible in GUI
+	print("invalid %d, winnow %d, useless %d, merge %d, normalize %d, sort %d, reduce %d" %
+		  (num_invalid, num_winnow, num_useless, num_merge, num_normalize, num_sort, num_reduce))
 	# how many did I change? printing is handled outside
 	return weight_fix
 
@@ -228,9 +256,9 @@ def repair_invalid_normals(pmx: pmxstruct.Pmx, normbad: List[int]) -> int:
 	"""
 	normbad_err = 0
 	# create a list in parallel with the faces list for holding the perpendicular normal to each face
-	facenorm_list = [list() for i in pmx.faces]
+	facenorm_list = [list() for _ in pmx.faces]
 	# create a list in paralle with normbad for holding the set of faces connected to each bad-norm vert
-	normbad_linked_faces = [list() for i in normbad]
+	normbad_linked_faces = [list() for _ in normbad]
 	
 	# goal: build the sets of faces that are associated with each bad vertex
 	
@@ -352,7 +380,7 @@ def main():
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
+	print(_SCRIPT_VERSION)
 	if DEBUG:
 		main()
 	else:

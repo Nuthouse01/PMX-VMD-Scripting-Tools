@@ -1,4 +1,4 @@
-# Nuthouse01 - 6/3/2021 - v5.08
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -69,7 +69,7 @@ def find_boneless_bonebodies(pmx: pmxstruct.Pmx) -> list:
 	retme = []
 	for d,body in enumerate(pmx.rigidbodies):
 		# if this is a bone body
-		if body.phys_mode == 0:
+		if body.phys_mode == pmxstruct.RigidBodyPhysMode.BONE:
 			# if there is no bone associated with it
 			if body.bone_idx == -1:
 				retme.append(d)
@@ -107,7 +107,7 @@ def find_shiftjis_unsupported_names(pmx: pmxstruct.Pmx, filepath: str) -> int:
 	print(filepath)
 	# first, full absolute file path:
 	try:
-		bb = core.encode_string_with_escape(filepath)
+		_ = core.encode_string_with_escape(filepath)
 	except UnicodeEncodeError as e:
 		core.MY_PRINT_FUNC("Filepath")
 		# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
@@ -117,7 +117,7 @@ def find_shiftjis_unsupported_names(pmx: pmxstruct.Pmx, filepath: str) -> int:
 		failct += 1
 	# second, JP model name:
 	try:
-		bb = core.encode_string_with_escape(pmx.header.name_jp)
+		_ = core.encode_string_with_escape(pmx.header.name_jp)
 	except UnicodeEncodeError as e:
 		core.MY_PRINT_FUNC("Model Name")
 		# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
@@ -129,7 +129,7 @@ def find_shiftjis_unsupported_names(pmx: pmxstruct.Pmx, filepath: str) -> int:
 	# third, bones
 	for d,b in enumerate(pmx.bones):
 		try:
-			bb = core.encode_string_with_escape(b.name_jp)
+			_ = core.encode_string_with_escape(b.name_jp)
 		except UnicodeEncodeError as e:
 			core.MY_PRINT_FUNC("Bone %d" % d)
 			# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
@@ -140,7 +140,7 @@ def find_shiftjis_unsupported_names(pmx: pmxstruct.Pmx, filepath: str) -> int:
 	# fourth, morphs
 	for d,m in enumerate(pmx.morphs):
 		try:
-			mb = core.encode_string_with_escape(m.name_jp)
+			_ = core.encode_string_with_escape(m.name_jp)
 		except UnicodeEncodeError as e:
 			core.MY_PRINT_FUNC("Morph %d" % d)
 			# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
@@ -154,8 +154,11 @@ def find_shadowy_materials(pmx: pmxstruct.Pmx) -> list:
 	# identify materials that start transparent but still have edging
 	retme = []
 	for d,mat in enumerate(pmx.materials):
-		# opacity is zero AND edge is enabled AND edge has nonzero opacity AND edge has nonzero size 
-		if mat.alpha == 0 and mat.flaglist[4] and mat.edgealpha != 0 and mat.edgesize != 0:
+		# if opacity is zero AND edge is enabled AND edge has nonzero opacity AND edge has nonzero size
+		if mat.alpha == 0 \
+				and pmxstruct.MaterialFlags.USE_EDGING in mat.matflags \
+				and mat.edgealpha != 0 \
+				and mat.edgesize != 0:
 			retme.append(d)
 	return retme
 
@@ -183,7 +186,7 @@ def find_jointless_physbodies(pmx: pmxstruct.Pmx)-> list:
 			if joint.rb2_idx != target: recursively_walk_along_joints(joint.rb2_idx, known_anchors)
 		return
 	
-	bonebodies = [d for d,body in enumerate(pmx.rigidbodies) if body.phys_mode == 0]
+	bonebodies = [d for d,body in enumerate(pmx.rigidbodies) if body.phys_mode == pmxstruct.RigidBodyPhysMode.BONE]
 	anchored_bodies = set()
 	for bod in bonebodies:
 		recursively_walk_along_joints(bod, anchored_bodies)
@@ -362,7 +365,7 @@ def main(moreinfo=False):
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
+	print(_SCRIPT_VERSION)
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

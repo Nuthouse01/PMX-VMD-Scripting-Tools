@@ -1,4 +1,4 @@
-
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 
 import sys
 try:
@@ -50,7 +50,7 @@ def main():
 		
 		# verify vertex morph
 		source_morph = source_pmx.morphs[source_morph_idx]
-		if source_morph.morphtype != 1:
+		if source_morph.morphtype != pmxstruct.MorphType.VERTEX:
 			print("err: for now, only support vertex morphs")
 			continue
 		
@@ -118,7 +118,7 @@ def main():
 	return None
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 10/10/2020 - v5.03")
+	print(_SCRIPT_VERSION)
 	if DEBUG:
 		main()
 	else:

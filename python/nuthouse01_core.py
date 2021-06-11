@@ -1,4 +1,5 @@
-# Nuthouse01 - 6/3/2021 - v5.08
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
+PACKAGE_VERSION = "Package version: Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -11,6 +12,7 @@ import re
 import struct
 from os import path, listdir, getenv, makedirs
 from sys import platform, version_info, version
+from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
 
 
 
@@ -18,7 +20,6 @@ from sys import platform, version_info, version
 # i don't know if it will actually work in 3.4 but i know it will fail in any python2 version
 # actually written/tested with 3.6.6 so guaranteed to work on that or higher
 # between 3.4 and 3.6, who knows
-from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
 
 if version_info < (3, 6):
 	print("Your version of Python is too old to run this script, please update!")
@@ -27,6 +28,7 @@ if version_info < (3, 6):
 	input()
 	exit()
 
+print(PACKAGE_VERSION)
 
 ########################################################################################################################
 # constants used in many files that I don't wanna keep copying over and over
@@ -212,6 +214,38 @@ def recursively_compare(A,B):
 		return float("inf")
 	return 0
 
+def new_recursive_compare(L, R):
+	diffcount = 0
+	maxdiff = 0
+	if isinstance(L, (list,tuple)) and isinstance(R, (list,tuple)):
+		# if both are listlike, recurse on each element of 'em
+		if len(L) != len(R):
+			diffcount += 1
+		# walk down both for as long as it will go, i guess?
+		for d,(LL, RR) in enumerate(zip(L, R)):
+			thisdiff, thismax = new_recursive_compare(LL, RR)
+			diffcount += thisdiff
+			maxdiff = max(maxdiff, thismax)
+	elif hasattr(L,"validate") and hasattr(R,"validate"):
+		# for my custom classes, look over the members with "vars" because its fancy
+		Lvars = sorted(list(vars(L).items()))
+		Rvars = sorted(list(vars(R).items()))
+		for (nameL, LL), (nameR, RR) in zip(Lvars, Rvars):
+			thisdiff, thismax = new_recursive_compare(LL, RR)
+			diffcount += thisdiff
+			maxdiff = max(maxdiff, thismax)
+	elif isinstance(L, float) and isinstance(R, float):
+		# for floats specifically, replace exact compare with approximate compare
+		diff = abs(L - R)
+		maxdiff = diff
+		if L != R:
+			diffcount += 1
+	else:
+		# if not float and not list, then use standard compare
+		if L != R:
+			diffcount += 1
+	return diffcount, maxdiff
+
 def flatten(x: Sequence) -> list:
 	"""
 	Recursively flatten a list of lists (or tuples). Empty lists get replaced with "None" instead of completely vanishing.
@@ -344,8 +378,14 @@ def prompt_user_filename(extensions_in: str) -> str:
 		if not valid_ext:
 			MY_PRINT_FUNC("Err: given file must have %s extension" % extensions)
 		elif not path.isfile(name):
-			MY_PRINT_FUNC(path.abspath(name))
 			MY_PRINT_FUNC("Err: given file does not exist, did you type it wrong?")
+			abspath = path.abspath(name)
+			# find the point where the filepath breaks!
+			shorterpath = abspath
+			while not path.exists(shorterpath): shorterpath = path.split(shorterpath)[0]
+			whereitbreaks = (" " * len(shorterpath)) + " ^^^^"
+			MY_PRINT_FUNC(abspath)
+			MY_PRINT_FUNC(whereitbreaks)
 		else:
 			break
 	# it exists, so make it absolute
@@ -1265,7 +1305,18 @@ def _unpack_other(fmt:str, raw:bytearray) -> list:
 		newerr = RuntimeError(newerrstr)
 		raise newerr
 	# convert from tuple to list
-	return list(r)
+	retme = list(r)
+	# new: check for NaN and replace with 0
+	for i in range(len(retme)):
+		foo = retme[i]
+		if isinstance(foo, float):
+			if math.isnan(foo):
+				retme[i] = 0.0
+				MY_PRINT_FUNC("Warning: found NaN in place of float shortly before bytepos %d, replaced with 0.0" % UNPACKER_READFROM_BYTE)
+			if math.isinf(foo):
+				retme[i] = 0.0
+				MY_PRINT_FUNC("Warning: found INF in place of float shortly before bytepos %d, replaced with 0.0" % UNPACKER_READFROM_BYTE)
+	return retme
 
 def _unpack_text(fmt:str, raw:bytearray) -> str:
 	"""
@@ -1420,5 +1471,5 @@ def _pack_text(fmt: str, args: str) -> bytearray:
 		raise newerr
 
 if __name__ == '__main__':
-	MY_PRINT_FUNC("Nuthouse01 - 1/24/2021 - v5.06")
+	print(_SCRIPT_VERSION)
 	pause_and_quit("you are not supposed to directly run this file haha")

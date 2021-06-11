@@ -1,4 +1,4 @@
-# Nuthouse01 - 10/10/2020 - v5.03
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -114,21 +114,10 @@ ENDPOINT_AVERAGE_FACTOR = 0.7
 
 weight_type_to_len = {0:1, 1:2, 2:4, 3:2, 4:4}
 
-def dict_from_weights(weighttype, w):
+def dict_from_weights(w):
 	wd = defaultdict(float)
-	if weighttype == 0:
-		# BDEF1
-		wd[w[0]] += 1.0
-	elif weighttype in (1, 3):
-		# BDEF2, SDEF
-		# (b1, b2, b1w)
-		wd[w[0]] += w[2]
-		wd[w[1]] += 1.0 - w[2]
-	elif weighttype in (2, 4):
-		# BDEF4, QDEF
-		# (b1, b2, b3, b4, b1w, b2w, b3w, b4w)
-		for i in range(4):
-			wd[w[i]] += w[i + 4]
+	for pair in w:
+		wd[pair[0]] += pair[1]
 	return wd
 
 	
@@ -182,10 +171,8 @@ def calculate_percentiles(pmx: pmxstruct.Pmx, bone_arm: int, bone_elbow: int, bo
 	
 	# 3. collect all vertices controlled by bone_hasweight
 	for d, vert in enumerate(pmx.verts):
-		weighttype = vert.weighttype
-		w = vert.weight
-		weightlen = weight_type_to_len[weighttype]
-		if bone_hasweight in w[0:weightlen]:
+		weightidx = [foo for foo,_ in vert.weight]
+		if bone_hasweight in weightidx:
 			# if this vert is controlled by bone_hasweight, then it is relevant! save it!
 			# most of the verts aren't going to have 0 weight for a bone, dont worry about checking that
 			retme_verts.append(d)
@@ -239,18 +226,15 @@ def divvy_weights(pmx: pmxstruct.Pmx, vert_zip, axis_limits, bone_hasweight, bon
 		
 		vert = pmx.verts[vidx]
 		vert: pmxstruct.PmxVertex
-		weighttype = vert.weighttype
-		w = vert.weight
 		
 		# 2. % <= 0.0 means above shoulder, just replace arm with armYZ, don't change anything else
 		if percentile <= 0.0:
-			weightlen = weight_type_to_len[weighttype]
-			for i in range(weightlen):
-				if w[i] == bone_hasweight:
-					w[i] = bone_getsweight
+			for pair in vert.weight:
+				if pair[0] == bone_hasweight:
+					pair[0] = bone_getsweight
 			continue
 			
-		wdict = dict_from_weights(weighttype, w)
+		wdict = dict_from_weights(vert.weight)
 		# this is a rare case but it should still be handled
 		if wdict[bone_hasweight] == 0: continue
 		
@@ -265,8 +249,9 @@ def divvy_weights(pmx: pmxstruct.Pmx, vert_zip, axis_limits, bone_hasweight, bon
 		if len(wdict) == 1:
 			# 4. if this has 100% weight on HAS, then handle it the normal way: divide weights between HAS and GETS and save as SDEF
 			# blend ratio: replace HAS with (HAS = HAS*blend) + (GETS = HAS*(1-blend))
-			vert.weighttype = 3  # type = SDEF = (b1, b2, b1w, c1, c2, c3, r01, r02, r03, r11, r12, r13)
-			wnew = [bone_hasweight, bone_getsweight, bez_percentile]  # set the component bones and the blend ratio, dont worry about order
+			vert.weighttype = pmxstruct.WeightMode.SDEF  # type = SDEF = (b1, b2, b1w, c1, c2, c3, r01, r02, r03, r11, r12, r13)
+			# set the component bones and the blend ratio, dont worry about order
+			wnew = [[bone_hasweight, bez_percentile], [bone_getsweight, 1-bez_percentile]]
 			vert.weight = wnew
 			# c = center
 			# r0 = axis start = armbone
@@ -281,9 +266,9 @@ def divvy_weights(pmx: pmxstruct.Pmx, vert_zip, axis_limits, bone_hasweight, bon
 			
 			if BLEED_HANDLING_MODE == 1:
 				# A. overwrite/ignore: pretend it was not a bleeder, set to blended SDEF anyway
-				vert.weighttype = 3  # type = SDEF = (b1, b2, b1w, c1, c2, c3, r01, r02, r03, r11, r12, r13)
-				wnew = [bone_hasweight, bone_getsweight,
-						bez_percentile]  # set the component bones and the blend ratio, dont worry about order
+				vert.weighttype = pmxstruct.WeightMode.SDEF  # type = SDEF = (b1, b2, b1w, c1, c2, c3, r01, r02, r03, r11, r12, r13)
+				# set the component bones and the blend ratio, dont worry about order
+				wnew = [[bone_hasweight, bez_percentile], [bone_getsweight, 1 - bez_percentile]]
 				vert.weight = wnew
 				# c = center
 				# r0 = axis start = armbone
@@ -317,19 +302,16 @@ def divvy_weights(pmx: pmxstruct.Pmx, vert_zip, axis_limits, bone_hasweight, bon
 						
 			# 7. now rebuild the weight vector & write it into the vertex
 			blend_vector = sorted(list(wdict.items()), key=lambda x: x[1], reverse=True)
-			if weighttype == 3:  # SDEF
+			if vert.weighttype == pmxstruct.WeightMode.SDEF:  # SDEF
 				print("forcing BDEF but input is SDEF, i'll just ignore it!")
 				pass
 			else:  # QDEF
 				# qdef -> qdef
-				v = [0] * 8
-				for i in range(len(blend_vector)):
-					v[i] = blend_vector[i][0]
-					v[i + 4] = blend_vector[i][1]
-				vert.weight = v
-				if weighttype != 4:
+				# blend_vector is a list of key-value pairs, key=idx value=weight, so its already good!
+				vert.weight = [list(a) for a in blend_vector]
+				if vert.weighttype != pmxstruct.WeightMode.QDEF:
 					# BDEF1 BDEF2 BDEF4 -> BDEF4, but QDEF stays QDEF
-					vert.weighttype = 2
+					vert.weighttype = pmxstruct.WeightMode.BDEF4
 			pass  # end bleeder section
 		pass  # end for-loop
 	
@@ -443,7 +425,7 @@ def main(moreinfo=True):
 				parent_idx=pmx.bones[start_idx].parent_idx,
 				deform_layer=pmx.bones[start_idx].deform_layer,
 				deform_after_phys=pmx.bones[start_idx].deform_after_phys,
-				has_localaxis=True,
+				has_localaxis=pmx.bones[start_idx].has_localaxis,
 				localaxis_x=pmx.bones[start_idx].localaxis_x, localaxis_z=pmx.bones[start_idx].localaxis_z,
 				tail_usebonelink=True, tail=armYZ_new_idx+1,
 				has_rotate=True, has_translate=True, has_visible=False, has_enabled=True,
@@ -467,7 +449,7 @@ def main(moreinfo=True):
 				parent_idx=armYZ_new_idx,
 				deform_layer=pmx.bones[end_idx].deform_layer,
 				deform_after_phys=pmx.bones[end_idx].deform_after_phys,
-				has_localaxis=True,
+				has_localaxis=pmx.bones[end_idx].has_localaxis,
 				localaxis_x=pmx.bones[end_idx].localaxis_x, localaxis_z=pmx.bones[end_idx].localaxis_z,
 				tail_usebonelink=True, tail=-1,
 				has_rotate=True, has_translate=True, has_visible=False, has_enabled=True,
@@ -494,7 +476,7 @@ def main(moreinfo=True):
 				parent_idx=pmx.bones[end_idx].parent_idx,
 				deform_layer=pmx.bones[end_idx].deform_layer,
 				deform_after_phys=pmx.bones[end_idx].deform_after_phys,
-				has_localaxis=True,
+				has_localaxis=pmx.bones[end_idx].has_localaxis,
 				localaxis_x=pmx.bones[end_idx].localaxis_x, localaxis_z=pmx.bones[end_idx].localaxis_z,
 				tail_usebonelink=True, tail=-1,
 				has_rotate=True, has_translate=True, has_visible=False, has_externalparent=False,
@@ -539,11 +521,11 @@ def main(moreinfo=True):
 			i_min_conserv = -1
 			i_max_conserv = len(verts)
 			for i_min_liberal in range(0, len(verts)):		# start at head and work down,
-				if pmx.verts[verts[i_min_liberal]].weighttype == 0:  	# if the vertex is BDEF1 type,
+				if pmx.verts[verts[i_min_liberal]].weighttype == pmxstruct.WeightMode.BDEF1:  	# if the vertex is BDEF1 type,
 					break  									# then stop looking,
 			p_min_liberal = percentiles[i_min_liberal]		# and save the percentile it found.
 			for i_max_liberal in reversed(range(0, len(verts))): # start at tail and work up,
-				if pmx.verts[verts[i_max_liberal]].weighttype == 0:  	# if the vertex is BDEF1 type,
+				if pmx.verts[verts[i_max_liberal]].weighttype == pmxstruct.WeightMode.BDEF1:  	# if the vertex is BDEF1 type,
 					break  									# then stop looking,
 			p_max_liberal = percentiles[i_max_liberal]		# and save the percentile it found.
 			# Y. lowest highest point mode
@@ -552,12 +534,12 @@ def main(moreinfo=True):
 			# where is the middle? use "bisect_left"
 			middle = core.bisect_left(percentiles, 0.5)
 			for i_min_conserv in reversed(range(middle - 1)): # start in middle, work toward head,
-				if pmx.verts[verts[i_min_conserv]].weighttype != 0:  	# if the vertex is NOT BDEF1 type,
+				if pmx.verts[verts[i_min_conserv]].weighttype != pmxstruct.WeightMode.BDEF1:  	# if the vertex is NOT BDEF1 type,
 					break  									# then stop looking,
 			i_min_conserv += 1								# and step back 1 to find the last vert that was good BDEF1,
 			p_min_conserv = percentiles[i_min_conserv]		# and save the percentile it found.
 			for i_max_conserv in range(middle + 1, len(verts)):  # start in middle, work toward tail,
-				if pmx.verts[verts[i_max_conserv]].weighttype != 0:	# if the vertex is NOT BDEF1 type,
+				if pmx.verts[verts[i_max_conserv]].weighttype != pmxstruct.WeightMode.BDEF1:	# if the vertex is NOT BDEF1 type,
 					break  									# then stop looking,
 			i_max_conserv -= 1								# and step back 1 to find the last vert that was good BDEF1,
 			p_max_conserv = percentiles[i_max_conserv]		# and save the percentile it found.
@@ -618,7 +600,7 @@ def main(moreinfo=True):
 
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
+	print(_SCRIPT_VERSION)
 	if DEBUG:
 		# print info to explain the purpose of this file
 		core.MY_PRINT_FUNC(helptext)

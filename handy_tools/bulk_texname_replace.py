@@ -1,3 +1,4 @@
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # this one is for you, syblomic-dash
 
 import sys
@@ -76,13 +77,8 @@ def main():
 	# now do find & replace!
 	# for each pmx,
 	for this_pmx_name, this_pmx_obj in all_pmx_obj.items():
-		howmany = 0
-		# for each texture string,
-		for d, tex in enumerate(this_pmx_obj.textures):
-			tex = os.path.normpath(tex.strip())
-			if tex.lower() == findme.lower():
-				this_pmx_obj.textures[d] = replacewith
-				howmany += 1
+		# do find-and-replace
+		howmany = file_sort_textures.texname_find_and_replace(this_pmx_obj, findme, replacewith, sanitize=True)
 		# then report how many
 		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("'%s': replaced %d" % (this_pmx_name, howmany))
@@ -100,7 +96,7 @@ def main():
 	
 
 if __name__ == '__main__':
-	print("Nuthouse01 - 12/28/2020 - v5.05")
+	print(_SCRIPT_VERSION)
 	if DEBUG:
 		main()
 	else:
