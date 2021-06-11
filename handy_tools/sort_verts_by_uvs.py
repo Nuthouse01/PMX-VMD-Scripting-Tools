@@ -1,4 +1,4 @@
-_SCRIPT_VERSION = "Nuthouse01 - 6/10/2021 - v6.00"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 
 import sys
 try:

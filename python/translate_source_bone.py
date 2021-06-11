@@ -1,4 +1,4 @@
-_SCRIPT_VERSION = "khanghugo - 9/21/2020 - v5.02"
+_SCRIPT_VERSION = "Script version:  khanghugo - 9/21/2020 - v5.02"
 try:
 	# these imports work if running from GUI
 	from . import nuthouse01_core as core

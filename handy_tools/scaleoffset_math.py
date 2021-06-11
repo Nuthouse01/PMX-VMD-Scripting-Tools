@@ -1,4 +1,4 @@
-_SCRIPT_VERSION = "Nuthouse01 - 12/20/2020 - v5.04"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 12/20/2020 - v5.04"
 
 import math
 

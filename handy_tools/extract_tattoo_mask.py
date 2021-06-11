@@ -1,4 +1,4 @@
-_SCRIPT_VERSION = "Nuthouse01 - 09/13/2020 - v5.01"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 09/13/2020 - v5.01"
 from PIL import Image
 from progprint import progprint, progclean
 import numpy as np

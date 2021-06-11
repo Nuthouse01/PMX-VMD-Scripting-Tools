@@ -1,4 +1,4 @@
-_SCRIPT_VERSION = "Nuthouse01 - 09/21/2020 - v5.02"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 09/21/2020 - v5.02"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 

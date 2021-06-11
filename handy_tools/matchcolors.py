@@ -1,4 +1,4 @@
-_SCRIPT_VERSION = "Nuthouse01 - 9/13/2020 - 5.01"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 9/13/2020 - 5.01"
 
 """Usage: python matchcolors.py good.jpg bad.jpg save-corrected-as.jpg"""
 
