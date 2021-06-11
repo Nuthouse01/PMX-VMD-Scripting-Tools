@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README
-Created by Nuthouse01 - 6/3/2021 - v5.08
+Created by Nuthouse01 - 6/10/2021 - v6.00
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!
 If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)
@@ -235,6 +235,18 @@ The following files should be included with this README:
   <summary>Click to expand!</summary>
 
 ```
+v6.00:
+BIG: overhaul several parts of my PMX/VMD classes to make things more intuitive and more readable
+   overhaul how vertex weights are stored, now all weight types use same structure of [index,value] pairs
+   overhaul how rigidbody nocollide groups are stored, now it's a set object containing ints
+   overhaul material flags to use proper "flags" object and not a list-of-bools
+   overhaul several fields to use "enum" objects, replace "magic numbers" with named constants
+      vertex WeightMode, material SphMode, MorphPanel, MorphType, RigidBodyShape, RigidBodyPhysMode, JointType, VMD shadow frame ShadowMode
+   remove stupid system where each texture is referred to by index, now each material just includes the filepath for tex/toon/sph
+create "validate()" member function to rigorously enforce type/structure requirements before writing to file
+new: if a float NaN value is found while reading PMX/VMD, replace it with a 0
+change how each script stores its version number
+
 v5.08:
 new: list_all_pmx_with_missing_tex.py
 new: reweight_blender_fragments.py
