@@ -1,4 +1,4 @@
-
+_SCRIPT_VERSION = "khanghugo - 9/21/2020 - v5.02"
 try:
 	# these imports work if running from GUI
 	from . import nuthouse01_core as core
@@ -336,6 +336,7 @@ def main(moreinfo=True):
 
 
 if __name__ == "__main__":
+	print(_SCRIPT_VERSION)
 	# copied from bone_armik_addremove
 	try:
 		# print info to explain the purpose of this file

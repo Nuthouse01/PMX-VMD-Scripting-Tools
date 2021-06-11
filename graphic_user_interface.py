@@ -1,4 +1,4 @@
-# Nuthouse01 - 6/3/2021 - v5.08
+_SCRIPT_VERSION = "Nuthouse01 - 1/24/2021 - v5.06"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -234,7 +234,7 @@ def gui_inputpopup(args, explain_info=None):
 		# for some reason the snow/white color still looks beige? :( oh well i tried
 		textbox = tk.Entry(buttonframe, width=50, bg='snow')
 		textbox.pack(side=tk.TOP, padx=10, pady=10)
-		def submit_callback(event=None):
+		def submit_callback(_=None):
 			# validate the text input using the validity check function "args"
 			# if its good then invoke "setresult", if its bad then clear the text box
 			# the func should be defined to print something explaining why it failed whenever it fails
@@ -430,12 +430,12 @@ class Application(tk.Frame):
 		return
 	
 	def print_header(self):
-		core.MY_PRINT_FUNC("Nuthouse01 - 6/3/2021 - v5.08")
+		core.MY_PRINT_FUNC(core.PACKAGE_VERSION)
 		core.MY_PRINT_FUNC("Begin by selecting a script above, then click 'Run'")
 		core.MY_PRINT_FUNC("Click 'Help' to print out details of what the selected script does")
 		return
 		
-	def change_mode(self, *args):
+	def change_mode(self, *_):
 		# need to have *args here even if i dont use them
 		# the the currently displayed item in the dropdown menu
 		newstr = self.optionvar.get()
@@ -483,5 +483,6 @@ def launch_gui(title):
 
 
 if __name__ == '__main__':
+	print(_SCRIPT_VERSION)
 	launch_gui("Nuthouse01 MMD PMX VMD tools")
 

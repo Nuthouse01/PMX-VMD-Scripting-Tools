@@ -1,4 +1,4 @@
-# Nuthouse01 - 6/10/2021 - v6.00
+_SCRIPT_VERSION = "Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -175,7 +175,7 @@ def main():
 	core.pause_and_quit("Done with everything! Goodbye!")
 
 if __name__ == '__main__':
-	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
+	print(_SCRIPT_VERSION)
 	if DEBUG:
 		main()
 	else:

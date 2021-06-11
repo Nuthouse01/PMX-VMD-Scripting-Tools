@@ -1,4 +1,4 @@
-# Nuthouse01 - 6/10/2021 - v6.00
+_SCRIPT_VERSION = "Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -1163,6 +1163,7 @@ class Pmx(_BasePmx):
 
 		
 if __name__ == '__main__':
+	print(_SCRIPT_VERSION)
 	core.pause_and_quit("you are not supposed to directly run this file haha")
 
 

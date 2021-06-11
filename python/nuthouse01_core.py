@@ -1,4 +1,5 @@
-# Nuthouse01 - 6/10/2021 - v6.00
+_SCRIPT_VERSION = "Nuthouse01 - 6/10/2021 - v6.00"
+PACKAGE_VERSION = "Package version: Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -11,6 +12,7 @@ import re
 import struct
 from os import path, listdir, getenv, makedirs
 from sys import platform, version_info, version
+from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
 
 
 
@@ -18,7 +20,6 @@ from sys import platform, version_info, version
 # i don't know if it will actually work in 3.4 but i know it will fail in any python2 version
 # actually written/tested with 3.6.6 so guaranteed to work on that or higher
 # between 3.4 and 3.6, who knows
-from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
 
 if version_info < (3, 6):
 	print("Your version of Python is too old to run this script, please update!")
@@ -27,6 +28,7 @@ if version_info < (3, 6):
 	input()
 	exit()
 
+print(PACKAGE_VERSION)
 
 ########################################################################################################################
 # constants used in many files that I don't wanna keep copying over and over
@@ -1469,5 +1471,5 @@ def _pack_text(fmt: str, args: str) -> bytearray:
 		raise newerr
 
 if __name__ == '__main__':
-	MY_PRINT_FUNC("Nuthouse01 - 1/24/2021 - v5.06")
+	print(_SCRIPT_VERSION)
 	pause_and_quit("you are not supposed to directly run this file haha")
