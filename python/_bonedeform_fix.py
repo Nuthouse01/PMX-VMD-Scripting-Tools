@@ -39,6 +39,8 @@ Specifically this looks at parents, parial-inherit, and IK target/chains, and en
 iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_bonedeform.pmx"
 '''
 
+MAX_LOOPS = 1000
+DEFORM_AFTER_PHYS_OFFSET = MAX_LOOPS * 2
 
 def showhelp():
 	# print info to explain the purpose of this file
@@ -58,9 +60,14 @@ def bonedeform_fix(pmx: pmxstruct.Pmx, moreinfo=False):
 	# if I encounter a recursive relationship I will have not touched the acutal PMX and can err and return it unchanged
 	deforms = [p.deform_layer for p in pmx.bones]
 	
+	# make "deform after phys" a way higher number than "deform before phys"
+	for d,bone in enumerate(pmx.bones):
+		if bone.deform_after_phys:
+			deforms[d] += DEFORM_AFTER_PHYS_OFFSET
+	
 	# make a list of the "ik master" for each bone
 	# it is possible for a bone to be controlled by multiple IK masters, actually every foot bone of every model is this way
-	ikmasters = [set() for x in pmx.bones]
+	ikmasters = [set() for _ in pmx.bones]
 	
 	for d,bone in enumerate(pmx.bones):
 		# find IK bones
@@ -100,7 +107,7 @@ def bonedeform_fix(pmx: pmxstruct.Pmx, moreinfo=False):
 	
 	# loop until nothing changes, or until 1000 iterations (indicates recursive relationship)
 	loops = 0
-	while loops < 1000:
+	while loops < MAX_LOOPS:
 		loops += 1
 		has_changed = False
 		for d,bone in enumerate(pmx.bones):
@@ -131,8 +138,13 @@ def bonedeform_fix(pmx: pmxstruct.Pmx, moreinfo=False):
 			break
 		pass  # end while-loop
 	
+	# undo the "deform before phys" offset
+	for d,bone in enumerate(pmx.bones):
+		if bone.deform_after_phys:
+			deforms[d] -= DEFORM_AFTER_PHYS_OFFSET
+
 	# did it break because of recursion error?
-	if loops == 1000:
+	if loops == MAX_LOOPS:
 		# if yes, warn & return without changes
 		core.MY_PRINT_FUNC("ERROR: recursive inheritance relationship among bones!! You must manually investigate and resolve this issue.")
 		suspects = [i for i,de in enumerate(deforms) if de > 50]
