@@ -9,6 +9,7 @@ import traceback
 from typing import List, Union
 import abc
 import enum
+import copy
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -31,6 +32,9 @@ except ImportError as eee:
 # this lets them all get the __str__ method and forces them all to implement list()
 # it also lets me detect any of them by isinstance(x, _BasePmx)
 class _BaseVmd(abc.ABC):
+	def copy(self):
+		""" Return a separate copy of the object. """
+		return copy.deepcopy(self)
 	def __str__(self) -> str: return str(self.list())
 	@abc.abstractmethod
 	def list(self) -> list: pass

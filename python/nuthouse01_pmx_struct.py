@@ -9,6 +9,7 @@ import abc
 import enum
 import traceback
 import sys
+import copy
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -50,6 +51,9 @@ except ImportError as eee:
 # this also defines an "==" method so my structs can be compared
 # this also defines "idx_within" so if you forget the idx of a thing but still have its reference you can find its index again
 class _BasePmx(abc.ABC):
+	def copy(self):
+		""" Return a separate copy of the object. """
+		return copy.deepcopy(self)
 	@abc.abstractmethod
 	def list(self) -> list: pass
 	@abc.abstractmethod
