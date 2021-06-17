@@ -48,56 +48,11 @@ except ImportError as eee:
 DEBUG = False
 
 
-# # if this is true, the IK frames are stored as footIK-position + footIK-rotation
-# # if this is false, the IK frames are stored as footIK-position + toeIK-position
-# # not sure about the pros and cons of this setting, honestly?
-# # with this true, the footIK-rotation means the arrows on the IK bones change in a sensible way, so that's nice
-# STORE_IK_AS_FOOT_ONLY = True
-
 # if this is true, an IK-disp frame will be created that enables the IK-following
 # if this is false, when this VMD is loaded the IK bones will be moved but the legs won't follow them
 # you will need to manually turn on IK for these bones
 INCLUDE_IK_ENABLE_FRAME = True
 
-
-'''
-how do i arrange this?
-inputs:
-PMX (duh)
-VMD (duh)
-the desired IK bone
-the normal bone used as the target for the IK bone
-
-what bones do we execute forward kinematics on? is it harmful to just simulate teh whole model?
-if the ik bone exists i can know which to execute.
-i can calculate where the IK bone ends up objectively, but i also need to know its parent and where
-its parent is, so i can know where the base position for the bone ends up, so i can know what offset to put in the
-vmd bone frame.
-lets say that the target IK bone might not be in the reference model...?
-we can assume that the starting position of the ik bone is the same as its target
-we need to ask what the parent of that ik bone is
-	absolute position of target
-	absolute position of IK parent
-
-
-functions:
-rotate 3d
-rectangularize
-"run fwd ik and get position of all bones when given frames"
-
-'''
-
-
-# jp_lefttoe =      "左つま先"
-# jp_lefttoe_ik =   "左つま先ＩＫ"
-# jp_leftfoot =     "左足首"
-# jp_leftfoot_ik =  "左足ＩＫ"
-# jp_righttoe =     "右つま先"
-# jp_righttoe_ik =  "右つま先ＩＫ"
-# jp_rightfoot =    "右足首"
-# jp_rightfoot_ik = "右足ＩＫ"
-# jp_left_waistcancel = "腰キャンセル左"
-# jp_right_waistcancel = "腰キャンセル右"
 
 class ForwardKinematicsBone:
 	def __init__(self, name, idx, deform, pos, descendents, ancestors,
@@ -118,29 +73,8 @@ class ForwardKinematicsBone:
 		self.pos = self._pos_original.copy()
 		self.rot = [1.0, 0.0, 0.0, 0.0]
 		
-# class Bone:
-# 	def __init__(self, name, xinit, yinit, zinit):
-# 		self.name = name
-# 		self.xinit = xinit
-# 		self.yinit = yinit
-# 		self.zinit = zinit
-# 		self.xcurr = 0.0
-# 		self.ycurr = 0.0
-# 		self.zcurr = 0.0
-#
-# 		self.xrot = 0.0
-# 		self.yrot = 0.0
-# 		self.zrot = 0.0
-#
-# 	def reset(self):
-# 		self.xcurr = self.xinit
-# 		self.ycurr = self.yinit
-# 		self.zcurr = self.zinit
-# 		self.xrot = 0.0
-# 		self.yrot = 0.0
-# 		self.zrot = 0.0
 
-
+# todo: move this to core
 def rotate3d(rotate_around: Sequence[float],
 			 angle_quat: Sequence[float],
 			 initial_position: Sequence[float]) -> List[float]:
@@ -286,25 +220,9 @@ def fill_missing_boneframes(boneframe_dict: Dict[str, List[vmdstruct.VmdBoneFram
 	core.MY_PRINT_FUNC("initial=%d, final=%d, added %d" % (initial_size, final_size, final_size-initial_size))  # todo
 	# now it is totally filled out!
 	return new_boneframe_dict
-	
-# def build_bonechain(allbones: List[pmxstruct.PmxBone], endbone: str) -> List[Bone]:
-# 	nextbone = endbone
-# 	buildme = []
-# 	while True:
-# 		r = core.my_list_search(allbones, lambda x: x.name_jp == nextbone, getitem=True)
-# 		if r is None:
-# 			core.MY_PRINT_FUNC("ERROR: unable to find '" + nextbone + "' in input file, unable to build parentage chain")
-# 			raise RuntimeError()
-# 		# 0 = bname, 5 = parent index, 234 = xyz position
-# 		nextbone = allbones[r.parent_idx].name_jp
-# 		newrow = Bone(r.name_jp, r.pos[0], r.pos[1], r.pos[2])
-# 		buildme.append(newrow)
-# 		# if parent index is -1, that means there is no parent. so we reached root. so break.
-# 		if r.parent_idx == -1:
-# 			break
-# 	buildme.reverse()
-# 	return buildme
 
+
+# todo: update helptext
 helptext = '''=================================================
 make_ik_from_vmd:
 This script runs forward kinematics for the legs of a model, to calculate where the feet/toes will be and generates IK bone frames for those feet/toes.
@@ -453,80 +371,6 @@ def predetermine_bone_deform_order(bones: List[pmxstruct.PmxBone]) -> List[Forwa
 	return sortme
 
 def main(moreinfo=True):
-	# # prompt PMX name
-	# core.MY_PRINT_FUNC("Please enter name of PMX input file:")
-	# input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
-	# pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
-	# # get bones
-	# realbones = pmx.bones
-	# then, make 2 lists: one starting from jp_righttoe, one starting from jp_lefttoe
-	# start from each "toe" bone (names are known), go parent-find-parent-find until reaching no-parent
-	# bonechain_r = build_bonechain(realbones, jp_righttoe)
-	# bonechain_l = build_bonechain(realbones, jp_lefttoe)
-	#
-	# # assert that the bones were found, have correct names, and are in the correct positions
-	# # also verifies that they are direct parent-child with nothing in between
-	# try:
-	# 	assert bonechain_r[-1].name == jp_righttoe
-	# 	assert bonechain_r[-2].name == jp_rightfoot
-	# 	assert bonechain_l[-1].name == jp_lefttoe
-	# 	assert bonechain_l[-2].name == jp_leftfoot
-	# except AssertionError:
-	# 	core.MY_PRINT_FUNC("ERROR: unexpected structure found for foot/toe bones, verify semistandard names and structure")
-	# 	raise RuntimeError()
-	#
-	# # then walk down these 2 lists, add each name to a set: build union of all relevant bones
-	# relevant_bones = set()
-	# for b in bonechain_r + bonechain_l:
-	# 	relevant_bones.add(b.name)
-	#
-	# # check if waist-cancellation bones are in "relevant_bones", print a warning if they are
-	# if jp_left_waistcancel in relevant_bones or jp_right_waistcancel in relevant_bones:
-	# 	core.MY_PRINT_FUNC("Warning: waist-cancellation bones found in the model! These are not supported, tool may produce bad results! Attempting to continue...")
-	#
-	# # also need to find initial positions of ik bones (names are known)
-	# # build a full parentage-chain for each leg
-	# bonechain_ikr = build_bonechain(realbones, jp_righttoe_ik)
-	# bonechain_ikl = build_bonechain(realbones, jp_lefttoe_ik)
-	#
-	# # verify that the ik bones were found, have correct names, and are in the correct positions
-	# try:
-	# 	assert bonechain_ikr[-1].name == jp_righttoe_ik
-	# 	assert bonechain_ikr[-2].name == jp_rightfoot_ik
-	# 	assert bonechain_ikl[-1].name == jp_lefttoe_ik
-	# 	assert bonechain_ikl[-2].name == jp_leftfoot_ik
-	# except AssertionError:
-	# 	core.MY_PRINT_FUNC("ERROR: unexpected structure found for foot/toe IK bones, verify semistandard names and structure")
-	# 	raise RuntimeError()
-	#
-	# # verify that the bonechains are symmetric in length
-	# try:
-	# 	assert len(bonechain_l) == len(bonechain_r)
-	# 	assert len(bonechain_ikl) == len(bonechain_ikr)
-	# except AssertionError:
-	# 	core.MY_PRINT_FUNC("ERROR: unexpected structure found, model is not left-right symmetric")
-	# 	raise RuntimeError()
-	#
-	# # determine how many levels of parentage, this value "t" should hold the first level where they are no longer shared
-	# t = 0
-	# while bonechain_l[t].name == bonechain_ikl[t].name:
-	# 	t += 1
-	# # back off one level
-	# lowest_shared_parent = t - 1
-	#
-	# # now i am completely done with the bones CSV, all the relevant info has been distilled down to:
-	# # !!! bonechain_r, bonechain_l, bonechain_ikr, bonechain_ikl, relevant_bones
-	# core.MY_PRINT_FUNC("...identified " + str(len(bonechain_l)) + " bones per leg-chain, " + str(len(relevant_bones)) + " relevant bones total")
-	# core.MY_PRINT_FUNC("...identified " + str(len(bonechain_ikl)) + " bones per IK leg-chain")
-	
-	###################################################################################
-	###################################################################################
-	###################################################################################
-	# # prompt VMD file name
-	# core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
-	# input_filename_vmd = core.MY_FILEPROMPT_FUNC(".vmd")
-	# nicelist_in = vmdlib.read_vmd(input_filename_vmd, moreinfo=moreinfo)
-	
 	############################################
 	############################################
 	############################################
@@ -599,6 +443,8 @@ def main(moreinfo=True):
 
 	# now create the set "relevant_bones" from these ik/target pairs
 	# remember to ignore any bones that are parents of both ikbone and targetbone... right?
+	# since they are inherited by both ends, they affect both ends equally, so the delta is unaffected
+	# so they would just add extra frames that aren't needed
 	
 	# set of INT INDICES that reference bones that will be simulated by forward kinematics
 	relevant_bones_idxs = set()
@@ -639,6 +485,7 @@ def main(moreinfo=True):
 	############################################
 	############################################
 	############################################
+	
 	core.MY_PRINT_FUNC("")
 	# prompt VMD file name
 	core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
@@ -662,11 +509,9 @@ def main(moreinfo=True):
 		if ikbone_name in boneframe_dict:
 			boneframe_dict.pop(ikbone_name)
 	
-	# print("aaa")
 	# """rectangularize""" these boneframes by adding interpolated frames, so that every relevant bone
 	# has a frame at every relevant timestep
 	full_boneframe_dict = fill_missing_boneframes(boneframe_dict)
-	# print("zzz")
 	
 	# "forward kinematics" function shouldn't need any knowledge of what timestep it is computing at
 	# i want to ultimately give the forward-k function a list of boneframes and bonepositions, nothing more
@@ -698,6 +543,11 @@ def main(moreinfo=True):
 	for foo in invert_boneframe_dict.values():
 		assert len(foo) == len(full_boneframe_dict.keys())
 		
+	############################################
+	############################################
+	############################################
+	############################################
+	
 	core.MY_PRINT_FUNC("...beginning forward kinematics computation for %d frames..." % len(invert_boneframe_dict.keys()))
 	
 	output_vmd_frames = []
@@ -735,213 +585,32 @@ def main(moreinfo=True):
 	############################################
 	############################################
 	############################################
-
-	# # reduce down to only the boneframes for the relevant bones
-	# # also build a list of each framenumber with a frame for a bone we care about
-	# relevant_framenums = set()
-	# boneframe_list = []
-	# for boneframe in nicelist_in.boneframes:
-	# 	if boneframe.name in relevant_bones:
-	# 		boneframe_list.append(boneframe)
-	# 		relevant_framenums.add(boneframe.f)
-	# # sort the boneframes by frame number
-	# boneframe_list.sort(key=lambda x: x.f)
-	# # make the relevant framenumbers also an ascending list
-	# relevant_framenums = sorted(list(relevant_framenums))
-	#
-	# boneframe_dict = dict()
-	# # now restructure the data from a list to a dictionary, keyed by bone name. also discard excess data when i do
-	# for b in boneframe_list:
-	# 	if b.name not in boneframe_dict:
-	# 		boneframe_dict[b.name] = []
-	# 	# only storing the frame#(1) + position(234) + rotation values(567)
-	# 	saveme = [b.f, *b.pos, *b.rot]
-	# 	boneframe_dict[b.name].append(saveme)
-	#
-	# core.MY_PRINT_FUNC("...running interpolation to rectangularize the frames...")
-	#
-	# has_warned = False
-	# # now fill in the blanks by using interpolation, if needed
-	# for key,bone in boneframe_dict.items():								# for each bone,
-	# 	# start a list of frames generated by interpolation
-	# 	interpframe_list = []
-	# 	i=0
-	# 	j=0
-	# 	while j < len(relevant_framenums):					# for each frame it should have,
-	# 		if i == len(bone):
-	# 			# if i is beyond end of bone, then copy the values from the last frame and use as a new frame
-	# 			newframe = [relevant_framenums[j]] + bone[-1][1:7]
-	# 			interpframe_list.append(newframe)
-	# 			j += 1
-	# 		elif bone[i][0] == relevant_framenums[j]:			# does it have it?
-	# 			i += 1
-	# 			j += 1
-	# 		else:
-	# 			if not has_warned:
-	# 				core.MY_PRINT_FUNC("Warning: interpolation is needed but interpolation curves are not fully tested! Assuming linear interpolation...")
-	# 				has_warned = True
-	# 			# if there is a mismatch then the target framenum is less than the boneframe framenum
-	# 			# build a frame that has frame# + position(123) + rotation values(456)
-	# 			newframe = [relevant_framenums[j]]
-	# 			# if target is less than the current boneframe, interp between here and prev boneframe
-	# 			for p in range(1,4):
-	# 				# interpolate for each position offset
-	# 				newframe.append(core.linear_map(bone[i][0], bone[i][p], bone[i-1][0], bone[i-1][p], relevant_framenums[j]))
-	# 			# rotation interpolation must happen in the quaternion-space
-	# 			quat1 = core.euler_to_quaternion(bone[i-1][4:7])
-	# 			quat2 = core.euler_to_quaternion(bone[i][4:7])
-	# 			# desired frame is relevant_framenums[j] = d
-	# 			# available frames are bone[i-1][0] = s and bone[i][0] = e
-	# 			# percentage = (d - s) / (e - s)
-	# 			percentage = (relevant_framenums[j] - bone[i-1][0]) / (bone[i][0] - bone[i-1][0])
-	# 			quat_slerp = core.my_slerp(quat1, quat2, percentage)
-	# 			euler_slerp = core.quaternion_to_euler(quat_slerp)
-	# 			newframe += euler_slerp
-	# 			interpframe_list.append(newframe)
-	# 			j += 1
-	# 	bone += interpframe_list
-	# 	bone.sort(key=core.get1st)
-	#
-	# # the dictionary should be fully filled out and rectangular now
-	# for bone in boneframe_dict:
-	# 	assert len(boneframe_dict[bone]) == len(relevant_framenums)
-	#
-	# # now i am completely done reading the VMD file and parsing its data! everything has been distilled down to:
-	# # relevant_framenums, boneframe_dict
-	
-	###################################################################################
-	# begin the actual calculations
-	
-	# output array
-	
-	
-	
-	# # have list of bones, parentage, initial pos
-	# # have list of frames
-	# # now i "run the dance" and build the ik frames
-	# # for each relevant frame,
-	# for I in range(len(relevant_framenums)):
-	# 	# for each side,
-	# 	for (thisik, this_chain) in zip([bonechain_ikr, bonechain_ikl], [bonechain_r, bonechain_l]):
-	# 		# for each bone in this_chain (ordered, start with root!),
-	# 		for J in range(len(this_chain)):
-	# 			# reset the current to be the inital position again
-	# 			this_chain[J].reset()
-	# 		# for each bone in this_chain (ordered, start with toe! do children before parents!)
-	# 		# also, don't read/use root! because the IK are also children of root, they inherit the same root transformations
-	# 		# count backwards from end to lowest_shared_parent, not including lowest_shared_parent
-	# 		for J in range(len(this_chain)-1, lowest_shared_parent, -1):
-	# 			# get bone J within this_chain, translate to name
-	# 			name = this_chain[J].name
-	# 			# get bone [name] at index I: position & rotation
-	# 			try:
-	# 				xpos, ypos, zpos, xrot, yrot, zrot = boneframe_dict[name][I][1:7]
-	# 			except KeyError:
-	# 				continue
-	# 			# apply position offset to self & children
-	# 			# also resets the currposition when changing frames
-	# 			for K in range(J, len(this_chain)):
-	# 				# set this_chain[K].current456 = current456 + position
-	# 				this_chain[K].xcurr += xpos
-	# 				this_chain[K].ycurr += ypos
-	# 				this_chain[K].zcurr += zpos
-	# 			# apply rotation offset to all children, but not self
-	# 			_origin = [this_chain[J].xcurr, this_chain[J].ycurr, this_chain[J].zcurr]
-	# 			_angle = [xrot, yrot, zrot]
-	# 			_angle_quat = core.euler_to_quaternion(_angle)
-	# 			for K in range(J, len(this_chain)):
-	# 				# set this_chain[K].current456 = current rotated around this_chain[J].current456
-	# 				_point = [this_chain[K].xcurr, this_chain[K].ycurr, this_chain[K].zcurr]
-	# 				_newpoint = rotate3d(_origin, _angle_quat, _point)
-	# 				(this_chain[K].xcurr, this_chain[K].ycurr, this_chain[K].zcurr) = _newpoint
-	#
-	# 				# also rotate the angle of this bone
-	# 				curr_angle_euler = [this_chain[K].xrot, this_chain[K].yrot, this_chain[K].zrot]
-	# 				curr_angle_quat = core.euler_to_quaternion(curr_angle_euler)
-	# 				new_angle_quat = core.hamilton_product(_angle_quat, curr_angle_quat)
-	# 				new_angle_euler = core.quaternion_to_euler(new_angle_quat)
-	# 				(this_chain[K].xrot, this_chain[K].yrot, this_chain[K].zrot) = new_angle_euler
-	# 				pass
-	# 			pass
-	# 		# now i have cascaded this frame's pose data down the this_chain
-	# 		# grab foot/toe (-2 and -1) current position and calculate IK offset from that
-	#
-	# 		# first, foot:
-	# 		# footikend - footikinit = footikoffset
-	# 		xfoot = this_chain[-2].xcurr - thisik[-2].xinit
-	# 		yfoot = this_chain[-2].ycurr - thisik[-2].yinit
-	# 		zfoot = this_chain[-2].zcurr - thisik[-2].zinit
-	# 		# save as boneframe to be ultimately formatted for VMD:
-	# 		# 	need bonename = (known)
-	# 		# 	need frame# = relevantframe#s[I]
-	# 		# 	position = calculated
-	# 		# 	rotation = 0
-	# 		# 	phys = not disabled
-	# 		# 	interp = default (20/107)
-	# 		# # then, foot-angle: just copy the angle that the foot has
-	# 		if STORE_IK_AS_FOOT_ONLY:
-	# 			ikframe = [thisik[-2].name, relevant_framenums[I], xfoot, yfoot, zfoot, this_chain[-2].xrot, this_chain[-2].yrot, this_chain[-2].zrot, False]
-	# 		else:
-	# 			ikframe = [thisik[-2].name, relevant_framenums[I], xfoot, yfoot, zfoot, 0.0, 0.0, 0.0, False]
-	# 		ikframe += [20] * 8
-	# 		ikframe += [107] * 8
-	# 		# append the freshly-built frame
-	# 		ikframe_list.append(ikframe)
-	# 		if not STORE_IK_AS_FOOT_ONLY:
-	# 			# then, toe:
-	# 			# toeikend - toeikinit - footikoffset = toeikoffset
-	# 			xtoe = this_chain[-1].xcurr - thisik[-1].xinit - xfoot
-	# 			ytoe = this_chain[-1].ycurr - thisik[-1].yinit - yfoot
-	# 			ztoe = this_chain[-1].zcurr - thisik[-1].zinit - zfoot
-	# 			ikframe = [thisik[-1].name, relevant_framenums[I], xtoe, ytoe, ztoe, 0.0, 0.0, 0.0, False]
-	# 			ikframe += [20] * 8
-	# 			ikframe += [107] * 8
-	# 			# append the freshly-built frame
-	# 			ikframe_list.append(ikframe)
-	# 	# now done with a timeframe for all bones on both sides
-	# 	# print progress updates
-	# 	core.print_progress_oneline(I / len(relevant_framenums))
-	
-	
-	# if INCLUDE_IK_ENABLE_FRAME:
-	# 	# create a single ikdispframe that enables the ik bones at frame 0
-	# 	ikbones = [vmdstruct.VmdIkbone(name=jp_rightfoot_ik, enable=True),
-	# 			   vmdstruct.VmdIkbone(name=jp_righttoe_ik, enable=True),
-	# 			   vmdstruct.VmdIkbone(name=jp_leftfoot_ik, enable=True),
-	# 			   vmdstruct.VmdIkbone(name=jp_lefttoe_ik, enable=True)]
-	# 	ikdispframe_list = [vmdstruct.VmdIkdispFrame(f=0, disp=True, ikbones=ikbones)]
-	# else:
-	# 	ikdispframe_list = []
-	# 	core.MY_PRINT_FUNC("Warning: IK following will NOT be enabled when this VMD is loaded, you will need enable it manually!")
-	#
-	# # convert old-style bonelist ikframe_list to new object format
-	# ikframe_list = [vmdstruct.VmdBoneFrame(name=r[0], f=r[1], pos=r[2:5], rot=r[5:8], phys_off=r[8], interp=r[9:]) for r in ikframe_list]
-	# # build actual VMD object
-	# nicelist_out = vmdstruct.Vmd(
-	# 	,
-	# 	ikframe_list,  # bone
-	# 	[],  # morph
-	# 	[],  # cam
-	# 	[],  # light
-	# 	[],  # shadow
-	# 	ikdispframe_list  # ikdisp
-	# 	)
 	
 	core.MY_PRINT_FUNC("...done with forward kinematics computation, now writing output...")
 	
-	# todo should i include an ik-enable frame?
-	
-	nicelist_out = vmdstruct.Vmd(
+	if INCLUDE_IK_ENABLE_FRAME:
+		# create a single ikdispframe that enables the ik bones at frame 0
+		ikbones_enable = []
+		for ikbone_name in ikbone_name_list:
+			ikbones_enable.append(vmdstruct.VmdIkbone(name=ikbone_name, enable=True))
+		earliest_timestep = min(invert_boneframe_dict.keys())
+		ikdispframe_list = [vmdstruct.VmdIkdispFrame(f=earliest_timestep, disp=True, ikbones=ikbones_enable)]
+	else:
+		ikdispframe_list = []
+		core.MY_PRINT_FUNC("Warning: IK following will NOT be enabled when this VMD is loaded, you will need enable it manually!")
+		
+	vmd_out = vmdstruct.Vmd(
 		header=vmdstruct.VmdHeader(2, "IK-BONES"),
 		boneframes=output_vmd_frames,
-		morphframes=[], camframes=[], lightframes=[], shadowframes=[], ikdispframes=[]
+		morphframes=[], camframes=[], lightframes=[], shadowframes=[],
+		ikdispframes=ikdispframe_list
 	)
 	
 	# write out
 	output_filename_vmd = "%s_ik_from_%s.vmd" % \
 						  (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx))
 	output_filename_vmd = core.get_unused_file_name(output_filename_vmd)
-	vmdlib.write_vmd(output_filename_vmd, nicelist_out, moreinfo=moreinfo)
+	vmdlib.write_vmd(output_filename_vmd, vmd_out, moreinfo=moreinfo)
 
 	core.MY_PRINT_FUNC("Done!")
 	return None
