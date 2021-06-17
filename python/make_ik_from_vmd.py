@@ -118,27 +118,27 @@ class ForwardKinematicsBone:
 		self.pos = self._pos_original.copy()
 		self.rot = [1.0, 0.0, 0.0, 0.0]
 		
-class Bone:
-	def __init__(self, name, xinit, yinit, zinit):
-		self.name = name
-		self.xinit = xinit
-		self.yinit = yinit
-		self.zinit = zinit
-		self.xcurr = 0.0
-		self.ycurr = 0.0
-		self.zcurr = 0.0
-		
-		self.xrot = 0.0
-		self.yrot = 0.0
-		self.zrot = 0.0
-	
-	def reset(self):
-		self.xcurr = self.xinit
-		self.ycurr = self.yinit
-		self.zcurr = self.zinit
-		self.xrot = 0.0
-		self.yrot = 0.0
-		self.zrot = 0.0
+# class Bone:
+# 	def __init__(self, name, xinit, yinit, zinit):
+# 		self.name = name
+# 		self.xinit = xinit
+# 		self.yinit = yinit
+# 		self.zinit = zinit
+# 		self.xcurr = 0.0
+# 		self.ycurr = 0.0
+# 		self.zcurr = 0.0
+#
+# 		self.xrot = 0.0
+# 		self.yrot = 0.0
+# 		self.zrot = 0.0
+#
+# 	def reset(self):
+# 		self.xcurr = self.xinit
+# 		self.ycurr = self.yinit
+# 		self.zcurr = self.zinit
+# 		self.xrot = 0.0
+# 		self.yrot = 0.0
+# 		self.zrot = 0.0
 
 
 def rotate3d(rotate_around: Sequence[float],
@@ -287,23 +287,23 @@ def fill_missing_boneframes(boneframe_dict: Dict[str, List[vmdstruct.VmdBoneFram
 	# now it is totally filled out!
 	return new_boneframe_dict
 	
-def build_bonechain(allbones: List[pmxstruct.PmxBone], endbone: str) -> List[Bone]:
-	nextbone = endbone
-	buildme = []
-	while True:
-		r = core.my_list_search(allbones, lambda x: x.name_jp == nextbone, getitem=True)
-		if r is None:
-			core.MY_PRINT_FUNC("ERROR: unable to find '" + nextbone + "' in input file, unable to build parentage chain")
-			raise RuntimeError()
-		# 0 = bname, 5 = parent index, 234 = xyz position
-		nextbone = allbones[r.parent_idx].name_jp
-		newrow = Bone(r.name_jp, r.pos[0], r.pos[1], r.pos[2])
-		buildme.append(newrow)
-		# if parent index is -1, that means there is no parent. so we reached root. so break.
-		if r.parent_idx == -1:
-			break
-	buildme.reverse()
-	return buildme
+# def build_bonechain(allbones: List[pmxstruct.PmxBone], endbone: str) -> List[Bone]:
+# 	nextbone = endbone
+# 	buildme = []
+# 	while True:
+# 		r = core.my_list_search(allbones, lambda x: x.name_jp == nextbone, getitem=True)
+# 		if r is None:
+# 			core.MY_PRINT_FUNC("ERROR: unable to find '" + nextbone + "' in input file, unable to build parentage chain")
+# 			raise RuntimeError()
+# 		# 0 = bname, 5 = parent index, 234 = xyz position
+# 		nextbone = allbones[r.parent_idx].name_jp
+# 		newrow = Bone(r.name_jp, r.pos[0], r.pos[1], r.pos[2])
+# 		buildme.append(newrow)
+# 		# if parent index is -1, that means there is no parent. so we reached root. so break.
+# 		if r.parent_idx == -1:
+# 			break
+# 	buildme.reverse()
+# 	return buildme
 
 helptext = '''=================================================
 make_ik_from_vmd:
@@ -539,45 +539,62 @@ def main(moreinfo=True):
 	ikbone_name_list = []
 	targetbone_name_list = []
 	
-	core.MY_PRINT_FUNC("Please specify all IK/target pairs to simulate:")
+	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC("Common IK/target pairs: (listed for convenient copying)")
+	core.MY_PRINT_FUNC("    Right foot:    右足ＩＫ/右足首")
+	core.MY_PRINT_FUNC("    Right toe:     右つま先ＩＫ/右つま先")
+	core.MY_PRINT_FUNC("    Left foot:     左足ＩＫ/左足首")
+	core.MY_PRINT_FUNC("    Left toe:      左つま先ＩＫ/左つま先")
+	core.MY_PRINT_FUNC("    Right hand:    右腕IK/右手首")
+	core.MY_PRINT_FUNC("    Left hand:     左腕IK/左手首")
+	core.MY_PRINT_FUNC("    Right hand2:   右腕ＩＫ/右手首")
+	core.MY_PRINT_FUNC("    Left hand2:    左腕ＩＫ/左手首")
+	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC("Please specify all IK/target pairs to create frames for:")
+	core.MY_PRINT_FUNC("")
 	while True:
-		# ask "what IK bone do you want to make frames for? does not need to exist in the model"
-		core.MY_PRINT_FUNC("")
-		# valid input is any string that can matched aginst a bone idx
-		s = core.MY_GENERAL_INPUT_FUNC(lambda x: (morph_scale.get_idx_in_pmxsublist(x, pmx.bones) is not None),
-									   ["What IK bone do you want to make frames for? It MUST exist in this model.",
-										"Please specify the target bone: bone #, JP name, or EN name (names are not case sensitive).",
+		# ask for both ik and target at same time
+		# valid input is any string that contains a forwardslash
+		def ik_target_valid_input_check(x:str)->bool:
+			# if input is empty that counts as valid cuz that's the "ok now go do it" signal
+			if x == "": return True
+			# valid input must contain a forwardslash
+			sp = x.split('/')
+			if len(sp) != 2:
+				core.MY_PRINT_FUNC("invalid input: must contain exactly 2 terms separated by a forwardslash")
+				return False
+			ikbone = core.my_list_search(pmx.bones, lambda b: b.name_jp == sp[0], getitem=True)
+			targbone = core.my_list_search(pmx.bones, lambda b: b.name_jp == sp[1])
+			if ikbone is None:
+				core.MY_PRINT_FUNC("invalid input: first bone '%s' does not exist in model" % sp[0])
+				return False
+			if ikbone.has_ik is False:
+				core.MY_PRINT_FUNC("invalid input: first bone '%s' exists but is not IK-type" % sp[0])
+				return False
+			if targbone is None:
+				core.MY_PRINT_FUNC("invalid input: second bone '%s' does not exist in model" % sp[1])
+				return False
+			return True
+
+		s = core.MY_GENERAL_INPUT_FUNC(ik_target_valid_input_check,
+									   ["What IK bone do you want to make frames for, and what bone should it follow?",
+										"Please give the JP names of both bones separated by a forwardslash: ikname/followname",
 										"Empty input will begin forward kinematics simulation."])
 		# if the input is empty string, then we break and begin executing with current args
 		if s == "" or s is None:
 			break
+			
+		# because of ik_target_valid_input_check() it should be guaranteed safe to call split here
+		ikbone_name, targetbone_name = s.split('/')
 		
-		# what index is it referencing?
-		target_index = morph_scale.get_idx_in_pmxsublist(s, pmx.bones)
-		ikbone_name = pmx.bones[target_index].name_jp
-		
-		# next, ask "what non-IK bone do you want to calculate positions for?"
-		# valid input is any string that can matched aginst a bone idx
-		s = core.MY_GENERAL_INPUT_FUNC(lambda x: (morph_scale.get_idx_in_pmxsublist(x, pmx.bones) is not None),
-									   ["What non-IK bone do you want to calculate positions for? The IK bone will be moved to follow this. It MUST exist in this model.",
-										"Please specify the target bone: bone #, JP name, or EN name (names are not case sensitive).",
-										"Empty input will begin forward kinematics simulation."])
-		# if the input is empty string, then we break and begin executing with current args
-		if s == "" or s is None:
-			break
-		
-		# what index is it referencing?
-		target_index = morph_scale.get_idx_in_pmxsublist(s, pmx.bones)
-		targetbone_name = pmx.bones[target_index].name_jp
-		
-		core.MY_PRINT_FUNC("argument accepted: creating frames for IK bone '%s' to follow non-IK bone '%s'" % (ikbone_name, targetbone_name))
+		# core.MY_PRINT_FUNC("argument accepted: creating frames for IK bone '%s' to follow non-IK bone '%s'" % (ikbone_name, targetbone_name))
 		ikbone_name_list.append(ikbone_name)
 		targetbone_name_list.append(targetbone_name)
+		core.MY_PRINT_FUNC("")
 		pass
 	
-	core.MY_PRINT_FUNC("")
 	for i,t in zip(ikbone_name_list, targetbone_name_list):
-		print("creating frames for IK bone '%s' to follow non-IK bone '%s'" % (i, t))
+		core.MY_PRINT_FUNC("creating frames for IK bone '%s' to follow non-IK bone '%s'" % (i, t))
 	core.MY_PRINT_FUNC("")
 
 	# now create the set "relevant_bones" from these ik/target pairs
@@ -612,7 +629,7 @@ def main(moreinfo=True):
 	relevant_bones = set(pmx.bones[a].name_jp for a in relevant_bones_idxs)
 	
 	core.MY_PRINT_FUNC("Found %d important bones to simulate" % len(relevant_bones))
-	print(relevant_bones)  # todo
+	# print(relevant_bones)
 
 	# determine the deform order of all bones in the model
 	# result is a list of ForwardKinematicsBone objects with all the info i'm gonna need
@@ -645,11 +662,11 @@ def main(moreinfo=True):
 		if ikbone_name in boneframe_dict:
 			boneframe_dict.pop(ikbone_name)
 	
-	print("aaa")  # todo
+	# print("aaa")
 	# """rectangularize""" these boneframes by adding interpolated frames, so that every relevant bone
 	# has a frame at every relevant timestep
 	full_boneframe_dict = fill_missing_boneframes(boneframe_dict)
-	print("zzz")  # todo
+	# print("zzz")
 	
 	# "forward kinematics" function shouldn't need any knowledge of what timestep it is computing at
 	# i want to ultimately give the forward-k function a list of boneframes and bonepositions, nothing more
