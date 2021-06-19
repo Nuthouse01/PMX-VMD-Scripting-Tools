@@ -36,6 +36,7 @@ try:
 	from python import pmx_list_bone_morph_names
 	from python import translate_source_bone
 	from python import vmd_armtwist_insert
+	from python import vmd_rename_bones_morphs
 except ImportError as eee:
 	print(eee.__class__.__name__, eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
@@ -46,7 +47,7 @@ except ImportError as eee:
 	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = bone_armik_addremove = None
 	core = morph_invert = morph_hide = morph_scale = file_translate_names = convert_vpd_to_vmd = None
 	model_shift = model_scale = bone_endpoint_addremove = translate_source_bone = bone_auto_armtwist = None
-	file_recompress_images = None
+	file_recompress_images = vmd_rename_bones_morphs = None
 
 ########################################################################################################################
 # constants & options
@@ -70,6 +71,7 @@ all_script_list = [
 	("check_model_compatibility.py",     check_model_compatibility.helptext,     check_model_compatibility.main),
 	("model_shift.py",                   model_shift.helptext,                   model_shift.main),
 	("model_scale.py",                   model_scale.helptext,                   model_scale.main),
+	("vmd_rename_bones_morphs.py",       vmd_rename_bones_morphs.helptext,       vmd_rename_bones_morphs.main),
 	("convert_vmd_to_txt.py",            convert_vmd_to_txt.helptext,            convert_vmd_to_txt.main),
 	("convert_vpd_to_vmd.py",            convert_vpd_to_vmd.helptext,            convert_vpd_to_vmd.main),
 	("translate_source_bone.py",         translate_source_bone.helptext,         translate_source_bone.main),
