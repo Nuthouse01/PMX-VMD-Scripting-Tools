@@ -40,11 +40,11 @@ This script is to check if the model you are using is compatible with the VMD/VP
 
 (For example, if a model's eye-smile morph is named "笑い" and the motion uses "笑顔" for eye-smile, that morph will not be applied to the model and it will look wrong when played.)
 
-This script will reveal what exactly is mismatched; but to fix the issue, you must either change the PMX to match the VMD/VPD (using PMXEditor or a similar tool) or you must change the VMD/VPD to match the PMX (convert the VMD to text form, replace all uses of "笑顔" with "笑い" to match the model, and then convert it back to VMD form).
+This script will reveal what exactly is mismatched; but to fix the issue, you must either change the PMX to match the VMD/VPD (using PMXEditor or a similar tool) or you must change the VMD/VPD to match the PMX (use script "vmd_rename_bones_morphs" to do find-and-replace within the VMD!).
 
 ##### bone_auto_armtwist.py
 This will generate "automatic armtwist rigging" that will fix pinching at shoulders/elbows.  
-**This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.**  
+**This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.** Install the "Semi-Standard Bone Plugin" in PMXE to create these bones if they do not exist.  
 It creates a clever IK bone setup that hijacks the semistandard bones and moves them as needed to reach whatever pose you make with the arm/腕 or elbow/ひじ bones. You do not need to manually move the armtwist bones at all, you can animate all 3 axes of rotation on the arm bone and the twisting axis will be automatically extracted and transferred to the armtwist bone as needed!
 
 ##### morph_hide.py
