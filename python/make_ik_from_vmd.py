@@ -131,6 +131,56 @@ def rotate3d(rotate_around: Sequence[float],
 	return point
 
 # todo: move this to the same place as 'dictify_framelist'
+def remove_redundant_boneframes(framelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdstruct.VmdBoneFrame]:
+	"""
+	Remove any redundant/excessive frames that don't add anything to the motion. This should be the same as the
+	function "Edit > Delete Unused Frame" within MikuMikuDance, but this works only on a list of frames for a single
+	bone.
+	:param framelist: input list of boneframes
+	:return: new list of boneframes, same or fewer than input
+	"""
+	if len(framelist) <= 1:
+		return framelist.copy()
+	# sort the input by ascending framenumber cuz why not
+	# this DOES modify the input object but it should have already been in sorted order so boo hoo
+	framelist.sort(key=lambda x: x.f)
+	# # assert that they're all for the same bone cuz why not
+	# firstname = framelist[0].name
+	# assert all(x.name == firstname for x in framelist)
+	def compare_boneframe(x,y):
+		return (x.pos == y.pos) and (x.rot == y.rot)
+	def compare_morphframe(x,y):
+		return x.val == y.val
+	def compare_camframe(x,y):
+		return (x.pos == y.pos) and (x.rot == y.rot) and (x.dist == y.dist) and (x.fov == y.fov) and (x.perspective == y.perspective)
+
+	if isinstance(framelist[0], vmdstruct.VmdBoneFrame):
+		equalfunc = compare_boneframe
+	elif isinstance(framelist[0], vmdstruct.VmdMorphFrame):
+		equalfunc = compare_morphframe
+	elif isinstance(framelist[0], vmdstruct.VmdCamFrame):
+		equalfunc = compare_camframe
+	else:
+		raise ValueError()
+	
+	outlist = []
+	# if either neighbor has a different value, keep it. is it that simple?
+	for i in range(len(framelist)):
+		this = framelist[i]
+		# if there is a previous frame and that frame has a different value than the current,
+		if i-1 >= 0:
+			prev = framelist[i-1]
+			if not equalfunc(this,prev):
+				outlist.append(this)
+				continue
+		if i+1 < len(framelist):
+			after = framelist[i+1]
+			if not equalfunc(this, after):
+				outlist.append(this)
+				continue
+	return outlist
+
+# todo: move this to the same place as 'dictify_framelist'
 def fill_missing_boneframes(boneframe_dict: Dict[str, List[vmdstruct.VmdBoneFrame]],
 							moreinfo=False) -> Dict[str, List[vmdstruct.VmdBoneFrame]]:
 	"""
