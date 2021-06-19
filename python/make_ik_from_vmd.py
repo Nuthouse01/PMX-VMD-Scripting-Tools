@@ -54,6 +54,20 @@ DEBUG = False
 INCLUDE_IK_ENABLE_FRAME = True
 
 
+helptext = '''=================================================
+make_ik_from_vmd:
+This script runs forward kinematics for the bone in a model, to calculate where they will be and generates IK bone frames for those bones.
+This was originally designed for dances that do not use leg-IK frames, and instead control the legs by controlling the actual leg-knee-foot bones (like Conqueror by IA).
+However, this can also work to generate arm-IK frames when you have a motion that controls the shoulder-arm-elbow bones.
+** Specifically, if a non-IK dance works well for model X but not for model Y (feet clipping thru floor, etc), this would let you copy the foot positions from model X onto model Y.
+** In practice, this isn't very useful... this file is kept around for historical reasons. And because I think the forward kinematics math is pretty cool.
+The output is a VMD that should be loaded into MMD *after* the original dance VMD is loaded.
+
+This requires both a PMX model and a VMD motion to run.
+Outputs: VMD file '[dancename]_ik_from_[modelname].vmd' that contains only the IK frames for the dance
+'''
+
+
 class ForwardKinematicsBone:
 	def __init__(self, name, idx, deform, pos, descendents, ancestors,
 				 has_inherit_rot, has_inherit_trans, inherit_parent_name, inherit_ratio):
@@ -116,6 +130,7 @@ def rotate3d(rotate_around: Sequence[float],
 	
 	return point
 
+# todo: move this to the same place as 'dictify_framelist'
 def fill_missing_boneframes(boneframe_dict: Dict[str, List[vmdstruct.VmdBoneFrame]]) -> Dict[str, List[vmdstruct.VmdBoneFrame]]:
 	"""
 	Run interpolation so that all bones in boneframe_dict have keyframes at all framenumbers in relevant_framenums.
@@ -222,23 +237,6 @@ def fill_missing_boneframes(boneframe_dict: Dict[str, List[vmdstruct.VmdBoneFram
 	return new_boneframe_dict
 
 
-# todo: update helptext
-helptext = '''=================================================
-make_ik_from_vmd:
-This script runs forward kinematics for the legs of a model, to calculate where the feet/toes will be and generates IK bone frames for those feet/toes.
-This is only useful when the input dance does NOT already use IK frames, such as the dance Conqueror by IA.
-** Specifically, if a non-IK dance works well for model X but not for model Y (feet clipping thru floor, etc), this would let you copy the foot positions from model X onto model Y.
-** In practice, this isn't very useful... this file is kept around for historical reasons.
-The output is a VMD that should be loaded into MMD *after* the original dance VMD is loaded.
-
-Note: does not handle custom interpolation in the input dance VMD, assumes all interpolation is linear.
-Note: does not handle models with 'hip cancellation' bones
-
-This requires both a PMX model and a VMD motion to run.
-Outputs: VMD file '[dancename]_ik_from_[modelname].vmd' that contains only the IK frames for the dance
-'''
-
-
 def run_forward_kinematics_for_one_timestep(frames: Dict[str, vmdstruct.VmdBoneFrame],
 											boneorder: List[ForwardKinematicsBone]) -> List[ForwardKinematicsBone]:
 	"""
@@ -311,8 +309,16 @@ def run_forward_kinematics_for_one_timestep(frames: Dict[str, vmdstruct.VmdBoneF
 	# once i'm done, then return the same list that was passed in as an argument,
 	# but the pos/rot members have been changed
 	return boneorder
-	
+
+# todo: move this... somewhere... idk
 def recursive_find_all_parents(bones: List[pmxstruct.PmxBone], idx: int) -> Set[int]:
+	"""
+	Walk parent to parent to parent, return the set of all ancestors of the initial bone.
+	It's actually iterative, not recursive, but whatever.
+	:param bones: list of PmxBone objects, taken from Pmx.bones.
+	:param idx: index within "bones" to start from. NOT INCLUDED within return value.
+	:return: set of int indicies of all ancestors.
+	"""
 	retme = set()
 	# if the parent index is not already marked, and not invalid,
 	while (bones[idx].parent_idx not in retme) and (bones[idx].parent_idx >= 0):
@@ -321,7 +327,6 @@ def recursive_find_all_parents(bones: List[pmxstruct.PmxBone], idx: int) -> Set[
 		# and repeat from the parent index
 		idx = bones[idx].parent_idx
 	return retme
-
 
 def predetermine_bone_deform_order(bones: List[pmxstruct.PmxBone]) -> List[ForwardKinematicsBone]:
 	"""
@@ -394,7 +399,7 @@ def main(moreinfo=True):
 	core.MY_PRINT_FUNC("    Right hand2:   右腕ＩＫ/右手首")
 	core.MY_PRINT_FUNC("    Left hand2:    左腕ＩＫ/左手首")
 	core.MY_PRINT_FUNC("")
-	core.MY_PRINT_FUNC("Please specify all IK/target pairs to create frames for:")
+	core.MY_PRINT_FUNC("Please specify all IK/target pairs to create frames for, one pair at a time:")
 	core.MY_PRINT_FUNC("")
 	while True:
 		# ask for both ik and target at same time
@@ -600,7 +605,7 @@ def main(moreinfo=True):
 		core.MY_PRINT_FUNC("Warning: IK following will NOT be enabled when this VMD is loaded, you will need enable it manually!")
 		
 	vmd_out = vmdstruct.Vmd(
-		header=vmdstruct.VmdHeader(2, "IK-BONES"),
+		header=vmdstruct.VmdHeader(version=2, modelname=pmx.header.name_jp),
 		boneframes=output_vmd_frames,
 		morphframes=[], camframes=[], lightframes=[], shadowframes=[],
 		ikdispframes=ikdispframe_list
