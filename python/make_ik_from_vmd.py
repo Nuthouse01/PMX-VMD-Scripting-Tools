@@ -131,18 +131,23 @@ def rotate3d(rotate_around: Sequence[float],
 	return point
 
 # todo: move this to the same place as 'dictify_framelist'
-def fill_missing_boneframes(boneframe_dict: Dict[str, List[vmdstruct.VmdBoneFrame]]) -> Dict[str, List[vmdstruct.VmdBoneFrame]]:
+def fill_missing_boneframes(boneframe_dict: Dict[str, List[vmdstruct.VmdBoneFrame]],
+							moreinfo=False) -> Dict[str, List[vmdstruct.VmdBoneFrame]]:
 	"""
 	Run interpolation so that all bones in boneframe_dict have keyframes at all framenumbers in relevant_framenums.
 	Newly-created keyframes have basic linear interpolation.
 	Currently only works with boneframes, could plausibly be changed to work with morphframes tho.
+	Returns a separate dict, input is unmodified.
 	:param boneframe_dict: returned from dictify_framelist()
+	:param moreinfo: default false, if true then print some stats
 	:return: another boneframe_dict, but filled out
 	"""
 	# boneframe_dict: keys are bonenames, values are sorted lists of frames for that bone
 	# now fill in the blanks by using interpolation, if needed
 	
 	initial_size = sum(len(bonelist) for bonelist in boneframe_dict.values())
+	num_append_prepend = 0
+	num_interpolate = 0
 	
 	# relevant_framenums: sorted list of all framenums that any relevent bone is keyed on
 	relevant_framenums = set()
@@ -161,11 +166,13 @@ def fill_missing_boneframes(boneframe_dict: Dict[str, List[vmdstruct.VmdBoneFram
 		for framenum in relevant_framenums:
 			if framenum < bonelist[0].f:  # if the desired framenum is lower than the earliest framenum,
 				# then the new frame is a copy of the earliest frame
+				num_append_prepend += 1
 				newframe = bonelist[0].copy()
 				newframe.f = framenum
 				new_bonelist.append(newframe)
 			elif framenum > bonelist[-1].f:  # if the desired framenum is higher than the last framenum,
 				# then the new frame is a copy of the last frame
+				num_append_prepend += 1
 				newframe = bonelist[-1].copy()
 				newframe.f = framenum
 				new_bonelist.append(newframe)
@@ -176,6 +183,7 @@ def fill_missing_boneframes(boneframe_dict: Dict[str, List[vmdstruct.VmdBoneFram
 				i += 1
 			else:
 				# otherwise, then i need to create a new frame from interpolating...
+				num_interpolate += 1
 				# NOTE: remember, the interpolation in frame i is for the transition from i-1 to i
 				afterframe = bonelist[i]
 				beforeframe = bonelist[i-1]
@@ -231,8 +239,11 @@ def fill_missing_boneframes(boneframe_dict: Dict[str, List[vmdstruct.VmdBoneFram
 		new_boneframe_dict[key] = new_bonelist
 		
 	# stats
-	final_size = sum(len(bonelist) for bonelist in new_boneframe_dict.values())
-	core.MY_PRINT_FUNC("initial=%d, final=%d, added %d" % (initial_size, final_size, final_size-initial_size))  # todo
+	if moreinfo:
+		final_size = sum(len(bonelist) for bonelist in new_boneframe_dict.values())
+		if final_size != initial_size:
+			core.MY_PRINT_FUNC("Initial FrameDict contained %d frames, added %d" % (initial_size, final_size-initial_size))
+			core.MY_PRINT_FUNC("Appended/prepended %d, interpolated %d" % (num_append_prepend, num_interpolate))
 	# now it is totally filled out!
 	return new_boneframe_dict
 
@@ -277,8 +288,8 @@ def run_forward_kinematics_for_one_timestep(frames: Dict[str, vmdstruct.VmdBoneF
 					# second, modify frame_rot
 					partial_rot = core.euler_to_quaternion(partialframe.rot)
 					# """multiply""" the rotation by the ratio
-					# i.e. slerp from nothing to the full thing
-					# TODO: does slerp support negative values? very large values? verify!
+					# i.e. slerp from nothing (euler 0,0,0 === quat 1,0,0,0) to the full thing
+					# negative ratio or ratio greater than 1 will still work
 					partial_rot_after_ratio = core.my_slerp([1.0, 0.0, 0.0, 0.0], partial_rot, currbone.inherit_ratio)
 					# """add""" the partial-inherit rotation to the full frame rotation
 					frame_rot = core.hamilton_product(partial_rot_after_ratio, frame_rot)
@@ -372,6 +383,8 @@ def predetermine_bone_deform_order(bones: List[pmxstruct.PmxBone]) -> List[Forwa
 									  inherit_ratio=bone.inherit_ratio)
 		sortme.append(thing)
 	# sort by effective_deform with current index as a tiebreaker
+	# therefore the bones that should deform first (motherbone, etc) will be at the top and leaf bones (fingers, etc)
+	# will be at the bottom
 	sortme.sort(key=lambda x: (x.deform, x.idx))
 	return sortme
 
@@ -413,13 +426,13 @@ def main(moreinfo=True):
 				core.MY_PRINT_FUNC("invalid input: must contain exactly 2 terms separated by a forwardslash")
 				return False
 			ikbone = core.my_list_search(pmx.bones, lambda b: b.name_jp == sp[0], getitem=True)
-			targbone = core.my_list_search(pmx.bones, lambda b: b.name_jp == sp[1])
 			if ikbone is None:
 				core.MY_PRINT_FUNC("invalid input: first bone '%s' does not exist in model" % sp[0])
 				return False
 			if ikbone.has_ik is False:
 				core.MY_PRINT_FUNC("invalid input: first bone '%s' exists but is not IK-type" % sp[0])
 				return False
+			targbone = core.my_list_search(pmx.bones, lambda b: b.name_jp == sp[1])
 			if targbone is None:
 				core.MY_PRINT_FUNC("invalid input: second bone '%s' does not exist in model" % sp[1])
 				return False
@@ -516,12 +529,13 @@ def main(moreinfo=True):
 	
 	# """rectangularize""" these boneframes by adding interpolated frames, so that every relevant bone
 	# has a frame at every relevant timestep
-	full_boneframe_dict = fill_missing_boneframes(boneframe_dict)
+	full_boneframe_dict = fill_missing_boneframes(boneframe_dict, moreinfo)
 	
 	# "forward kinematics" function shouldn't need any knowledge of what timestep it is computing at
 	# i want to ultimately give the forward-k function a list of boneframes and bonepositions, nothing more
 	# therefore lets invert this dict, so that the primary key is framenum!!
 	# each value is a dict, where the keys are the bone names and the values are the actual frames
+	# invert_boneframe_dict[5][motherbone_name] = VmdBoneFrame object
 	invert_boneframe_dict = {}
 	for bonelist in full_boneframe_dict.values():  # for each bone,
 		for frame in bonelist:
@@ -543,7 +557,7 @@ def main(moreinfo=True):
 		relevant_framenums.update(framenums_for_this_bone)
 	# turn the relevant_framenums set into a sorted list
 	relevant_framenums = sorted(list(relevant_framenums))
-	
+	# verify that it is "rectangular"
 	assert len(invert_boneframe_dict.keys()) == len(relevant_framenums)
 	for foo in invert_boneframe_dict.values():
 		assert len(foo) == len(full_boneframe_dict.keys())

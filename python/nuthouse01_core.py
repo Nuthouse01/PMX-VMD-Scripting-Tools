@@ -926,7 +926,8 @@ def my_quat_conjugate(q: Sequence[float]) -> Tuple[float,float,float,float]:
 def my_slerp(v0: Sequence[float], v1: Sequence[float], t: float) -> Tuple[float,float,float,float]:
 	"""
 	Spherically Linear intERPolates between quat1 and quat2 by t.
-	The param t should be clamped to the range [0, 1].
+	The param t will normally be clamped to the range [0, 1]. However, negative values or greater than 1 will still
+	work.
 	If t==0, return v0. If t==1, return v1.
 
 	:param v0: 4x float, W X Y Z quaternion
