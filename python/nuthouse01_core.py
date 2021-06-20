@@ -421,12 +421,15 @@ def get_unused_file_name(initial_name: str, namelist=None) -> str:
 	:param namelist: optional list/set of forbidden names
 	:return: same file path as initial_name, but with integers appended until it becomes unique (if needed)
 	"""
-	# if namelist is given, check against namelist instead of what's on the disk... assume namelist contains all lowercase names
+	# if namelist is given, check against namelist as well as what's on the disk...
+	# make an all-lower version of namelist
+	if namelist is None: namelist_lower = []
+	else:                namelist_lower = [n.lower() for n in namelist]
 	basename, extension = path.splitext(initial_name)
 	test_name = basename + extension  # first, try it without adding any numbers
 	for append_num in range(2, 1000):
-		if not path.exists(test_name) and ((namelist is None) or (test_name.lower() not in [n.lower() for n in namelist])):
-			# if test_name doesn't exist, AND it isn't in the list (case-insensitive matching), then its a good name
+		if not path.exists(test_name) and (test_name.lower() not in namelist_lower):
+			# if test_name doesn't exist on disk, AND it isn't in the list (case-insensitive matching), then its a good name
 			return test_name
 		else:
 			test_name = basename + str(append_num) + extension  # each future test_name has a number inserted in it
