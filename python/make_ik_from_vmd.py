@@ -11,11 +11,12 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - 10/10/2020 - v5.03"
 # NOTE: if you are taking positions from one model and forcing them onto another model, it's not gonna be a perfect solution
 # scaling or manual adjustment will probably be required, which kinda defeats the whole point of this script...
 
-# first, system imports
+# first system imports
 from typing import List, Sequence, Dict, Set
 
-# second, my imports
-if __name__ != '__main__':
+
+# second, wrap custom imports with a try-except to catch it if files are missing
+try:
 	# these imports work if running from GUI
 	from . import nuthouse01_core as core
 	from . import nuthouse01_vmd_parser as vmdlib
@@ -23,14 +24,24 @@ if __name__ != '__main__':
 	from . import nuthouse01_pmx_parser as pmxlib
 	from . import nuthouse01_pmx_struct as pmxstruct
 	from . import WIP_vmd_animation_smoothing
-else:
-	# these imports work if running from double-click on THIS script
-	import nuthouse01_core as core
-	import nuthouse01_vmd_parser as vmdlib
-	import nuthouse01_vmd_struct as vmdstruct
-	import nuthouse01_pmx_parser as pmxlib
-	import nuthouse01_pmx_struct as pmxstruct
-	import WIP_vmd_animation_smoothing
+	from . import morph_scale
+except ImportError as eee:
+	try:
+		# these imports work if running from double-click on THIS script
+		import nuthouse01_core as core
+		import nuthouse01_vmd_parser as vmdlib
+		import nuthouse01_vmd_struct as vmdstruct
+		import nuthouse01_pmx_parser as pmxlib
+		import nuthouse01_pmx_struct as pmxstruct
+		import WIP_vmd_animation_smoothing
+		import morph_scale
+	except ImportError as eee:
+		print(eee.__class__.__name__, eee)
+		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
+		print("...press ENTER to exit...")
+		input()
+		exit()
+		core = vmdlib = vmdstruct = pmxlib = pmxstruct = WIP_vmd_animation_smoothing = morph_scale = None
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
