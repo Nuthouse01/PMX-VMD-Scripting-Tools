@@ -274,7 +274,6 @@ def normalize_texture_paths(pmx: pmxstruct.Pmx, exist_files: List[str]) -> int:
 	:return: number of unique textures that were changed
 	"""
 	# TODO: return number unified? or number changed?
-	# TODO: this is pretty good, probably want this in model_overall_cleanup!
 	start_tex_list = pmxlib.build_texture_list(pmx)
 	tex_update_map = {}
 	for d,starttex in enumerate(start_tex_list):
