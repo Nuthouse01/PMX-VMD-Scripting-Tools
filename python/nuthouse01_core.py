@@ -1,5 +1,5 @@
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
-PACKAGE_VERSION = "Package version: Nuthouse01 - 6/10/2021 - v6.00"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/??/2021 - v6.01"
+PACKAGE_VERSION = "Package version: Nuthouse01 - 6/??/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
