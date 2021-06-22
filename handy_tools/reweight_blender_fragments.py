@@ -2,10 +2,11 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
+import sys
+sys.path.append("../")
 
 try:
 	# these imports work if running from GUI
-	sys.path.append("../")
 	from python import nuthouse01_core as core
 	from python import nuthouse01_pmx_parser as pmxlib
 	from python import nuthouse01_pmx_struct as pmxstruct
