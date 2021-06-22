@@ -10,6 +10,7 @@ import csv
 import math
 import re
 import struct
+import json
 from os import path, listdir, getenv, makedirs
 from sys import platform, version_info, version
 from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
@@ -438,14 +439,57 @@ def get_unused_file_name(initial_name: str, namelist=None) -> str:
 	MY_PRINT_FUNC("Err: unable to find unused variation of '%s' for file-write" % initial_name)
 	raise RuntimeError()
 
-def get_persistient_storage_path(filename="") -> str:
+def get_persistent_storage_json() -> dict:
+	"""
+	Resolve the persistent storage path, read it as a json & return the dict
+	:return: dict of items that were in the json
+	"""
+	persist_path = _get_persistent_storage_path("persist.txt")
+	# read the json to list-of-strings using standard read-func
+	str_data = read_txtfile_to_list(src_path=persist_path,
+									use_jis_encoding=False,
+									quiet=True)
+	# join the list-of-strings with newlines
+	str_data_joined = "\n".join(str_data)
+	# if it's empty, json doesn't like that so handle it manually
+	if str_data_joined == "":
+		return {}
+	# parse the megastring with json library, get a dict
+	# floats & ints will be properly interpreted and returned as numbers :)
+	# note: what kind of errors can the json module create?
+	data = json.loads(str_data_joined)
+	return data
+
+def write_persistent_storage_json(data: dict) -> None:
+	"""
+	When given a dict, write the persistent storage file using json library
+	:param data: new json data to write
+	"""
+	persist_path = _get_persistent_storage_path("persist.txt")
+	# convert the dict into a long multi-line string
+	# note: what kind of errors can the json module create?
+	if data == {}:
+		str_data = ""
+	else:
+		str_data = json.dumps(data, ensure_ascii=False)
+	# print(str_data)
+	# use standard write-func to write to text file
+	# 'content' is designed to be list of strings that don't contain newlines, but there's no problem if i violate that
+	write_list_to_txtfile(dest_path=persist_path,
+						  content=[str_data],
+						  use_jis_encoding=False,
+						  quiet=True)
+	return None
+
+def _get_persistent_storage_path(filename="") -> str:
 	"""
 	Get the path to a storage location that will persist between runs, usually in APPDATA folder.
 	If not given a filename, return the path to the folder.
 	If given a filename, and the file does not exist, create it empty & return the path to this new file.
 	If the file does exist, return the path to the existing file.
+	This should only be used internally.
 	
-	:param filename: filename within the persistient storage directory
+	:param filename: filename within the persistent storage directory
 	:return: absolute file path to the persitient directory, or the file within it
 	"""
 	# this is the name of my "app"

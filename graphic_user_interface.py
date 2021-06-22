@@ -1,4 +1,4 @@
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 1/24/2021 - v5.06"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 1/24/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -128,11 +128,10 @@ def gui_fileprompt(extensions: str) -> str:
 	extensions_labels = (extensions_labels,)
 	
 	# dont trust file dialog to remember last-opened path, manually save/read it
-	recordpath = core.get_persistient_storage_path("last_opened_dir.txt")
-	c = core.read_txtfile_to_list(recordpath, quiet=True)
-	if c:
+	json_data = core.get_persistent_storage_json()
+	if 'last-opened-path' in json_data:
 		# if it has been used before, use the path from last time.
-		c = c[0]
+		c = json_data['last-opened-path']
 		# if the path from last time does not exist, walk up the path till I find a level that does still exist.
 		while c and not path.isdir(c):
 			c = path.dirname(c)
@@ -151,7 +150,8 @@ def gui_fileprompt(extensions: str) -> str:
 		raise RuntimeError()
 	
 	# they got an existing file! update the last_opened_dir file
-	core.write_list_to_txtfile(recordpath, [path.dirname(newpath)], quiet=True)
+	json_data['last-opened-path'] = path.dirname(newpath)
+	core.write_persistent_storage_json(json_data)
 	
 	return newpath
 

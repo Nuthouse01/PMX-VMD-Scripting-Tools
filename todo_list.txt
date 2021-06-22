@@ -19,12 +19,7 @@ TODO: overhaul 'create ik from vmd' script
     input 2 models & simulate on both
 
 TODO: improve the 'file extension to filedialogue filter' thingy, surely i can do better
-
-TODO: change the 'persistient storage' file to be dict-like so i can store more stuff more readably
-    ex: last-used-directory for each kind of file prompt, based on filtered extensions
-    ex: last-used-script
-    maybe use json library? is there some clever way of rewriting just one line in a file if i change just one line,
-    instead of rewriting the whole thing?
+    add last-used-directory for each kind of file prompt, based on filtered extensions
 
 TODO: simple flag in core that indicates 'running from gui' or not, wouldn't help with imports but might be useful
     in other contexts?
