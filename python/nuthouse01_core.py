@@ -380,10 +380,11 @@ def prompt_user_filename(extensions_in: str) -> str:
 		elif not path.isfile(name):
 			MY_PRINT_FUNC("Err: given file does not exist, did you type it wrong?")
 			abspath = path.abspath(name)
-			# find the point where the filepath breaks!
-			shorterpath = abspath
-			while not path.exists(shorterpath): shorterpath = path.split(shorterpath)[0]
-			whereitbreaks = (" " * len(shorterpath)) + " ^^^^"
+			# find the point where the filepath breaks! walk up folders 1 by 1 until i find the last place where the path was valid
+			c = abspath
+			while c and not path.exists(c):
+				c = path.dirname(c)
+			whereitbreaks = (" " * len(c)) + " ^^^^"
 			MY_PRINT_FUNC(abspath)
 			MY_PRINT_FUNC(whereitbreaks)
 		else:
