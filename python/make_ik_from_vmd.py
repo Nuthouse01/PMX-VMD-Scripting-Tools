@@ -1,5 +1,6 @@
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 10/10/2020 - v5.03"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
+# Special thanks to "tERBO" for making me overhaul & breath new life into this old, forgotten code!
 #####################
 
 # STATUS: it runs! it's fully written!
@@ -452,6 +453,7 @@ def main(moreinfo=True):
 	targetbone_name_list = []
 	
 	core.MY_PRINT_FUNC("")
+	# NOTE: this doesn't work in naked console, can copy from NP into console but not from console into console!!! >:(
 	core.MY_PRINT_FUNC("Common IK/target pairs: (listed for convenient copying)")
 	core.MY_PRINT_FUNC("    Right foot:    右足ＩＫ/右足首")
 	core.MY_PRINT_FUNC("    Right toe:     右つま先ＩＫ/右つま先")
@@ -491,7 +493,7 @@ def main(moreinfo=True):
 		s = core.MY_GENERAL_INPUT_FUNC(ik_target_valid_input_check,
 									   ["What IK bone do you want to make frames for, and what bone should it follow?",
 										"Please give the JP names of both bones separated by a forwardslash: ikname/followname",
-										"Empty input will begin forward kinematics simulation."])
+										"Empty input means you are done inputting bones."])
 		# if the input is empty string, then we break and begin executing with current args
 		if s == "" or s is None:
 			break
@@ -504,6 +506,10 @@ def main(moreinfo=True):
 		targetbone_name_list.append(targetbone_name)
 		core.MY_PRINT_FUNC("")
 		pass
+	
+	if len(ikbone_name_list) == 0:
+		core.MY_PRINT_FUNC("No bones to simulate, aborting")
+		return
 	
 	for i,t in zip(ikbone_name_list, targetbone_name_list):
 		core.MY_PRINT_FUNC("creating frames for IK bone '%s' to follow non-IK bone '%s'" % (i, t))
