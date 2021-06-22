@@ -27,9 +27,21 @@ except ImportError as eee:
 		exit()
 		core = None
 
+# TODO: investigate improved autoarmtwist by Tamo
 # TODO: redo imports for all files
-# TODO: investigate improved autoarmtwist
-# TODO: read that guys email about the "create ik from vmd" script
+#  figure out how to restructure into proper packages
+#  separate 'scripts' from 'functions'
+# TODO: establish template for 'scripts', i.e. contains main() contains helptext... is that it?
+# TODO: create one function in 'core' that does all the bottom-of-the-script stuff...?
+# TODO: overhaul 'create ik from vmd' script
+#  input 2 models & simulate on both
+# TODO: make the GUI automatically find & import all 'scripts' in 'FOOBAR' folder, rather than manually listing them???
+# TODO: improve the 'file extension to filedialogue filter' thingy, surely i can do better
+# TODO: change the 'persistient storage' file to be dict-like so i can store more stuff more readably
+#  ex: last-used-directory for each kind of file prompt, based on filtered extensions
+#  ex: last-used-script
+# TODO: simple flag in core that indicates 'running from gui' or not, wouldn't help with imports but might be useful
+#  in other contexts?
 
 ############################################################################################
 ######## IMPORTANT NOTES ###################################################################
