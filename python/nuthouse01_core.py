@@ -516,7 +516,7 @@ def _get_persistent_storage_path(filename="") -> str:
 # these functions do CSV read/write and binary-file read/write
 ########################################################################################################################
 
-def write_csvlist_to_file(dest_path:str, content:List[list], use_jis_encoding=False, quiet=False) -> None:
+def write_csvlist_to_file(dest_path:str, content:List[List[Any]], use_jis_encoding=False, quiet=False) -> None:
 	"""
 	Receive a list-of-lists format and write it to textfile on disk in CSV format.
 	
@@ -562,7 +562,7 @@ def write_csvlist_to_file(dest_path:str, content:List[list], use_jis_encoding=Fa
 
 	return None
 
-def read_file_to_csvlist(src_path:str, use_jis_encoding=False, quiet=False) -> List[list]:
+def read_file_to_csvlist(src_path:str, use_jis_encoding=False, quiet=False) -> List[List[Any]]:
 	"""
 	Read a CSV text file from disk & return a type-correct list-of-lists format
 	
