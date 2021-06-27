@@ -12,7 +12,7 @@ import re
 import struct
 import json
 from os import path, listdir, getenv, makedirs
-from sys import platform, version_info, version
+import sys
 from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
 
 
@@ -22,9 +22,10 @@ from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
 # actually written/tested with 3.6.6 so guaranteed to work on that or higher
 # between 3.4 and 3.6, who knows
 
-if version_info < (3, 6):
+if sys.version_info < (3, 6):
 	print("Your version of Python is too old to run this script, please update!")
-	print("Your current version = " + version)
+	print("Your current version = " + sys.version)
+	print("Required version = (3.6.0) or higher")
 	print("...press ENTER to exit...")
 	input()
 	exit()
@@ -495,7 +496,7 @@ def _get_persistent_storage_path(filename="") -> str:
 	# this is the name of my "app"
 	appname = "nuthouse01_mmd_tools"
 	# build the appropriate path for windows or unix
-	if platform == 'win32':
+	if sys.platform == 'win32':
 		appdata = path.join(getenv('APPDATA'), appname)
 	else:
 		appdata = path.expanduser(path.join("~", "." + appname))
