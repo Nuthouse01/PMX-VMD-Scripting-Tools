@@ -52,8 +52,6 @@ optimization: when i flood into a face or vert, everything between that location
 optimization: when looking thru "all faces and/or verts", only scan forward X locations from the highest-index face/vert i have found so far
 """
 
-LOOKAHEAD = 500
-
 MASS_FACTOR = 10
 
 
@@ -82,6 +80,8 @@ def dist_to_nearest_point_on_mesh_surface(point, vert_set, pmx, face_set):
 
 
 def main(moreinfo=True):
+	# PROBLEM: the assumption of locality was not correct! verts for a chunk are not clustered! (i think?)
+	
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
@@ -90,36 +90,42 @@ def main(moreinfo=True):
 	# coordinates are stored as list[x, y, z], convert this --> tuple --> hash for much faster comparing
 	vert_coord_hashes = [hash(tuple(v.pos)) for v in pmx.verts]
 	
-	all_vert_sets = []
-	all_face_sets = []
-	all_bone_indices = []
-	all_rigidbody_indices = []
+	list_of_vert_sets = []
+	list_of_face_sets = []
+	list_of_bone_indices = []
+	list_of_rigidbody_indices = []
+	
+	# it's simpler to start with a full set of everything used, and then remove things as they are used
+	# and its no less efficient
+	all_unused_verts = set(list(range(len(pmx.verts))))
 	
 	start_vert = 0
 	start_face = 0
-	# i know i'm done when i have consumed all verts & all faces
-	while start_face < len(pmx.faces) and start_vert < len(pmx.verts):
+	# continue looping for as long as there are verts not in a fragment
+	while all_unused_verts:
 		# 1. start a new sets for the vertices and faces
 		vert_set = set()
 		face_set = set()
 		# 2. pick a vertex that hasn't been used yet and add it to the set, ez
+		start_vert = min(all_unused_verts)
+		print("start@%d:: " % start_vert, end="")
+		vert_set.add(start_vert)
+		'''
 		# 2b. optimization: a fragment is guaranteed to have at least 4 faces (to make a closed 3d solid) and therefore at least 4 verts
 		# can i safely assume that they are "sharp" corners and therefore there are 12 verts?
-		for i in range(12):
+		for i in range(3):
 			vert_set.add(start_vert + i)
 		# also, init the faces set with the minimum of 4 faces, and add any verts included in those faces to the vert set
-		for i in range(4):
+		for i in range(1):
 			face_set.add(start_face + i)
 			for v in pmx.faces[start_face + i]:  # for each vert in this face,
 				vert_set.add(v)  # add this vert to the vert set
 		# guarantee that it is contiguous from start_vert to the highest index that was in the faces
 		vert_set = set(list(range(start_vert, max(vert_set)+1)))
 		# now i have initialized the set with everything i know is guarnateed part of the fragment
-		
 		highest_known_vert = max(vert_set)
 		highest_known_face = max(face_set)
-		
-		# print(str(len(vert_set)) + " ", end="")
+		'''
 		
 		# begin looping & flooding until i don't detect any more
 		while True:
@@ -128,7 +134,7 @@ def main(moreinfo=True):
 			
 			# 4. find all faces that include any vertex in the "fragment set",
 			# whenever i find one, add all verts that it includes to the "fragment set" as well
-			'''
+			
 			# zero-assumption brute-force method:
 			for f_id in range(len(pmx.faces)):
 				face = pmx.faces[f_id]
@@ -158,14 +164,14 @@ def main(moreinfo=True):
 							vert_set.add(pmx.faces[x][1])
 							vert_set.add(pmx.faces[x][2])
 						highest_known_face = f_id
-			
+			'''
 			set_size_B = len(vert_set)
 			
 			# update the set of vertex coord hashes for easier comparing
 			vert_set_hashes = set([vert_coord_hashes[i] for i in vert_set])
 			# 5. find all vertices that have the same exact coordinates as any vertex in the "fragment set",
 			# then and add them to the "fragment set"
-			'''
+			
 			# zero-assumption brute-force method:
 			for v_id in range(len(vert_coord_hashes)):
 				vert_hash = vert_coord_hashes[v_id]
@@ -186,59 +192,60 @@ def main(moreinfo=True):
 						for x in range(highest_known_vert+1, v_id):
 							vert_set.add(x)
 						highest_known_vert = v_id
-			
+			'''
 			set_size_C = len(vert_set)
 			
-			print("+%d +%d, " % (set_size_B - set_size_A, set_size_C - set_size_B), end="")
+			# print("+%d +%d, " % (set_size_B - set_size_A, set_size_C - set_size_B), end="")
+			print("+%d, " % (set_size_C - set_size_A), end="")
 			
 			# 6. if the number of verts did not change, we are done
 			if set_size_C == set_size_A:
 				break
 			pass
-		print("")
+		print("final size: %d verts, %d faces" % (len(vert_set), len(face_set)))
+		# print("min=%d, max=%d, contiguous=%s" % (min(vert_set), max(vert_set), str(bool(max(vert_set)-min(vert_set)==(len(vert_set)-1)))))
 		# 7. now i have a complete fragment in vert_set and face_set !! :)
-		all_vert_sets.append(vert_set)
-		all_face_sets.append(face_set)
-		# increment the face-start and vert-start indices, this is my stop condition
-		start_vert += len(vert_set)
-		start_face += len(face_set)
-		# move on to the next fragment if i still have more verts to parse
+		list_of_vert_sets.append(vert_set)
+		list_of_face_sets.append(face_set)
+		# remove all "used" verts from the "unused" set
+		all_unused_verts.difference_update(vert_set)
+		# loop & populate another fragment
 		pass
 	# done with identifying all fragments!
 	
 	# double-check that all vertices got sorted into one and only one fragment
-	assert sum([len(vs) for vs in all_vert_sets]) == len(pmx.verts)
+	assert sum([len(vs) for vs in list_of_vert_sets]) == len(pmx.verts)
 	temp = set()
-	for vs in all_vert_sets:
+	for vs in list_of_vert_sets:
 		temp.update(vs)
 	assert len(temp) == len(pmx.verts)
 	
 	# double-check that all faces got sorted into one and only one fragment
-	assert sum([len(fs) for fs in all_face_sets]) == len(pmx.faces)
+	assert sum([len(fs) for fs in list_of_face_sets]) == len(pmx.faces)
 	temp = set()
-	for fs in all_face_sets:
+	for fs in list_of_face_sets:
 		temp.update(fs)
 	assert len(temp) == len(pmx.faces)
 	
 	print("")
-	print("Identified %d discrete fragments!" % (len(all_vert_sets),))
+	print("Identified %d discrete fragments!" % (len(list_of_vert_sets),))
 	
 	# BONES AND WEIGHTS
-	for fragnum in range(len(all_vert_sets)):
+	for fragnum in range(len(list_of_vert_sets)):
 		# name
 		newbone_name = "fragment%d" % fragnum
 		# position: average of all vertices in the fragment? sure why not
 		# TODO is there a "better" way of calculating the average/centroid/center of mass? idk
 		newbone_pos = [0,0,0]
-		for v_id in all_vert_sets[fragnum]:
+		for v_id in list_of_vert_sets[fragnum]:
 			# accumulate the XYZ for each vertex in the fragment
 			newbone_pos[0] += pmx.verts[v_id].pos[0]
 			newbone_pos[1] += pmx.verts[v_id].pos[1]
 			newbone_pos[2] += pmx.verts[v_id].pos[2]
 		# divide by the number of verts in the fragment to get the average
-		newbone_pos[0] /= len(all_vert_sets[fragnum])
-		newbone_pos[1] /= len(all_vert_sets[fragnum])
-		newbone_pos[2] /= len(all_vert_sets[fragnum])
+		newbone_pos[0] /= len(list_of_vert_sets[fragnum])
+		newbone_pos[1] /= len(list_of_vert_sets[fragnum])
+		newbone_pos[2] /= len(list_of_vert_sets[fragnum])
 		# create the new bone object
 		newbone_obj = pmxstruct.PmxBone(
 			name_jp=newbone_name, name_en=newbone_name, pos=newbone_pos, parent_idx=0, deform_layer=0,
@@ -248,26 +255,26 @@ def main(moreinfo=True):
 		)
 		# note the index it will be inserted at
 		thisboneindex = len(pmx.bones)
-		all_bone_indices.append(thisboneindex)
+		list_of_bone_indices.append(thisboneindex)
 		# append it onto the list of bones
 		pmx.bones.append(newbone_obj)
 		# for each vertex in this fragment, give it 100% weight on that bone
-		for v_id in all_vert_sets[fragnum]:
+		for v_id in list_of_vert_sets[fragnum]:
 			v = pmx.verts[v_id]
 			v.weighttype = pmxstruct.WeightMode.BDEF1 # BDEF1
 			v.weight = [[thisboneindex, 1]]
 		pass
 	
 	# RIGID BODIES
-	for fragnum in range(len(all_vert_sets)):
+	for fragnum in range(len(list_of_vert_sets)):
 		newbody_name = "body%d-0" % fragnum
-		newbody_pos = pmx.bones[all_bone_indices[fragnum]].pos
+		newbody_pos = pmx.bones[list_of_bone_indices[fragnum]].pos
 		# hmmm, what do do here? this is the really hard part!
 		# let's just make a sphere with radius equal to the distance to the nearest vertex of this fragment?
 		# TODO: the bodies created from this are intersecting eachother when at rest!
 		#  the distance to the closest vertex is greater than the distance to the closest point on the closest face!
 		#  therefore there is a small bit of overlap
-		newbody_radius = dist_to_nearest_vertex(newbody_pos, all_vert_sets[fragnum], pmx)
+		newbody_radius = dist_to_nearest_vertex(newbody_pos, list_of_vert_sets[fragnum], pmx)
 		
 		# TODO: to "fill a fragment with several rigidbody spheres", you need to a) select a center for each, b) select a size for each
 		#  the sizes can come from algorithm roughed out in dist_to_nearest_point_on_mesh_surface()
@@ -294,7 +301,7 @@ def main(moreinfo=True):
 		# bone_idx: if there are more than 1 rigidbodies associated with each fragment, one "main" body is connected to the bone
 		# all the others are set to bone -1 and connected to the mainbody via joints
 		newbody_obj = pmxstruct.PmxRigidBody(
-			name_jp=newbody_name, name_en=newbody_name, bone_idx=all_bone_indices[fragnum],
+			name_jp=newbody_name, name_en=newbody_name, bone_idx=list_of_bone_indices[fragnum],
 			pos=newbody_pos, rot=[0,0,0], size=[newbody_radius,0,0], shape=pmxstruct.RigidBodyShape.SPHERE,
 			group=1, nocollide_set=set(), phys_mode=pmxstruct.RigidBodyPhysMode.PHYSICS, phys_mass=mass,
 			phys_move_damp=phys_move_damp, phys_rot_damp=phys_rot_damp, phys_repel=phys_repel, phys_friction=phys_friction
@@ -302,7 +309,7 @@ def main(moreinfo=True):
 		
 		# note the index that this will be inserted at
 		bodyindex = len(pmx.rigidbodies)
-		all_rigidbody_indices.append(bodyindex)
+		list_of_rigidbody_indices.append(bodyindex)
 		pmx.rigidbodies.append(newbody_obj)
 		pass
 	
@@ -312,7 +319,7 @@ def main(moreinfo=True):
 	# if there are several bodies then we need to create joints from the "center" rigidbody to the others
 	# even if you try to limit the joint to 0 rotation and 0 slide it still has some wiggle in it :( not perfectly rigid
 	# TODO: i'll deal with this if and only if an algorithm for filling fragments with rigidbodies is created
-	for fragnum in range(len(all_vert_sets)):
+	for fragnum in range(len(list_of_vert_sets)):
 		pass
 	
 	
