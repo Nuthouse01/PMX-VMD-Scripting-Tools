@@ -132,55 +132,75 @@ def rotate3d(rotate_around: Sequence[float],
 	return point
 
 # todo: move this to the same place as 'dictify_framelist'
-def remove_redundant_boneframes(framelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdstruct.VmdBoneFrame]:
+def remove_redundant_frames(framelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdstruct.VmdBoneFrame]:
 	"""
 	Remove any redundant/excessive frames that don't add anything to the motion. This should be the same as the
-	function "Edit > Delete Unused Frame" within MikuMikuDance, but this works only on a list of frames for a single
-	bone.
-	:param framelist: input list of boneframes
-	:return: new list of boneframes, same or fewer than input
+	function "Edit > Delete Unused Frame" within MikuMikuDance.
+	TODO: change the type hints to allow inputs of any kind of frame type, just for completeness
+	:param framelist: input list of frames
+	:return: new list of frames, same or fewer than input
 	"""
+	# if the list has 1 or is empty, nothing to do
 	if len(framelist) <= 1:
 		return framelist.copy()
-	# sort the input by ascending framenumber cuz why not
-	# this DOES modify the input object but it should have already been in sorted order so boo hoo
-	framelist.sort(key=lambda x: x.f)
-	# # assert that they're all for the same bone cuz why not
-	# firstname = framelist[0].name
-	# assert all(x.name == firstname for x in framelist)
+	FIRST = framelist[0]
+	if isinstance(FIRST, (vmdstruct.VmdBoneFrame, vmdstruct.VmdMorphFrame)):
+		# guarantee that they're split by morphname/bonename (if already split this is harmless)
+		d = WIP_vmd_animation_smoothing.dictify_framelist(framelist)
+		list_of_framelists = list(d.values())
+	else:
+		# guarantee sorted by ascending framenumber cuz why not
+		# this DOES modify the input object but it should have already been in sorted order so boo hoo
+		framelist.sort(key=lambda x: x.f)
+		list_of_framelists = [framelist]
+	
+	# return true if they are the SAME! (except for framenum and interp values)
 	def compare_boneframe(x,y):
-		return (x.pos == y.pos) and (x.rot == y.rot)
+		return (x.pos == y.pos) and (x.rot == y.rot) and (x.phys_off == y.phys_off)
 	def compare_morphframe(x,y):
 		return x.val == y.val
 	def compare_camframe(x,y):
 		return (x.pos == y.pos) and (x.rot == y.rot) and (x.dist == y.dist) and (x.fov == y.fov) and (x.perspective == y.perspective)
 
-	if isinstance(framelist[0], vmdstruct.VmdBoneFrame):
+	# select which equalfunc to use based on the type of the objects in the list
+	if isinstance(FIRST, vmdstruct.VmdBoneFrame):
 		equalfunc = compare_boneframe
-	elif isinstance(framelist[0], vmdstruct.VmdMorphFrame):
+	elif isinstance(FIRST, vmdstruct.VmdMorphFrame):
 		equalfunc = compare_morphframe
-	elif isinstance(framelist[0], vmdstruct.VmdCamFrame):
+	elif isinstance(FIRST, vmdstruct.VmdCamFrame):
 		equalfunc = compare_camframe
 	else:
 		raise ValueError()
 	
-	outlist = []
-	# if either neighbor has a different value, keep it. is it that simple?
-	for i in range(len(framelist)):
-		this = framelist[i]
-		# if there is a previous frame and that frame has a different value than the current,
-		if i-1 >= 0:
-			prev = framelist[i-1]
-			if not equalfunc(this,prev):
+	ultimate_outlist = []
+	# 0: skip
+	# 1: skip
+	# 2: first yes, 1 to 1 = nothing, last yes
+	for this_framelist in list_of_framelists:
+		outlist = []
+		# if either neighbor has a different value, keep it. is it that simple?
+		# first, check the first frame:
+		if not equalfunc(this_framelist[0], this_framelist[1]):
+			# then keep it
+			outlist.append(this_framelist[0])
+		# second, check all middle frames
+		for i in range(1, len(this_framelist)-1):
+			this = this_framelist[i]
+			prev = this_framelist[i-1]
+			after = this_framelist[i+1]
+			# if the previous frame has a different value than the current,
+			# or if the following frame has a different value than the current,
+			if (not equalfunc(this,prev)) or (not equalfunc(this,after)):
+				# then keep it
 				outlist.append(this)
-				continue
-		if i+1 < len(framelist):
-			after = framelist[i+1]
-			if not equalfunc(this, after):
-				outlist.append(this)
-				continue
-	return outlist
-
+		# third, check the final frame:
+		if not equalfunc(this_framelist[-1], this_framelist[-2]):
+			# then keep it
+			outlist.append(this_framelist[-1])
+		# all of "outlist" is used to extend the flat "ultimate_outlist" which is really returned
+		ultimate_outlist.extend(outlist)
+	return ultimate_outlist
+	
 # todo: move this to the same place as 'dictify_framelist'
 def fill_missing_boneframes(boneframe_dict: Dict[str, List[vmdstruct.VmdBoneFrame]],
 							moreinfo=False) -> Dict[str, List[vmdstruct.VmdBoneFrame]]:

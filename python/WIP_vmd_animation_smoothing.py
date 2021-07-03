@@ -123,9 +123,9 @@ def dictify_framelist(frames: List[BONEFRAME_OR_MORPHFRAME]) -> Dict[str, List[B
 	# first, split into sublists
 	retdict = {}
 	for t in frames:
-		if t.name in retdict:
+		try:
 			retdict[t.name].append(t)
-		else:
+		except KeyError:
 			retdict[t.name] = [t]
 	# then, guarantee each sublist is in sorted order, sorted by frame number
 	for sublist in retdict.values():
