@@ -1,6 +1,6 @@
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 10/10/2020 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
-# Special thanks to "tERBO" for making me overhaul & breath new life into this old, forgotten code!
+# Special thanks to "tERBO" for making me overhaul & breathe new life into this old, forgotten code!
 #####################
 
 # STATUS: it runs! it's fully written!
@@ -25,7 +25,6 @@ try:
 	from . import nuthouse01_pmx_parser as pmxlib
 	from . import nuthouse01_pmx_struct as pmxstruct
 	from . import WIP_vmd_animation_smoothing
-	from . import morph_scale
 except ImportError as eee:
 	try:
 		# these imports work if running from double-click on THIS script
@@ -35,18 +34,17 @@ except ImportError as eee:
 		import nuthouse01_pmx_parser as pmxlib
 		import nuthouse01_pmx_struct as pmxstruct
 		import WIP_vmd_animation_smoothing
-		import morph_scale
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = vmdlib = vmdstruct = pmxlib = pmxstruct = WIP_vmd_animation_smoothing = morph_scale = None
+		core = vmdlib = vmdstruct = pmxlib = pmxstruct = WIP_vmd_animation_smoothing = None
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
-DEBUG = False
+DEBUG = True
 
 
 # if this is true, an IK-disp frame will be created that enables the IK-following
@@ -57,14 +55,15 @@ INCLUDE_IK_ENABLE_FRAME = True
 
 helptext = '''=================================================
 make_ik_from_vmd:
-This script runs forward kinematics for the bone in a model, to calculate where they will be and generates IK bone frames for those bones.
-This was originally designed for dances that do not use leg-IK frames, and instead control the legs by controlling the actual leg-knee-foot bones (like Conqueror by IA).
-However, this can also work to generate arm-IK frames when you have a motion that controls the shoulder-arm-elbow bones.
-** Specifically, if a non-IK dance works well for model X but not for model Y (feet clipping thru floor, etc), this would let you copy the foot positions from model X onto model Y.
-** In practice, this isn't very useful... this file is kept around for historical reasons. And because I think the forward kinematics math is pretty cool.
+This script runs forward kinematics for the bones in model X to calculate how they will move during a dance, and find the resulting absolute world-positions of some specified bones.
+This will then run that same dance on model Y, and calculate VMD frames to move specified IK bones to those absolute world-positions.
+Model X and model Y can be the same model, but is that really useful?
+This was originally designed for dances that do not use leg-IK frames, and instead control the legs by controlling the actual leg-knee-foot angles (like Conqueror by IA). If a non-IK dance works well for model X but not for model Y (feet clipping thru floor, etc), this would let you copy the foot positions from model X onto model Y.
+However, this can also work to generate arm-IK frames when you have a motion that controls the shoulder-arm-elbow bones. If a dance for model X has the model holding their hand on a stationary object, but model Y has different proportions and their hand is no longer stationary, this script will fix that problem.
+** In practice, this highly specific and not generally very useful... this file is kept around for historical reasons. And because I think the forward kinematics math is pretty cool.
 The output is a VMD that should be loaded into MMD *after* the original dance VMD is loaded.
 
-This requires both a PMX model and a VMD motion to run.
+This requires at least 1 PMX model and a VMD motion to run.
 Outputs: VMD file '[dancename]_ik_from_[modelname].vmd' that contains only the IK frames for the dance
 '''
 
@@ -177,6 +176,11 @@ def remove_redundant_frames(framelist: List[vmdstruct.VmdBoneFrame]) -> List[vmd
 	# 1: skip
 	# 2: first yes, 1 to 1 = nothing, last yes
 	for this_framelist in list_of_framelists:
+		# if there is only 1 frame in this list then i can't possibly remove anything
+		if len(this_framelist) <= 1:
+			ultimate_outlist.extend(this_framelist)
+			continue
+			
 		outlist = []
 		# if either neighbor has a different value, keep it. is it that simple?
 		# first, check the first frame:
@@ -393,7 +397,7 @@ def run_forward_kinematics_for_one_timestep(frames: Dict[str, vmdstruct.VmdBoneF
 	return boneorder
 
 # todo: move this... somewhere... idk
-def recursive_find_all_parents(bones: List[pmxstruct.PmxBone], idx: int) -> Set[int]:
+def recursive_find_all_ancestors(bones: List[pmxstruct.PmxBone], idx: int) -> Set[int]:
 	"""
 	Walk parent to parent to parent, return the set of all ancestors of the initial bone.
 	It's actually iterative, not recursive, but whatever.
@@ -421,7 +425,7 @@ def predetermine_bone_deform_order(bones: List[pmxstruct.PmxBone]) -> List[Forwa
 	all_parents_list = []
 	for B in range(len(bones)):
 		# start with the index of the current bone, "B", then recurse upward & fill the set
-		this_bone_parents = recursive_find_all_parents(bones, B)
+		this_bone_parents = recursive_find_all_ancestors(bones, B)
 		# convert set to list & append
 		all_parents_list.append(list(this_bone_parents))
 	# all_descendent_list: for each bone, if any other bone sees this bone as it's parent, then that bone is
@@ -459,209 +463,292 @@ def predetermine_bone_deform_order(bones: List[pmxstruct.PmxBone]) -> List[Forwa
 	sortme.sort(key=lambda x: (x.deform, x.idx))
 	return sortme
 
+
+# function that takes a string & returns INDEX if it can match one, or None otherwise
+def get_item_from_string(s: str, pmxlist: List):
+	# search JP names first
+	t = core.my_list_search(pmxlist, lambda x: x.name_jp.lower() == s.lower(), getitem=True)
+	if t is not None: return t
+	# search EN names next
+	t = core.my_list_search(pmxlist, lambda x: x.name_en.lower() == s.lower(), getitem=True)
+	if t is not None: return t
+	# try to cast to int next
+	try:
+		t = int(s)
+		if 0 <= t < len(pmxlist):
+			return pmxlist[t]
+		else:
+			core.MY_PRINT_FUNC("valid indexes are [0-'%d']" % (len(pmxlist) - 1))
+			return None
+	except ValueError:
+		core.MY_PRINT_FUNC("unable to find matching item for input '%s'" % s)
+		return None
+
+
 def main(moreinfo=True):
 	############################################
 	############################################
 	############################################
 	############################################
-	# prompt PMX name
-	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
-	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
-	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
+	# NEW USAGE TEMPLATE:
+	# 1. ask for dance that works as intended with model X
+	core.MY_PRINT_FUNC("Please specify the VMD dance input file:")
+	input_filename_vmd = core.MY_FILEPROMPT_FUNC(".vmd")
+	vmd = vmdlib.read_vmd(input_filename_vmd, moreinfo=moreinfo)
+
+	# 2. ask for model X
+	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC("Please specify (X) the PMX model file that the VMD works correctly with:")
+	input_filename_pmx_source = core.MY_FILEPROMPT_FUNC(".pmx")
+	pmx_source = pmxlib.read_pmx(input_filename_pmx_source, moreinfo=moreinfo)
+
+	# 3. ask for model Y
+	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC("Please specify (Y) the PMX model file that you want to create VMD IK frames for:")
+	input_filename_pmx_dest = core.MY_FILEPROMPT_FUNC(".pmx")
+	pmx_dest = pmxlib.read_pmx(input_filename_pmx_dest, moreinfo=moreinfo)
+
+	# 4. ask for the bones... how?
+	# ask for both ik and target at same time
+	# valid input is any string that contains a forwardslash? then afterwards I can check that the Lside and Rside exist?
+	# allow for any number of pairs...
+	
+	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC("Please specify all IK/target pairs to create frames for, one pair at a time.")
+	core.MY_PRINT_FUNC("The IK is a bone in model Y, and the 'target' is a bone in model X.")
+	core.MY_PRINT_FUNC("The script will move on and begin simulation when you give empty input.")
+	core.MY_PRINT_FUNC("")
 	
 	ikbone_name_list = []
 	targetbone_name_list = []
 	
-	core.MY_PRINT_FUNC("")
-	# NOTE: this doesn't work in naked console, can copy from NP into console but not from console into console!!! >:(
-	core.MY_PRINT_FUNC("Common IK/target pairs: (listed for convenient copying)")
-	core.MY_PRINT_FUNC("    Right foot:    右足ＩＫ/右足首")
-	core.MY_PRINT_FUNC("    Right toe:     右つま先ＩＫ/右つま先")
-	core.MY_PRINT_FUNC("    Left foot:     左足ＩＫ/左足首")
-	core.MY_PRINT_FUNC("    Left toe:      左つま先ＩＫ/左つま先")
-	core.MY_PRINT_FUNC("    Right hand:    右腕IK/右手首")
-	core.MY_PRINT_FUNC("    Left hand:     左腕IK/左手首")
-	core.MY_PRINT_FUNC("    Right hand2:   右腕ＩＫ/右手首")
-	core.MY_PRINT_FUNC("    Left hand2:    左腕ＩＫ/左手首")
-	core.MY_PRINT_FUNC("")
-	core.MY_PRINT_FUNC("Please specify all IK/target pairs to create frames for, one pair at a time:")
-	core.MY_PRINT_FUNC("")
 	while True:
 		# ask for both ik and target at same time
-		# valid input is any string that contains a forwardslash
+		# valid input is any string that contains a forwardslash, and both halves can be matched to a bone
+		
 		def ik_target_valid_input_check(x:str)->bool:
 			# if input is empty that counts as valid cuz that's the "ok now go do it" signal
 			if x == "": return True
-			# valid input must contain a forwardslash
+			# valid input must contain a forwardslash, both sides of the split but not be empty
 			sp = x.split('/')
-			if len(sp) != 2:
+			if not (len(sp) == 2 and sp[0] and sp[1]):
 				core.MY_PRINT_FUNC("invalid input: must contain exactly 2 terms separated by a forwardslash")
 				return False
-			ikbone = core.my_list_search(pmx.bones, lambda b: b.name_jp == sp[0], getitem=True)
-			if ikbone is None:
-				core.MY_PRINT_FUNC("invalid input: first bone '%s' does not exist in model" % sp[0])
+			ik_arg = sp[0]
+			targ_arg = sp[1]
+			# first: is ik_arg a valid identifier?
+			ik = get_item_from_string(ik_arg, pmx_dest.bones)
+			if ik is None:
 				return False
-			if ikbone.has_ik is False:
+			# second: is targ_arg a valid identifier?
+			targ = get_item_from_string(targ_arg, pmx_source.bones)
+			if targ is None:
+				return False
+			# third: is ik really an ik-type bone?
+			if ik.has_ik is False:
 				core.MY_PRINT_FUNC("invalid input: first bone '%s' exists but is not IK-type" % sp[0])
-				return False
-			targbone = core.my_list_search(pmx.bones, lambda b: b.name_jp == sp[1])
-			if targbone is None:
-				core.MY_PRINT_FUNC("invalid input: second bone '%s' does not exist in model" % sp[1])
 				return False
 			return True
 
 		s = core.MY_GENERAL_INPUT_FUNC(ik_target_valid_input_check,
 									   ["What IK bone do you want to make frames for, and what bone should it follow?",
-										"Please give the JP names of both bones separated by a forwardslash: ikname/followname",
+										"Please specify the two bones separated by a forwardslash: ik/follow",
+										"A bone can be specified by JP name, EN name, or index #.",
+										"The IK bone must exist in model Y and the follow bone must exist in model X.",
 										"Empty input means you are done inputting bones."])
 		# if the input is empty string, then we break and begin executing with current args
 		if s == "" or s is None:
 			break
 			
-		# because of ik_target_valid_input_check() it should be guaranteed safe to call split here
-		ikbone_name, targetbone_name = s.split('/')
-		
-		# core.MY_PRINT_FUNC("argument accepted: creating frames for IK bone '%s' to follow non-IK bone '%s'" % (ikbone_name, targetbone_name))
-		ikbone_name_list.append(ikbone_name)
-		targetbone_name_list.append(targetbone_name)
+		# because of ik_target_valid_input_check() it should be guaranteed safe to call split here & resolve them to bones
+		ik_foo, target_foo = s.split('/')
+		ik_bar = get_item_from_string(ik_foo, pmx_dest.bones)
+		targ_bar = get_item_from_string(target_foo, pmx_source.bones)
+		core.MY_PRINT_FUNC("ACCEPTED: ik bone = {}/'{}'/'{}', target bone = {}/'{}'/'{}'".format(
+			ik_bar.idx_within(pmx_dest.bones), ik_bar.name_jp, ik_bar.name_en,
+			targ_bar.idx_within(pmx_source.bones), targ_bar.name_jp, targ_bar.name_en,
+		))
 		core.MY_PRINT_FUNC("")
+		
+		ikbone_name_list.append(ik_bar.name_jp)
+		targetbone_name_list.append(targ_bar.name_jp)
 		pass
 	
 	if len(ikbone_name_list) == 0:
 		core.MY_PRINT_FUNC("No bones to simulate, aborting")
 		return
 	
-	for i,t in zip(ikbone_name_list, targetbone_name_list):
-		core.MY_PRINT_FUNC("creating frames for IK bone '%s' to follow non-IK bone '%s'" % (i, t))
-	core.MY_PRINT_FUNC("")
+	# for i,t in zip(ikbone_name_list, targetbone_name_list):
+	# 	core.MY_PRINT_FUNC("creating frames for IK bone '%s' to follow non-IK bone '%s'" % (i, t))
+	# core.MY_PRINT_FUNC("")
 
-	# now create the set "relevant_bones" from these ik/target pairs
-	# remember to ignore any bones that are parents of both ikbone and targetbone... right?
-	# since they are inherited by both ends, they affect both ends equally, so the delta is unaffected
-	# so they would just add extra frames that aren't needed
-	
-	# set of INT INDICES that reference bones that will be simulated by forward kinematics
-	relevant_bones_idxs = set()
-	
-	for ikbone_name, targetbone_name in zip(ikbone_name_list, targetbone_name_list):
-		# turn ik bone NAME into INDEX
-		ikbone_idx = core.my_list_search(pmx.bones, lambda x: x.name_jp == ikbone_name, getitem=False)
-		# perform recursion & fill the set with INDEXES
-		ikbone_relevant_bones = recursive_find_all_parents(pmx.bones, ikbone_idx)
-		# turn target bone NAME into INDEX
-		targetbone_idx = core.my_list_search(pmx.bones, lambda x: x.name_jp == targetbone_name, getitem=False)
-		# perform recursion & fill the set with INDEXES
-		targetbone_relevant_bones = recursive_find_all_parents(pmx.bones, targetbone_idx)
-		
-		# discard any bones that are in both sets
-		unique = ikbone_relevant_bones.symmetric_difference(targetbone_relevant_bones)
-		# combine this result with everything i had already gotten
-		relevant_bones_idxs.update(unique)
-		relevant_bones_idxs.add(targetbone_idx)
-		
-		# add all the partial-inherit parents for each of these bones (most won't have any tho)
-		for idx in list(relevant_bones_idxs):
-			bone = pmx.bones[idx]
-			if (bone.inherit_rot or bone.inherit_trans) and (bone.inherit_ratio != 0):
-				relevant_bones_idxs.add(bone.inherit_parent_idx)
-		
-	# turn set of ints into set of strings, bone names that will be simulated by forward kinematics
-	relevant_bones = set(pmx.bones[a].name_jp for a in relevant_bones_idxs)
-	
-	core.MY_PRINT_FUNC("Found %d important bones to simulate" % len(relevant_bones))
-	# print(relevant_bones)
-
+	############################################
+	############################################
+	############################################
+	############################################
+	# DONE ASKING FOR INPUTS, NOW JUST DO PRE-PROCESSING
+	# FIRST, do the "predetermine_bone_deform_order" stage for both models
 	# determine the deform order of all bones in the model
 	# result is a list of ForwardKinematicsBone objects with all the info i'm gonna need
-	order = predetermine_bone_deform_order(pmx.bones)
-
-	############################################
-	############################################
-	############################################
-	############################################
+	order_source = predetermine_bone_deform_order(pmx_source.bones)
+	order_dest = predetermine_bone_deform_order(pmx_dest.bones)
 	
-	core.MY_PRINT_FUNC("")
-	# prompt VMD file name
-	core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
-	input_filename_vmd = core.MY_FILEPROMPT_FUNC(".vmd")
-	vmd = vmdlib.read_vmd(input_filename_vmd, moreinfo=moreinfo)
+	# SECOND, begin massaging the VMD
+	# remove redundant frames just cuz i can, it might help reduce processing time
+	boneframe_list = remove_redundant_frames(vmd.boneframes)
+	# arrange the boneframes into a dict, key=name and value=sorted list of frames on that bone
+	# make a copy of the dict so i can modify the sourcedict separate from the targetdict
+	boneframe_source_dict = WIP_vmd_animation_smoothing.dictify_framelist(boneframe_list)
+	boneframe_dest_dict = WIP_vmd_animation_smoothing.dictify_framelist(boneframe_list)
 	
 	# # check if this VMD uses IK or not, print a warning if it does
 	# if any(any(ik_bone.enable for ik_bone in ikdispframe.ikbones) for ikdispframe in vmd.ikdispframes):
 	# 	core.MY_PRINT_FUNC(
 	# 		"Warning: the input VMD already has IK enabled, there is no point in running this script? Continuing anyway...")
 	
-	# arrange the boneframes into a dict, key=name and value=sorted list of frames on that bone
-	boneframe_dict = WIP_vmd_animation_smoothing.dictify_framelist(vmd.boneframes)
+	# THIRD, create the set "relevant_bones" from these ik/target pairs
+	# (really this is just an optimization thing, not strictly necessary)
+	# gotta create a separate set for the separate models :/
+	# these are the ancestors of all the specified bones, everything needed to simulate their forward K
+	# so i can discard the VMD frames of anything not in this ancestor set
+	# does include the actual ik and actual target
 	
-	# remove all irrelevant bones from the boneframe_dict
-	for key,value in list(boneframe_dict.items()):
-		if key not in relevant_bones:
-			boneframe_dict.pop(key)
-	# pop any frames for the IK bone itself, just to be safe (since i'm making new frames for it)
+	# set of INT INDICES that reference bones that will be simulated by forward kinematics
+	relevant_bone_dest_idxs = set()
 	for ikbone_name in ikbone_name_list:
-		if ikbone_name in boneframe_dict:
-			boneframe_dict.pop(ikbone_name)
+		# turn ik bone NAME into INDEX
+		ikbone_idx = core.my_list_search(pmx_dest.bones, lambda x: x.name_jp == ikbone_name, getitem=False)
+		# perform recursion & fill the set with INDEXES
+		relevant_bone_dest_idxs.update(recursive_find_all_ancestors(pmx_dest.bones, ikbone_idx))
+		relevant_bone_dest_idxs.add(ikbone_idx)
+	# add all the partial-inherit parents for each of these bones, if they exist
+	for idx in list(relevant_bone_dest_idxs):
+		# turn index into object
+		bone = pmx_dest.bones[idx]
+		if (bone.inherit_rot or bone.inherit_trans) and (bone.inherit_ratio != 0):
+			relevant_bone_dest_idxs.add(bone.inherit_parent_idx)
+		
+	relevant_bone_source_idxs = set()
+	for targetbone_name in targetbone_name_list:
+		# turn target bone NAME into INDEX
+		targetbone_idx = core.my_list_search(pmx_source.bones, lambda x: x.name_jp == targetbone_name, getitem=False)
+		# perform recursion & fill the set with INDEXES
+		relevant_bone_source_idxs.update(recursive_find_all_ancestors(pmx_source.bones, targetbone_idx))
+		relevant_bone_source_idxs.add(targetbone_idx)
+	# add all the partial-inherit parents for each of these bones, if they exist
+	for idx in list(relevant_bone_source_idxs):
+		# turn index into object
+		bone = pmx_source.bones[idx]
+		if (bone.inherit_rot or bone.inherit_trans) and (bone.inherit_ratio != 0):
+			relevant_bone_source_idxs.add(bone.inherit_parent_idx)
 	
+	# turn set of ints into set of strings, bone names that will be simulated by forward kinematics
+	relevant_bones_dest = set(pmx_dest.bones[a].name_jp for a in relevant_bone_dest_idxs)
+	relevant_bones_source = set(pmx_source.bones[a].name_jp for a in relevant_bone_source_idxs)
+	
+	# remove all irrelevant bones from the boneframe_dicts
+	for key in list(boneframe_source_dict.keys()):
+		if key not in relevant_bones_source:
+			boneframe_source_dict.pop(key)
+	for key in list(boneframe_dest_dict.keys()):
+		if key not in relevant_bones_dest:
+			boneframe_dest_dict.pop(key)
+	# print(relevant_bones)
+
+	# TODO PROBLEM: how do i account for the toe ik bone being moved RELATIVE TO THE FOOT IK BONE?????
+	#  this means i need to check the possible relative parentage of the ik bones!
+	#  and i need to somehow use the result of that check!
+	#  the simple solution would be to build the frame, add it to the system, and redo forward K
+	#  but i REALLY want to avoid that because that would increase processing time 4x when i'm already increasing it 2x!
+	
+	# FOURTH, continue massaging the VMD
+	# (this is necessary unlike step 3)
+	# pop any frames for the IK bone itself, just to be safe (since i'm making new frames for it, the old data will be overwritten)
+	for key in list(boneframe_dest_dict.keys()):
+		if key in ikbone_name_list:
+			boneframe_dest_dict.pop(key)
+
+	core.MY_PRINT_FUNC("Simulating %d bones in source model and %d bones in dest model" % (len(boneframe_source_dict), len(boneframe_dest_dict)))
+
 	# """rectangularize""" these boneframes by adding interpolated frames, so that every relevant bone
 	# has a frame at every relevant timestep
-	full_boneframe_dict = fill_missing_boneframes(boneframe_dict, moreinfo)
+	full_boneframe_source_dict = fill_missing_boneframes(boneframe_source_dict, moreinfo)
+	full_boneframe_dest_dict = fill_missing_boneframes(boneframe_dest_dict, moreinfo)
 	
 	# "forward kinematics" function shouldn't need any knowledge of what timestep it is computing at
 	# i want to ultimately give the forward-k function a list of boneframes and bonepositions, nothing more
 	# therefore lets invert this dict, so that the primary key is framenum!!
 	# each value is a dict, where the keys are the bone names and the values are the actual frames
 	# invert_boneframe_dict[5][motherbone_name] = VmdBoneFrame object
-	invert_boneframe_dict = {}
-	for bonelist in full_boneframe_dict.values():  # for each bone,
-		for frame in bonelist:
-			# insert each frame into the dict that exists under that frame number
-			try:
-				# get the dict for that frame number
-				subdict = invert_boneframe_dict[frame.f]
-			except KeyError:
-				# if the dict does not exist, make/set it
-				subdict = dict()
-				invert_boneframe_dict[frame.f] = subdict
-			subdict[frame.name] = frame
+	def invert_boneframe_dict(fulldict):
+		invertdict = {}
+		for bonelist in fulldict.values():  # for each key=bonename, get a list of frames
+			for frame in bonelist:  # for each frame,
+				# use its framenum to get the subdict in the inverted dict (so i can insert into the subdict)
+				try:
+					subdict = invertdict[frame.f]
+				except KeyError:
+					# if the dict does not exist, make/set it
+					subdict = dict()
+					invertdict[frame.f] = subdict
+				# write into that dict with the key of bonename
+				subdict[frame.name] = frame
+		return invertdict
+	invert_boneframe_source_dict = invert_boneframe_dict(full_boneframe_source_dict)
+	invert_boneframe_dest_dict = invert_boneframe_dict(full_boneframe_dest_dict)
 			
-	# sanity check
-	# from this reduced dict, determine what framenumbers have frames for any relevant bone
-	relevant_framenums = set()
-	for listofboneframes in boneframe_dict.values():
-		framenums_for_this_bone = [b.f for b in listofboneframes]
-		relevant_framenums.update(framenums_for_this_bone)
-	# turn the relevant_framenums set into a sorted list
-	relevant_framenums = sorted(list(relevant_framenums))
-	# verify that it is "rectangular"
-	assert len(invert_boneframe_dict.keys()) == len(relevant_framenums)
-	for foo in invert_boneframe_dict.values():
-		assert len(foo) == len(full_boneframe_dict.keys())
+	# # sanity check
+	# # from this reduced dict, determine what framenumbers have frames for any relevant bone
+	# relevant_framenums = set()
+	# for listofboneframes in boneframe_dict.values():
+	# 	framenums_for_this_bone = [b.f for b in listofboneframes]
+	# 	relevant_framenums.update(framenums_for_this_bone)
+	# # turn the relevant_framenums set into a sorted list
+	# relevant_framenums = sorted(list(relevant_framenums))
+	# # verify that it is "rectangular"
+	# assert len(invert_boneframe_dict.keys()) == len(relevant_framenums)
+	# for foo in invert_boneframe_dict.values():
+	# 	assert len(foo) == len(full_boneframe_dict.keys())
 		
 	############################################
 	############################################
 	############################################
 	############################################
-	
-	core.MY_PRINT_FUNC("...beginning forward kinematics computation for %d frames..." % len(invert_boneframe_dict.keys()))
-	
-	output_vmd_frames = []
+	# now actually run forward-K
+	# first, simulate the source model and find the resulting location of the target bone for every frame
+	core.MY_PRINT_FUNC("...running forward kinematics computation for %d frames on SOURCE model..." % len(invert_boneframe_source_dict))
+	target_bone_positions = []
 	# for each relevant framenum,
-	for d,(framenum, frames) in enumerate(invert_boneframe_dict.items()):
-		core.print_progress_oneline(d/len(invert_boneframe_dict.keys()))
+	for d,(framenum, frames) in enumerate(invert_boneframe_source_dict.items()):
+		core.print_progress_oneline(d/len(invert_boneframe_source_dict))
 		# run forward kinematics!
-		results = run_forward_kinematics_for_one_timestep(frames, order)
-		for ikbone_name, targetbone_name in zip(ikbone_name_list, targetbone_name_list):
+		results = run_forward_kinematics_for_one_timestep(frames, order_source)
+		newlist = []
+		for targetbone_name in targetbone_name_list:
+			# where is the absolute position of the target bone?
+			targetbone_result = core.my_list_search(results, lambda x: x.name == targetbone_name, getitem=True)
+			newlist.append(targetbone_result.pos.copy())
+		target_bone_positions.append(newlist)
+		pass
+	# now i have the absolute positions for each target bone at each frame
+	
+	core.MY_PRINT_FUNC("...running forward kinematics computation for %d frames on DESTINATION model..." % len(invert_boneframe_dest_dict))
+
+	# for each relevant framenum,
+	output_vmd_frames = []
+	for d,(framenum, frames) in enumerate(invert_boneframe_dest_dict.items()):
+		core.print_progress_oneline(d/len(invert_boneframe_dest_dict))
+		# run forward kinematics!
+		results = run_forward_kinematics_for_one_timestep(frames, order_dest)
+		for ikbone_name, targetbone_position in zip(ikbone_name_list, target_bone_positions[d]):
 			# where is the absolute position of the IK bone?
 			ikbone_result = core.my_list_search(results, lambda x: x.name == ikbone_name, getitem=True)
-			# where is the absolute position of the target for the ik bone?
-			targetbone_result = core.my_list_search(results, lambda x: x.name == targetbone_name, getitem=True)
 			# determine the XYZ change needed to make get teh ik bone from its origin to the target bone (remember to account
 			# for any rotation on the ik bone!)
 			# what i need to do is rotate by the opposite of the current rotation amount.
 			opposite = core.my_quat_conjugate(ikbone_result.rot)
 			# what point do i rotate around? i don't think it really matters, so just rotate around the ik bone
-			new_target_pos = rotate3d(ikbone_result.pos, opposite, targetbone_result.pos)
+			new_target_pos = rotate3d(ikbone_result.pos, opposite, targetbone_position)
 			# now ikbone_result.pos and new_target_pos should be alinged with the primary X Y Z axes, so just find the difference
 			# final minus initial
 			position_delta = [f - i for f,i in zip(new_target_pos, ikbone_result.pos)]
@@ -675,7 +762,7 @@ def main(moreinfo=True):
 			# append it
 			output_vmd_frames.append(new_frame)
 		pass
-	
+
 	############################################
 	############################################
 	############################################
@@ -688,22 +775,22 @@ def main(moreinfo=True):
 		ikbones_enable = []
 		for ikbone_name in ikbone_name_list:
 			ikbones_enable.append(vmdstruct.VmdIkbone(name=ikbone_name, enable=True))
-		earliest_timestep = min(invert_boneframe_dict.keys())
+		earliest_timestep = min(invert_boneframe_dest_dict.keys())
 		ikdispframe_list = [vmdstruct.VmdIkdispFrame(f=earliest_timestep, disp=True, ikbones=ikbones_enable)]
 	else:
 		ikdispframe_list = []
 		core.MY_PRINT_FUNC("Warning: IK following will NOT be enabled when this VMD is loaded, you will need enable it manually!")
 		
 	vmd_out = vmdstruct.Vmd(
-		header=vmdstruct.VmdHeader(version=2, modelname=pmx.header.name_jp),
+		header=vmdstruct.VmdHeader(version=2, modelname=pmx_dest.header.name_jp),
 		boneframes=output_vmd_frames,
 		morphframes=[], camframes=[], lightframes=[], shadowframes=[],
 		ikdispframes=ikdispframe_list
 	)
 	
 	# write out
-	output_filename_vmd = "%s_ik_from_%s.vmd" % \
-						  (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx))
+	output_filename_vmd = "%s_ik_for_%s.vmd" % \
+						  (input_filename_vmd[0:-4], core.get_clean_basename(input_filename_pmx_source))
 	output_filename_vmd = core.get_unused_file_name(output_filename_vmd)
 	vmdlib.write_vmd(output_filename_vmd, vmd_out, moreinfo=moreinfo)
 
