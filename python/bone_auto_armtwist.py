@@ -69,11 +69,6 @@ jp_armtwist =	"腕捩" # "arm twist"
 jp_elbow =		"ひじ" # "elbow"
 jp_wristtwist = "手捩" # "wrist twist"
 jp_wrist =		"手首" # "wrist"
-# # suffixes
-# n_base =  "D"# "D"
-# n_twist = "T"# "T"
-# n_ik =    "IK"# "IK"
-# n_end =   "先"# " end"
 
 f_armNoTwist =     "{}/{}D"
 f_armNoTwistEnd =  "{}/{}D先"
@@ -81,22 +76,7 @@ f_armNoTwistIk =   "{}/{}DIK"
 f_armYesTwist =    "{}/{}T"
 f_armYesTwistEnd = "{}/{}T先"
 f_armYesTwistIk =  "{}/{}TIK"
-
-# # left and right prefixes
-# jp_l =    ("左", "_L")
-# jp_r =    ("右", "_R")
-# # names for relevant bones
-# jp_arm =		("腕", "arm")
-# jp_armtwist =	("腕捩", "arm twist")
-# jp_elbow =		("ひじ", "elbow")
-# jp_wristtwist = ("手捩", "wrist twist")
-# jp_wrist =		("手首", "wrist")
-# # suffixes
-# n_base =  ("D", "D")
-# n_twist = ("T", "T")
-# n_ik =    ("IK", "IK")
-# n_end =   ("先", " end")
-#
+f_handCombine =    "{}/{}+{}"
 
 # parameters
 deformlevel_Dbones = 2
@@ -111,11 +91,16 @@ ikD_lim_max = None
 # ikD_lim_min = [0, -180, -180]
 # ikD_lim_max = [0, 180, 180]
 
+# dances/frames where the autotwist makes a visible difference:
 # girls 555 L elbow
 # girls 1027 R elbow R shoulder
 # pink cat 464 L shoulder
 # pink cat 550 R shoulder
 # pink cat 574 R shoulder
+# conqueror 513 R wrist
+# conqueror 2293 R wrist
+# pink cat 334 R wrist
+# pink cat 1155 R wrist
 
 """
 左腕
@@ -420,7 +405,7 @@ def create_twist_separator_rig(pmx: pmxstruct.Pmx,
 	return [armD, armDend, armDik, armT, armTend, armTik]
 
 
-def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:str, elbow_s:str, extra_deform, moreinfo=True):
+def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:str, elbow_s:str, extra_deform, moreinfo=False):
 	"""
 	Basically the entire script, but sorta parameterized so i can repeat it 4 times for the 4 arm segments.
 	:param pmx: full PMX object
@@ -430,7 +415,6 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	:param elbow_s: string, JP name for the bone at the end of the segment
 	:param extra_deform: int, add this number to the deform level of the created rig
 	:param moreinfo: bool, if true then print extra stuff
-	:return:
 	"""
 	# note: will be applicable to elbow-wristtwist-wrist as well! just named like armtwist for simplicity
 	# side/arm_s/armtwist_s/elbow_s are all TUPLES OF STRINGS
@@ -502,12 +486,12 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	for b in [armD, armDend, armDik, armT, armTend, armTik]:
 		b.deform_layer += extra_deform
 	# turn the objects into their indexes
-	armD_idx = armD.index_within(pmx.bones)
-	armDend_idx = armDend.index_within(pmx.bones)
-	armDik_idx = armDik.index_within(pmx.bones)
-	armT_idx = armT.index_within(pmx.bones)
-	armTend_idx = armTend.index_within(pmx.bones)
-	armTik_idx = armTik.index_within(pmx.bones)
+	armD_idx = armD.idx_within(pmx.bones)
+	armDend_idx = armDend.idx_within(pmx.bones)
+	armDik_idx = armDik.idx_within(pmx.bones)
+	armT_idx = armT.idx_within(pmx.bones)
+	armTend_idx = armTend.idx_within(pmx.bones)
+	armTik_idx = armTik.idx_within(pmx.bones)
 	
 	# 5, modify the existing armtwist-sub bones
 	# first go back from obj to indices, since the bones moved
@@ -615,6 +599,79 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	# done with this function???
 	return None
 
+def make_handtwist_addon(pmx: pmxstruct.Pmx, side:str, moreinfo=False):
+	"""
+	Add one more twist separator rig for the hand & copy the twist portion of that up into the lowerarm.
+	This fixes wrist crimping problem! :)
+	:param pmx: full PMX object
+	:param side: string, JP L or R prefix
+	:param moreinfo: bool, if true then print extra stuff
+	"""
+	
+	# 1, find the relevant bones
+	# find the elbow bone
+	elbow_idx = core.my_list_search(pmx.bones, lambda x: x.name_jp == (side + jp_elbow))
+	# # find the elbowtwist bone
+	# elbowtwist_idx = core.my_list_search(pmx.bones, lambda x: x.name_jp == (side + jp_wristtwist))
+	# find the wrist bone
+	wrist_idx = core.my_list_search(pmx.bones, lambda x: x.name_jp == (side + jp_wrist))
+	# turn the indices into real objects
+	elbow = pmx.bones[elbow_idx]
+	# elbowtwist = pmx.bones[elbowtwist_idx]
+	wrist = pmx.bones[wrist_idx]
+	
+	# 2, derive the position of the "D" bone
+	# subtract their positions to get the axis, final minus initial
+	axis = [b-a for a,b in zip(elbow.pos, wrist.pos)]
+	# normalize to length of 1
+	axis = core.normalize_distance(axis)
+	# extend this axis beyond the wrist bone to create the "D" position
+	d_pos = [a+b for a,b in zip(axis, wrist.pos)]
+
+	# 3, create the 6 bones of the twist-separator rig
+	wristD, wristDend, wristDik, wristT, wristTend, wristTik = create_twist_separator_rig(
+		pmx, side, jp_wrist, wrist.pos, d_pos, wrist.parent_idx, wrist_idx,
+	)
+	# turn the objects into their indexes
+	# wristD_idx = wristD.idx_within(pmx.bones)
+	# wristDend_idx = wristDend.idx_within(pmx.bones)
+	# wristDik_idx = wristDik.idx_within(pmx.bones)
+	wristT_idx = wristT.idx_within(pmx.bones)
+	# wristTend_idx = wristTend.idx_within(pmx.bones)
+	# wristTik_idx = wristTik.idx_within(pmx.bones)
+	
+	# 4, create the "combiner" bone
+	# first, gotta find elbowDik and elbowTik
+	elbowDik = core.my_list_search(pmx.bones, lambda x: x.name_jp == f_armNoTwistIk.format(side, jp_elbow), getitem=True)
+	elbowTik = core.my_list_search(pmx.bones, lambda x: x.name_jp == f_armYesTwistIk.format(side, jp_elbow), getitem=True)
+	# now start creating the new bone!
+	# parent is the current parent of elbowDik
+	# position is ^ + 1
+	# partial inheirt from wristT
+	# layer is pmx.bones[wrist_idx].deform_layer + deformlevel_Tbones + 1
+	# position is the current parent of elbowDik
+	newbone = pmxstruct.PmxBone(
+		name_jp=f_handCombine.format(side, jp_elbow, jp_wrist),
+		name_en="",
+		pos=pmx.bones[elbowDik.parent_idx].pos, parent_idx=elbowDik.parent_idx,
+		deform_layer=pmx.bones[wrist_idx].deform_layer + deformlevel_Tbones + 1, deform_after_phys=False,
+		has_rotate=True, has_translate=False, has_visible=False, has_enabled=False, has_ik=False,
+		tail_usebonelink=True, tail=-1,
+		inherit_rot=True, inherit_trans=False, inherit_ratio=1.0, inherit_parent_idx=wristT_idx,
+		has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
+	)
+	
+	# insert at the current position of elbowDik
+	newbone_idx = elbowDik.parent_idx + 1
+	insert_single_bone(pmx, newbone, newbone_idx)
+	
+	# 5, then, elbowDik and elbowTik are set to use "combiner" as parent
+	# TODO: is there any difference between changing D or not changing D ?
+	elbowDik.parent_idx = newbone_idx
+	elbowTik.parent_idx = newbone_idx
+	
+	return None
+
 
 def main(moreinfo=True):
 	# prompt PMX name
@@ -627,13 +684,19 @@ def main(moreinfo=True):
 	make_autotwist_segment(pmx, jp_l, jp_arm, jp_armtwist, jp_elbow, 0, moreinfo)
 	
 	core.MY_PRINT_FUNC("L lower arm...")
-	make_autotwist_segment(pmx, jp_l, jp_elbow, jp_wristtwist, jp_wrist, 0, moreinfo)
+	make_autotwist_segment(pmx, jp_l, jp_elbow, jp_wristtwist, jp_wrist, 3, moreinfo)
+	
+	core.MY_PRINT_FUNC("L handtwist...")
+	make_handtwist_addon(pmx, jp_l, moreinfo)
 	
 	core.MY_PRINT_FUNC("R upper arm...")
 	make_autotwist_segment(pmx, jp_r, jp_arm, jp_armtwist, jp_elbow, 0, moreinfo)
 	
 	core.MY_PRINT_FUNC("R lower arm...")
-	make_autotwist_segment(pmx, jp_r, jp_elbow, jp_wristtwist, jp_wrist, 0, moreinfo)
+	make_autotwist_segment(pmx, jp_r, jp_elbow, jp_wristtwist, jp_wrist, 3, moreinfo)
+	
+	core.MY_PRINT_FUNC("R handtwist...")
+	make_handtwist_addon(pmx, jp_r, moreinfo)
 	
 	# if i want to, set elbowD parent to armT...?
 	# if i want to, set wrist parent to elbowT...?
