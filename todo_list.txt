@@ -11,6 +11,7 @@ TODO: make the GUI automatically find & import all 'scripts' in 'FOOBAR' folder,
 #####
 
 TODO: investigate improved autoarmtwist by Tamo, fix wrist crimping! the holy grail!
+TODO: update "semistandard" autoarmtwist script to use new system I devised
 
 TODO: create one function in 'core' that does all the bottom-of-the-script stuff...?
     also lets me add traceback module to everything
