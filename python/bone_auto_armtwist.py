@@ -1,5 +1,7 @@
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/??/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
+# Special thanks to Quappa-El for designing the clever system, I saw his models using it and wrote this script to
+# create those same structures in any generic model.
 #####################
 
 # first, system imports
@@ -36,7 +38,7 @@ DEBUG = True
 
 helptext = '''=================================================
 bone_auto_armtwist:
-This will generate "automatic armtwist rigging" that will fix pinching at shoulders/elbows.
+This will generate "automatic armtwist rigging" that will fix pinching at shoulders/elbows/wrists.
 This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.
 It creates a clever IK bone setup that hijacks the semistandard bones and moves them as needed to reach whatever pose you make with the arm/腕 or elbow/ひじ bones. You do not need to manually move the armtwist bones at all, you can animate all 3 axes of rotation on the arm bone and the twisting axis will be automatically extracted and transferred to the armtwist bone as needed!
 
@@ -280,7 +282,7 @@ def create_twist_separator_rig(pmx: pmxstruct.Pmx,
 	:param elbow_pos: XYZ position of the bone at the bottom of the segment
 	:param arm_parent_idx: int index of the parent of the topmost bone in the segment (the bone that has NONE of the motion in this segment)
 	:param elbow_parent_idx: int index of the bottommost bone in the segment (the bone that has the FULL motion of this segment)
-	:return:
+	:return: list of all 6 created bones
 	"""
 	base_deform = pmx.bones[elbow_parent_idx].deform_layer
 	D_deform = base_deform + deformlevel_Dbones
@@ -301,7 +303,7 @@ def create_twist_separator_rig(pmx: pmxstruct.Pmx,
 	# make armD, pos=arm.pos, parent=arm.parent, tail=armDend
 	armD = pmxstruct.PmxBone(
 		name_jp=f_armNoTwist.format(side, arm_s),
-		name_en=f_armNoTwist.format(side, arm_s),
+		name_en="",
 		pos=arm_pos, parent_idx=-99, deform_layer=D_deform, deform_after_phys=False,
 		has_rotate=True, has_translate=False, has_visible=False, has_enabled=False, has_ik=False,
 		tail_usebonelink=True, tail=-99, inherit_rot=False, inherit_trans=False, has_fixedaxis=False,
@@ -310,7 +312,7 @@ def create_twist_separator_rig(pmx: pmxstruct.Pmx,
 	# make armDend, pos=elbow.pos, parent=armD_idx
 	armDend = pmxstruct.PmxBone(
 		name_jp=f_armNoTwistEnd.format(side, arm_s),
-		name_en=f_armNoTwistEnd.format(side, arm_s),
+		name_en="",
 		pos=elbow_pos, parent_idx=-99, deform_layer=D_deform, deform_after_phys=False,
 		has_rotate=True, has_translate=False, has_visible=False, has_enabled=False, has_ik=False,
 		tail_usebonelink=True, tail=-1, inherit_rot=False, inherit_trans=False, has_fixedaxis=False,
@@ -319,7 +321,7 @@ def create_twist_separator_rig(pmx: pmxstruct.Pmx,
 	# make armD_IK, pos=elbow.pos, parent=elbow.parent, target=armDend, link=armD
 	armDik = pmxstruct.PmxBone(
 		name_jp=f_armNoTwistIk.format(side, arm_s),
-		name_en=f_armNoTwistIk.format(side, arm_s),
+		name_en="",
 		pos=elbow_pos, parent_idx=-99, deform_layer=D_deform, deform_after_phys=False,
 		has_rotate=True, has_translate=True, has_visible=False, has_enabled=False, has_ik=True,
 		tail_usebonelink=True, tail=-1, inherit_rot=False, inherit_trans=False, has_fixedaxis=False,
@@ -331,7 +333,7 @@ def create_twist_separator_rig(pmx: pmxstruct.Pmx,
 	# make armT, pos=elbow.pos, parent=armD_idx, tail=armTend
 	armT = pmxstruct.PmxBone(
 		name_jp=f_armYesTwist.format(side, arm_s),
-		name_en=f_armYesTwist.format(side, arm_s),
+		name_en="",
 		pos=elbow_pos, parent_idx=-99, deform_layer=T_deform, deform_after_phys=False,
 		has_rotate=True, has_translate=False, has_visible=False, has_enabled=False, has_ik=False,
 		tail_usebonelink=True, tail=-99, inherit_rot=False, inherit_trans=False, has_fixedaxis=False,
@@ -340,7 +342,7 @@ def create_twist_separator_rig(pmx: pmxstruct.Pmx,
 	# make armTend, pos=perp_pos, parent=armT_idx
 	armTend = pmxstruct.PmxBone(
 		name_jp=f_armYesTwistEnd.format(side, arm_s),
-		name_en=f_armYesTwistEnd.format(side, arm_s),
+		name_en="",
 		pos=perp_pos, parent_idx=-99, deform_layer=T_deform, deform_after_phys=False,
 		has_rotate=True, has_translate=False, has_visible=False, has_enabled=False, has_ik=False,
 		tail_usebonelink=True, tail=-1, inherit_rot=False, inherit_trans=False, has_fixedaxis=False,
@@ -349,7 +351,7 @@ def create_twist_separator_rig(pmx: pmxstruct.Pmx,
 	# make armT_IK, pos=perp_pos, parent=elbow.parent, target=armTend, link=armT
 	armTik = pmxstruct.PmxBone(
 		name_jp=f_armYesTwistIk.format(side, arm_s),
-		name_en=f_armYesTwistIk.format(side, arm_s),
+		name_en="",
 		pos=perp_pos, parent_idx=-99, deform_layer=T_deform, deform_after_phys=False,
 		has_rotate=True, has_translate=True, has_visible=False, has_enabled=False, has_ik=True,
 		tail_usebonelink=True, tail=-1, inherit_rot=False, inherit_trans=False, has_fixedaxis=False,
