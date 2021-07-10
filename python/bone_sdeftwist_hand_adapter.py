@@ -229,6 +229,11 @@ def main(moreinfo=True):
 	# should I assert that the name begins with 右 ? nah....
 	# strip off the first char
 	bone_basename = bone.name_jp[1:]
+	# check whether any vertexes actually have weight on this bone
+	given_index = bone.idx_within(pmx.bones)
+	if not transfer_to_armtwist_sub(pmx, given_index, given_index):
+		core.MY_PRINT_FUNC("err: given bone does not control any vertices?")
+		return None
 	
 	core.MY_PRINT_FUNC("R handtwist...")
 	make_handtwist_addon(pmx, jp_r, bone_basename)
