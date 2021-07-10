@@ -10,8 +10,8 @@ TODO: make the GUI automatically find & import all 'scripts' in 'FOOBAR' folder,
 
 #####
 
-TODO: investigate improved autoarmtwist by Tamo, fix wrist crimping! the holy grail!
-TODO: update "semistandard" autoarmtwist script to use new system I devised
+TODO BUG!!! deform order check incorrectly finds recursive relationship in Shimakaze... because of deform-after-phys
+    not sure how i want to fix this
 
 TODO: create one function in 'core' that does all the bottom-of-the-script stuff...?
     also lets me add traceback module to everything
