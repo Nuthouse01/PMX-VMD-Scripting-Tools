@@ -37,14 +37,14 @@ except ImportError as eee:
 DEBUG = True
 
 helptext = '''=================================================
-bone_auto_armtwist:
+bone_make_semistandard_auto_armtwist:
 This will generate "automatic armtwist rigging" that will fix pinching at shoulders/elbows/wrists.
 This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.
 It creates a clever IK bone setup that hijacks the semistandard bones and moves them as needed to reach whatever pose you make with the arm/腕 or elbow/ひじ bones. You do not need to manually move the armtwist bones at all, you can animate all 3 axes of rotation on the arm bone and the twisting axis will be automatically extracted and transferred to the armtwist bone as needed!
 
 If the existing semistandard armtwist rig is bad, then the results from using this script will also be bad. To re-make the armtwist rig, you can merge all existing armtwist bones into the arm bone and use the "semistandard bones" PMXE plugin to try and rebuild it. Or, you can try using [TODO SDEF SCRIPT NAME HERE] to use a fancy SDEF weights method.
 
-This script is not compatible with arm IK bones created by IKMaker X plugin for PMXE. It slightly works, but usually goes all wacky and strange.
+This script is not guaranteed compatible with arm IK bones created by IKMaker X plugin for PMXE. It might or might not work, depending on how you animate it.
 To easily disable the autotwist rig and make it work with arm IK bones: in the parent & partial inherit section for each armtwist/wristtwist/helper bone, replace "armD" with "arm" and replace "armT" with "armtwist". Or, just use a version of the model from before running this script.
 
 Output: model PMX file '[modelname]_autotwist.pmx'

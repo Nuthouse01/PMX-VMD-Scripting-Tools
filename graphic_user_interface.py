@@ -18,7 +18,7 @@ from os import path
 try:
 	from python import nuthouse01_core as core
 	from python import bone_armik_addremove
-	from python import bone_auto_armtwist
+	from python import bone_make_semistandard_auto_armtwist
 	from python import bone_endpoint_addremove
 	from python import check_model_compatibility
 	from python import convert_vmd_to_txt
@@ -46,7 +46,7 @@ except ImportError as eee:
 	convert_vmd_to_txt = model_overall_cleanup = file_sort_textures = check_model_compatibility = None
 	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = bone_armik_addremove = None
 	core = morph_invert = morph_hide = morph_scale = file_translate_names = convert_vpd_to_vmd = None
-	model_shift = model_scale = bone_endpoint_addremove = translate_source_bone = bone_auto_armtwist = None
+	model_shift = model_scale = bone_endpoint_addremove = translate_source_bone = bone_make_semistandard_auto_armtwist = None
 	file_recompress_images = vmd_rename_bones_morphs = None
 
 ########################################################################################################################
@@ -64,7 +64,7 @@ all_script_list = [
 	("file_sort_textures.py",            file_sort_textures.helptext,            file_sort_textures.main),
 	("file_translate_names.py",          file_translate_names.helptext,          file_translate_names.main),
 	("file_recompress_images.py",        file_recompress_images.helptext,        file_recompress_images.main),
-	("bone_auto_armtwist.py",            bone_auto_armtwist.helptext,            bone_auto_armtwist.main),
+	("bone_make_semistandard_auto_armtwist.py", bone_make_semistandard_auto_armtwist.helptext, bone_make_semistandard_auto_armtwist.main),
 	("morph_invert.py",                  morph_invert.helptext,                  morph_invert.main),
 	("morph_hide.py",                    morph_hide.helptext,                    morph_hide.main),
 	("morph_scale.py",                   morph_scale.helptext,                   morph_scale.main),
