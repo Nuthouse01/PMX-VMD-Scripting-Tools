@@ -6,6 +6,7 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/??/2021 - v6.01"
 
 # first, system imports
 from typing import Sequence, List
+import math
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -60,12 +61,14 @@ the deform order thing is essential to solving "spinning wrists" when standard a
 the IK link limits help to mitigate some rare issues when arm-IK exists but i'm like 1% confident they can cause issues when arm-IK is not present?
 '''
 
-
+# MAX_ALLOWABLE_DEVIATION = 0.01
+MAX_ALLOWABLE_DEVIATION = 0.0001
 
 # left and right prefixes
 jp_l =    "左"
 jp_r =    "右"
 # names for relevant bones
+jp_shoulder =   "肩" # "shoulder"
 jp_arm =		"腕" # "arm"
 jp_armtwist =	"腕捩" # "arm twist"
 jp_elbow =		"ひじ" # "elbow"
@@ -165,6 +168,39 @@ armtwist3
 elbow
 '''
 
+def find_colinear_deviation_vector(axis_end1:List[float], axis_end2:List[float], point:List[float]) -> List[float]:
+	"""
+	Determine how far (and what direction) the armtwist bone is from being perfectly colinear between the arm and
+	elbow bones. Return the vector from the closest colinear point to the given point.
+	:param axis_end1: XYZ position of one end of axis
+	:param axis_end2: XYZ position of the other end of the axis
+	:param point: XYZ position of the point which we want to make colinear
+	:return: XYZ vector, subtract this from 'point' to make it perfectly colinear
+	"""
+	# first, figure out what direction the axis is going
+	line_to_match = [a-b for a,b in zip(axis_end2, axis_end1)]
+	line_to_match = core.normalize_distance(line_to_match)
+	
+	desired_direction = (0.0, 0.0, 1.0)
+	
+	# https://math.stackexchange.com/a/60556/889783
+	q_axis = core.my_cross_product(line_to_match, desired_direction)
+	q_axis = core.normalize_distance(q_axis)
+	q_angle = math.acos(core.my_dot(line_to_match, desired_direction))
+	# "the usual axis-angle to quaternion conversion"
+	quat = [math.cos(q_angle / 2)] + [a * math.sin(q_angle / 2) for a in q_axis]
+	
+	# OKAY! now i have "quat" which describes how much to rotate axis_end2 to make it directly ABOVE axis_end1
+	# rotate the "point" by this amount as well. if perfectly colinear it will match the x and y of axis_end1
+	rotated_point = core.rotate3d(axis_end1, quat, point)
+	# figure out how much the point needs to be moved to be perfectly colinear...
+	delta = [a-b for a,b in zip(rotated_point, axis_end1)]
+	# force the z-component to be 0, want to move it into the line, not move it ALONG the line
+	delta[2] = 0
+	# undo the rotation and transform this delta back into the original coordinate space
+	rotated_delta = core.rotate3d((0.0, 0.0, 0.0), core.my_quat_conjugate(quat), delta)
+	return rotated_delta
+	
 def fix_deform_for_children(pmx: pmxstruct.Pmx, me: int, already_visited=None) -> int:
 	"""
 	Recursively ensure everything that inherits from the specified bone will deform after it.
@@ -244,19 +280,18 @@ def transfer_to_armtwist_sub(pmx: pmxstruct.Pmx, from_bone:int, to_bone:int) -> 
 			did_anything_change = True
 	return did_anything_change
 
-def calculate_perpendicular_offset_vector(delta: Sequence[float], length=1.00) -> List[float]:
+def calculate_perpendicular_offset_vector(delta: Sequence[float]) -> List[float]:
 	"""
 	When given an axis (such as elbow-to-wrist) return the perpendicular offset vector.
-	This will have the specified length, will have positive Y, and will lie in the same "vertical plane" as the
+	This will have unit length, will have positive Y, and will lie in the same "vertical plane" as the
 	input axis, i.e. when viewed from above this vector will be colinear with the input axis.
 	:param delta: XYZ 3 floats
-	:param length: desired vector length
 	:return: XYZ list of 3 floats
 	"""
 	axis = core.normalize_distance(delta)
 	# calc vector in XZ plane at 90-deg from axis, i.e. Y-component is zero
 	# ideally the X-component will be 0 but if the original axis is angled a little front or back that will rotate
-	frontback = core.my_cross_product(axis, [0,1,0])
+	frontback = core.my_cross_product(axis, (0.0, 1,0, 0.0))
 	frontback = core.normalize_distance(frontback)
 	# calc vector in the same vertical plane as axis, at 90-deg from axis
 	perpendicular = core.my_cross_product(axis, frontback)
@@ -264,8 +299,6 @@ def calculate_perpendicular_offset_vector(delta: Sequence[float], length=1.00) -
 	# if result has negative y, invert the whole thing
 	if perpendicular[1] < 0:
 		perpendicular = [p * -1 for p in perpendicular]
-	# scale to desired length
-	perpendicular = [length * t for t in perpendicular]
 	return perpendicular
 
 def create_twist_separator_rig(pmx: pmxstruct.Pmx,
@@ -407,7 +440,7 @@ def create_twist_separator_rig(pmx: pmxstruct.Pmx,
 	return [armD, armDend, armDik, armT, armTend, armTik]
 
 
-def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:str, elbow_s:str, extra_deform, moreinfo=False):
+def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:str, elbow_s:str, extra_deform, moreinfo=False) -> None:
 	"""
 	Basically the entire script, but sorta parameterized so i can repeat it 4 times for the 4 arm segments.
 	:param pmx: full PMX object
@@ -419,11 +452,6 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	:param moreinfo: bool, if true then print extra stuff
 	"""
 	# note: will be applicable to elbow-wristtwist-wrist as well! just named like armtwist for simplicity
-	# side/arm_s/armtwist_s/elbow_s are all TUPLES OF STRINGS
-	
-	# TODO: move armtwist bone to be colinear with the arm axis?
-	#  what should i do if the arm axis/armtwist bone lock axis disagree?
-	# TODO: repair local axis for bones if they are missing?
 	
 	# 1, locate the primary existing bones, idx and obj, from their semistandard names
 	# arm/armtwist/elbow , all 3 MUST exist
@@ -447,7 +475,35 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	elbowhelper = core.my_list_search(pmx.bones, lambda x: x.parent_idx==armtwist_idx and
 														   x.inherit_rot and
 														   x.inherit_parent_idx==elbow_idx, getitem=True)
-	
+
+	# TODO: this code is good! this is useful! i shouldn't lock it away in this script only, it should be standalone usable
+	# TODO: repair local axis for bones if they are missing?
+	# 1.5, move armtwist bone to be colinear with the arm axis!
+	deviation = find_colinear_deviation_vector(arm.pos, elbow.pos, armtwist.pos)
+	# if the deviation is unacceptably large, then modify it
+	deviation_dist = core.my_euclidian_distance(deviation)
+	if (deviation_dist > MAX_ALLOWABLE_DEVIATION) or moreinfo:
+		core.MY_PRINT_FUNC("Existing twistbone '{}' is {} units away from the proper axis".format(armtwist.name_jp, round(deviation_dist, 5)))
+	if deviation_dist > MAX_ALLOWABLE_DEVIATION:
+		core.MY_PRINT_FUNC("This deviation is unacceptably large, now moving the bone into colinear position")
+		# correct the bone by subtracting the deviation
+		armtwist.pos = [p - d for p,d in zip(armtwist.pos, deviation)]
+		
+	# 1.6, guarantee that the fixedaxis and localaxis are correct for armtwist and arm!
+	# since it's now perfectly colinear, the axis from armtwist-to-elbow is the same as the axis from arm-to-elbow
+	armtwist.has_fixedaxis = True  # guarantee that fixedaxis is enabled
+	xaxis = [e-a for e,a in zip(elbow.pos, arm.pos)]
+	xaxis = core.normalize_distance(xaxis)
+	armtwist.fixedaxis = xaxis
+	# also recalculate the local axis
+	yaxis = calculate_perpendicular_offset_vector(xaxis)
+	zaxis = core.my_cross_product(xaxis, yaxis)
+	armtwist.has_localaxis = True  # guarantee that localxis is enabled
+	armtwist.localaxis_x = xaxis
+	armtwist.localaxis_z = zaxis
+	arm.has_localaxis = True  # guarantee that localxis is enabled
+	arm.localaxis_x = xaxis
+	arm.localaxis_z = zaxis
 	
 	# 2, find all armtwist-sub bones (armtwist1, armtwist2, armtwist3 usually. sometimes there are more or less.)
 	armtwist_sub_obj = []
@@ -489,10 +545,10 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 		b.deform_layer += extra_deform
 	# turn the objects into their indexes
 	armD_idx = armD.idx_within(pmx.bones)
-	armDend_idx = armDend.idx_within(pmx.bones)
+	# armDend_idx = armDend.idx_within(pmx.bones)
 	armDik_idx = armDik.idx_within(pmx.bones)
 	armT_idx = armT.idx_within(pmx.bones)
-	armTend_idx = armTend.idx_within(pmx.bones)
+	# armTend_idx = armTend.idx_within(pmx.bones)
 	armTik_idx = armTik.idx_within(pmx.bones)
 	
 	# 5, modify the existing armtwist-sub bones
@@ -517,8 +573,6 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	if armtwistX_used:
 		finalnum = str(len(armtwist_sub_idx) + 1)
 		# make armtwistX, pos=armtwist.pos, parent=armD_idx, inherit armT=1.00
-		# TODO: make twist4 be at the end of the segment, not at the visible armtwist bone
-		#  this is only valid if the armtwist bone is colinear with the axis, tho...
 		armtwistX = pmxstruct.PmxBone(
 			name_jp= side + armtwist_s + finalnum,
 			name_en="",
@@ -601,13 +655,12 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	# done with this function???
 	return None
 
-def make_handtwist_addon(pmx: pmxstruct.Pmx, side:str, moreinfo=False):
+def make_handtwist_addon(pmx: pmxstruct.Pmx, side:str) -> None:
 	"""
 	Add one more twist separator rig for the hand & copy the twist portion of that up into the lowerarm.
 	This fixes wrist crimping problem! :)
 	:param pmx: full PMX object
 	:param side: string, JP L or R prefix
-	:param moreinfo: bool, if true then print extra stuff
 	"""
 	
 	# 1, find the relevant bones
@@ -689,7 +742,7 @@ def main(moreinfo=True):
 	make_autotwist_segment(pmx, jp_l, jp_elbow, jp_wristtwist, jp_wrist, 3, moreinfo)
 	
 	core.MY_PRINT_FUNC("L handtwist...")
-	make_handtwist_addon(pmx, jp_l, moreinfo)
+	make_handtwist_addon(pmx, jp_l)
 	
 	core.MY_PRINT_FUNC("R upper arm...")
 	make_autotwist_segment(pmx, jp_r, jp_arm, jp_armtwist, jp_elbow, 0, moreinfo)
@@ -698,7 +751,7 @@ def main(moreinfo=True):
 	make_autotwist_segment(pmx, jp_r, jp_elbow, jp_wristtwist, jp_wrist, 3, moreinfo)
 	
 	core.MY_PRINT_FUNC("R handtwist...")
-	make_handtwist_addon(pmx, jp_r, moreinfo)
+	make_handtwist_addon(pmx, jp_r)
 	
 	# if i want to, set elbowD parent to armT...?
 	# if i want to, set wrist parent to elbowT...?
