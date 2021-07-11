@@ -1,3 +1,4 @@
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 10/10/2020 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 # Special thanks to "tERBO" for making me overhaul & breathe new life into this old, forgotten code!
@@ -13,7 +14,7 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - 10/10/2020 - v6.01"
 # scaling or manual adjustment will probably be required, which kinda defeats the whole point of this script...
 
 # first system imports
-from typing import List, Sequence, Dict, Set
+from typing import List, Dict, Set
 
 
 # second, wrap custom imports with a try-except to catch it if files are missing
@@ -87,48 +88,6 @@ class ForwardKinematicsBone:
 		self.pos = self._pos_original.copy()
 		self.rot = [1.0, 0.0, 0.0, 0.0]
 		
-
-# todo: move this to core
-def rotate3d(rotate_around: Sequence[float],
-			 angle_quat: Sequence[float],
-			 initial_position: Sequence[float]) -> List[float]:
-	"""
-	Rotate a point within 3d space around another specified point by a specific quaternion angle.
-	:param rotate_around: X Y Z usually a bone location
-	:param angle_quat: W X Y Z quaternion rotation to apply
-	:param initial_position: X Y Z starting location of the point to be rotated
-	:return: X Y Z position after rotating
-	"""
-	# "rotate around a point in 3d space"
-	
-	# subtract "origin" to move the whole system to rotating around 0,0,0
-	point = [p - o for p, o in zip(initial_position, rotate_around)]
-	
-	# might need to scale the point down to unit-length???
-	# i'll do it just to be safe, it couldn't hurt
-	length = core.my_euclidian_distance(point)
-	if length != 0:
-		point = [p / length for p in point]
-		
-		# set up the math as instructed by math.stackexchange
-		p_vect = [0.0] + point
-		r_prime_vect = core.my_quat_conjugate(angle_quat)
-		# r_prime_vect = [angle_quat[0], -angle_quat[1], -angle_quat[2], -angle_quat[3]]
-		
-		# P' = R * P * R'
-		# P' = H( H(R,P), R')
-		temp = core.hamilton_product(angle_quat, p_vect)
-		p_prime_vect = core.hamilton_product(temp, r_prime_vect)
-		# note that the first element of P' will always be 0
-		point = p_prime_vect[1:4]
-		
-		# might need to undo scaling the point down to unit-length???
-		point = [p * length for p in point]
-	
-	# re-add "origin" to move the system to where it should have been
-	point = [p + o for p, o in zip(point, rotate_around)]
-	
-	return point
 
 # todo: move this to the same place as 'dictify_framelist'
 def remove_redundant_frames(framelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdstruct.VmdBoneFrame]:
@@ -389,7 +348,7 @@ def run_forward_kinematics_for_one_timestep(frames: Dict[str, vmdstruct.VmdBoneF
 			# apply the rotation offset to this & all children of this
 			for thing in [currbone] + all_children:
 				# rotate in 3d space around the current position of currbone
-				thing.pos = rotate3d(currbone.pos, frame_rot, thing.pos)
+				thing.pos = core.rotate3d(currbone.pos, frame_rot, thing.pos)
 				# rotate the angle of this bone as well
 				thing.rot = core.hamilton_product(frame_rot, thing.rot)
 	# once i'm done, then return the same list that was passed in as an argument,
@@ -748,7 +707,7 @@ def main(moreinfo=True):
 			# what i need to do is rotate by the opposite of the current rotation amount.
 			opposite = core.my_quat_conjugate(ikbone_result.rot)
 			# what point do i rotate around? i don't think it really matters, so just rotate around the ik bone
-			new_target_pos = rotate3d(ikbone_result.pos, opposite, targetbone_position)
+			new_target_pos = core.rotate3d(ikbone_result.pos, opposite, targetbone_position)
 			# now ikbone_result.pos and new_target_pos should be alinged with the primary X Y Z axes, so just find the difference
 			# final minus initial
 			position_delta = [f - i for f,i in zip(new_target_pos, ikbone_result.pos)]

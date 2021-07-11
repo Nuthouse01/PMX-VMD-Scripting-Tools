@@ -1,3 +1,5 @@
+from make_ik_from_vmd import core as core
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/??/2021 - v6.01"
 PACKAGE_VERSION = "Package version: Nuthouse01 - 6/??/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -1181,6 +1183,49 @@ def quaternion_to_euler(quat: Sequence[float]) -> Tuple[float,float,float]:
 	
 	return roll, pitch, yaw
 
+
+def rotate3d(rotate_around: Sequence[float],
+			 angle_quat: Sequence[float],
+			 initial_position: Sequence[float]) -> List[float]:
+	"""
+	Rotate a point within 3d space around another specified point by a specific quaternion angle.
+	:param rotate_around: X Y Z usually a bone location
+	:param angle_quat: W X Y Z quaternion rotation to apply
+	:param initial_position: X Y Z starting location of the point to be rotated
+	:return: X Y Z position after rotating
+	"""
+	# "rotate around a point in 3d space"
+	
+	# subtract "origin" to move the whole system to rotating around 0,0,0
+	point = [p - o for p, o in zip(initial_position, rotate_around)]
+	
+	# might need to scale the point down to unit-length???
+	# i'll do it just to be safe, it couldn't hurt
+	length = core.my_euclidian_distance(point)
+	if length != 0:
+		point = [p / length for p in point]
+		
+		# set up the math as instructed by math.stackexchange
+		p_vect = [0.0] + point
+		r_prime_vect = core.my_quat_conjugate(angle_quat)
+		# r_prime_vect = [angle_quat[0], -angle_quat[1], -angle_quat[2], -angle_quat[3]]
+		
+		# P' = R * P * R'
+		# P' = H( H(R,P), R')
+		temp = core.hamilton_product(angle_quat, p_vect)
+		p_prime_vect = core.hamilton_product(temp, r_prime_vect)
+		# note that the first element of P' will always be 0
+		point = p_prime_vect[1:4]
+		
+		# might need to undo scaling the point down to unit-length???
+		point = [p * length for p in point]
+	
+	# re-add "origin" to move the system to where it should have been
+	point = [p + o for p, o in zip(point, rotate_around)]
+	
+	return point
+
+
 def rotate2d(origin: Sequence[float], angle: float, point: Sequence[float]) -> Tuple[float,float]:
 	"""
 	Rotate a 2d point counterclockwise by a given angle around a given 2d origin.
@@ -1541,3 +1586,5 @@ def _pack_text(fmt: str, args: str) -> bytearray:
 if __name__ == '__main__':
 	print(_SCRIPT_VERSION)
 	pause_and_quit("you are not supposed to directly run this file haha")
+
+
