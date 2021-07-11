@@ -1,5 +1,3 @@
-from make_ik_from_vmd import core as core
-
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/??/2021 - v6.01"
 PACKAGE_VERSION = "Package version: Nuthouse01 - 6/??/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -1201,19 +1199,19 @@ def rotate3d(rotate_around: Sequence[float],
 	
 	# might need to scale the point down to unit-length???
 	# i'll do it just to be safe, it couldn't hurt
-	length = core.my_euclidian_distance(point)
+	length = my_euclidian_distance(point)
 	if length != 0:
 		point = [p / length for p in point]
 		
 		# set up the math as instructed by math.stackexchange
 		p_vect = [0.0] + point
-		r_prime_vect = core.my_quat_conjugate(angle_quat)
+		r_prime_vect = my_quat_conjugate(angle_quat)
 		# r_prime_vect = [angle_quat[0], -angle_quat[1], -angle_quat[2], -angle_quat[3]]
 		
 		# P' = R * P * R'
 		# P' = H( H(R,P), R')
-		temp = core.hamilton_product(angle_quat, p_vect)
-		p_prime_vect = core.hamilton_product(temp, r_prime_vect)
+		temp = hamilton_product(angle_quat, p_vect)
+		p_prime_vect = hamilton_product(temp, r_prime_vect)
 		# note that the first element of P' will always be 0
 		point = p_prime_vect[1:4]
 		
