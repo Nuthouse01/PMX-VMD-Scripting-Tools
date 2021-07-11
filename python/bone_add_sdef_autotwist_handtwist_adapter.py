@@ -37,7 +37,7 @@ except ImportError as eee:
 DEBUG = True
 
 helptext = '''=================================================
-bone_sdeftwist_hand_adapter:
+bone_add_sdef_autotwist_handtwist_adapter:
 This script is designed to work with models that already have SDEF-based automatic-arm-twist rigging.
 The most common SDEF autotwist setup I've seen does not account for "wrist pinching". Ideally twisting motion on the wrist should be distributed from the wrist to the elbow.
 This script will add some extra bones that will fix the wrist pinching problem!

@@ -19,6 +19,7 @@ try:
 	from python import nuthouse01_core as core
 	from python import bone_armik_addremove
 	from python import bone_make_semistandard_auto_armtwist
+	from python import bone_add_sdef_autotwist_handtwist_adapter
 	from python import bone_endpoint_addremove
 	from python import check_model_compatibility
 	from python import convert_vmd_to_txt
@@ -47,7 +48,7 @@ except ImportError as eee:
 	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = bone_armik_addremove = None
 	core = morph_invert = morph_hide = morph_scale = file_translate_names = convert_vpd_to_vmd = None
 	model_shift = model_scale = bone_endpoint_addremove = translate_source_bone = bone_make_semistandard_auto_armtwist = None
-	file_recompress_images = vmd_rename_bones_morphs = None
+	file_recompress_images = vmd_rename_bones_morphs = bone_add_sdef_autotwist_handtwist_adapter = None
 
 ########################################################################################################################
 # constants & options
@@ -80,6 +81,7 @@ all_script_list = [
 	("vmd_armtwist_insert.py",           vmd_armtwist_insert.helptext,           vmd_armtwist_insert.main),
 	("make_ik_from_vmd.py",              make_ik_from_vmd.helptext,              make_ik_from_vmd.main),
 	("pmx_list_bone_morph_names.py",     pmx_list_bone_morph_names.helptext,     pmx_list_bone_morph_names.main),
+	("bone_add_sdef_autotwist_handtwist_adapter.py",bone_add_sdef_autotwist_handtwist_adapter.helptext,bone_add_sdef_autotwist_handtwist_adapter.main),
 ]
 
 
