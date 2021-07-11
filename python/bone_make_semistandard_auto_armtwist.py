@@ -6,7 +6,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/??/2021 - v6.01"
 
 # first, system imports
 from typing import Sequence, List
-import math
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -15,6 +14,7 @@ try:
 	from . import nuthouse01_pmx_parser as pmxlib
 	from . import nuthouse01_pmx_struct as pmxstruct
 	from ._prune_unused_bones import insert_single_bone
+	from .bone_set_arm_localaxis import set_all_arm_localaxis
 except ImportError as eee:
 	try:
 		# these imports work if running from double-click on THIS script
@@ -22,13 +22,14 @@ except ImportError as eee:
 		import nuthouse01_pmx_parser as pmxlib
 		import nuthouse01_pmx_struct as pmxstruct
 		from _prune_unused_bones import insert_single_bone
+		from bone_set_arm_localaxis import set_all_arm_localaxis
 	except ImportError as eee:
 		print(eee.__class__.__name__, eee)
 		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
 		print("...press ENTER to exit...")
 		input()
 		exit()
-		core = pmxlib = pmxstruct = insert_single_bone = None
+		core = pmxlib = pmxstruct = insert_single_bone = set_all_arm_localaxis = None
 
 
 
@@ -60,9 +61,6 @@ overall it is recommended to NOT use auto-arm-twist rig along with arm-IK rig
 the deform order thing is essential to solving "spinning wrists" when standard arm-IK is present, and perfectly harmless when arm-IK is not present
 the IK link limits help to mitigate some rare issues when arm-IK exists but i'm like 1% confident they can cause issues when arm-IK is not present?
 '''
-
-# MAX_ALLOWABLE_DEVIATION = 0.01
-MAX_ALLOWABLE_DEVIATION = 0.0001
 
 # left and right prefixes
 jp_l =    "左"
@@ -168,39 +166,6 @@ armtwist3
 elbow
 '''
 
-def find_colinear_deviation_vector(axis_end1:List[float], axis_end2:List[float], point:List[float]) -> List[float]:
-	"""
-	Determine how far (and what direction) the armtwist bone is from being perfectly colinear between the arm and
-	elbow bones. Return the vector from the closest colinear point to the given point.
-	:param axis_end1: XYZ position of one end of axis
-	:param axis_end2: XYZ position of the other end of the axis
-	:param point: XYZ position of the point which we want to make colinear
-	:return: XYZ vector, subtract this from 'point' to make it perfectly colinear
-	"""
-	# first, figure out what direction the axis is going
-	line_to_match = [a-b for a,b in zip(axis_end2, axis_end1)]
-	line_to_match = core.normalize_distance(line_to_match)
-	
-	desired_direction = (0.0, 0.0, 1.0)
-	
-	# https://math.stackexchange.com/a/60556/889783
-	q_axis = core.my_cross_product(line_to_match, desired_direction)
-	q_axis = core.normalize_distance(q_axis)
-	q_angle = math.acos(core.my_dot(line_to_match, desired_direction))
-	# "the usual axis-angle to quaternion conversion"
-	quat = [math.cos(q_angle / 2)] + [a * math.sin(q_angle / 2) for a in q_axis]
-	
-	# OKAY! now i have "quat" which describes how much to rotate axis_end2 to make it directly ABOVE axis_end1
-	# rotate the "point" by this amount as well. if perfectly colinear it will match the x and y of axis_end1
-	rotated_point = core.rotate3d(axis_end1, quat, point)
-	# figure out how much the point needs to be moved to be perfectly colinear...
-	delta = [a-b for a,b in zip(rotated_point, axis_end1)]
-	# force the z-component to be 0, want to move it into the line, not move it ALONG the line
-	delta[2] = 0
-	# undo the rotation and transform this delta back into the original coordinate space
-	rotated_delta = core.rotate3d((0.0, 0.0, 0.0), core.my_quat_conjugate(quat), delta)
-	return rotated_delta
-	
 def fix_deform_for_children(pmx: pmxstruct.Pmx, me: int, already_visited=None) -> int:
 	"""
 	Recursively ensure everything that inherits from the specified bone will deform after it.
@@ -476,35 +441,6 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 														   x.inherit_rot and
 														   x.inherit_parent_idx==elbow_idx, getitem=True)
 
-	# TODO: this code is good! this is useful! i shouldn't lock it away in this script only, it should be standalone usable
-	# TODO: repair local axis for bones if they are missing?
-	# 1.5, move armtwist bone to be colinear with the arm axis!
-	deviation = find_colinear_deviation_vector(arm.pos, elbow.pos, armtwist.pos)
-	# if the deviation is unacceptably large, then modify it
-	deviation_dist = core.my_euclidian_distance(deviation)
-	if (deviation_dist > MAX_ALLOWABLE_DEVIATION) or moreinfo:
-		core.MY_PRINT_FUNC("Existing twistbone '{}' is {} units away from the proper axis".format(armtwist.name_jp, round(deviation_dist, 5)))
-	if deviation_dist > MAX_ALLOWABLE_DEVIATION:
-		core.MY_PRINT_FUNC("This deviation is unacceptably large, now moving the bone into colinear position")
-		# correct the bone by subtracting the deviation
-		armtwist.pos = [p - d for p,d in zip(armtwist.pos, deviation)]
-		
-	# 1.6, guarantee that the fixedaxis and localaxis are correct for armtwist and arm!
-	# since it's now perfectly colinear, the axis from armtwist-to-elbow is the same as the axis from arm-to-elbow
-	armtwist.has_fixedaxis = True  # guarantee that fixedaxis is enabled
-	xaxis = [e-a for e,a in zip(elbow.pos, arm.pos)]
-	xaxis = core.normalize_distance(xaxis)
-	armtwist.fixedaxis = xaxis
-	# also recalculate the local axis
-	yaxis = calculate_perpendicular_offset_vector(xaxis)
-	zaxis = core.my_cross_product(xaxis, yaxis)
-	armtwist.has_localaxis = True  # guarantee that localxis is enabled
-	armtwist.localaxis_x = xaxis
-	armtwist.localaxis_z = zaxis
-	arm.has_localaxis = True  # guarantee that localxis is enabled
-	arm.localaxis_x = xaxis
-	arm.localaxis_z = zaxis
-	
 	# 2, find all armtwist-sub bones (armtwist1, armtwist2, armtwist3 usually. sometimes there are more or less.)
 	armtwist_sub_obj = []
 	for d, bone in enumerate(pmx.bones):
@@ -734,6 +670,7 @@ def main(moreinfo=True):
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	
+	set_all_arm_localaxis(pmx, moreinfo)
 	
 	core.MY_PRINT_FUNC("L upper arm...")
 	make_autotwist_segment(pmx, jp_l, jp_arm, jp_armtwist, jp_elbow, 0, moreinfo)
