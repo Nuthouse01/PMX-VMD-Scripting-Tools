@@ -440,10 +440,12 @@ def get_unused_file_name(initial_name: str, namelist=None) -> str:
 	MY_PRINT_FUNC("Err: unable to find unused variation of '%s' for file-write" % initial_name)
 	raise RuntimeError()
 
-def get_persistent_storage_json() -> dict:
+def get_persistent_storage_json(key:str) -> Any:
 	"""
-	Resolve the persistent storage path, read it as a json & return the dict
-	:return: dict of items that were in the json
+	Access the storage JSON dict, attempt to retrieve the item under the specified key.
+	If the key doesn't exist in the dict, return None.
+	:param key: string key in dict
+	:return: item living under the dict
 	"""
 	persist_path = _get_persistent_storage_path("persist.txt")
 	# read the json to list-of-strings using standard read-func
@@ -452,28 +454,44 @@ def get_persistent_storage_json() -> dict:
 									quiet=True)
 	# join the list-of-strings with newlines
 	str_data_joined = "\n".join(str_data)
-	# if it's empty, json doesn't like that so handle it manually
 	if str_data_joined == "":
-		return {}
+		# if it's empty, the key is guaranteed not in it
+		return None
 	# parse the megastring with json library, get a dict
 	# floats & ints will be properly interpreted and returned as numbers :)
-	# note: what kind of errors can the json module create?
+	# note: what kind of errors can the json module create????
 	data = json.loads(str_data_joined)
-	return data
+	try:
+		# if the key exists in the dict, then return the value it holds
+		return data[key]
+	except KeyError:
+		# if the key is not in the dict, then return None
+		return None
 
-def write_persistent_storage_json(data: dict) -> None:
+def write_persistent_storage_json(key:str, newval:Any) -> None:
 	"""
-	When given a dict, write the persistent storage file using json library
-	:param data: new json data to write
+	Access the storage JSON dict and set a new value to hold under the specified key. Then write it to file.
+	:param key: string key in dict
+	:param newval: new data to store under that key
 	"""
 	persist_path = _get_persistent_storage_path("persist.txt")
-	# convert the dict into a long multi-line string
-	# note: what kind of errors can the json module create?
-	if data == {}:
-		str_data = ""
+	# read the json to list-of-strings using standard read-func
+	str_data = read_txtfile_to_list(src_path=persist_path,
+									use_jis_encoding=False,
+									quiet=True)
+	# join the list-of-strings with newlines
+	str_data_joined = "\n".join(str_data)
+	if str_data_joined == "":
+		# if it's empty, create a new dict that contains only this key
+		data = {key: newval}
 	else:
-		str_data = json.dumps(data, ensure_ascii=False)
-	# print(str_data)
+		# parse the megastring with json library, get a dict
+		# note: what kind of errors can the json module create????
+		data = json.loads(str_data_joined)
+		# write the newval into the dict under new key
+		data[key] = newval
+	# serialize the dict into a big string
+	str_data = json.dumps(data, ensure_ascii=False)
 	# use standard write-func to write to text file
 	# 'content' is designed to be list of strings that don't contain newlines, but there's no problem if i violate that
 	write_list_to_txtfile(dest_path=persist_path,

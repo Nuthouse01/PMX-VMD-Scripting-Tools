@@ -141,10 +141,9 @@ def check_translate_budget(num_proposed: int) -> bool:
 	"""
 	# get the log of past translation requests
 	# formatted as list of (timestamp, numrequests) sub-lists
-	json_data = core.get_persistent_storage_json()
-	if 'googletrans-request-history' in json_data:
-		record = json_data['googletrans-request-history']
-	else:
+	record = core.get_persistent_storage_json('googletrans-request-history')
+	# if it doesn't exist in the json, then init it as empty list
+	if record is None:
 		record = []
 	
 	# get teh timestamp for now
@@ -166,9 +165,8 @@ def check_translate_budget(num_proposed: int) -> bool:
 		# write this transaction into the record
 		newentry = [now, num_proposed]
 		record.append(newentry)
-		json_data['googletrans-request-history'] = record
 		# write the record to file
-		core.write_persistent_storage_json(json_data)
+		core.write_persistent_storage_json('googletrans-request-history', record)
 		return True
 	else:
 		# cannot do the translate, this would exceed the budget

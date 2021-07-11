@@ -128,17 +128,17 @@ def gui_fileprompt(extensions: str) -> str:
 	extensions_labels = (extensions_labels,)
 	
 	# dont trust file dialog to remember last-opened path, manually save/read it
-	json_data = core.get_persistent_storage_json()
-	if 'last-opened-path' in json_data:
+	json_data = core.get_persistent_storage_json('last-opened-path')
+	if json_data is None:
+		# if never used before, start wherever i am right now i guess
+		start_here = path.abspath(".")
+	else:
 		# if it has been used before, use the path from last time.
-		c = json_data['last-opened-path']
+		c = json_data
 		# if the path from last time does not exist, walk up the path till I find a level that does still exist.
 		while c and not path.isdir(c):
 			c = path.dirname(c)
 		start_here = c
-	else:
-		# if never used before, start in the executable directory
-		start_here = "."
 	
 	newpath = fdg.askopenfilename(initialdir=start_here,
 								  title="Select input file: {%s}" % extensions,
@@ -150,8 +150,7 @@ def gui_fileprompt(extensions: str) -> str:
 		raise RuntimeError()
 	
 	# they got an existing file! update the last_opened_dir file
-	json_data['last-opened-path'] = path.dirname(newpath)
-	core.write_persistent_storage_json(json_data)
+	core.write_persistent_storage_json('last-opened-path', path.dirname(newpath))
 	
 	return newpath
 
