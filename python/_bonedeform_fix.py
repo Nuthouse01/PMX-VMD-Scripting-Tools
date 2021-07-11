@@ -27,6 +27,8 @@ except ImportError as eee:
 # but if launched in a new window it exits immediately so you can't read it.
 DEBUG = False
 
+# i can't figure out how to make this work sensibly.
+RESPECT_DEFORM_AFTER_PHYS = False
 
 helptext = '''====================
 bonedeform_fix:
@@ -60,10 +62,11 @@ def bonedeform_fix(pmx: pmxstruct.Pmx, moreinfo=False):
 	# if I encounter a recursive relationship I will have not touched the acutal PMX and can err and return it unchanged
 	deforms = [p.deform_layer for p in pmx.bones]
 	
-	# make "deform after phys" a way higher number than "deform before phys"
-	for d,bone in enumerate(pmx.bones):
-		if bone.deform_after_phys:
-			deforms[d] += DEFORM_AFTER_PHYS_OFFSET
+	if RESPECT_DEFORM_AFTER_PHYS:
+		# make "deform after phys" a way higher number than "deform before phys"
+		for d,bone in enumerate(pmx.bones):
+			if bone.deform_after_phys:
+				deforms[d] += DEFORM_AFTER_PHYS_OFFSET
 	
 	# make a list of the "ik master" for each bone
 	# it is possible for a bone to be controlled by multiple IK masters, actually every foot bone of every model is this way
@@ -138,10 +141,11 @@ def bonedeform_fix(pmx: pmxstruct.Pmx, moreinfo=False):
 			break
 		pass  # end while-loop
 	
-	# undo the "deform before phys" offset
-	for d,bone in enumerate(pmx.bones):
-		if bone.deform_after_phys:
-			deforms[d] -= DEFORM_AFTER_PHYS_OFFSET
+	if RESPECT_DEFORM_AFTER_PHYS:
+		# undo the "deform before phys" offset
+		for d,bone in enumerate(pmx.bones):
+			if bone.deform_after_phys:
+				deforms[d] -= DEFORM_AFTER_PHYS_OFFSET
 
 	# did it break because of recursion error?
 	if loops == MAX_LOOPS:
