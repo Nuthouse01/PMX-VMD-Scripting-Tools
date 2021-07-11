@@ -13,8 +13,15 @@ TODO: make the GUI automatically find & import all 'scripts' in 'FOOBAR' folder,
 TODO BUG!!! deform order check incorrectly finds recursive relationship in Shimakaze... because of deform-after-phys
     not sure how i want to fix this
 
+TODO: "automatically set localaxis for certain bones"
+TODO: auto armtwist stuff, force the armtwist bone to be colinear
+TODO: WIP-sdef-armtwist should invoke bone-sdeftwist-hand-adapter
+TODO: rename wip-sdef-armtwist to bone_make_sdef_auto_armtwist
+
 TODO: create one function in 'core' that does all the bottom-of-the-script stuff...?
     also lets me add traceback module to everything
+
+TODO: better incorporate traceback module with everything, remove the "debug" flag thing
 
 TODO: overhaul 'create ik from vmd' script
     input 2 models & simulate on both
