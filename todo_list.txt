@@ -18,9 +18,6 @@ TODO: create one function in 'core' that does all the bottom-of-the-script stuff
 
 TODO: better incorporate traceback module with everything, remove the "debug" flag thing
 
-TODO: overhaul 'create ik from vmd' script
-    input 2 models & simulate on both
-
 TODO: improve the 'file extension to filedialogue filter' thingy, surely i can do better
     add last-used-directory for each kind of file prompt, based on filtered extensions
 
