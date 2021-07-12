@@ -90,12 +90,13 @@ class ForwardKinematicsBone:
 		
 
 # todo: move this to the same place as 'dictify_framelist'
-def remove_redundant_frames(framelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdstruct.VmdBoneFrame]:
+def remove_redundant_frames(framelist: List[vmdstruct.VmdBoneFrame], moreinfo=False) -> List[vmdstruct.VmdBoneFrame]:
 	"""
 	Remove any redundant/excessive frames that don't add anything to the motion. This should be the same as the
 	function "Edit > Delete Unused Frame" within MikuMikuDance.
 	TODO: change the type hints to allow inputs of any kind of frame type, just for completeness
 	:param framelist: input list of frames
+	:param moreinfo: if true, then print stuff
 	:return: new list of frames, same or fewer than input
 	"""
 	# if the list has 1 or is empty, nothing to do
@@ -111,6 +112,8 @@ def remove_redundant_frames(framelist: List[vmdstruct.VmdBoneFrame]) -> List[vmd
 		# this DOES modify the input object but it should have already been in sorted order so boo hoo
 		framelist.sort(key=lambda x: x.f)
 		list_of_framelists = [framelist]
+	
+	size_before = len(framelist)
 	
 	# return true if they are the SAME! (except for framenum and interp values)
 	def compare_boneframe(x,y):
@@ -128,12 +131,10 @@ def remove_redundant_frames(framelist: List[vmdstruct.VmdBoneFrame]) -> List[vmd
 	elif isinstance(FIRST, vmdstruct.VmdCamFrame):
 		equalfunc = compare_camframe
 	else:
-		raise ValueError()
+		raise ValueError("err: unsupported type '%s' given to remove_redundant_frames()" % str(FIRST.__class__.__name__))
 	
+	# return as a flattened list
 	ultimate_outlist = []
-	# 0: skip
-	# 1: skip
-	# 2: first yes, 1 to 1 = nothing, last yes
 	for this_framelist in list_of_framelists:
 		# if there is only 1 frame in this list then i can't possibly remove anything
 		if len(this_framelist) <= 1:
@@ -162,18 +163,25 @@ def remove_redundant_frames(framelist: List[vmdstruct.VmdBoneFrame]) -> List[vmd
 			outlist.append(this_framelist[-1])
 		# all of "outlist" is used to extend the flat "ultimate_outlist" which is really returned
 		ultimate_outlist.extend(outlist)
+	size_after = len(ultimate_outlist)
+	diff = size_before - size_after
+	if moreinfo:
+		core.MY_PRINT_FUNC("Removed {:d} frames ({:.1%}) for being redundant".format(diff, diff/size_before))
 	return ultimate_outlist
 	
 # todo: move this to the same place as 'dictify_framelist'
 def fill_missing_boneframes(boneframe_dict: Dict[str, List[vmdstruct.VmdBoneFrame]],
-							moreinfo=False) -> Dict[str, List[vmdstruct.VmdBoneFrame]]:
+							moreinfo: bool,
+							relevant_frames=None,
+							) -> Dict[str, List[vmdstruct.VmdBoneFrame]]:
 	"""
 	Run interpolation so that all bones in boneframe_dict have keyframes at all framenumbers in relevant_framenums.
 	Newly-created keyframes have basic linear interpolation.
 	Currently only works with boneframes, could plausibly be changed to work with morphframes tho.
 	Returns a separate dict, input is unmodified.
 	:param boneframe_dict: returned from dictify_framelist()
-	:param moreinfo: default false, if true then print some stats
+	:param moreinfo: if true then print some stats
+	:param relevant_frames: optional, the set of frame numbers to ensure there are keys at.
 	:return: another boneframe_dict, but filled out
 	"""
 	# boneframe_dict: keys are bonenames, values are sorted lists of frames for that bone
@@ -183,11 +191,14 @@ def fill_missing_boneframes(boneframe_dict: Dict[str, List[vmdstruct.VmdBoneFram
 	num_append_prepend = 0
 	num_interpolate = 0
 	
-	# relevant_framenums: sorted list of all framenums that any relevent bone is keyed on
-	relevant_framenums = set()
+	# relevant_framenums: set of all framenums that any relevent bone is keyed on
+	if relevant_frames is None:
+		relevant_framenums = set()
+	else:
+		relevant_framenums = relevant_frames.copy()
 	for listofboneframes in boneframe_dict.values():
-		framenums_for_this_bone = [b.f for b in listofboneframes]
-		relevant_framenums.update(framenums_for_this_bone)
+		for oneframe in listofboneframes:
+			relevant_framenums.add(oneframe.f)
 	# turn the relevant_framenums set into a sorted list
 	relevant_framenums = sorted(list(relevant_framenums))
 
@@ -465,7 +476,11 @@ def main(moreinfo=True):
 	core.MY_PRINT_FUNC("")
 	core.MY_PRINT_FUNC("Please specify (Y) the PMX model file that you want to create VMD IK frames for:")
 	input_filename_pmx_dest = core.MY_FILEPROMPT_FUNC(".pmx")
-	pmx_dest = pmxlib.read_pmx(input_filename_pmx_dest, moreinfo=moreinfo)
+	if input_filename_pmx_dest == input_filename_pmx_source:
+		# if it's the same model, i can cheat!
+		pmx_dest = pmx_source
+	else:
+		pmx_dest = pmxlib.read_pmx(input_filename_pmx_dest, moreinfo=moreinfo)
 
 	# 4. ask for the bones... how?
 	# ask for both ik and target at same time
@@ -554,7 +569,7 @@ def main(moreinfo=True):
 	
 	# SECOND, begin massaging the VMD
 	# remove redundant frames just cuz i can, it might help reduce processing time
-	boneframe_list = remove_redundant_frames(vmd.boneframes)
+	boneframe_list = remove_redundant_frames(vmd.boneframes, moreinfo)
 	# arrange the boneframes into a dict, key=name and value=sorted list of frames on that bone
 	# make a copy of the dict so i can modify the sourcedict separate from the targetdict
 	boneframe_source_dict = WIP_vmd_animation_smoothing.dictify_framelist(boneframe_list)
@@ -625,8 +640,15 @@ def main(moreinfo=True):
 
 	# """rectangularize""" these boneframes by adding interpolated frames, so that every relevant bone
 	# has a frame at every relevant timestep
-	full_boneframe_source_dict = fill_missing_boneframes(boneframe_source_dict, moreinfo)
-	full_boneframe_dest_dict = fill_missing_boneframes(boneframe_dest_dict, moreinfo)
+	framenums = set()
+	for listofboneframes in boneframe_source_dict.values():
+		for oneframe in listofboneframes:
+			framenums.add(oneframe.f)
+	for listofboneframes in boneframe_dest_dict.values():
+		for oneframe in listofboneframes:
+			framenums.add(oneframe.f)
+	full_boneframe_source_dict = fill_missing_boneframes(boneframe_source_dict, moreinfo, framenums)
+	full_boneframe_dest_dict = fill_missing_boneframes(boneframe_dest_dict, moreinfo, framenums)
 	
 	# "forward kinematics" function shouldn't need any knowledge of what timestep it is computing at
 	# i want to ultimately give the forward-k function a list of boneframes and bonepositions, nothing more
