@@ -614,12 +614,6 @@ def main(moreinfo=True):
 			boneframe_dest_dict.pop(key)
 	# print(relevant_bones)
 
-	# TODO PROBLEM: how do i account for the toe ik bone being moved RELATIVE TO THE FOOT IK BONE?????
-	#  this means i need to check the possible relative parentage of the ik bones!
-	#  and i need to somehow use the result of that check!
-	#  the simple solution would be to build the frame, add it to the system, and redo forward K
-	#  but i REALLY want to avoid that because that would increase processing time 4x when i'm already increasing it 2x!
-	
 	# FOURTH, continue massaging the VMD
 	# (this is necessary unlike step 3)
 	# pop any frames for the IK bone itself, just to be safe (since i'm making new frames for it, the old data will be overwritten)
@@ -673,6 +667,24 @@ def main(moreinfo=True):
 	############################################
 	############################################
 	############################################
+	
+	# before running forward-K, SORT the targetbone_name_list and ikbone_name_list into the same order in which the ikbones deform
+	ikbonename_targetbonename_sorted = []
+	for name in [x.name for x in order_dest]:
+		# fill "ikbonename_targetbonename_sorted" in the order in which the ikbones appear in order_dest
+		try:
+			i = ikbone_name_list.index(name)
+			newthing = (ikbone_name_list[i], # ikbone_name
+						core.my_list_search(pmx_dest.bones, lambda x: x.name_jp == name), # ikbone_idx_in_pmx_dest
+						core.my_list_search(order_dest, lambda x: x.name == name), # ikbone_idx_in_order_dest
+						targetbone_name_list[i], # targetbone_name
+						core.my_list_search(order_source, lambda x: x.name == targetbone_name_list[i]) # targetbone_idx_in_order_source
+						)
+			ikbonename_targetbonename_sorted.append(newthing)
+		except ValueError:
+			# if name not in ikbone_name_list, do nothing
+			pass
+	
 	# now actually run forward-K
 	# first, simulate the source model and find the resulting location of the target bone for every frame
 	core.MY_PRINT_FUNC("...running forward kinematics computation for %d frames on SOURCE model..." % len(invert_boneframe_source_dict))
@@ -683,9 +695,10 @@ def main(moreinfo=True):
 		# run forward kinematics!
 		results = run_forward_kinematics_for_one_timestep(frames, order_source)
 		newlist = []
-		for targetbone_name in targetbone_name_list:
+		# for each targetbone,
+		for _, _, _, targetbone_name, targetbone_idx_in_order_source in ikbonename_targetbonename_sorted:
 			# where is the absolute position of the target bone?
-			targetbone_result = core.my_list_search(results, lambda x: x.name == targetbone_name, getitem=True)
+			targetbone_result = results[targetbone_idx_in_order_source]
 			newlist.append(targetbone_result.pos.copy())
 		target_bone_positions.append(newlist)
 		pass
@@ -693,15 +706,19 @@ def main(moreinfo=True):
 	
 	core.MY_PRINT_FUNC("...running forward kinematics computation for %d frames on DESTINATION model..." % len(invert_boneframe_dest_dict))
 
-	# for each relevant framenum,
+	# second, simulate the destination model and find the "resting position" of each IK bone
+	# then i can figure out how much i need to move that bone to move it from rest to the desired position
 	output_vmd_frames = []
 	for d,(framenum, frames) in enumerate(invert_boneframe_dest_dict.items()):
+		target_bone_positions_for_this_frame = target_bone_positions[d]
 		core.print_progress_oneline(d/len(invert_boneframe_dest_dict))
 		# run forward kinematics!
 		results = run_forward_kinematics_for_one_timestep(frames, order_dest)
-		for ikbone_name, targetbone_position in zip(ikbone_name_list, target_bone_positions[d]):
+		# for each ikbone,
+		for (ikbone_name, ikbone_idx_in_pmx_dest, ikbone_idx_in_order_dest, _, _), targetbone_position in \
+				zip(ikbonename_targetbonename_sorted, target_bone_positions_for_this_frame):
 			# where is the absolute position of the IK bone?
-			ikbone_result = core.my_list_search(results, lambda x: x.name == ikbone_name, getitem=True)
+			ikbone_result = results[ikbone_idx_in_order_dest]
 			# determine the XYZ change needed to make get teh ik bone from its origin to the target bone (remember to account
 			# for any rotation on the ik bone!)
 			# what i need to do is rotate by the opposite of the current rotation amount.
@@ -720,6 +737,19 @@ def main(moreinfo=True):
 											   )
 			# append it
 			output_vmd_frames.append(new_frame)
+			# now apply the offset (in origin frame, not in rotated frame) to the "ikbone_result" and any of its descendents
+			# first, modify self:
+			norotate_position_delta = [f - i for f,i in zip(targetbone_position, ikbone_result.pos)]
+			ikbone_result.pos = [p + d for p,d in zip(ikbone_result.pos, norotate_position_delta)]
+			# then, modify any other ik bones that are listed as a child of this
+			for child_idx_in_pmx_dest in ikbone_result.descendents:
+				for (ikbone_name2, ikbone_idx_in_pmx_dest2, ikbone_idx_in_order_dest2, _, _) in ikbonename_targetbonename_sorted:
+					if child_idx_in_pmx_dest == ikbone_idx_in_pmx_dest2:
+						# this is a child!
+						ikbone_result2 = results[ikbone_idx_in_order_dest2]
+						# apply the norotate delta
+						ikbone_result2.pos = [p + d for p, d in zip(ikbone_result2.pos, norotate_position_delta)]
+		
 		pass
 
 	############################################
