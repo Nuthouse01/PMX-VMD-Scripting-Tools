@@ -1,36 +1,19 @@
+import csv
+import json
+import math
+import re
+import struct
+import sys
+from os import path, listdir, getenv, makedirs
+from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
-PACKAGE_VERSION = "Package version: Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
 # this contains a bunch of functions that are used throughout multiple different scripts
 # it's better to keep them all in one place than copy them for each file
 
-import csv
-import math
-import re
-import struct
-import json
-from os import path, listdir, getenv, makedirs
-import sys
-from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
-
-
-
-# first, version check: verify that this is using python3
-# i don't know if it will actually work in 3.4 but i know it will fail in any python2 version
-# actually written/tested with 3.6.6 so guaranteed to work on that or higher
-# between 3.4 and 3.6, who knows
-
-if sys.version_info < (3, 6):
-	print("Your version of Python is too old to run this script, please update!")
-	print("Your current version = " + sys.version)
-	print("Required version = (3.6.0) or higher")
-	print("...press ENTER to exit...")
-	input()
-	exit()
-
-print(PACKAGE_VERSION)
 
 ########################################################################################################################
 # constants used in many files that I don't wanna keep copying over and over

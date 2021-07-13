@@ -1,31 +1,15 @@
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
-# This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
-#####################
-
-
-# first, system imports
+import abc
+import copy
+import enum
 import sys
 import traceback
 from typing import List, Union
-import abc
-import enum
-import copy
 
-# second, wrap custom imports with a try-except to catch it if files are missing
-try:
-	# these imports work if running from GUI
-	from . import nuthouse01_core as core
-except ImportError as eee:
-	try:
-		# these imports work if running from double-click on THIS script
-		import nuthouse01_core as core
-	except ImportError as eee:
-		print(eee.__class__.__name__, eee)
-		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-		print("...press ENTER to exit...")
-		input()
-		exit()
-		core = None
+import mmd_scripting.nuthouse01_core as core
+
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
+# This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
+#####################
 
 
 # this is an abstract base class that all the PMX classes inherit

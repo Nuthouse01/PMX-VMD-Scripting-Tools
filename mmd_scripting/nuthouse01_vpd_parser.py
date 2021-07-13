@@ -1,30 +1,12 @@
+import re
+
+import mmd_scripting.nuthouse01_core as core
+import mmd_scripting.nuthouse01_vmd_struct as vmdstruct
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 10/10/2020 - v5.03"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-
-# first, system imports
-import re
-
-# second, wrap custom imports with a try-except to catch it if files are missing
-try:
-	# these imports work if running from GUI
-	from . import nuthouse01_core as core
-	from . import nuthouse01_vmd_parser as vmdlib
-	from . import nuthouse01_vmd_struct as vmdstruct
-except ImportError as eee:
-	try:
-		# these imports work if running from double-click on THIS script
-		import nuthouse01_core as core
-		import nuthouse01_vmd_parser as vmdlib
-		import nuthouse01_vmd_struct as vmdstruct
-	except ImportError as eee:
-		print(eee.__class__.__name__, eee)
-		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-		print("...press ENTER to exit...")
-		input()
-		exit()
-		core = vmdlib = vmdstruct = None
 
 ########################################################################################################################
 # constants & options

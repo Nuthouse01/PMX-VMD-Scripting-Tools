@@ -1,3 +1,10 @@
+import math
+import struct
+from typing import List, Union
+
+import mmd_scripting.nuthouse01_core as core
+import mmd_scripting.nuthouse01_vmd_struct as vmdstruct
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
@@ -22,9 +29,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 
 # VMD FORMAT: described in the attached README file
 
-# I'm not going to bother describing the "nicelist" format too much because if you're good enough that you want to
-# use my functions to accomplish something new, you're good enough to read the functions and see how the format
-# is assembled at the end of each sub-function. All the data fields and functions have pretty reasonable names.
 # All angles are internally represented as degrees (and printed to text in degrees), and they should match the angle
 # values that MMD displays as well.
 
@@ -50,29 +54,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # 	encode_vmd_ikdispframe()
 # 	core.write_bytes_to_binfile()
 
-
-# first, system imports
-import math
-import struct
-from typing import List, Union
-
-# second, wrap custom imports with a try-except to catch it if files are missing
-try:
-	# these imports work if running from GUI
-	from . import nuthouse01_core as core
-	from . import nuthouse01_vmd_struct as vmdstruct
-except ImportError as eee:
-	try:
-		# these imports work if running from double-click on THIS script
-		import nuthouse01_core as core
-		import nuthouse01_vmd_struct as vmdstruct
-	except ImportError as eee:
-		print(eee.__class__.__name__, eee)
-		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-		print("...press ENTER to exit...")
-		input()
-		exit()
-		core = vmdstruct = None
 
 ########################################################################################################################
 # constants & options
