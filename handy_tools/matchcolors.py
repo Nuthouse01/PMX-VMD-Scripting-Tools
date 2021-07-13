@@ -1,12 +1,13 @@
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 9/13/2020 - 5.01"
-
-"""Usage: python matchcolors.py good.jpg bad.jpg save-corrected-as.jpg"""
+import pickle
 
 from imageio import imread, imsave
 from scipy import mean, interp, ravel, array
-import sys
+
 from progprint import progprint, progclean
-import pickle
+
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 9/13/2020 - 5.01"
+
+"""Usage: python matchcolors.py good.jpg bad.jpg save-corrected-as.jpg"""
 
 def mkcurve(chan1,chan2):
 	"""Calculate channel curve by averaging target values."""

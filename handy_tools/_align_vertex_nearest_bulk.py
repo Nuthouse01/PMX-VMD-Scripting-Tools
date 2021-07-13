@@ -1,21 +1,10 @@
+from mmd_scripting import nuthouse01_core as core
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 09/21/2020 - v5.02"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
 
-
-# second, wrap custom imports with a try-except to catch it if files are missing
-import sys
-try:
-	sys.path.append("../")
-	from python import nuthouse01_core as core
-except ImportError as eee:
-	print(eee)
-	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-	print("...press ENTER to exit...")
-	input()
-	exit()
-	core = None
 
 # third, constants
 

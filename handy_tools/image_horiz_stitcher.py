@@ -1,7 +1,8 @@
+from PIL import Image
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 8/24/2020 - v5.00"
 
 
-from PIL import Image
 
 def get_concat_h(im111, im222):
 	dst = Image.new('RGBA', (im111.width + im222.width, max(im111.height, im222.height)))
@@ -13,6 +14,7 @@ def get_concat_h(im111, im222):
 
 
 print("use this to stitch images together horizontally")
+print("empty input when done listing files")
 
 
 

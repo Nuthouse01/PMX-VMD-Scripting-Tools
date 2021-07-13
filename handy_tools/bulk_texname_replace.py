@@ -1,20 +1,11 @@
+import os
+
+from mmd_scripting import file_sort_textures
+from mmd_scripting import nuthouse01_core as core
+from mmd_scripting import nuthouse01_pmx_parser as pmxlib
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # this one is for you, syblomic-dash
-
-import sys
-import os
-try:
-	sys.path.append("../")
-	from python import nuthouse01_core as core
-	from python import nuthouse01_pmx_parser as pmxlib
-	from python import file_sort_textures
-except ImportError as eee:
-	print(eee)
-	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-	print("...press ENTER to exit...")
-	input()
-	exit()
-	core = pmxlib = file_sort_textures = None
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.

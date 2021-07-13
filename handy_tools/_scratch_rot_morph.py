@@ -1,3 +1,10 @@
+import math
+
+from mmd_scripting import morph_scale
+from mmd_scripting import nuthouse01_core as core
+from mmd_scripting import nuthouse01_pmx_parser as pmxlib
+from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 
 """
@@ -24,22 +31,6 @@ sequence:
 15. transfer-by-order normals from feetflatrot to feetpoint
 """
 
-import sys
-try:
-	sys.path.append("../")
-	from python import nuthouse01_core as core
-	from python import nuthouse01_pmx_parser as pmxlib
-	from python import nuthouse01_pmx_struct as pmxstruct
-	from python import morph_scale
-except ImportError as eee:
-	print(eee)
-	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-	print("...press ENTER to exit...")
-	input()
-	exit()
-	core = pmxlib = pmxstruct = morph_scale = None
-
-import math
 
 matchbones = (17, 21, 30, 31,)
 # rotamt = (28, 28, -28, -28,)

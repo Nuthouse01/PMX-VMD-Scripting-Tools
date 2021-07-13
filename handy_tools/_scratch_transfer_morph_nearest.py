@@ -1,18 +1,8 @@
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
+from mmd_scripting import nuthouse01_core as core
+from mmd_scripting import nuthouse01_pmx_parser as pmxlib
+from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
 
-import sys
-try:
-	sys.path.append("../")
-	from python import nuthouse01_core as core
-	from python import nuthouse01_pmx_parser as pmxlib
-	from python import nuthouse01_pmx_struct as pmxstruct
-except ImportError as eee:
-	print(eee)
-	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-	print("...press ENTER to exit...")
-	input()
-	exit()
-	core = pmxlib = pmxstruct = None
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.

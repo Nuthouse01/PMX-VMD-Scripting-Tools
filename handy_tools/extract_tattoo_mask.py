@@ -1,8 +1,9 @@
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 09/13/2020 - v5.01"
-from PIL import Image
-from progprint import progprint, progclean
 import numpy as np
+from PIL import Image
 
+from progprint import progprint, progclean
+
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 09/13/2020 - v5.01"
 """
 Given a no-tattoo body and a tattoo body, and a single color, calc the transparency needed
 to create the tattoo mask sitting on top of the no-tattoo body to create the tattoo body.
@@ -119,7 +120,6 @@ def main():
 	img.putalpha(img_mask)
 	img.save(OUTPUT)
 	
-	# todo: save the result image
 	print("done!")
 	return None
 if __name__ == "__main__":

@@ -1,13 +1,14 @@
+import io
+import os
+import re
+import time
+
+import requests
+from PIL import Image
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
-
-import requests
-import re
-import os
-from PIL import Image
-import io
-import time
 
 def getFilename_fromCd(r):
 	"""

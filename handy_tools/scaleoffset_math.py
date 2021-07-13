@@ -1,23 +1,8 @@
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 12/20/2020 - v5.04"
-
 import math
 
+from mmd_scripting.nuthouse01_core import rotate2d
 
-def rotate2d(origin, angle, point):
-	"""
-	Rotate a 2d point counterclockwise by a given angle around a given 2d origin.
-	The angle should be given in radians.
-
-	:param origin: 2x float X Y, rotate-around point
-	:param angle: float, radians to rotate
-	:param point: 2x float X Y, point-that-will-be-rotated
-	:return: 2x float X Y, point after rotation
-	"""
-	ox, oy = origin
-	px, py = point
-	qx = ox + math.cos(angle) * (px - ox) - math.sin(angle) * (py - oy)
-	qy = oy + math.sin(angle) * (px - ox) + math.cos(angle) * (py - oy)
-	return qx, qy
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 12/20/2020 - v5.04"
 
 
 print("give XYZ of 2 points that you want to align, and XYZ of the 2 points you want them aligned to")

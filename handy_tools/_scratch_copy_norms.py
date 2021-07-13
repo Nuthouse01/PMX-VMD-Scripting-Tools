@@ -1,3 +1,5 @@
+from mmd_scripting import nuthouse01_pmx_parser as pmxlib
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 12/20/2020 - v5.04"
 
 """
@@ -23,22 +25,6 @@ sequence:
 14. merge the point-to-rot vmorph and almost-to-flat(rotated) vmorph using "join morph (boolean)"
 15. transfer-by-order normals from feetflatrot to feetpoint
 """
-
-import sys
-try:
-	sys.path.append("../")
-	from python import nuthouse01_core as core
-	from python import nuthouse01_pmx_parser as pmxlib
-except ImportError as eee:
-	print(eee)
-	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-	print("...press ENTER to exit...")
-	input()
-	exit()
-	core = pmxlib = None
-
-
-
 
 ##################
 # copy normals

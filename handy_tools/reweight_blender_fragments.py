@@ -1,30 +1,10 @@
+from mmd_scripting import nuthouse01_core as core
+from mmd_scripting import nuthouse01_pmx_parser as pmxlib
+from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
-
-import sys
-sys.path.append("../")
-
-try:
-	# these imports work if running from GUI
-	from python import nuthouse01_core as core
-	from python import nuthouse01_pmx_parser as pmxlib
-	from python import nuthouse01_pmx_struct as pmxstruct
-	from python import morph_scale
-except ImportError as eee:
-	try:
-		# these imports work if running from double-click on THIS script
-		import nuthouse01_core as core
-		import nuthouse01_pmx_parser as pmxlib
-		import nuthouse01_pmx_struct as pmxstruct
-		import morph_scale
-	except ImportError as eee:
-		print(eee.__class__.__name__, eee)
-		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-		print("...press ENTER to exit...")
-		input()
-		exit()
-		core = pmxlib = pmxstruct = morph_scale = None
 
 
 # todo: once help text is properly filled out this will be gui-compatible
