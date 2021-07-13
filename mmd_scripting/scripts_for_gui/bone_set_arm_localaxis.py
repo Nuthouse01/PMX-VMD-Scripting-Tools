@@ -145,7 +145,7 @@ def set_all_arm_localaxis(pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 		set_bone_localaxis(pmx, elbow, wrist)
 		
 		# 6, elbowtwist or wristtwist, same as armtwist
-		wristtwist = core.my_list_search(pmx.bones, lambda x: x.name_jp == (side + jp_armtwist), getitem=True)
+		wristtwist = core.my_list_search(pmx.bones, lambda x: x.name_jp == (side + jp_wristtwist), getitem=True)
 		if wristtwist is not None:
 			# how far is the wristtwist bone from being perfectly colinear?
 			deviation = find_colinear_deviation_vector(elbow.pos, wrist.pos, wristtwist.pos)
