@@ -3,8 +3,8 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/3/2021 - v5.08"
 #####################
 
 
-import numpy as np
-import matplotlib.pyplot as plt
+# import numpy as np
+# import matplotlib.pyplot as plt
 
 ANGLE_SHARPNESS_FACTORS = []
 
@@ -123,9 +123,9 @@ def dictify_framelist(frames: List[BONEFRAME_OR_MORPHFRAME]) -> Dict[str, List[B
 	# first, split into sublists
 	retdict = {}
 	for t in frames:
-		if t.name in retdict:
+		try:
 			retdict[t.name].append(t)
-		else:
+		except KeyError:
 			retdict[t.name] = [t]
 	# then, guarantee each sublist is in sorted order, sorted by frame number
 	for sublist in retdict.values():
@@ -890,9 +890,9 @@ def main(moreinfo=True):
 	vmdlib.write_vmd(output_filename_vmd, vmd, moreinfo=moreinfo)
 	
 	# H = plt.hist([j for j in ANGLE_SHARPNESS_FACTORS if j!=0 and j!=1], bins=40, density=True)
-	print("factors=", len(ANGLE_SHARPNESS_FACTORS))
-	H = plt.hist(ANGLE_SHARPNESS_FACTORS, bins=16, density=True)
-	plt.show()
+	# print("factors=", len(ANGLE_SHARPNESS_FACTORS))
+	# H = plt.hist(ANGLE_SHARPNESS_FACTORS, bins=16, density=True)
+	# plt.show()
 	
 	core.MY_PRINT_FUNC("Done!")
 	return None

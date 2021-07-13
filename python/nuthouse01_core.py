@@ -1,5 +1,5 @@
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
-PACKAGE_VERSION = "Package version: Nuthouse01 - 6/10/2021 - v6.00"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
+PACKAGE_VERSION = "Package version: Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -10,8 +10,9 @@ import csv
 import math
 import re
 import struct
+import json
 from os import path, listdir, getenv, makedirs
-from sys import platform, version_info, version
+import sys
 from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
 
 
@@ -21,9 +22,10 @@ from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
 # actually written/tested with 3.6.6 so guaranteed to work on that or higher
 # between 3.4 and 3.6, who knows
 
-if version_info < (3, 6):
+if sys.version_info < (3, 6):
 	print("Your version of Python is too old to run this script, please update!")
-	print("Your current version = " + version)
+	print("Your current version = " + sys.version)
+	print("Required version = (3.6.0) or higher")
 	print("...press ENTER to exit...")
 	input()
 	exit()
@@ -380,10 +382,11 @@ def prompt_user_filename(extensions_in: str) -> str:
 		elif not path.isfile(name):
 			MY_PRINT_FUNC("Err: given file does not exist, did you type it wrong?")
 			abspath = path.abspath(name)
-			# find the point where the filepath breaks!
-			shorterpath = abspath
-			while not path.exists(shorterpath): shorterpath = path.split(shorterpath)[0]
-			whereitbreaks = (" " * len(shorterpath)) + " ^^^^"
+			# find the point where the filepath breaks! walk up folders 1 by 1 until i find the last place where the path was valid
+			c = abspath
+			while c and not path.exists(c):
+				c = path.dirname(c)
+			whereitbreaks = (" " * len(c)) + " ^^^^"
 			MY_PRINT_FUNC(abspath)
 			MY_PRINT_FUNC(whereitbreaks)
 		else:
@@ -421,12 +424,15 @@ def get_unused_file_name(initial_name: str, namelist=None) -> str:
 	:param namelist: optional list/set of forbidden names
 	:return: same file path as initial_name, but with integers appended until it becomes unique (if needed)
 	"""
-	# if namelist is given, check against namelist instead of what's on the disk... assume namelist contains all lowercase names
+	# if namelist is given, check against namelist as well as what's on the disk...
+	# make an all-lower version of namelist
+	if namelist is None: namelist_lower = []
+	else:                namelist_lower = [n.lower() for n in namelist]
 	basename, extension = path.splitext(initial_name)
 	test_name = basename + extension  # first, try it without adding any numbers
 	for append_num in range(2, 1000):
-		if not path.exists(test_name) and ((namelist is None) or (test_name.lower() not in [n.lower() for n in namelist])):
-			# if test_name doesn't exist, AND it isn't in the list (case-insensitive matching), then its a good name
+		if not path.exists(test_name) and (test_name.lower() not in namelist_lower):
+			# if test_name doesn't exist on disk, AND it isn't in the list (case-insensitive matching), then its a good name
 			return test_name
 		else:
 			test_name = basename + str(append_num) + extension  # each future test_name has a number inserted in it
@@ -434,20 +440,81 @@ def get_unused_file_name(initial_name: str, namelist=None) -> str:
 	MY_PRINT_FUNC("Err: unable to find unused variation of '%s' for file-write" % initial_name)
 	raise RuntimeError()
 
-def get_persistient_storage_path(filename="") -> str:
+def get_persistent_storage_json(key:str) -> Any:
+	"""
+	Access the storage JSON dict, attempt to retrieve the item under the specified key.
+	If the key doesn't exist in the dict, return None.
+	:param key: string key in dict
+	:return: item living under the dict
+	"""
+	persist_path = _get_persistent_storage_path("persist.txt")
+	# read the json to list-of-strings using standard read-func
+	str_data = read_txtfile_to_list(src_path=persist_path,
+									use_jis_encoding=False,
+									quiet=True)
+	# join the list-of-strings with newlines
+	str_data_joined = "\n".join(str_data)
+	if str_data_joined == "":
+		# if it's empty, the key is guaranteed not in it
+		return None
+	# parse the megastring with json library, get a dict
+	# floats & ints will be properly interpreted and returned as numbers :)
+	# note: what kind of errors can the json module create????
+	data = json.loads(str_data_joined)
+	try:
+		# if the key exists in the dict, then return the value it holds
+		return data[key]
+	except KeyError:
+		# if the key is not in the dict, then return None
+		return None
+
+def write_persistent_storage_json(key:str, newval:Any) -> None:
+	"""
+	Access the storage JSON dict and set a new value to hold under the specified key. Then write it to file.
+	:param key: string key in dict
+	:param newval: new data to store under that key
+	"""
+	persist_path = _get_persistent_storage_path("persist.txt")
+	# read the json to list-of-strings using standard read-func
+	str_data = read_txtfile_to_list(src_path=persist_path,
+									use_jis_encoding=False,
+									quiet=True)
+	# join the list-of-strings with newlines
+	str_data_joined = "\n".join(str_data)
+	if str_data_joined == "":
+		# if it's empty, create a new dict that contains only this key
+		data = {key: newval}
+	else:
+		# parse the megastring with json library, get a dict
+		# note: what kind of errors can the json module create????
+		data = json.loads(str_data_joined)
+		# write the newval into the dict under new key
+		data[key] = newval
+	# serialize the dict into a big string
+	str_data = json.dumps(data, ensure_ascii=False)
+	# use standard write-func to write to text file
+	# 'content' is designed to be list of strings that don't contain newlines, but there's no problem if i violate that
+	write_list_to_txtfile(dest_path=persist_path,
+						  content=[str_data],
+						  use_jis_encoding=False,
+						  quiet=True)
+	return None
+
+def _get_persistent_storage_path(filename="") -> str:
 	"""
 	Get the path to a storage location that will persist between runs, usually in APPDATA folder.
 	If not given a filename, return the path to the folder.
 	If given a filename, and the file does not exist, create it empty & return the path to this new file.
 	If the file does exist, return the path to the existing file.
+	This should only be used internally.
 	
-	:param filename: filename within the persistient storage directory
+	:param filename: filename within the persistent storage directory
 	:return: absolute file path to the persitient directory, or the file within it
 	"""
 	# this is the name of my "app"
 	appname = "nuthouse01_mmd_tools"
 	# build the appropriate path for windows or unix
-	if platform == 'win32':
+	if sys.platform == 'win32':
 		appdata = path.join(getenv('APPDATA'), appname)
 	else:
 		appdata = path.expanduser(path.join("~", "." + appname))
@@ -468,7 +535,7 @@ def get_persistient_storage_path(filename="") -> str:
 # these functions do CSV read/write and binary-file read/write
 ########################################################################################################################
 
-def write_csvlist_to_file(dest_path:str, content:List[list], use_jis_encoding=False, quiet=False) -> None:
+def write_csvlist_to_file(dest_path:str, content:List[List[Any]], use_jis_encoding=False, quiet=False) -> None:
 	"""
 	Receive a list-of-lists format and write it to textfile on disk in CSV format.
 	
@@ -514,7 +581,7 @@ def write_csvlist_to_file(dest_path:str, content:List[list], use_jis_encoding=Fa
 
 	return None
 
-def read_file_to_csvlist(src_path:str, use_jis_encoding=False, quiet=False) -> List[list]:
+def read_file_to_csvlist(src_path:str, use_jis_encoding=False, quiet=False) -> List[List[Any]]:
 	"""
 	Read a CSV text file from disk & return a type-correct list-of-lists format
 	
@@ -926,7 +993,8 @@ def my_quat_conjugate(q: Sequence[float]) -> Tuple[float,float,float,float]:
 def my_slerp(v0: Sequence[float], v1: Sequence[float], t: float) -> Tuple[float,float,float,float]:
 	"""
 	Spherically Linear intERPolates between quat1 and quat2 by t.
-	The param t should be clamped to the range [0, 1].
+	The param t will normally be clamped to the range [0, 1]. However, negative values or greater than 1 will still
+	work.
 	If t==0, return v0. If t==1, return v1.
 
 	:param v0: 4x float, W X Y Z quaternion
@@ -1112,6 +1180,49 @@ def quaternion_to_euler(quat: Sequence[float]) -> Tuple[float,float,float]:
 	yaw = math.degrees(yaw)
 	
 	return roll, pitch, yaw
+
+
+def rotate3d(rotate_around: Sequence[float],
+			 angle_quat: Sequence[float],
+			 initial_position: Sequence[float]) -> List[float]:
+	"""
+	Rotate a point within 3d space around another specified point by a specific quaternion angle.
+	:param rotate_around: X Y Z usually a bone location
+	:param angle_quat: W X Y Z quaternion rotation to apply
+	:param initial_position: X Y Z starting location of the point to be rotated
+	:return: X Y Z position after rotating
+	"""
+	# "rotate around a point in 3d space"
+	
+	# subtract "origin" to move the whole system to rotating around 0,0,0
+	point = [p - o for p, o in zip(initial_position, rotate_around)]
+	
+	# might need to scale the point down to unit-length???
+	# i'll do it just to be safe, it couldn't hurt
+	length = my_euclidian_distance(point)
+	if length != 0:
+		point = [p / length for p in point]
+		
+		# set up the math as instructed by math.stackexchange
+		p_vect = [0.0] + point
+		r_prime_vect = my_quat_conjugate(angle_quat)
+		# r_prime_vect = [angle_quat[0], -angle_quat[1], -angle_quat[2], -angle_quat[3]]
+		
+		# P' = R * P * R'
+		# P' = H( H(R,P), R')
+		temp = hamilton_product(angle_quat, p_vect)
+		p_prime_vect = hamilton_product(temp, r_prime_vect)
+		# note that the first element of P' will always be 0
+		point = p_prime_vect[1:4]
+		
+		# might need to undo scaling the point down to unit-length???
+		point = [p * length for p in point]
+	
+	# re-add "origin" to move the system to where it should have been
+	point = [p + o for p, o in zip(point, rotate_around)]
+	
+	return point
+
 
 def rotate2d(origin: Sequence[float], angle: float, point: Sequence[float]) -> Tuple[float,float]:
 	"""
@@ -1473,3 +1584,5 @@ def _pack_text(fmt: str, args: str) -> bytearray:
 if __name__ == '__main__':
 	print(_SCRIPT_VERSION)
 	pause_and_quit("you are not supposed to directly run this file haha")
+
+

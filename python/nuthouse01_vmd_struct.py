@@ -1,4 +1,4 @@
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -9,6 +9,7 @@ import traceback
 from typing import List, Union
 import abc
 import enum
+import copy
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -31,6 +32,9 @@ except ImportError as eee:
 # this lets them all get the __str__ method and forces them all to implement list()
 # it also lets me detect any of them by isinstance(x, _BasePmx)
 class _BaseVmd(abc.ABC):
+	def copy(self):
+		""" Return a separate copy of the object. """
+		return copy.deepcopy(self)
 	def __str__(self) -> str: return str(self.list())
 	@abc.abstractmethod
 	def list(self) -> list: pass
@@ -148,7 +152,10 @@ class VmdBoneFrame(_BaseVmd):
 		# interp = [x_ax, y_ax, z_ax, r_ax, 	x_ay, y_ay, z_ay, r_ay,
 		# 			x_bx, y_bx, z_bx, r_bx, 	x_by, y_by, z_by, r_by]
 		# if omitted, set to default linear interpolation values
+		# NOTE: interpolation data for this frame is used when moving from teh PREVIOUS frame to THIS frame
+		# TODO: overhaul the system to store the interpolation data in a more sensible, intuitive arrangement
 		if interp is None:
+			# self.interp = core.bone_interpolation_default_linear.copy()
 			self.interp = ([20] * 8) + ([107] * 8)
 		else:
 			self.interp = interp
@@ -206,6 +213,10 @@ class VmdCamFrame(_BaseVmd):
 				 ):
 		self.f = f
 		self.pos = pos  # X Y Z float
+		# NOTE: bone frames internally store rotation as quaternions, and therefore euler representation is always
+		# as "reasonable" i.e. -180 to +180. but cam frames internally store rotation as EULER, meaning their values
+		# can be "unreasonable" i.e. 700 degrees around the Y axis or whatever. be careful of this if doing math on
+		# the cam frame rotations that requires going to quaternion-space and back!
 		self.rot = rot  # X Y Z float euler angles in degrees
 		self.dist = dist
 		self.fov = fov  # int
@@ -214,6 +225,8 @@ class VmdCamFrame(_BaseVmd):
 		# interp = [x_ax, x_bx, x_ay, x_by, 	y_ax, y_bx, y_ay, y_by, 				z_ax, z_bx, z_ay, z_by,
 		# 			r_ax, r_bx, r_ay, r_by,		dist_ax, dist_bx, dist_ay, dist_by, 	fov_ax, fov_bx, fov_ay, fov_by]
 		# if omitted, set to default linear interpolation values
+		# NOTE: interpolation data for this frame is used when moving from teh PREVIOUS frame to THIS frame
+		# TODO: overhaul the system to store the interpolation data in a more sensible, intuitive arrangement
 		if interp is None:
 			self.interp = [20,107,20,107] * 6
 		else:

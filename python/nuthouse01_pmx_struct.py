@@ -1,4 +1,4 @@
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -9,6 +9,7 @@ import abc
 import enum
 import traceback
 import sys
+import copy
 
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
@@ -25,10 +26,6 @@ except ImportError as eee:
 		input()
 		exit()
 		core = None
-
-# TODO: redo imports for all files
-# TODO: investigate improved autoarmtwist
-# TODO: read that guys email about the "create ik from vmd" script
 
 ############################################################################################
 ######## IMPORTANT NOTES ###################################################################
@@ -50,6 +47,9 @@ except ImportError as eee:
 # this also defines an "==" method so my structs can be compared
 # this also defines "idx_within" so if you forget the idx of a thing but still have its reference you can find its index again
 class _BasePmx(abc.ABC):
+	def copy(self):
+		""" Return a separate copy of the object. """
+		return copy.deepcopy(self)
 	@abc.abstractmethod
 	def list(self) -> list: pass
 	@abc.abstractmethod

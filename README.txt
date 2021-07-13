@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README
-Created by Nuthouse01 - 6/10/2021 - v6.00
+Created by Nuthouse01 - 7/12/2021 - v6.01
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!
 If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)
@@ -40,11 +40,11 @@ This script is to check if the model you are using is compatible with the VMD/VP
 
 (For example, if a model's eye-smile morph is named "笑い" and the motion uses "笑顔" for eye-smile, that morph will not be applied to the model and it will look wrong when played.)
 
-This script will reveal what exactly is mismatched; but to fix the issue, you must either change the PMX to match the VMD/VPD (using PMXEditor or a similar tool) or you must change the VMD/VPD to match the PMX (convert the VMD to text form, replace all uses of "笑顔" with "笑い" to match the model, and then convert it back to VMD form).
+This script will reveal what exactly is mismatched; but to fix the issue, you must either change the PMX to match the VMD/VPD (using PMXEditor or a similar tool) or you must change the VMD/VPD to match the PMX (use script "vmd_rename_bones_morphs" to do find-and-replace within the VMD!).
 
 ##### bone_auto_armtwist.py
 This will generate "automatic armtwist rigging" that will fix pinching at shoulders/elbows.
-**This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.**
+**This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.** Install the "Semi-Standard Bone Plugin" in PMXE to create these bones if they do not exist.
 It creates a clever IK bone setup that hijacks the semistandard bones and moves them as needed to reach whatever pose you make with the arm/腕 or elbow/ひじ bones. You do not need to manually move the armtwist bones at all, you can animate all 3 axes of rotation on the arm bone and the twisting axis will be automatically extracted and transferred to the armtwist bone as needed!
 
 ##### morph_hide.py
@@ -221,6 +221,7 @@ The following files should be included with this README:
 * README.md
 * README.txt
 * README_command_line_support.txt
+* todo_list.txt
 * graphic_user_interface.py
 * graphic_user_interface.exe
 * python/*.py
@@ -235,6 +236,17 @@ The following files should be included with this README:
   <summary>Click to expand!</summary>
 
 ```
+v6.01:
+add todo_list.txt, you can track what i'm planning to do next!
+NEW: add 'bone_set_arm_localaxis.py' to quickly set the localaxis params of arm bones
+NEW: add 'vmd_rename_bones_morphs.py' for simple find-and-replace names within VMD
+NEW: add "image set downloader" in handy tools
+NEW: "bone auto armtwist" FIX HANDTWIST PINCHING WOOOOOO
+NEW: add "bone sdef twist hand adapter" that will fix handtwist pinching on SDEF-autotwist models
+overhaul "make ik from vmd" to make it more object-based and more readable
+bugfixes in "reweight blender fragments", remove fancy optimizations
+change persistent storage method to use one json-formatted file
+
 v6.00:
 BIG: overhaul several parts of my PMX/VMD classes to make things more intuitive and more readable
    overhaul how vertex weights are stored, now all weight types use same structure of [index,value] pairs

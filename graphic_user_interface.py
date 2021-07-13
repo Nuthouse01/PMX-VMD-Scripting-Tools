@@ -1,4 +1,4 @@
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 1/24/2021 - v5.06"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -18,8 +18,10 @@ from os import path
 try:
 	from python import nuthouse01_core as core
 	from python import bone_armik_addremove
-	from python import bone_auto_armtwist
+	from python import bone_make_semistandard_auto_armtwist
+	from python import bone_add_sdef_autotwist_handtwist_adapter
 	from python import bone_endpoint_addremove
+	from python import bone_set_arm_localaxis
 	from python import check_model_compatibility
 	from python import convert_vmd_to_txt
 	from python import convert_vpd_to_vmd
@@ -36,6 +38,7 @@ try:
 	from python import pmx_list_bone_morph_names
 	from python import translate_source_bone
 	from python import vmd_armtwist_insert
+	from python import vmd_rename_bones_morphs
 except ImportError as eee:
 	print(eee.__class__.__name__, eee)
 	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
@@ -45,8 +48,9 @@ except ImportError as eee:
 	convert_vmd_to_txt = model_overall_cleanup = file_sort_textures = check_model_compatibility = None
 	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = bone_armik_addremove = None
 	core = morph_invert = morph_hide = morph_scale = file_translate_names = convert_vpd_to_vmd = None
-	model_shift = model_scale = bone_endpoint_addremove = translate_source_bone = bone_auto_armtwist = None
-	file_recompress_images = None
+	model_shift = model_scale = bone_endpoint_addremove = translate_source_bone = bone_make_semistandard_auto_armtwist = None
+	file_recompress_images = vmd_rename_bones_morphs = bone_add_sdef_autotwist_handtwist_adapter = None
+	bone_set_arm_localaxis = None
 
 ########################################################################################################################
 # constants & options
@@ -63,13 +67,14 @@ all_script_list = [
 	("file_sort_textures.py",            file_sort_textures.helptext,            file_sort_textures.main),
 	("file_translate_names.py",          file_translate_names.helptext,          file_translate_names.main),
 	("file_recompress_images.py",        file_recompress_images.helptext,        file_recompress_images.main),
-	("bone_auto_armtwist.py",            bone_auto_armtwist.helptext,            bone_auto_armtwist.main),
+	("bone_make_semistandard_auto_armtwist.py", bone_make_semistandard_auto_armtwist.helptext, bone_make_semistandard_auto_armtwist.main),
 	("morph_invert.py",                  morph_invert.helptext,                  morph_invert.main),
 	("morph_hide.py",                    morph_hide.helptext,                    morph_hide.main),
 	("morph_scale.py",                   morph_scale.helptext,                   morph_scale.main),
 	("check_model_compatibility.py",     check_model_compatibility.helptext,     check_model_compatibility.main),
 	("model_shift.py",                   model_shift.helptext,                   model_shift.main),
 	("model_scale.py",                   model_scale.helptext,                   model_scale.main),
+	("vmd_rename_bones_morphs.py",       vmd_rename_bones_morphs.helptext,       vmd_rename_bones_morphs.main),
 	("convert_vmd_to_txt.py",            convert_vmd_to_txt.helptext,            convert_vmd_to_txt.main),
 	("convert_vpd_to_vmd.py",            convert_vpd_to_vmd.helptext,            convert_vpd_to_vmd.main),
 	("translate_source_bone.py",         translate_source_bone.helptext,         translate_source_bone.main),
@@ -78,6 +83,8 @@ all_script_list = [
 	("vmd_armtwist_insert.py",           vmd_armtwist_insert.helptext,           vmd_armtwist_insert.main),
 	("make_ik_from_vmd.py",              make_ik_from_vmd.helptext,              make_ik_from_vmd.main),
 	("pmx_list_bone_morph_names.py",     pmx_list_bone_morph_names.helptext,     pmx_list_bone_morph_names.main),
+	("bone_add_sdef_autotwist_handtwist_adapter.py",bone_add_sdef_autotwist_handtwist_adapter.helptext,bone_add_sdef_autotwist_handtwist_adapter.main),
+	("bone_set_arm_localaxis.py",bone_set_arm_localaxis.helptext,bone_set_arm_localaxis.main),
 ]
 
 
@@ -126,18 +133,17 @@ def gui_fileprompt(extensions: str) -> str:
 	extensions_labels = (extensions_labels,)
 	
 	# dont trust file dialog to remember last-opened path, manually save/read it
-	recordpath = core.get_persistient_storage_path("last_opened_dir.txt")
-	c = core.read_txtfile_to_list(recordpath, quiet=True)
-	if c:
+	json_data = core.get_persistent_storage_json('last-opened-path')
+	if json_data is None:
+		# if never used before, start wherever i am right now i guess
+		start_here = path.abspath(".")
+	else:
 		# if it has been used before, use the path from last time.
-		c = c[0]
+		c = json_data
 		# if the path from last time does not exist, walk up the path till I find a level that does still exist.
 		while c and not path.isdir(c):
 			c = path.dirname(c)
 		start_here = c
-	else:
-		# if never used before, start in the executable directory
-		start_here = "."
 	
 	newpath = fdg.askopenfilename(initialdir=start_here,
 								  title="Select input file: {%s}" % extensions,
@@ -149,7 +155,7 @@ def gui_fileprompt(extensions: str) -> str:
 		raise RuntimeError()
 	
 	# they got an existing file! update the last_opened_dir file
-	core.write_list_to_txtfile(recordpath, [path.dirname(newpath)], quiet=True)
+	core.write_persistent_storage_json('last-opened-path', path.dirname(newpath))
 	
 	return newpath
 

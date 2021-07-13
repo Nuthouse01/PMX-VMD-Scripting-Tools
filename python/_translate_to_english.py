@@ -1,4 +1,4 @@
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 10/10/2020 - v5.03"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -132,27 +132,30 @@ def init_googletrans():
 def check_translate_budget(num_proposed: int) -> bool:
 	"""
 	Goal: block translations that would trigger the lockout.
-	Create & maintain a persistient file that contains timestamps and # of requests, to know if my proposed number will
+	Create & maintain a persistent file that contains timestamps and # of requests, to know if my proposed number will
 	exceed the budget. If it would still be under budget, then update the log assuming that the proposed requests will
 	happen. options: TRANSLATE_BUDGET_MAX_REQUESTS, TRANSLATE_BUDGET_TIMEFRAME
 	
 	:param num_proposed: number of times I want to contact the google API
 	:return: bool True = go ahead, False = stop
 	"""
-	# first, get path to persistient storage file, also creates an empty file if it doesn't exist
-	recordpath = core.get_persistient_storage_path("translate_record.txt")
-	# then read the file into memory, quietly
-	record = core.read_file_to_csvlist(recordpath, quiet=True)
-	# discard all request records that are older than <timeframe>
+	# get the log of past translation requests
+	# formatted as list of (timestamp, numrequests) sub-lists
+	record = core.get_persistent_storage_json('googletrans-request-history')
+	# if it doesn't exist in the json, then init it as empty list
+	if record is None:
+		record = []
+	
+	# get teh timestamp for now
 	now = time()
-	i = 0
-	while i < len(record):
-		if (now - record[i][0]) > (TRANSLATE_BUDGET_TIMEFRAME * 60 * 60):
+	# walk backward so i can pop things safely, discard all request records that are older than <timeframe>
+	for i in reversed(range(len(record))):
+		entry = record[i]
+		if (now - entry[0]) > (TRANSLATE_BUDGET_TIMEFRAME * 60 * 60):
 			# print("debug: discard", record[i])
 			record.pop(i)
-		else:
-			i += 1
-	# then interpret the file: how many requests happened in the past <timeframe>
+	
+	# then interpret the file: how many requests happened in the past <timeframe> ?
 	requests_in_timeframe = sum([entry[1] for entry in record])
 	core.MY_PRINT_FUNC("... you have used {} / {} translation requests within the last {:.4} hrs...".format(
 		int(requests_in_timeframe), int(TRANSLATE_BUDGET_MAX_REQUESTS), TRANSLATE_BUDGET_TIMEFRAME))
@@ -160,8 +163,10 @@ def check_translate_budget(num_proposed: int) -> bool:
 	if (requests_in_timeframe + num_proposed) <= TRANSLATE_BUDGET_MAX_REQUESTS:
 		# this many translations is OK! go ahead!
 		# write this transaction into the record
-		record.append([now, num_proposed])
-		core.write_csvlist_to_file(recordpath, record, quiet=True)
+		newentry = [now, num_proposed]
+		record.append(newentry)
+		# write the record to file
+		core.write_persistent_storage_json('googletrans-request-history', record)
 		return True
 	else:
 		# cannot do the translate, this would exceed the budget
@@ -173,9 +178,11 @@ def check_translate_budget(num_proposed: int) -> bool:
 			idx = 0
 			for idx in range(len(record)):
 				to_be_popped += record[idx][1]
+				# how many entries do i need to hypothetically pop before it would free enough space for the
+				# proposed amount to be accepted?
 				if (requests_in_timeframe + num_proposed - to_be_popped) <= TRANSLATE_BUDGET_MAX_REQUESTS:
 					break
-			# when record[idx] becomes too old, then the current proposed number will be okay
+			# when idx'th item becomes too old, then the current proposed number will be okay
 			waittime = record[idx][0] + (TRANSLATE_BUDGET_TIMEFRAME * 60 * 60) - now
 			# convert seconds to minutes
 			waittime = round(waittime / 60)

@@ -1,0 +1,48 @@
+
+TODO: redo imports for all files
+    figure out how to restructure into proper packages
+    separate 'scripts' from 'functions'
+
+TODO: establish template for 'scripts', i.e. contains main(), helptext... is that it?
+
+TODO: make the GUI automatically find & import all 'scripts' in 'FOOBAR' folder, rather than manually listing them???
+    can only be done after restructuring is complete
+
+#####
+
+TODO: WIP-sdef-armtwist should invoke bone-sdeftwist-hand-adapter
+TODO: rename wip-sdef-armtwist to bone_make_sdef_auto_armtwist
+
+TODO: create one function in 'core' that does all the bottom-of-the-script stuff...?
+    also lets me add traceback module to everything
+
+TODO: better incorporate traceback module with everything, remove the "debug" flag thing
+
+TODO: improve the 'file extension to filedialogue filter' thingy, surely i can do better
+    add last-used-directory for each kind of file prompt, based on filtered extensions
+
+TODO: simple flag in core that indicates 'running from gui' or not, wouldn't help with imports but might be useful
+    in other contexts?
+
+TODO: func 'normalize_texture_paths' in 'file_sort_textures' is pretty good, probably wanna add that to 'model_overall_cleanup'
+
+TODO: overhaul the how VMD interpolation data is stored, restructure to a more sensible, intuitive arrangement
+
+TODO: can i create one base class that is the parent of both VMD and PMX? they have almost identical features
+    i'm worried that it would be confusing if i did that tho? hm...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
