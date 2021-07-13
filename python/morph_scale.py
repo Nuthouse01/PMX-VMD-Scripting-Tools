@@ -3,7 +3,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 #####################
 
 
-import copy
 from typing import Union, List
 
 try:
@@ -191,7 +190,7 @@ def main(moreinfo=True):
 	# ask for factor: keep looping this prompt until getting a valid float
 	def is_float(x):
 		try:
-			v = float(x)
+			_ = float(x)
 			return True
 		except ValueError:
 			core.MY_PRINT_FUNC("Please enter a decimal number")
@@ -207,7 +206,7 @@ def main(moreinfo=True):
 	if SCALE_MORPH_IN_PLACE:
 		newmorph = pmx.morphs[target_index]
 	else:
-		newmorph = copy.deepcopy(pmx.morphs[target_index])
+		newmorph = pmx.morphs[target_index].copy()
 		# then modify the names
 		name_suffix = "*" + (str(factor)[0:6])
 		newmorph.name_jp += name_suffix

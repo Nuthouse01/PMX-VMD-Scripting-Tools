@@ -2,9 +2,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-# first, import system stuff
-import copy
-
 # second, wrap custom imports with a try-except to catch it if files are missing
 try:
 	# these imports work if running from GUI
@@ -99,7 +96,7 @@ def alphamorph_correct(pmx: pmxstruct.Pmx, moreinfo=False):
 					# if the target material is initally opaque, or targeting the whole model, replace with mult-by-0
 					t = template
 				if matitem.list()[1:] != t.list()[1:]:  # if it is not already good,
-					newitem = copy.deepcopy(t)
+					newitem = t.copy()
 					newitem.mat_idx = matitem.mat_idx
 					morph.items[dd] = newitem  # replace the morph with the template
 					this_num_fixed += 1
