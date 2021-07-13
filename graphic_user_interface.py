@@ -6,7 +6,7 @@ import tkinter.scrolledtext as tkst
 from os import path
 
 from mmd_scripting import __pkg_welcome__
-from mmd_scripting.scripts_for_gui import model_scale, file_translate_names, bone_armik_addremove, convert_vmd_to_txt, \
+from mmd_scripting.scripts_for_gui import model_scale, file_translate_filenames, bone_armik_addremove, convert_vmd_to_txt, \
 	bone_endpoint_addremove, morph_scale, morph_invert, vmd_rename_bones_morphs, make_ik_from_vmd, \
 	model_overall_cleanup, file_sort_textures, check_model_compatibility, morph_hide, translate_source_bone, \
 	bone_add_sdef_autotwist_handtwist_adapter, model_shift, bone_make_semistandard_auto_armtwist, vmd_armtwist_insert, \
@@ -36,7 +36,7 @@ ALSO_PRINT_TO_CONSOLE = False
 all_script_list = [
 	("model_overall_cleanup.py", model_overall_cleanup.helptext, model_overall_cleanup.main),
 	("file_sort_textures.py", file_sort_textures.helptext, file_sort_textures.main),
-	("file_translate_names.py", file_translate_names.helptext, file_translate_names.main),
+	("file_translate_names.py", file_translate_filenames.helptext, file_translate_filenames.main),
 	("file_recompress_images.py", file_recompress_images.helptext, file_recompress_images.main),
 	("bone_make_semistandard_auto_armtwist.py", bone_make_semistandard_auto_armtwist.helptext, bone_make_semistandard_auto_armtwist.main),
 	("morph_invert.py", morph_invert.helptext, morph_invert.main),

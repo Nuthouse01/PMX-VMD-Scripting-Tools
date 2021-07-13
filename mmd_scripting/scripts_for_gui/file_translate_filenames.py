@@ -28,7 +28,7 @@ for cc in range(32):  # non-printing control characters
 
 
 helptext = '''=================================================
-file_translate_names:
+file_translate_filenames:
 This tool will translate any JP components of file/folder names to EN names.
 This requires a PMX file to use as a root so it knows where to start reading files from.
 This DOES NOT translate the name of the folder that the target PMX is sitting inside.
