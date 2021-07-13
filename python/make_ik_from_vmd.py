@@ -1,5 +1,5 @@
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 10/10/2020 - v6.01"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 # Special thanks to "tERBO" for making me overhaul & breathe new life into this old, forgotten code!
 #####################

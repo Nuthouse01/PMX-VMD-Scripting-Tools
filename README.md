@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README  
-Created by Nuthouse01 - 6/10/2021 - v6.00
+Created by Nuthouse01 - 7/12/2021 - v6.01
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!  
 If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)  
@@ -221,6 +221,7 @@ The following files should be included with this README:
 * README.md
 * README.txt
 * README_command_line_support.txt
+* todo_list.txt
 * graphic_user_interface.py
 * graphic_user_interface.exe
 * python/*.py
@@ -235,6 +236,17 @@ The following files should be included with this README:
   <summary>Click to expand!</summary>
 
 ```
+v6.01:
+add todo_list.txt, you can track what i'm planning to do next!
+NEW: add 'bone_set_arm_localaxis.py' to quickly set the localaxis params of arm bones
+NEW: add 'vmd_rename_bones_morphs.py' for simple find-and-replace names within VMD
+NEW: add "image set downloader" in handy tools
+NEW: "bone auto armtwist" FIX HANDTWIST PINCHING WOOOOOO
+NEW: add "bone sdef twist hand adapter" that will fix handtwist pinching on SDEF-autotwist models
+overhaul "make ik from vmd" to make it more object-based and more readable
+bugfixes in "reweight blender fragments", remove fancy optimizations
+change persistent storage method to use one json-formatted file
+
 v6.00:
 BIG: overhaul several parts of my PMX/VMD classes to make things more intuitive and more readable
    overhaul how vertex weights are stored, now all weight types use same structure of [index,value] pairs
