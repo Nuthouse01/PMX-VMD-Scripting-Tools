@@ -7,6 +7,9 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/3/2021 - v5.08"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
+# NOTE: DON'T BOTHER USING THIS SCRIPT! Just use "bone_make_semistandard_auto_armtwist" or "bone_make_sdef_auto_armtwist" instead.
+# This script still works, but... why bother customizing every motion you want to use with a model, when you can just modify the model only once?
+# The bonerig scripts also fix the wrist pinching problem, which this script does not.
 
 # assumes bones are using semistandard names for arm/elbow/armtwist/elbowtwist
 
@@ -90,6 +93,10 @@ def swing_twist_decompose(quat_in, axis):
 
 helptext = '''=================================================
 vmd_armtwist_insert:
+NOTE: DON'T BOTHER USING THIS SCRIPT! Just use "bone_make_semistandard_auto_armtwist" or "bone_make_sdef_auto_armtwist" instead.
+This script still works, but... why bother customizing every motion you want to use with a model, when you can just modify the model only once?
+The bonerig scripts also fix the wrist pinching problem, which this script does not.
+
 This script will modify a VMD for a specific model so that the 'arm twist bones' are actually used for twisting the arms.
 This will fix pinching/tearing at the shoulder/elbow of the model, if the armtwist bones are present and properly rigged.
 This is done via a 'swing twist decomposition' to isolate the 'local X-axis rotation' from the arm bone frames.
