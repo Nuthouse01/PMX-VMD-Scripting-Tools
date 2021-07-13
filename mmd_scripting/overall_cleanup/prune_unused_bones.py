@@ -1,9 +1,9 @@
 from typing import List, Tuple
 
-import mmd_scripting.nuthouse01_core as core
-import mmd_scripting.nuthouse01_pmx_parser as pmxlib
-import mmd_scripting.nuthouse01_pmx_struct as pmxstruct
-from mmd_scripting.overall_cleanup.prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
+from mmd_scripting import nuthouse01_core as core
+from mmd_scripting import nuthouse01_pmx_parser as pmxlib
+from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
+from .prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
