@@ -4,7 +4,7 @@ from mmd_scripting.core import nuthouse01_core as core
 from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
 from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.overall_cleanup.prune_unused_bones import insert_single_bone
-from mmd_scripting.bone_set_arm_localaxis import set_all_arm_localaxis
+from mmd_scripting import bone_set_arm_localaxis
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -648,7 +648,7 @@ def main(moreinfo=True):
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	
-	set_all_arm_localaxis(pmx, moreinfo)
+	bone_set_arm_localaxis.set_all_arm_localaxis(pmx, moreinfo)
 	
 	core.MY_PRINT_FUNC("L upper arm...")
 	make_autotwist_segment(pmx, jp_l, jp_arm, jp_armtwist, jp_elbow, 0, moreinfo)

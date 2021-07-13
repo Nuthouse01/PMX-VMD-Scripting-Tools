@@ -4,7 +4,7 @@ from typing import List, Tuple, TypeVar
 from mmd_scripting.core import nuthouse01_core as core
 from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
 from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
-from . import translation_tools
+from mmd_scripting.overall_cleanup import translation_tools
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.

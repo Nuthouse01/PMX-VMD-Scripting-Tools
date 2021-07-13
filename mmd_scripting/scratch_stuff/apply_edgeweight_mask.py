@@ -2,7 +2,7 @@ from PIL import Image
 
 from mmd_scripting.core import nuthouse01_core as core
 from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
-from progprint import progprint
+from mmd_scripting.scratch_stuff.progprint import progprint
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 12/20/2020 - v5.04"
 
