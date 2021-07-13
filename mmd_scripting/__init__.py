@@ -1,6 +1,14 @@
-# Created by Nuthouse01 - 7/12/2021 - v6.01
-
-print("Package version: Nuthouse01 - 7/12/2021 - v6.01")
+"""
+Created by Nuthouse01
+Here's my package! I *think* if you just run the GUI it should run out-of-the-box with no extra configuration,
+but to directly run any of the other files you need to execute "_RUN_THIS_TO_INSTALL.bat" and get this
+directory properly registered as a "package" for your local Python.
+Check out README.md for... well, everything I guess.
+"""
+__version__ = "1.6.02"
+__date__ = "7/12/2021"
+__pkg_welcome__ = "mmd_scripting package: Nuthouse01 - v%s - %s" % (__version__, __date__)
+print(__pkg_welcome__)
 
 # first, version check: verify that this is using python3
 # i don't know if it will actually work in 3.4 but i know it will fail in any python2 version
@@ -14,4 +22,3 @@ if sys.version_info < (3, 6):
 	print("...press ENTER to exit...")
 	input()
 	exit()
-

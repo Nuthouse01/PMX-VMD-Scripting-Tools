@@ -7,6 +7,5 @@ Many have options or parameters that are controlled with variables inside the fi
 prompting you for the values.
 
 
-*DO NOT MOVE THE FILES*
-I know the error says "all my stuff needs to be together in the same folder" its just because i'm too lazy to
-change it. The handy_tools stuff is designed to be ran from right here. Double-click it or execute it on command line.
+*DO NOT MOVE THE FILES* (unless you really know what you're doing)
+Just double-click to execute them where they are.

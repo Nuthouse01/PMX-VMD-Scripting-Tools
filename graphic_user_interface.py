@@ -5,6 +5,7 @@ import tkinter.font as tkfont
 import tkinter.scrolledtext as tkst
 from os import path
 
+from mmd_scripting import __pkg_welcome__
 from mmd_scripting import bone_add_sdef_autotwist_handtwist_adapter
 from mmd_scripting import bone_armik_addremove
 from mmd_scripting import bone_endpoint_addremove
@@ -23,11 +24,11 @@ from mmd_scripting import model_shift
 from mmd_scripting import morph_hide
 from mmd_scripting import morph_invert
 from mmd_scripting import morph_scale
-from mmd_scripting.core import nuthouse01_core as core
 from mmd_scripting import pmx_list_bone_morph_names
 from mmd_scripting import translate_source_bone
 from mmd_scripting import vmd_armtwist_insert
 from mmd_scripting import vmd_rename_bones_morphs
+from mmd_scripting.core import nuthouse01_core as core
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -423,7 +424,7 @@ class Application(tk.Frame):
 		return
 	
 	def print_header(self):
-		core.MY_PRINT_FUNC(core.PACKAGE_VERSION)
+		core.MY_PRINT_FUNC(__pkg_welcome__)
 		core.MY_PRINT_FUNC("Begin by selecting a script above, then click 'Run'")
 		core.MY_PRINT_FUNC("Click 'Help' to print out details of what the selected script does")
 		return
