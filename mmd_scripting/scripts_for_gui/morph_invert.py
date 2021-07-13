@@ -1,7 +1,7 @@
 from mmd_scripting.core import nuthouse01_core as core
 from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
 from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
-from mmd_scripting import morph_scale
+from mmd_scripting.scripts_for_gui import morph_scale
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -30,7 +30,7 @@ def main(moreinfo=True):
 	core.MY_PRINT_FUNC("")
 	# valid input is any string that can matched aginst a morph idx
 	s = core.MY_GENERAL_INPUT_FUNC(lambda x: morph_scale.get_idx_in_pmxsublist(x, pmx.morphs) is not None,
-	   ["Please specify the target morph: morph #, JP name, or EN name (names are not case sensitive).",
+								   ["Please specify the target morph: morph #, JP name, or EN name (names are not case sensitive).",
 		"Empty input will quit the script."])
 	# do it again, cuz the lambda only returns true/false
 	target_index = morph_scale.get_idx_in_pmxsublist(s, pmx.morphs)
