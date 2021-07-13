@@ -13,26 +13,34 @@ I take no responsibility for how you use this code: any damages, or copyright vi
 You are free to use this for any commercial or non-commercial applications.  
 Don't try to claim this work as yours. That would be a profoundly dick move.
 
+###### Installation:
+Click the green button above, select "Download ZIP", save it, and unzip it somewhere.  
+If you want to run the EXE version, that's it! You're ready to go! If you want, you can delete everything except for the EXE.  
+If you want to run the PY version or modify the code:  
+1. [Install Python](https://www.google.com/search?q=how+to+install+python) version 3.6 or higher.
+2. Double-click "_RUN_THIS_TO_INSTALL.bat" to download "googletrans" and to locally install the "mmd_scripting" package you just downloaded.
+   1. This will create a folder "mmd_scripting.egg-info", don't delete it, just ignore it.
+
 ###### Usage:
-1. Click the green button above, select "Download ZIP", save it, and unzip it somewhere.
-2. Just double-click "graphic_user_interface.exe" to open the user interface window. (For simplicity I recommend you use the EXE version. No installation is required. But if you want to run the PY versions or modify the code, you will need to [Install Python3](https://www.google.com/search?q=how+to+install+python) and the "googletrans" library ("pip install googletrans==4.0.0-rc1").)
+1. Just double-click "graphic_user_interface.exe" or "graphic_user_interface.py"
     1. If you get a popup saying "Windows protected your PC", you can click "More Info" and then "Run Anyway". This does not mean that it detected a virus (that is a different popup), this happens whenever you run an EXE from an unknown publisher, like me.
-3. Use the dropdown menu at the top to select which script you want to run. You can press the "Help" button to print out a detailed explanation of what the currently selected script does, how it does it, and what output files it creates.
-4. Click the large "RUN" button to the left to execute the selected script. This will begin by prompting you for input file(s), and will then run to completion. Outputs and info will be printed in the large space at the bottom of the window.
+2. Use the dropdown menu at the top to select which script you want to run. You can press the "Help" button to print out a detailed explanation of what the currently selected script does, how it does it, and what output files it creates.
+3. Click the large "RUN" button to the left to execute the selected script. This will begin by prompting you for input file(s), and will then run to completion. Outputs and info will be printed in the large space at the bottom of the window.
     1. If the "print extra info" checkbox is checked when the "RUN" button is clicked, more detailed info will be printed as the script runs.
-5. Read all information that is printed to the screen (such as whether it succeeded or failed), then leave the window open. You can click "RUN" again to run the same script (it will prompt you again for input file(s)) or you can switch to a different script with the dropdown menu and run something else instead. You can click "Clear" to clear the printout space if it gets too messy.
-6. Enjoy!
+4. Read all information that is printed to the screen (such as whether it succeeded or failed), then leave the window open. You can click "RUN" again to run the same script (it will prompt you again for input file(s)) or you can switch to a different script with the dropdown menu and run something else instead. You can click "Clear" to clear the printout space if it gets too messy.
+5. Enjoy!
 
 ![Screenshot of console](https://raw.githubusercontent.com/Nuthouse01/PMX-VMD-Scripting-Tools/master/img/screenshot1.png)
 
-### Purpose:
+### Descriptions:
+I've got more than 20 different runnable scripts in this package, but here are some of the most useful ones:
 ##### model_overall_cleanup.py
 This will perform a series of first-pass cleanup operations to generally improve any PMX model. This includes: translating missing english names (via Google Translate!), correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, cleaning up display frames, and detecting issues that might cause MMD to crash. These operations will reduce file size (sometimes massively!) and improve overall model health & usability.
 
 ##### file_sort_textures.py
 This script is for organizing the texture imports used in a PMX model, to eliminate "top-level" clutter and sort Tex/Toon/SPH files into folders based on how they are used. This script will also report any files it finds that are not used by the PMX, and it will also report any files the PMX tries to reference which do not exist in the file system.
 
-##### file_translate_names.py
+##### file_translate_filenames.py
 This is for translating JP names of files to English. Unlike the "file_sort_textures" script, this will attempt to rename ALL files within the tree, it will not restrict itself to only certain filetypes.
 
 ##### check_model_compatability.py
@@ -42,7 +50,7 @@ This script is to check if the model you are using is compatible with the VMD/VP
 
 This script will reveal what exactly is mismatched; but to fix the issue, you must either change the PMX to match the VMD/VPD (using PMXEditor or a similar tool) or you must change the VMD/VPD to match the PMX (use script "vmd_rename_bones_morphs" to do find-and-replace within the VMD!).
 
-##### bone_auto_armtwist.py
+##### bone_make_semistandard_auto_armtwist.py
 This will generate "automatic armtwist rigging" that will fix pinching at shoulders/elbows.  
 **This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.** Install the "Semi-Standard Bone Plugin" in PMXE to create these bones if they do not exist.  
 It creates a clever IK bone setup that hijacks the semistandard bones and moves them as needed to reach whatever pose you make with the arm/腕 or elbow/ひじ bones. You do not need to manually move the armtwist bones at all, you can animate all 3 axes of rotation on the arm bone and the twisting axis will be automatically extracted and transferred to the armtwist bone as needed!
@@ -217,25 +225,36 @@ Thanks to the people who made PyInstaller for making a super easy way to build a
 
 ###### Files:
 The following files should be included with this README:
+* img/screenshot1.png
+* mmd_scripting/core/*.py
+* mmd_scripting/kaitai/*.py
+* mmd_scripting/overall_cleanup/*.py
+* mmd_scripting/scratch_stuff/*.py
+* mmd_scripting/scripts_for_gui/*.py
+* mmd_scripting/scripts_not_for_gui/*.py
+* mmd_scripting/wip/*.py
+* .gitignore
+* _RUN_THIS_TO_INSTALL.bat
+* graphic_user_interface.exe
+* graphic_user_interface.py
 * LICENSE
 * README.md
 * README.txt
 * README_command_line_support.txt
+* setup.cfg
+* setup.py
 * todo_list.txt
-* graphic_user_interface.py
-* graphic_user_interface.exe
-* python/*.py
-* handy_tools/README_handy_tools.txt
-* handy_tools/*.py
-* img/screenshot1.png
-* kaitai/vmd.ksy
-* kaitai/vmd.py
 
 #### Changelog:
 <details>
   <summary>Click to expand!</summary>
 
 ```
+v1.07.00:
+overhaul the structure and imports to make it more like a proper package
+bugfix in the new "bone_set_arm_localaxis" script
+other than that, it should be functionally identical!
+
 v6.01:
 add todo_list.txt, you can track what i'm planning to do next!
 NEW: add 'bone_set_arm_localaxis.py' to quickly set the localaxis params of arm bones
