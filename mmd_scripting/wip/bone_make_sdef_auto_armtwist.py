@@ -4,8 +4,7 @@ from collections import defaultdict
 from mmd_scripting import nuthouse01_core as core
 from mmd_scripting import nuthouse01_pmx_parser as pmxlib
 from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
-from mmd_scripting.WIP_bone_merge_helpers import transfer_bone_weights
-from mmd_scripting.overall_cleanup.translation_tools import local_translate
+from mmd_scripting.wip.merge_bones import transfer_bone_weights
 from mmd_scripting.overall_cleanup.weight_cleanup import normalize_weights
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
@@ -17,7 +16,7 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 DEBUG = True
 
 helptext = '''=================================================
-pmx_magic_armtwist_bones:
+bone_make_sdef_auto_armtwist:
 This will generate "magic armtwist bones" that will automatically fix pinching at shoulders/elbows.
 You can also create these twist rigs for the upper legs if you wish.
 
@@ -398,7 +397,7 @@ def main(moreinfo=True):
 			# armYZ[21:25] = [False, [], False, []]			# disable ext parent + ik
 			armYZ = pmxstruct.PmxBone(
 				name_jp=basename_jp + yz_suffix,
-				name_en=local_translate(basename_jp + yz_suffix),
+				name_en="",
 				pos=pmx.bones[start_idx].pos,
 				parent_idx=pmx.bones[start_idx].parent_idx,
 				deform_layer=pmx.bones[start_idx].deform_layer,
@@ -422,7 +421,7 @@ def main(moreinfo=True):
 			# armYZend[21:25] = [False, [], False, []]		# disable ext parent + ik
 			armYZend = pmxstruct.PmxBone(
 				name_jp=basename_jp + yz_suffix + "先",
-				name_en=local_translate(basename_jp + yz_suffix + "先"),
+				name_en="",
 				pos=pmx.bones[end_idx].pos,
 				parent_idx=armYZ_new_idx,
 				deform_layer=pmx.bones[end_idx].deform_layer,
@@ -449,7 +448,7 @@ def main(moreinfo=True):
 			# armYZIK[24] = [armYZ_new_idx+1, newik_loops, newik_angle, [[armYZ_new_idx, []]]]
 			armYZIK = pmxstruct.PmxBone(
 				name_jp=basename_jp + yz_suffix + "IK",
-				name_en=local_translate(basename_jp + yz_suffix + "IK"),
+				name_en="",
 				pos=pmx.bones[end_idx].pos,
 				parent_idx=pmx.bones[end_idx].parent_idx,
 				deform_layer=pmx.bones[end_idx].deform_layer,

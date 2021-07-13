@@ -92,6 +92,7 @@ Output: VMD file '[vmdname]_smoothed.vmd'
 '''
 
 
+# todo: move this to somewhere more central and visible
 BONEFRAME_OR_MORPHFRAME = TypeVar("BONEFRAME_OR_MORPHFRAME", vmdstruct.VmdBoneFrame, vmdstruct.VmdMorphFrame)
 def dictify_framelist(frames: List[BONEFRAME_OR_MORPHFRAME]) -> Dict[str, List[BONEFRAME_OR_MORPHFRAME]]:
 	"""

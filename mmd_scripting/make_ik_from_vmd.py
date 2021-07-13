@@ -1,6 +1,6 @@
 from typing import List, Dict, Set
 
-from mmd_scripting import WIP_vmd_animation_smoothing
+from mmd_scripting.wip import vmd_animation_smoothing
 from mmd_scripting import nuthouse01_core as core
 from mmd_scripting import nuthouse01_pmx_parser as pmxlib
 from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
@@ -79,7 +79,7 @@ def remove_redundant_frames(framelist: List[vmdstruct.VmdBoneFrame], moreinfo=Fa
 	FIRST = framelist[0]
 	if isinstance(FIRST, (vmdstruct.VmdBoneFrame, vmdstruct.VmdMorphFrame)):
 		# guarantee that they're split by morphname/bonename (if already split this is harmless)
-		d = WIP_vmd_animation_smoothing.dictify_framelist(framelist)
+		d = vmd_animation_smoothing.dictify_framelist(framelist)
 		list_of_framelists = list(d.values())
 	else:
 		# guarantee sorted by ascending framenumber cuz why not
@@ -546,8 +546,8 @@ def main(moreinfo=True):
 	boneframe_list = remove_redundant_frames(vmd.boneframes, moreinfo)
 	# arrange the boneframes into a dict, key=name and value=sorted list of frames on that bone
 	# make a copy of the dict so i can modify the sourcedict separate from the targetdict
-	boneframe_source_dict = WIP_vmd_animation_smoothing.dictify_framelist(boneframe_list)
-	boneframe_dest_dict = WIP_vmd_animation_smoothing.dictify_framelist(boneframe_list)
+	boneframe_source_dict = vmd_animation_smoothing.dictify_framelist(boneframe_list)
+	boneframe_dest_dict = vmd_animation_smoothing.dictify_framelist(boneframe_list)
 	
 	# # check if this VMD uses IK or not, print a warning if it does
 	# if any(any(ik_bone.enable for ik_bone in ikdispframe.ikbones) for ikdispframe in vmd.ikdispframes):

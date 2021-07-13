@@ -12,7 +12,7 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 DEBUG = True
 
 helptext = '''=================================================
-bone_merge_helpers:
+merge_bones:
 This is used for transferring the weights of bone X to bone Y, to effectively merge the bones.
 Specifically this is intended for merging "helper" bones that inherit only a portion of the rotatation from their parent.
 But you can use it to merge any 2 bones if you wish.
@@ -193,7 +193,7 @@ def main(moreinfo=True):
 	transfer_bone_weights(pmx, dest_idx, source_idx, f)
 	
 	# run the weight-cleanup function
-	dummy = normalize_weights(pmx)
+	_ = normalize_weights(pmx)
 	
 	# write out
 	output_filename_pmx = input_filename_pmx[0:-4] + "_weightmerge.pmx"
