@@ -1,6 +1,6 @@
 import math
 
-from mmd_scripting.scripts_for_gui import morph_scale
+from mmd_scripting import morph_scale
 from mmd_scripting.core import nuthouse01_core as core
 from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
 from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct

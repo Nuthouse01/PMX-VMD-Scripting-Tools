@@ -1,7 +1,7 @@
 import math
 from typing import List
 
-from mmd_scripting.scripts_for_gui import bone_make_semistandard_auto_armtwist
+from mmd_scripting import bone_make_semistandard_auto_armtwist
 from mmd_scripting.core import nuthouse01_core as core
 from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
 from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct

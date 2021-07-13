@@ -6,11 +6,27 @@ import tkinter.scrolledtext as tkst
 from os import path
 
 from mmd_scripting import __pkg_welcome__
-from mmd_scripting.scripts_for_gui import bone_set_arm_localaxis, morph_scale, convert_vmd_to_txt, file_translate_names, \
-	translate_source_bone, file_sort_textures, model_scale, vmd_rename_bones_morphs, file_recompress_images, \
-	check_model_compatibility, model_overall_cleanup, vmd_armtwist_insert, convert_vpd_to_vmd, make_ik_from_vmd, \
-	model_shift, bone_armik_addremove, morph_hide, morph_invert, bone_endpoint_addremove, \
-	bone_add_sdef_autotwist_handtwist_adapter, bone_make_semistandard_auto_armtwist
+from mmd_scripting import bone_add_sdef_autotwist_handtwist_adapter
+from mmd_scripting import bone_armik_addremove
+from mmd_scripting import bone_endpoint_addremove
+from mmd_scripting import bone_make_semistandard_auto_armtwist
+from mmd_scripting import bone_set_arm_localaxis
+from mmd_scripting import check_model_compatibility
+from mmd_scripting import convert_vmd_to_txt
+from mmd_scripting import convert_vpd_to_vmd
+from mmd_scripting import file_recompress_images
+from mmd_scripting import file_sort_textures
+from mmd_scripting import file_translate_names
+from mmd_scripting import make_ik_from_vmd
+from mmd_scripting import model_overall_cleanup
+from mmd_scripting import model_scale
+from mmd_scripting import model_shift
+from mmd_scripting import morph_hide
+from mmd_scripting import morph_invert
+from mmd_scripting import morph_scale
+from mmd_scripting import translate_source_bone
+from mmd_scripting import vmd_armtwist_insert
+from mmd_scripting import vmd_rename_bones_morphs
 from mmd_scripting.core import nuthouse01_core as core
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
@@ -34,28 +50,27 @@ ALSO_PRINT_TO_CONSOLE = False
 # list of all possible displayed names in the dropdown list, with associated helptext and mainfunc
 # do I want to sort by usefulness? or do I want to group by categories? or maybe just alphabetical? idk
 all_script_list = [
-	("model_overall_cleanup.py", model_overall_cleanup.helptext, model_overall_cleanup.main),
-	("file_sort_textures.py", file_sort_textures.helptext, file_sort_textures.main),
-	("file_translate_names.py", file_translate_names.helptext, file_translate_names.main),
-	("file_recompress_images.py", file_recompress_images.helptext, file_recompress_images.main),
+	("model_overall_cleanup.py",         model_overall_cleanup.helptext,         model_overall_cleanup.main),
+	("file_sort_textures.py",            file_sort_textures.helptext,            file_sort_textures.main),
+	("file_translate_names.py",          file_translate_names.helptext,          file_translate_names.main),
+	("file_recompress_images.py",        file_recompress_images.helptext,        file_recompress_images.main),
 	("bone_make_semistandard_auto_armtwist.py", bone_make_semistandard_auto_armtwist.helptext, bone_make_semistandard_auto_armtwist.main),
-	("morph_invert.py", morph_invert.helptext, morph_invert.main),
-	("morph_hide.py", morph_hide.helptext, morph_hide.main),
-	("morph_scale.py", morph_scale.helptext, morph_scale.main),
-	("check_model_compatibility.py", check_model_compatibility.helptext, check_model_compatibility.main),
-	("model_shift.py", model_shift.helptext, model_shift.main),
-	("model_scale.py", model_scale.helptext, model_scale.main),
-	("vmd_rename_bones_morphs.py", vmd_rename_bones_morphs.helptext, vmd_rename_bones_morphs.main),
-	("convert_vmd_to_txt.py", convert_vmd_to_txt.helptext, convert_vmd_to_txt.main),
-	("convert_vpd_to_vmd.py", convert_vpd_to_vmd.helptext, convert_vpd_to_vmd.main),
-	("translate_source_bone.py", translate_source_bone.helptext, translate_source_bone.main),
-	("bone_armik_addremove.py", bone_armik_addremove.helptext, bone_armik_addremove.main),
-	("bone_endpoint_addremove.py", bone_endpoint_addremove.helptext, bone_endpoint_addremove.main),
-	("vmd_armtwist_insert.py", vmd_armtwist_insert.helptext, vmd_armtwist_insert.main),
-	("make_ik_from_vmd.py", make_ik_from_vmd.helptext, make_ik_from_vmd.main),
-	("bone_add_sdef_autotwist_handtwist_adapter.py", bone_add_sdef_autotwist_handtwist_adapter.helptext,
-	 bone_add_sdef_autotwist_handtwist_adapter.main),
-	("bone_set_arm_localaxis.py", bone_set_arm_localaxis.helptext, bone_set_arm_localaxis.main),
+	("morph_invert.py",                  morph_invert.helptext,                  morph_invert.main),
+	("morph_hide.py",                    morph_hide.helptext,                    morph_hide.main),
+	("morph_scale.py",                   morph_scale.helptext,                   morph_scale.main),
+	("check_model_compatibility.py",     check_model_compatibility.helptext,     check_model_compatibility.main),
+	("model_shift.py",                   model_shift.helptext,                   model_shift.main),
+	("model_scale.py",                   model_scale.helptext,                   model_scale.main),
+	("vmd_rename_bones_morphs.py",       vmd_rename_bones_morphs.helptext,       vmd_rename_bones_morphs.main),
+	("convert_vmd_to_txt.py",            convert_vmd_to_txt.helptext,            convert_vmd_to_txt.main),
+	("convert_vpd_to_vmd.py",            convert_vpd_to_vmd.helptext,            convert_vpd_to_vmd.main),
+	("translate_source_bone.py",         translate_source_bone.helptext,         translate_source_bone.main),
+	("bone_armik_addremove.py",          bone_armik_addremove.helptext,          bone_armik_addremove.main),
+	("bone_endpoint_addremove.py",       bone_endpoint_addremove.helptext,       bone_endpoint_addremove.main),
+	("vmd_armtwist_insert.py",           vmd_armtwist_insert.helptext,           vmd_armtwist_insert.main),
+	("make_ik_from_vmd.py",              make_ik_from_vmd.helptext,              make_ik_from_vmd.main),
+	("bone_add_sdef_autotwist_handtwist_adapter.py",bone_add_sdef_autotwist_handtwist_adapter.helptext,bone_add_sdef_autotwist_handtwist_adapter.main),
+	("bone_set_arm_localaxis.py",bone_set_arm_localaxis.helptext,bone_set_arm_localaxis.main),
 ]
 
 
