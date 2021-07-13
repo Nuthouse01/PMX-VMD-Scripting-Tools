@@ -7,7 +7,7 @@ from typing import List, Union, Set
 
 import mmd_scripting.core.nuthouse01_core as core
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/13/2021 - v6.02"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
