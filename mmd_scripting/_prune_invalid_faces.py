@@ -1,29 +1,12 @@
+import copy
+
+import mmd_scripting.nuthouse01_core as core
+import mmd_scripting.nuthouse01_pmx_parser as pmxlib
+import mmd_scripting.nuthouse01_pmx_struct as pmxstruct
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/3/2021 - v5.08"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
-
-# first, system imports
-import copy
-# second, wrap custom imports with a try-except to catch it if files are missing
-try:
-	# these imports work if running from GUI
-	from . import nuthouse01_core as core
-	from . import nuthouse01_pmx_parser as pmxlib
-	from . import nuthouse01_pmx_struct as pmxstruct
-except ImportError as eee:
-	try:
-		# these imports work if running from double-click on THIS script
-		import nuthouse01_core as core
-		import nuthouse01_pmx_parser as pmxlib
-		import nuthouse01_pmx_struct as pmxstruct
-	except ImportError as eee:
-		print(eee.__class__.__name__, eee)
-		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-		print("...press ENTER to exit...")
-		input()
-		exit()
-		core = pmxlib = pmxstruct = None
-
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.

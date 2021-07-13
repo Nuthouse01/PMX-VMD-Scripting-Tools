@@ -1,3 +1,6 @@
+import re
+from typing import List, Tuple, TypeVar
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
@@ -15,9 +18,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 ########################################################################################################################
 ########################################################################################################################
 ########################################################################################################################
-
-import re
-from typing import List, Tuple, TypeVar
 
 # dictionary for translating halfwitdth katakana to fullwidth katakana
 # i have no plans to actually use this but now it exists

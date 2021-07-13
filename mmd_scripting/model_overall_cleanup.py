@@ -1,49 +1,20 @@
+from mmd_scripting import nuthouse01_core as core
+from mmd_scripting import nuthouse01_pmx_parser as pmxlib
+from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
+from mmd_scripting import _alphamorph_correct
+from mmd_scripting import _bonedeform_fix
+from mmd_scripting import _morph_winnow
+from mmd_scripting import _prune_invalid_faces
+from mmd_scripting import _prune_unused_vertices
+from mmd_scripting import _prune_unused_bones
+from mmd_scripting import _translate_to_english
+from mmd_scripting import _weight_cleanup
+from mmd_scripting import _uniquify_names
+from mmd_scripting import _dispframe_fix
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
-
-# second, wrap custom imports with a try-except to catch it if files are missing
-try:
-	# these imports work if running from GUI
-	from . import nuthouse01_core as core
-	from . import nuthouse01_pmx_parser as pmxlib
-	from . import nuthouse01_pmx_struct as pmxstruct
-	from . import _alphamorph_correct
-	from . import _bonedeform_fix
-	from . import _morph_winnow
-	from . import _prune_invalid_faces
-	from . import _prune_unused_vertices
-	from . import _prune_unused_bones
-	from . import _translate_to_english
-	from . import _weight_cleanup
-	from . import _uniquify_names
-	from . import _dispframe_fix
-except ImportError as eee:
-	try:
-		# these imports work if running from double-click on THIS script
-		import nuthouse01_core as core
-		import nuthouse01_pmx_parser as pmxlib
-		import nuthouse01_pmx_struct as pmxstruct
-		import _alphamorph_correct
-		import _bonedeform_fix
-		import _morph_winnow
-		import _prune_invalid_faces
-		import _prune_unused_vertices
-		import _prune_unused_bones
-		import _translate_to_english
-		import _weight_cleanup
-		import _uniquify_names
-		import _dispframe_fix
-	except ImportError as eee:
-		print(eee.__class__.__name__, eee)
-		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-		print("...press ENTER to exit...")
-		input()
-		exit()
-		core = pmxlib = pmxstruct = None
-		_alphamorph_correct = _morph_winnow = _prune_unused_vertices = _prune_invalid_faces = _translate_to_english = None
-		_weight_cleanup = _uniquify_names = _prune_unused_bones = _dispframe_fix = _bonedeform_fix = None
-
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.

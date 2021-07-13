@@ -8,6 +8,7 @@ from os import path, listdir, getenv, makedirs
 from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
+PACKAGE_VERSION = "Package version: Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
