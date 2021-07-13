@@ -1,25 +1,9 @@
+from mmd_scripting import nuthouse01_core as core
+from mmd_scripting import nuthouse01_pmx_parser as pmxlib
+from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
+from mmd_scripting._prune_unused_bones import insert_single_bone
+
 _SCRIPT_VERSION = "Script version:  khanghugo - 9/21/2020 - v5.02"
-try:
-	# these imports work if running from GUI
-	from . import nuthouse01_core as core
-	from . import nuthouse01_pmx_parser as pmxlib
-	from . import nuthouse01_pmx_struct as pmxstruct
-	from ._prune_unused_bones import insert_single_bone
-except ImportError as eee:
-	try:
-		# these imports work if running from double-click on THIS script
-		import nuthouse01_core as core
-		import nuthouse01_pmx_parser as pmxlib
-		import nuthouse01_pmx_struct as pmxstruct
-		from _prune_unused_bones import insert_single_bone
-	except ImportError as eee:
-		print(eee.__class__.__name__, eee)
-		print(
-			"ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-		print("...press ENTER to exit...")
-		input()
-		exit()
-		core = pmxlib = pmxstruct = insert_single_bone = None
 
 helptext = '''=================================================
 This will translate your Source model bone names to Japanese and add all the necessary bones while at it.
