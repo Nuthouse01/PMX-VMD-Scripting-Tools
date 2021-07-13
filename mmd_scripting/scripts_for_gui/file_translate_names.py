@@ -1,7 +1,7 @@
 import os
 
 from mmd_scripting.overall_cleanup import translate_to_english as translate_to_english
-from mmd_scripting import file_sort_textures
+from mmd_scripting.scripts_for_gui import file_sort_textures
 from mmd_scripting.core import nuthouse01_core as core
 from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
 
