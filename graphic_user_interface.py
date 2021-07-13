@@ -1,3 +1,34 @@
+import threading
+import tkinter as tk
+import tkinter.filedialog as fdg
+import tkinter.font as tkfont
+import tkinter.scrolledtext as tkst
+from os import path
+
+from mmd_scripting import bone_add_sdef_autotwist_handtwist_adapter
+from mmd_scripting import bone_armik_addremove
+from mmd_scripting import bone_endpoint_addremove
+from mmd_scripting import bone_make_semistandard_auto_armtwist
+from mmd_scripting import bone_set_arm_localaxis
+from mmd_scripting import check_model_compatibility
+from mmd_scripting import convert_vmd_to_txt
+from mmd_scripting import convert_vpd_to_vmd
+from mmd_scripting import file_recompress_images
+from mmd_scripting import file_sort_textures
+from mmd_scripting import file_translate_names
+from mmd_scripting import make_ik_from_vmd
+from mmd_scripting import model_overall_cleanup
+from mmd_scripting import model_scale
+from mmd_scripting import model_shift
+from mmd_scripting import morph_hide
+from mmd_scripting import morph_invert
+from mmd_scripting import morph_scale
+from mmd_scripting import nuthouse01_core as core
+from mmd_scripting import pmx_list_bone_morph_names
+from mmd_scripting import translate_source_bone
+from mmd_scripting import vmd_armtwist_insert
+from mmd_scripting import vmd_rename_bones_morphs
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
@@ -7,50 +38,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
 
 # to get better GUI responsiveness, I need to launch the parser and processing functions in separate threads.
 # this causes the GUI progress updates to look all flickery and unpleasant... but its worth it.
-import threading
-import tkinter as tk
-import tkinter.filedialog as fdg
-import tkinter.font as tkfont
-import tkinter.scrolledtext as tkst
-from os import path
-
-# second, wrap custom imports with a try-except to catch it if files are missing
-try:
-	from python import nuthouse01_core as core
-	from python import bone_armik_addremove
-	from python import bone_make_semistandard_auto_armtwist
-	from python import bone_add_sdef_autotwist_handtwist_adapter
-	from python import bone_endpoint_addremove
-	from python import bone_set_arm_localaxis
-	from python import check_model_compatibility
-	from python import convert_vmd_to_txt
-	from python import convert_vpd_to_vmd
-	from python import file_recompress_images
-	from python import file_sort_textures
-	from python import file_translate_names
-	from python import model_overall_cleanup
-	from python import model_scale
-	from python import model_shift
-	from python import morph_hide
-	from python import morph_invert
-	from python import morph_scale
-	from python import make_ik_from_vmd
-	from python import pmx_list_bone_morph_names
-	from python import translate_source_bone
-	from python import vmd_armtwist_insert
-	from python import vmd_rename_bones_morphs
-except ImportError as eee:
-	print(eee.__class__.__name__, eee)
-	print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-	print("...press ENTER to exit...")
-	input()
-	exit()
-	convert_vmd_to_txt = model_overall_cleanup = file_sort_textures = check_model_compatibility = None
-	make_ik_from_vmd = pmx_list_bone_morph_names = vmd_armtwist_insert = bone_armik_addremove = None
-	core = morph_invert = morph_hide = morph_scale = file_translate_names = convert_vpd_to_vmd = None
-	model_shift = model_scale = bone_endpoint_addremove = translate_source_bone = bone_make_semistandard_auto_armtwist = None
-	file_recompress_images = vmd_rename_bones_morphs = bone_add_sdef_autotwist_handtwist_adapter = None
-	bone_set_arm_localaxis = None
 
 ########################################################################################################################
 # constants & options

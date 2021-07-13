@@ -1,47 +1,21 @@
+from typing import List, Dict, Set
+
+from mmd_scripting import WIP_vmd_animation_smoothing
+from mmd_scripting import nuthouse01_core as core
+from mmd_scripting import nuthouse01_pmx_parser as pmxlib
+from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
+from mmd_scripting import nuthouse01_vmd_parser as vmdlib
+from mmd_scripting import nuthouse01_vmd_struct as vmdstruct
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 # Special thanks to "tERBO" for making me overhaul & breathe new life into this old, forgotten code!
 #####################
 
-# STATUS: it runs! it's fully written!
-#	but its a pain to use
-#	and i need to verify it actually works correctly
-
 # NOTE: this won't work for normal arm IK the way you think it will, i think? because arm IK is normally an append-thing
 
 # NOTE: if you are taking positions from one model and forcing them onto another model, it's not gonna be a perfect solution
 # scaling or manual adjustment will probably be required, which kinda defeats the whole point of this script...
-
-# first system imports
-from typing import List, Dict, Set
-
-
-# second, wrap custom imports with a try-except to catch it if files are missing
-try:
-	# these imports work if running from GUI
-	from . import nuthouse01_core as core
-	from . import nuthouse01_vmd_parser as vmdlib
-	from . import nuthouse01_vmd_struct as vmdstruct
-	from . import nuthouse01_pmx_parser as pmxlib
-	from . import nuthouse01_pmx_struct as pmxstruct
-	from . import WIP_vmd_animation_smoothing
-except ImportError as eee:
-	try:
-		# these imports work if running from double-click on THIS script
-		import nuthouse01_core as core
-		import nuthouse01_vmd_parser as vmdlib
-		import nuthouse01_vmd_struct as vmdstruct
-		import nuthouse01_pmx_parser as pmxlib
-		import nuthouse01_pmx_struct as pmxstruct
-		import WIP_vmd_animation_smoothing
-	except ImportError as eee:
-		print(eee.__class__.__name__, eee)
-		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-		print("...press ENTER to exit...")
-		input()
-		exit()
-		core = vmdlib = vmdstruct = pmxlib = pmxstruct = WIP_vmd_animation_smoothing = None
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.

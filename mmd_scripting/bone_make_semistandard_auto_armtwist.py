@@ -1,38 +1,16 @@
+from typing import Sequence, List
+
+from mmd_scripting import nuthouse01_core as core
+from mmd_scripting import nuthouse01_pmx_parser as pmxlib
+from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
+from mmd_scripting._prune_unused_bones import insert_single_bone
+from mmd_scripting.bone_set_arm_localaxis import set_all_arm_localaxis
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 # Special thanks to Quappa-El for designing the clever system, I saw his models using it and wrote this script to
 # create those same structures in any generic model.
 #####################
-
-# first, system imports
-from typing import Sequence, List
-
-# second, wrap custom imports with a try-except to catch it if files are missing
-try:
-	# these imports work if running from GUI
-	from . import nuthouse01_core as core
-	from . import nuthouse01_pmx_parser as pmxlib
-	from . import nuthouse01_pmx_struct as pmxstruct
-	from ._prune_unused_bones import insert_single_bone
-	from .bone_set_arm_localaxis import set_all_arm_localaxis
-except ImportError as eee:
-	try:
-		# these imports work if running from double-click on THIS script
-		import nuthouse01_core as core
-		import nuthouse01_pmx_parser as pmxlib
-		import nuthouse01_pmx_struct as pmxstruct
-		from _prune_unused_bones import insert_single_bone
-		from bone_set_arm_localaxis import set_all_arm_localaxis
-	except ImportError as eee:
-		print(eee.__class__.__name__, eee)
-		print("ERROR: failed to import some of the necessary files, all my scripts must be together in the same folder!")
-		print("...press ENTER to exit...")
-		input()
-		exit()
-		core = pmxlib = pmxstruct = insert_single_bone = set_all_arm_localaxis = None
-
-
-
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
 # but if launched in a new window it exits immediately so you can't read it.
