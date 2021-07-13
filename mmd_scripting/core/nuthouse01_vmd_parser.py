@@ -2,8 +2,8 @@ import math
 import struct
 from typing import List, Union
 
-import mmd_scripting.nuthouse01_core as core
-import mmd_scripting.nuthouse01_vmd_struct as vmdstruct
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.

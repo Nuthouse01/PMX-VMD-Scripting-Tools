@@ -1,8 +1,8 @@
 from typing import Sequence, List
 
-from mmd_scripting import nuthouse01_core as core
-from mmd_scripting import nuthouse01_pmx_parser as pmxlib
-from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
+from mmd_scripting.core import nuthouse01_core as core
+from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
+from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.overall_cleanup.prune_unused_bones import insert_single_bone
 from mmd_scripting.bone_set_arm_localaxis import set_all_arm_localaxis
 

@@ -5,7 +5,7 @@ import sys
 import traceback
 from typing import List, Union
 
-import mmd_scripting.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_core as core
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.

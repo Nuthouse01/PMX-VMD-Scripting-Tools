@@ -1,9 +1,9 @@
 import math
 from collections import defaultdict
 
-from mmd_scripting import nuthouse01_core as core
-from mmd_scripting import nuthouse01_pmx_parser as pmxlib
-from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
+from mmd_scripting.core import nuthouse01_core as core
+from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
+from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.wip.merge_bones import transfer_bone_weights
 from mmd_scripting.overall_cleanup.weight_cleanup import normalize_weights
 

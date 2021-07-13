@@ -1,8 +1,8 @@
 from typing import List
 
-from mmd_scripting import nuthouse01_core as core
-from mmd_scripting import nuthouse01_pmx_parser as pmxlib
-from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
+from mmd_scripting.core import nuthouse01_core as core
+from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
+from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.overall_cleanup.prune_unused_bones import delete_multiple_bones, insert_single_bone
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"

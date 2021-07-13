@@ -23,7 +23,7 @@ from mmd_scripting import model_shift
 from mmd_scripting import morph_hide
 from mmd_scripting import morph_invert
 from mmd_scripting import morph_scale
-from mmd_scripting import nuthouse01_core as core
+from mmd_scripting.core import nuthouse01_core as core
 from mmd_scripting import pmx_list_bone_morph_names
 from mmd_scripting import translate_source_bone
 from mmd_scripting import vmd_armtwist_insert

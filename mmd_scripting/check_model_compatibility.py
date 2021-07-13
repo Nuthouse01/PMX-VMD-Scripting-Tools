@@ -1,7 +1,7 @@
-from mmd_scripting import nuthouse01_core as core
-from mmd_scripting import nuthouse01_pmx_parser as pmxlib
-from mmd_scripting import nuthouse01_vmd_parser as vmdlib
-from mmd_scripting import nuthouse01_vpd_parser as vpdlib
+from mmd_scripting.core import nuthouse01_core as core
+from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
+from mmd_scripting.core import nuthouse01_vmd_parser as vmdlib
+from mmd_scripting.core import nuthouse01_vpd_parser as vpdlib
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 10/10/2020 - v5.03"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.

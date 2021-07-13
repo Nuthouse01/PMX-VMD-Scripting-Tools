@@ -1,6 +1,6 @@
 import math
 
-from mmd_scripting.nuthouse01_core import rotate2d
+from mmd_scripting.core.nuthouse01_core import rotate2d
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 12/20/2020 - v5.04"
 

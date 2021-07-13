@@ -2,9 +2,9 @@ import math
 from typing import List
 
 from mmd_scripting import bone_make_semistandard_auto_armtwist
-from mmd_scripting import nuthouse01_core as core
-from mmd_scripting import nuthouse01_pmx_parser as pmxlib
-from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
+from mmd_scripting.core import nuthouse01_core as core
+from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
+from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.

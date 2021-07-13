@@ -1,6 +1,6 @@
-from mmd_scripting import nuthouse01_core as core
-from mmd_scripting import nuthouse01_pmx_parser as pmxlib
-from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
+from mmd_scripting.core import nuthouse01_core as core
+from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
+from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.overall_cleanup import alphamorph_correct
 from mmd_scripting.overall_cleanup import bonedeform_fix
 from mmd_scripting.overall_cleanup import dispframe_fix
