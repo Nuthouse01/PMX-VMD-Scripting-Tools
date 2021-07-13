@@ -1,16 +1,16 @@
 from mmd_scripting import nuthouse01_core as core
 from mmd_scripting import nuthouse01_pmx_parser as pmxlib
 from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
-from mmd_scripting import _alphamorph_correct
-from mmd_scripting import _bonedeform_fix
-from mmd_scripting import _morph_winnow
-from mmd_scripting import _prune_invalid_faces
-from mmd_scripting import _prune_unused_vertices
-from mmd_scripting import _prune_unused_bones
-from mmd_scripting import _translate_to_english
-from mmd_scripting import _weight_cleanup
-from mmd_scripting import _uniquify_names
-from mmd_scripting import _dispframe_fix
+from mmd_scripting.overall_cleanup import alphamorph_correct
+from mmd_scripting.overall_cleanup import bonedeform_fix
+from mmd_scripting.overall_cleanup import dispframe_fix
+from mmd_scripting.overall_cleanup import morph_winnow
+from mmd_scripting.overall_cleanup import prune_invalid_faces
+from mmd_scripting.overall_cleanup import prune_unused_bones
+from mmd_scripting.overall_cleanup import prune_unused_vertices
+from mmd_scripting.overall_cleanup import translate_to_english
+from mmd_scripting.overall_cleanup import uniquify_names
+from mmd_scripting.overall_cleanup import weight_cleanup
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -184,16 +184,16 @@ allhelp = [
 	myhelptext,
 	"="*20,
 	"="*20,
-	_prune_invalid_faces.helptext,
-	_prune_unused_vertices.helptext,
-	_prune_unused_bones.helptext,
-	_bonedeform_fix.helptext,
-	_weight_cleanup.helptext,
-	_morph_winnow.helptext,
-	_alphamorph_correct.helptext,
-	_dispframe_fix.helptext,
-	_translate_to_english.helptext,
-	_uniquify_names.helptext
+	prune_invalid_faces.helptext,
+	prune_unused_vertices.helptext,
+	prune_unused_bones.helptext,
+	bonedeform_fix.helptext,
+	weight_cleanup.helptext,
+	morph_winnow.helptext,
+	alphamorph_correct.helptext,
+	dispframe_fix.helptext,
+	translate_to_english.helptext,
+	uniquify_names.helptext
 ]
 
 helptext = '\n'.join(allhelp)
@@ -219,34 +219,34 @@ def main(moreinfo=False):
 	# final file-write is skipped only if NO stage has made changes
 	is_changed = False
 	core.MY_PRINT_FUNC("\n>>>> Deleting invalid & duplicate faces <<<<")
-	pmx, is_changed_t = _prune_invalid_faces.prune_invalid_faces(pmx, moreinfo)
+	pmx, is_changed_t = prune_invalid_faces.prune_invalid_faces(pmx, moreinfo)
 	is_changed |= is_changed_t	# or-equals: if any component returns true, then ultimately this func returns true
 	core.MY_PRINT_FUNC("\n>>>> Deleting orphaned/unused vertices <<<<")
-	pmx, is_changed_t = _prune_unused_vertices.prune_unused_vertices(pmx, moreinfo)
+	pmx, is_changed_t = prune_unused_vertices.prune_unused_vertices(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Deleting unused bones <<<<")
-	pmx, is_changed_t = _prune_unused_bones.prune_unused_bones(pmx, moreinfo)
+	pmx, is_changed_t = prune_unused_bones.prune_unused_bones(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Normalizing vertex weights & normals <<<<")
-	pmx, is_changed_t = _weight_cleanup.weight_cleanup(pmx, moreinfo)
+	pmx, is_changed_t = weight_cleanup.weight_cleanup(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Pruning imperceptible vertex morphs <<<<")
-	pmx, is_changed_t = _morph_winnow.morph_winnow(pmx, moreinfo)
+	pmx, is_changed_t = morph_winnow.morph_winnow(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Fixing display groups: duplicates, empty groups, missing items <<<<")
-	pmx, is_changed_t = _dispframe_fix.dispframe_fix(pmx, moreinfo)
+	pmx, is_changed_t = dispframe_fix.dispframe_fix(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Adding missing English names <<<<")
-	pmx, is_changed_t = _translate_to_english.translate_to_english(pmx, moreinfo)
+	pmx, is_changed_t = translate_to_english.translate_to_english(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Ensuring all names in the model are unique <<<<")
-	pmx, is_changed_t = _uniquify_names.uniquify_names(pmx, moreinfo)
+	pmx, is_changed_t = uniquify_names.uniquify_names(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Fixing bone deform order <<<<")
-	pmx, is_changed_t = _bonedeform_fix.bonedeform_fix(pmx, moreinfo)
+	pmx, is_changed_t = bonedeform_fix.bonedeform_fix(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Standardizing alphamorphs and accounting for edging <<<<")
-	pmx, is_changed_t = _alphamorph_correct.alphamorph_correct(pmx, moreinfo)
+	pmx, is_changed_t = alphamorph_correct.alphamorph_correct(pmx, moreinfo)
 	is_changed |= is_changed_t
 
 	core.MY_PRINT_FUNC("")

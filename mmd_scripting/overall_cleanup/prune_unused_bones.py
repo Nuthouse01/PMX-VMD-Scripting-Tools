@@ -3,7 +3,7 @@ from typing import List, Tuple
 import mmd_scripting.nuthouse01_core as core
 import mmd_scripting.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.nuthouse01_pmx_struct as pmxstruct
-from mmd_scripting._prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
+from mmd_scripting.overall_cleanup.prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -76,7 +76,7 @@ def showprompt():
 	return pmx, input_filename_pmx
 	
 	
-	
+# todo: probably wanna move this to somewhere more central and visible
 def insert_single_bone(pmx: pmxstruct.Pmx, newbone: pmxstruct.PmxBone, newindex: int):
 	"""
 	Wrapper function to make inserting bones simpler.
@@ -102,7 +102,7 @@ def insert_single_bone(pmx: pmxstruct.Pmx, newbone: pmxstruct.PmxBone, newindex:
 		apply_bone_remapping(pmx, [], bone_shiftmap)
 	return
 	
-
+# todo: probably wanna move this somewhere more central and visible
 def delete_multiple_bones(pmx: pmxstruct.Pmx, bone_dellist: List[int]):
 	"""
 	Wrapper function to make deleting bones simpler.

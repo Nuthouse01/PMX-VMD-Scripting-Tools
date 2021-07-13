@@ -1,7 +1,7 @@
 from mmd_scripting import nuthouse01_core as core
 from mmd_scripting import nuthouse01_pmx_parser as pmxlib
 from mmd_scripting import nuthouse01_pmx_struct as pmxstruct
-from mmd_scripting._weight_cleanup import normalize_weights
+from mmd_scripting.overall_cleanup.weight_cleanup import normalize_weights
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.

@@ -1,7 +1,7 @@
 from time import time
 from typing import List, Tuple, TypeVar
 
-import mmd_scripting._translation_tools as translation_tools
+import mmd_scripting.overall_cleanup.translation_tools as translation_tools
 import mmd_scripting.nuthouse01_core as core
 import mmd_scripting.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.nuthouse01_pmx_struct as pmxstruct
