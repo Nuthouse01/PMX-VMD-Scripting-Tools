@@ -3,7 +3,7 @@ import pickle
 from imageio import imread, imsave
 from scipy import mean, interp, ravel, array
 
-from progprint import progprint, progclean
+from mmd_scripting.scratch_stuff.progprint import progprint, progclean
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 9/13/2020 - 5.01"
 

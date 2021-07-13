@@ -1,7 +1,7 @@
 import numpy as np
 from PIL import Image
 
-from progprint import progprint, progclean
+from mmd_scripting.scratch_stuff.progprint import progprint, progclean
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - 09/13/2020 - v5.01"
 """
