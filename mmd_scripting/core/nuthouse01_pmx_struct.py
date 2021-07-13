@@ -321,9 +321,9 @@ class PmxVertex(_BasePmx):
 		for pair in self.weight:
 			assert isinstance(pair, (list,tuple))
 			assert len(pair) == 2
-			# the boneidx MUST be a nonnegative int
+			# the boneidx MUST be a nonnegative int but i'm not gonna enforce that
 			assert isinstance(pair[0], int)
-			assert pair[0] >= 0
+			# assert pair[0] >= 0
 			# the weight can be any float, should be [0.0 - 1.0] but i'm not gonna enforce that
 			assert isinstance(pair[1], (int,float))
 		# addl_vec4: an unknown number of vec4s. most models have none.
