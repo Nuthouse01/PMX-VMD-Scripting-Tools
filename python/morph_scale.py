@@ -44,11 +44,6 @@ This script will work for vertex morph, UV morph, or bone morph, and does only 1
 Output: PMX file '[modelname]_[morph#]scal.pmx'
 '''
 
-mtype_dict = {0:"group", 1:"vertex", 2:"bone", 3:"UV",
-			  4:"UV1", 5:"UV2", 6:"UV3", 7:"UV4",
-			  8:"material", 9:"flip", 10:"impulse"}
-
-
 # function that takes a string & returns idx if it can match one, or None otherwise
 def get_idx_in_pmxsublist(s: str, pmxlist: List):
 	if s == "": return -1

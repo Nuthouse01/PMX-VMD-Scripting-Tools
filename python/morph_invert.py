@@ -40,10 +40,6 @@ This script will work for vertex morph or UV morph, and does only 1 morph at a t
 Output: PMX file '[modelname]_[morph#]inv.pmx'
 '''
 
-mtype_dict = {0:"group", 1:"vertex", 2:"bone", 3:"UV",
-			  4:"UV1", 5:"UV2", 6:"UV3", 7:"UV4",
-			  8:"material", 9:"flip", 10:"impulse"}
-
 def main(moreinfo=True):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")

@@ -36,11 +36,6 @@ Also removes it from the display panels to prevent MMD from crashing.
 Output: PMX file '[modelname]_morphhide.pmx'
 '''
 
-mtype_dict = {0:"group", 1:"vertex", 2:"bone", 3:"UV",
-			  4:"UV1", 5:"UV2", 6:"UV3", 7:"UV4",
-			  8:"material", 9:"flip", 10:"impulse"}
-
-
 
 def main(moreinfo=True):
 	# prompt PMX name
