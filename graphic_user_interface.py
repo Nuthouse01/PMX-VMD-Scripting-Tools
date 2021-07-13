@@ -24,7 +24,6 @@ from mmd_scripting import model_shift
 from mmd_scripting import morph_hide
 from mmd_scripting import morph_invert
 from mmd_scripting import morph_scale
-from mmd_scripting import pmx_list_bone_morph_names
 from mmd_scripting import translate_source_bone
 from mmd_scripting import vmd_armtwist_insert
 from mmd_scripting import vmd_rename_bones_morphs
@@ -70,7 +69,6 @@ all_script_list = [
 	("bone_endpoint_addremove.py",       bone_endpoint_addremove.helptext,       bone_endpoint_addremove.main),
 	("vmd_armtwist_insert.py",           vmd_armtwist_insert.helptext,           vmd_armtwist_insert.main),
 	("make_ik_from_vmd.py",              make_ik_from_vmd.helptext,              make_ik_from_vmd.main),
-	("pmx_list_bone_morph_names.py",     pmx_list_bone_morph_names.helptext,     pmx_list_bone_morph_names.main),
 	("bone_add_sdef_autotwist_handtwist_adapter.py",bone_add_sdef_autotwist_handtwist_adapter.helptext,bone_add_sdef_autotwist_handtwist_adapter.main),
 	("bone_set_arm_localaxis.py",bone_set_arm_localaxis.helptext,bone_set_arm_localaxis.main),
 ]
