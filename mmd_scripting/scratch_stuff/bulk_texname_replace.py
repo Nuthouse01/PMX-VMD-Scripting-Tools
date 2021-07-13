@@ -4,7 +4,7 @@ from mmd_scripting.scripts_for_gui import file_sort_textures
 from mmd_scripting.core import nuthouse01_core as core
 from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 # this one is for you, syblomic-dash
 
 # when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,

@@ -1,6 +1,6 @@
 from PIL import Image
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 8/24/2020 - v5.00"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.00 - 8/24/2020"
 
 
 

@@ -2,7 +2,7 @@ import math
 
 from mmd_scripting.core.nuthouse01_core import rotate2d
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 12/20/2020 - v5.04"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.04 - 12/20/2020"
 
 
 print("give XYZ of 2 points that you want to align, and XYZ of the 2 points you want them aligned to")

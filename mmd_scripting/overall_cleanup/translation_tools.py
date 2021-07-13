@@ -1,7 +1,7 @@
 import re
 from typing import List, Tuple, TypeVar
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 6/10/2021 - v6.00"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -1076,6 +1076,6 @@ def local_translate(in_list: STR_OR_STRLIST) -> STR_OR_STRLIST:
 # 		numpass, numtotal, numpass / numtotal))
 #
 # if __name__ == '__main__':
-# 	core.MY_PRINT_FUNC("Nuthouse01 - 10/10/2020 - v5.03")
+# 	core.MY_PRINT_FUNC("Nuthouse01 - v0.5.03 - 10/10/2020")
 # 	main()
 #

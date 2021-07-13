@@ -7,7 +7,7 @@ from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.core import nuthouse01_vmd_parser as vmdlib
 from mmd_scripting.core import nuthouse01_vmd_struct as vmdstruct
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.01 - 7/12/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 # Special thanks to "tERBO" for making me overhaul & breathe new life into this old, forgotten code!
 #####################

@@ -1,6 +1,6 @@
 from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 12/20/2020 - v5.04"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.04 - 12/20/2020"
 
 """
 DO FEET THE BEST WAY

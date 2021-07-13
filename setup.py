@@ -10,6 +10,6 @@ HERE = pathlib.Path(__file__).parent
 
 setuptools.setup(
 	name="mmd_scripting",
-	version="1.6.02",
+	version="1.07.00",
 	packages=["mmd_scripting"],
 )

@@ -5,7 +5,7 @@ from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
 from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.overall_cleanup.prune_unused_bones import insert_single_bone
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 7/12/2021 - v6.01"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.01 - 7/12/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 # Special thanks to Tamo for coming up with this idea! I saw his models using it and found a way to copy the technique
 # onto other models.

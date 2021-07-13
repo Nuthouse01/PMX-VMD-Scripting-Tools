@@ -3,7 +3,7 @@ from PIL import Image
 
 from mmd_scripting.scratch_stuff.progprint import progprint, progclean
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - 09/13/2020 - v5.01"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.01 - 09/13/2020"
 """
 Given a no-tattoo body and a tattoo body, and a single color, calc the transparency needed
 to create the tattoo mask sitting on top of the no-tattoo body to create the tattoo body.
