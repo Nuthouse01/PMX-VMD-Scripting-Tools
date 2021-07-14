@@ -1,8 +1,4 @@
 
-TODO: redo imports for all files
-    figure out how to restructure into proper packages
-    separate 'scripts' from 'functions'
-
 TODO: establish template for 'scripts', i.e. contains main(), helptext... is that it?
 
 TODO: make the GUI automatically find & import all 'scripts' in 'FOOBAR' folder, rather than manually listing them???
@@ -11,7 +7,8 @@ TODO: make the GUI automatically find & import all 'scripts' in 'FOOBAR' folder,
 #####
 
 TODO: WIP-sdef-armtwist should invoke bone-sdeftwist-hand-adapter
-TODO: rename wip-sdef-armtwist to bone_make_sdef_auto_armtwist
+
+TODO: examine professional SDEF armtwist examples (miku, bb, tamo) and create a graph that profiles the weight balance with respect to the length along the segment
 
 TODO: create one function in 'core' that does all the bottom-of-the-script stuff...?
     also lets me add traceback module to everything
