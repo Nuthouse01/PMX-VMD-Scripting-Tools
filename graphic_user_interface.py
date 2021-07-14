@@ -57,6 +57,7 @@ def populate_script_list():
 			# todo possibly print full traceback?
 			continue
 		# a valid script only needs main() and helptext
+		# todo: validate that "main" accepts exactly one boolean argument!
 		if hasattr(module, "main") and callable(module.main) and \
 				hasattr(module, "helptext") and isinstance(module.helptext, str):
 			# store the displayname with the module object
@@ -417,6 +418,7 @@ class Application(tk.Frame):
 			moreinfo = bool(self.debug_check_var.get())
 			self.loaded_script.main(moreinfo)
 		except Exception as e:
+			# todo: print full traceback for any exception EXCEPT make a special condition for "cancelled file dialogue"
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("ERROR: failed to complete target script")
 		
