@@ -1,16 +1,12 @@
+import importlib
 import threading
 import tkinter as tk
 import tkinter.filedialog as fdg
 import tkinter.font as tkfont
 import tkinter.scrolledtext as tkst
-from os import path
+from os import path, listdir
 
 from mmd_scripting import __pkg_welcome__
-from mmd_scripting.scripts_for_gui import model_scale, file_translate_filenames, bone_armik_addremove, convert_vmd_to_txt, \
-	bone_endpoint_addremove, morph_scale, morph_invert, vmd_rename_bones_morphs, make_ik_from_vmd, \
-	model_overall_cleanup, file_sort_textures, check_model_compatibility, morph_hide, translate_source_bone, \
-	bone_add_sdef_autotwist_handtwist_adapter, model_shift, bone_make_semistandard_auto_armtwist, vmd_armtwist_insert, \
-	bone_set_arm_localaxis, file_recompress_images, convert_vpd_to_vmd
 from mmd_scripting.core import nuthouse01_core as core
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.01 - 7/12/2021"
@@ -31,33 +27,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.01 - 7/12/2021"
 # when running from EXE, in noconsole mode, this does nothing at all.
 ALSO_PRINT_TO_CONSOLE = False
 
-# list of all possible displayed names in the dropdown list, with associated helptext and mainfunc
-# do I want to sort by usefulness? or do I want to group by categories? or maybe just alphabetical? idk
-all_script_list = [
-	("model_overall_cleanup.py", model_overall_cleanup.helptext, model_overall_cleanup.main),
-	("file_sort_textures.py", file_sort_textures.helptext, file_sort_textures.main),
-	("file_translate_names.py", file_translate_filenames.helptext, file_translate_filenames.main),
-	("file_recompress_images.py", file_recompress_images.helptext, file_recompress_images.main),
-	("bone_make_semistandard_auto_armtwist.py", bone_make_semistandard_auto_armtwist.helptext, bone_make_semistandard_auto_armtwist.main),
-	("morph_invert.py", morph_invert.helptext, morph_invert.main),
-	("morph_hide.py", morph_hide.helptext, morph_hide.main),
-	("morph_scale.py", morph_scale.helptext, morph_scale.main),
-	("check_model_compatibility.py", check_model_compatibility.helptext, check_model_compatibility.main),
-	("model_shift.py", model_shift.helptext, model_shift.main),
-	("model_scale.py", model_scale.helptext, model_scale.main),
-	("vmd_rename_bones_morphs.py", vmd_rename_bones_morphs.helptext, vmd_rename_bones_morphs.main),
-	("convert_vmd_to_txt.py", convert_vmd_to_txt.helptext, convert_vmd_to_txt.main),
-	("convert_vpd_to_vmd.py", convert_vpd_to_vmd.helptext, convert_vpd_to_vmd.main),
-	("translate_source_bone.py", translate_source_bone.helptext, translate_source_bone.main),
-	("bone_armik_addremove.py", bone_armik_addremove.helptext, bone_armik_addremove.main),
-	("bone_endpoint_addremove.py", bone_endpoint_addremove.helptext, bone_endpoint_addremove.main),
-	("vmd_armtwist_insert.py", vmd_armtwist_insert.helptext, vmd_armtwist_insert.main),
-	("make_ik_from_vmd.py", make_ik_from_vmd.helptext, make_ik_from_vmd.main),
-	("bone_add_sdef_autotwist_handtwist_adapter.py", bone_add_sdef_autotwist_handtwist_adapter.helptext,
-	 bone_add_sdef_autotwist_handtwist_adapter.main),
-	("bone_set_arm_localaxis.py", bone_set_arm_localaxis.helptext, bone_set_arm_localaxis.main),
-]
-
 
 # DO NOT TOUCH: mapping from MY_FILEPROMPT_FUNC filetype input to the info the gui filedialog needs
 FILE_EXTENSION_MAP = {
@@ -72,6 +41,49 @@ FILE_EXTENSION_MAP = {
 	".vmd": ("VMD file", "*.vmd *.vmd.bak"),
 	"*": tuple()
 }
+
+# SCRIPT_LIST is the list of all things I found to fill the GUI with
+# do I want to sort by usefulness? or do I want to group by categories? or maybe just alphabetical? idk
+SCRIPT_LIST = []
+
+def populate_script_list():
+	# first, assert that the current directory is where i think it is
+	thisscriptname = path.split(__file__)[1]
+	assert thisscriptname in listdir(".")
+	# second, build a list of all files in "scripts_for_gui"
+	path_to_scripts = "mmd_scripting/scripts_for_gui/"
+	filenames = listdir(path_to_scripts)
+	# remove anything that starts with underscore
+	filenames = [a for a in filenames if not a.startswith("_")]
+	# now i should have a list of all the scripts in the folder!
+	# then, iterate over the list and import each file
+	script_list = []
+	for filename in filenames:
+		mname = path_to_scripts + filename  # prepend the path to the scripts folder
+		mname = path.splitext(mname)[0]  # strip the .py
+		mname = mname.replace("/", ".")  # replace the folderseparator slashes with dots
+		try:
+			module = importlib.import_module(mname)  # actual magical import
+		except Exception as e:
+			core.MY_PRINT_FUNC("ERROR: exception while importing script '%s'" % filename)
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
+			# todo possibly print full traceback?
+			continue
+		# a valid script only needs main() and helptext
+		if hasattr(module, "main") and callable(module.main) and \
+				hasattr(module, "helptext") and isinstance(module.helptext, str):
+			# store the displayname with the module object
+			# do i want the module to have .py or not? hm....
+			# if i don't want it, then strip .py outside the loop
+			script_list.append((filename, module))
+		else:
+			core.MY_PRINT_FUNC("WARNING: '%s' is in the '%s' folder but is not a valid script" % (filename, path_to_scripts))
+	
+	# store this list into the global
+	global SCRIPT_LIST
+	SCRIPT_LIST = script_list
+	return None
+	
 
 # DO NOT TOUCH: global vars for passing info between GUI input popup and the thread the script lives in
 inputpopup_args = None
@@ -257,8 +269,6 @@ class Application(tk.Frame):
 		# payload is pointer to currently selected main() func, helptext is the currently selected help string
 		self.payload = None
 		self.helptext = ""
-		# list of all possible displayed names in the OptionMenu, with assoc helptext and mainfunc
-		self.all_script_list = all_script_list
 		
 		###############################################
 		# second, build the dropdown menu
@@ -271,9 +281,9 @@ class Application(tk.Frame):
 		# underlying variable tied to the dropdown menu, needed to run self.change_mode when the selection changes
 		self.optionvar = tk.StringVar(master)
 		self.optionvar.trace("w", self.change_mode)
-		self.optionvar.set(self.all_script_list[0][0])
+		self.optionvar.set(SCRIPT_LIST[0][0])
 		# build the acutal dropdown menu
-		self.which_script = tk.OptionMenu(self.which_script_frame, self.optionvar, *[x[0] for x in self.all_script_list])
+		self.which_script = tk.OptionMenu(self.which_script_frame, self.optionvar, *[x[0] for x in SCRIPT_LIST])
 		self.which_script.pack(side=tk.LEFT, padx=10)
 		
 		###############################################
@@ -413,14 +423,14 @@ class Application(tk.Frame):
 		return
 		
 	def change_mode(self, *_):
-		# need to have *args here even if i dont use them
-		# the the currently displayed item in the dropdown menu
+		# get the the currently displayed item in the dropdown menu
 		newstr = self.optionvar.get()
-		# find which index within all_script_list it corresponds to
-		idx = [x[0] for x in self.all_script_list].index(newstr)
+		# find which index within SCRIPT_LIST it corresponds to
+		idx = [x[0] for x in SCRIPT_LIST].index(newstr)
 		# set helptext and execute func
-		self.helptext = self.all_script_list[idx][1]
-		self.payload = self.all_script_list[idx][2]
+		dispname, module = SCRIPT_LIST[idx]
+		self.helptext = module.helptext
+		self.payload =  module.main
 		core.MY_PRINT_FUNC(">>>>>>>>>>")
 		core.MY_PRINT_FUNC("Load new script '%s'" % newstr)
 		core.MY_PRINT_FUNC("")
@@ -460,6 +470,7 @@ def launch_gui(title):
 
 
 if __name__ == '__main__':
+	populate_script_list()
 	print(_SCRIPT_VERSION)
 	launch_gui("Nuthouse01 MMD PMX VMD tools")
 

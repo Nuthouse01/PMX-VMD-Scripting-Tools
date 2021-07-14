@@ -1,9 +1,6 @@
 
 TODO: establish template for 'scripts', i.e. contains main(), helptext... is that it?
 
-TODO: make the GUI automatically find & import all 'scripts' in 'FOOBAR' folder, rather than manually listing them???
-    can only be done after restructuring is complete
-
 #####
 
 TODO: WIP-sdef-armtwist should invoke bone-sdeftwist-hand-adapter
