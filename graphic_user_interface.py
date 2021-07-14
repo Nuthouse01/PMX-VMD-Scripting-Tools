@@ -116,7 +116,7 @@ def gui_fileprompt(extensions: str) -> str:
 	extensions_labels = (extensions_labels,)
 	
 	# dont trust file dialog to remember last-opened path, manually save/read it
-	json_data = core.get_persistent_storage_json('last-opened-path')
+	json_data = core.get_persistent_storage_json('last-input-path')
 	if json_data is None:
 		# if never used before, start wherever i am right now i guess
 		start_here = path.abspath(".")
@@ -138,7 +138,7 @@ def gui_fileprompt(extensions: str) -> str:
 		raise RuntimeError()
 	
 	# they got an existing file! update the last_opened_dir file
-	core.write_persistent_storage_json('last-opened-path', path.dirname(newpath))
+	core.write_persistent_storage_json('last-input-path', path.dirname(newpath))
 	
 	return newpath
 
@@ -281,7 +281,19 @@ class Application(tk.Frame):
 		# underlying variable tied to the dropdown menu, needed to run self.change_mode when the selection changes
 		self.optionvar = tk.StringVar(master)
 		self.optionvar.trace("w", self.change_mode)
-		self.optionvar.set(SCRIPT_LIST[0][0])
+		# set the default script
+		lastused = core.get_persistent_storage_json('last-script')
+		if lastused is None:
+			# if entry doesn't exist, choose the top of the list
+			self.optionvar.set(SCRIPT_LIST[0][0])
+		else:
+			# if entry does exist, look for it
+			idx = core.my_list_search(SCRIPT_LIST, lambda x: x[0] == lastused)
+			if idx is None:
+				# if not in the current list of scripts, choose the top of the list
+				self.optionvar.set(SCRIPT_LIST[0][0])
+			else:
+				self.optionvar.set(SCRIPT_LIST[idx][0])
 		# build the acutal dropdown menu
 		self.which_script = tk.OptionMenu(self.which_script_frame, self.optionvar, *[x[0] for x in SCRIPT_LIST])
 		self.which_script.pack(side=tk.LEFT, padx=10)
@@ -402,6 +414,9 @@ class Application(tk.Frame):
 		self.help_butt.configure(state='disabled')
 		self.debug_check.configure(state='disabled')
 		
+		# set the 'last used script' item in the json
+		core.write_persistent_storage_json('last-script', self.optionvar.get())
+		
 		try:
 			self.payload(bool(self.debug_check_var.get()))
 		except Exception as e:
@@ -426,7 +441,7 @@ class Application(tk.Frame):
 		# get the the currently displayed item in the dropdown menu
 		newstr = self.optionvar.get()
 		# find which index within SCRIPT_LIST it corresponds to
-		idx = [x[0] for x in SCRIPT_LIST].index(newstr)
+		idx = core.my_list_search(SCRIPT_LIST, lambda x: x[0] == newstr)
 		# set helptext and execute func
 		dispname, module = SCRIPT_LIST[idx]
 		self.helptext = module.helptext
@@ -470,7 +485,7 @@ def launch_gui(title):
 
 
 if __name__ == '__main__':
-	populate_script_list()
 	print(_SCRIPT_VERSION)
+	populate_script_list()
 	launch_gui("Nuthouse01 MMD PMX VMD tools")
 
