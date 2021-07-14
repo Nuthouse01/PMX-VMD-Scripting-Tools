@@ -247,15 +247,12 @@ def gui_inputpopup(args, explain_info=None):
 			button.pack(side=tk.LEFT, padx=10, pady=10)
 	
 	return None
-
-
-# this lets the window be moved or resized as the target function is executing
-def run_as_thread(func):
-	thread = threading.Thread(name="do-the-thing", target=func, daemon=True)
-	# start the thread
-	thread.start()
-
-
+	
+def print_header():
+	core.MY_PRINT_FUNC(__pkg_welcome__)
+	core.MY_PRINT_FUNC("Begin by selecting a script above, then click 'Run'")
+	core.MY_PRINT_FUNC("Click 'Help' to print out details of what the selected script does")
+	return
 
 
 class Application(tk.Frame):
@@ -266,9 +263,8 @@ class Application(tk.Frame):
 		# first, set up non-ui class members
 		# this variable is used in this new print function, very important
 		self.last_print_was_progress = False
-		# payload is pointer to currently selected main() func, helptext is the currently selected help string
-		self.payload = None
-		self.helptext = ""
+		# loaded_script is the module object that matches the selected name
+		self.loaded_script = None
 		
 		###############################################
 		# second, build the dropdown menu
@@ -281,7 +277,7 @@ class Application(tk.Frame):
 		# underlying variable tied to the dropdown menu, needed to run self.change_mode when the selection changes
 		self.optionvar = tk.StringVar(master)
 		self.optionvar.trace("w", self.change_mode)
-		# set the default script
+		# set the default script, this should invoke "self.change_mode" at least once
 		lastused = core.get_persistent_storage_json('last-script')
 		if lastused is None:
 			# if entry doesn't exist, choose the top of the list
@@ -294,7 +290,7 @@ class Application(tk.Frame):
 				self.optionvar.set(SCRIPT_LIST[0][0])
 			else:
 				self.optionvar.set(SCRIPT_LIST[idx][0])
-		# build the acutal dropdown menu
+		# build the visible dropdown menu
 		self.which_script = tk.OptionMenu(self.which_script_frame, self.optionvar, *[x[0] for x in SCRIPT_LIST])
 		self.which_script.pack(side=tk.LEFT, padx=10)
 		
@@ -303,7 +299,7 @@ class Application(tk.Frame):
 		self.control_frame = tk.Frame(master, relief=tk.RAISED, borderwidth=1)
 		self.control_frame.pack(side=tk.TOP, fill='x', padx=10, pady=5)
 		
-		self.run_butt = tk.Button(self.control_frame, text="RUN", width=7, command=lambda: run_as_thread(self.do_the_thing))
+		self.run_butt = tk.Button(self.control_frame, text="RUN", width=7, command=self.run_the_script_as_thread)
 		button_default_font = self.run_butt.cget("font")
 		# print(button_default_font)
 		# RUN button has bigger font than the other buttons
@@ -354,7 +350,7 @@ class Application(tk.Frame):
 		core.MY_JUSTIFY_STRINGLIST = self.gui_justify_stringlist
 		
 		# print version & instructions
-		self.print_header()
+		print_header()
 		# start the popup loop
 		self.spin_to_handle_inputs()
 		# load the initial script to populate payload & helptext
@@ -371,7 +367,7 @@ class Application(tk.Frame):
 		if self.last_print_was_progress:	self._overwrite(the_string)
 		# if last print was a normal print, then print normally
 		else: 								self._write(the_string)
-		# don't force scrolling down for progress update printouts
+		# DO force scrolling down for non-progress printouts
 		if not is_progress: 				self.edit_space.see(tk.END)
 		# at the end, store this value for next time
 		self.last_print_was_progress = is_progress
@@ -401,11 +397,21 @@ class Application(tk.Frame):
 		self.after(200, self.spin_to_handle_inputs)
 		
 	def help_func(self):
-		core.MY_PRINT_FUNC(self.helptext)
+		core.MY_PRINT_FUNC(self.loaded_script.helptext)
 	
-	def do_the_thing(self):
+	# this lets the window be moved or resized as the target function is executing
+	def run_the_script_as_thread(self):
+		thread = threading.Thread(name="do-the-thing", target=self.run_the_script, daemon=True)
+		# start the thread
+		thread.start()
+	
+	def run_the_script(self):
+		script_name = str(self.optionvar.get())
 		core.MY_PRINT_FUNC("="*50)
-		core.MY_PRINT_FUNC(str(self.optionvar.get()))
+		core.MY_PRINT_FUNC(script_name)
+		# set the 'last used script' item in the json
+		core.write_persistent_storage_json('last-script', script_name)
+		
 		# disable all gui elements for the duration of this function
 		# run_butt, spinbox, clear, help, debug
 		self.run_butt.configure(state='disabled')
@@ -414,11 +420,9 @@ class Application(tk.Frame):
 		self.help_butt.configure(state='disabled')
 		self.debug_check.configure(state='disabled')
 		
-		# set the 'last used script' item in the json
-		core.write_persistent_storage_json('last-script', self.optionvar.get())
-		
 		try:
-			self.payload(bool(self.debug_check_var.get()))
+			moreinfo = bool(self.debug_check_var.get())
+			self.loaded_script.main(moreinfo)
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("ERROR: failed to complete target script")
@@ -431,12 +435,6 @@ class Application(tk.Frame):
 		self.debug_check.configure(state='normal')
 		return
 	
-	def print_header(self):
-		core.MY_PRINT_FUNC(__pkg_welcome__)
-		core.MY_PRINT_FUNC("Begin by selecting a script above, then click 'Run'")
-		core.MY_PRINT_FUNC("Click 'Help' to print out details of what the selected script does")
-		return
-		
 	def change_mode(self, *_):
 		# get the the currently displayed item in the dropdown menu
 		newstr = self.optionvar.get()
@@ -444,8 +442,8 @@ class Application(tk.Frame):
 		idx = core.my_list_search(SCRIPT_LIST, lambda x: x[0] == newstr)
 		# set helptext and execute func
 		dispname, module = SCRIPT_LIST[idx]
-		self.helptext = module.helptext
-		self.payload =  module.main
+		self.loaded_script = module
+		
 		core.MY_PRINT_FUNC(">>>>>>>>>>")
 		core.MY_PRINT_FUNC("Load new script '%s'" % newstr)
 		core.MY_PRINT_FUNC("")
@@ -456,7 +454,7 @@ class Application(tk.Frame):
 		self.edit_space.configure(state='normal')
 		self.edit_space.delete("1.0", tk.END)
 		# these print functions will immediately set it back to the 'disabled' state
-		self.print_header()
+		print_header()
 		return
 	
 	def gui_justify_stringlist(self, j: list, right=False) -> list:
