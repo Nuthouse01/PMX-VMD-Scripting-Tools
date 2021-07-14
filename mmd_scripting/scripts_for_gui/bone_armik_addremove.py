@@ -57,7 +57,7 @@ pmx_noik_suffix =  " no-IK.pmx"
 def main(moreinfo=True):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
-	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
+	input_filename_pmx = core.MY_FILEPROMPT_FUNC("PMX file", ".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	
 	# detect whether arm ik exists

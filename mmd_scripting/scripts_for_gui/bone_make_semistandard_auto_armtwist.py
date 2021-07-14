@@ -645,7 +645,7 @@ def make_handtwist_addon(pmx: pmxstruct.Pmx, side:str) -> None:
 def main(moreinfo=True):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
-	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
+	input_filename_pmx = core.MY_FILEPROMPT_FUNC("PMX file", ".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	
 	bone_set_arm_localaxis.set_all_arm_localaxis(pmx, moreinfo)

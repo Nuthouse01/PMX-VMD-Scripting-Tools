@@ -41,7 +41,7 @@ Note: unlike my other scripts, this overwrites the original input PMX file(s) in
 
 def main(moreinfo=False):
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
-	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
+	input_filename_pmx = core.MY_FILEPROMPT_FUNC("PMX file", ".pmx")
 	
 	# step zero: set up the translator thingy
 	translate_to_english.init_googletrans()

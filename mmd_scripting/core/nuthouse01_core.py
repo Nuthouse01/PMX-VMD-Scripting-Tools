@@ -5,9 +5,9 @@ import re
 import struct
 import sys
 from os import path, listdir, getenv, makedirs
-from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar
+from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar, Union
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.01 - 7/12/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.01 - 7/14/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -344,26 +344,34 @@ def general_input(valid_check: Callable[[str], bool], explain_info=None) -> str:
 MY_GENERAL_INPUT_FUNC = general_input
 
 
-def prompt_user_filename(extensions_in: str) -> str:
+def prompt_user_filename(label: str, ext_list: Union[str,Sequence[str]]) -> str:
 	"""
 	CONSOLE FUNCTION: prompt for file & continue prompting until user enters the name of an existing file with the
 	specified file extension. Returns case-correct absolute file path to the specified file.
 	
-	:param extensions_in: string of valid extensions, separated by spaces
+	:param label: {{short}} string label that identifies this kind of input, like "Text file" or "VMD file"
+	:param ext_list: list of acceptable extensions, or just one string
 	:return: case-correct absolute file path
 	"""
-	extensions = extensions_in.split(" ")
+	if isinstance(ext_list, str):
+		# if it comes in as a string, wrap it in a list
+		ext_list = [ext_list]
 	MY_PRINT_FUNC('(type/paste the path to the file, ".." means "go up a folder")')
 	MY_PRINT_FUNC('(path can be absolute, like C:/username/Documents/miku.pmx)')
 	MY_PRINT_FUNC('(or path can be relative to here, example: ../../mmd/models/miku.pmx)')
 	while True:
 		# continue prompting until the user gives valid input
-		name = input(" Filename ending with %s = " % extensions)
-		valid_ext = any(name.lower().endswith(a.lower()) for a in extensions)
-		if not valid_ext:
-			MY_PRINT_FUNC("Err: given file must have %s extension" % extensions)
-		elif not path.isfile(name):
-			MY_PRINT_FUNC("Err: given file does not exist, did you type it wrong?")
+		if ext_list:
+			name = input(" {:s} path ending with [{:s}] = ".format(label, ", ".join(ext_list)))
+			valid_ext = any(name.lower().endswith(a.lower()) for a in ext_list)
+			if not valid_ext:
+				MY_PRINT_FUNC("Err: given file does not have acceptable extension")
+				continue
+		else:
+			# if given an empty sequence, then do not check for valid extension. accept anything.
+			name = input(" {:s} path = ".format(label))
+		if not path.isfile(name):
+			MY_PRINT_FUNC("Err: given name is not a file, did you type it wrong?")
 			abspath = path.abspath(name)
 			# find the point where the filepath breaks! walk up folders 1 by 1 until i find the last place where the path was valid
 			c = abspath
@@ -372,8 +380,8 @@ def prompt_user_filename(extensions_in: str) -> str:
 			whereitbreaks = (" " * len(c)) + " ^^^^"
 			MY_PRINT_FUNC(abspath)
 			MY_PRINT_FUNC(whereitbreaks)
-		else:
-			break
+			continue
+		break
 	# it exists, so make it absolute
 	name = path.abspath(path.normpath(name))
 	# windows is case insensitive, so this doesn't matter, but to make it match the same case as the existing file:

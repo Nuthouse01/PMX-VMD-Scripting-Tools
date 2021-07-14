@@ -105,7 +105,7 @@ body_dict = {
 def main(moreinfo=True):
 	# copied codes
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
-	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
+	input_filename_pmx = core.MY_FILEPROMPT_FUNC("PMX file", ".pmx")
 	
 	# object
 	pmx_file_obj: pmxstruct.Pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)

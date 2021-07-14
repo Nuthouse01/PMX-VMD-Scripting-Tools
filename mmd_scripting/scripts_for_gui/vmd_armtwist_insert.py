@@ -114,7 +114,7 @@ def main(moreinfo=True):
 	
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
-	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
+	input_filename_pmx = core.MY_FILEPROMPT_FUNC("PMX file", ".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("")
 	# get bones
@@ -157,7 +157,7 @@ def main(moreinfo=True):
 	###################################################################################
 	# prompt VMD file name
 	core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
-	input_filename_vmd = core.MY_FILEPROMPT_FUNC(".vmd")
+	input_filename_vmd = core.MY_FILEPROMPT_FUNC("VMD file", ".vmd")
 	
 	# next, read/use/prune the dance vmd
 	nicelist_in = vmdlib.read_vmd(input_filename_vmd, moreinfo=moreinfo)

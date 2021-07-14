@@ -35,12 +35,12 @@ This requires both a PMX model and a VMD motion to run.
 def main(moreinfo=True):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
-	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
+	input_filename_pmx = core.MY_FILEPROMPT_FUNC("PMX file", ".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	# prompt VMD file name
 	core.MY_PRINT_FUNC("")
 	core.MY_PRINT_FUNC("Please enter name of VMD motion or VPD pose file to check compatability with:")
-	input_filename = core.MY_FILEPROMPT_FUNC(".vmd .vpd")
+	input_filename = core.MY_FILEPROMPT_FUNC("VMD or VPD file",(".vmd",".vpd"))
 	if not input_filename.lower().endswith(".vpd"):
 		# the actual VMD part isn't even used, only bonedict and morphdict
 		vmd = vmdlib.read_vmd(input_filename, moreinfo=moreinfo)

@@ -84,7 +84,7 @@ def main():
 	# promt vertex CSV name
 	# input: vertex CSV file with all the vertexes that I want to modify
 	print("Please enter name of vertex CSV input file:")
-	input_filename_vertex = core.prompt_user_filename(".csv")
+	input_filename_vertex = core.prompt_user_filename("CSV file", ".csv")
 	rawlist_vertex = core.read_file_to_csvlist(input_filename_vertex, use_jis_encoding=True)
 	
 	# verify that these are the correct kind of CSVs

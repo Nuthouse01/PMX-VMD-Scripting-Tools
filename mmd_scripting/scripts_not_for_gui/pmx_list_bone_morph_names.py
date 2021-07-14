@@ -22,7 +22,7 @@ Outputs: morph name list text file '[modelname]_morph_names.txt'
 def main(moreinfo=True):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
-	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
+	input_filename_pmx = core.MY_FILEPROMPT_FUNC("PMX file", ".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	realbones = pmx.bones		# get bones
 	realmorphs = pmx.morphs		# get morphs

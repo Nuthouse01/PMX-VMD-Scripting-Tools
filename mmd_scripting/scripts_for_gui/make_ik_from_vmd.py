@@ -437,19 +437,19 @@ def main(moreinfo=True):
 	# NEW USAGE TEMPLATE:
 	# 1. ask for dance that works as intended with model X
 	core.MY_PRINT_FUNC("Please specify the VMD dance input file:")
-	input_filename_vmd = core.MY_FILEPROMPT_FUNC(".vmd")
+	input_filename_vmd = core.MY_FILEPROMPT_FUNC("VMD file", ".vmd")
 	vmd = vmdlib.read_vmd(input_filename_vmd, moreinfo=moreinfo)
 
 	# 2. ask for model X
 	core.MY_PRINT_FUNC("")
 	core.MY_PRINT_FUNC("Please specify (X) the PMX model file that the VMD works correctly with:")
-	input_filename_pmx_source = core.MY_FILEPROMPT_FUNC(".pmx")
+	input_filename_pmx_source = core.MY_FILEPROMPT_FUNC("PMX file", ".pmx")
 	pmx_source = pmxlib.read_pmx(input_filename_pmx_source, moreinfo=moreinfo)
 
 	# 3. ask for model Y
 	core.MY_PRINT_FUNC("")
 	core.MY_PRINT_FUNC("Please specify (Y) the PMX model file that you want to create VMD IK frames for:")
-	input_filename_pmx_dest = core.MY_FILEPROMPT_FUNC(".pmx")
+	input_filename_pmx_dest = core.MY_FILEPROMPT_FUNC("PMX file", ".pmx")
 	if input_filename_pmx_dest == input_filename_pmx_source:
 		# if it's the same model, i can cheat!
 		pmx_dest = pmx_source

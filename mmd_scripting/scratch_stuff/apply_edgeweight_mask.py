@@ -9,9 +9,9 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.04 - 12/20/2020"
 
 
 def main():
-	pmxname = core.prompt_user_filename(".pmx")
+	pmxname = core.prompt_user_filename("PMX file", ".pmx")
 	pmxname_done = "edgeweightapplied.pmx"
-	maskname = core.prompt_user_filename(".png")
+	maskname = core.prompt_user_filename("PNG file", ".png")
 	
 	pmx1 = pmxlib.read_pmx(pmxname, moreinfo=True)
 	

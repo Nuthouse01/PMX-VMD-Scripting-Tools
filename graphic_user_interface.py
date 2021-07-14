@@ -5,6 +5,7 @@ import tkinter.filedialog as fdg
 import tkinter.font as tkfont
 import tkinter.scrolledtext as tkst
 from os import path, listdir
+from typing import Sequence, Union
 
 from mmd_scripting import __pkg_welcome__
 from mmd_scripting.core import nuthouse01_core as core
@@ -27,20 +28,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.01 - 7/12/2021"
 # when running from EXE, in noconsole mode, this does nothing at all.
 ALSO_PRINT_TO_CONSOLE = False
 
-
-# DO NOT TOUCH: mapping from MY_FILEPROMPT_FUNC filetype input to the info the gui filedialog needs
-FILE_EXTENSION_MAP = {
-	".vpd .vmd": ("VPD/VMD file", "*.vpd *.vmd *.vmd.bak"),
-	".vmd .vpd": ("VPD/VMD file", "*.vpd *.vmd *.vmd.bak"),
-	".vmd .txt": ("VMD/TXT file", "*.txt *.vmd *.vmd.bak"),
-	".txt .vmd": ("VMD/TXT file", "*.txt *.vmd *.vmd.bak"),
-	".vpd": ("VPD file", "*.vpd"),
-	".csv": ("CSV file", "*.csv"),
-	".txt": ("Text file", "*.txt"),
-	".pmx": ("PMX model", "*.pmx"),
-	".vmd": ("VMD file", "*.vmd *.vmd.bak"),
-	"*": tuple()
-}
 
 # SCRIPT_LIST is the list of all things I found to fill the GUI with
 # do I want to sort by usefulness? or do I want to group by categories? or maybe just alphabetical? idk
@@ -99,21 +86,27 @@ inputpopup_result = None
 
 
 
-def gui_fileprompt(extensions: str) -> str:
+def gui_fileprompt(label: str, ext_list: Union[str,Sequence[str]]) -> str:
 	"""
 	Use a Tkinter File Dialogue popup to prompt for a file. Same signature as core.prompt_user_filename().
 	
-	:param extensions: string of valid extensions, separated by spaces
+	:param label: {{short}} string label that identifies this kind of input, like "Text file" or "VMD file"
+	:param ext_list: list of acceptable extensions, or just one string
 	:return: case-correct absolute file path
 	"""
+	if isinstance(ext_list, str):
+		# if it comes in as a string, wrap it in a list
+		ext_list = [ext_list]
 	# replaces core func MY_FILEPROMPT_FUNC when running in GUI mode
 	
-	# make this list into a new, separate thing: list of identifiers + globs
-	if extensions in FILE_EXTENSION_MAP:
-		extensions_labels = FILE_EXTENSION_MAP[extensions]
+	# labelled extensions: tuple of string label plus string of acceptable extensions, space-separated, with * prepended
+	if ext_list:
+		ext_list_flattened = " ".join(["*"+a for a in ext_list])
 	else:
-		extensions_labels = ("Unknown type", extensions)
-	extensions_labels = (extensions_labels,)
+		# if given an empty list, then accept any extension! pretty sure this is the right syntax for that?
+		ext_list_flattened = "*"
+	labelled_extensions = (label, ext_list_flattened)
+	labelled_extensions = (labelled_extensions,)  # it just needs this, dont ask why
 	
 	# dont trust file dialog to remember last-opened path, manually save/read it
 	json_data = core.get_persistent_storage_json('last-input-path')
@@ -129,8 +122,8 @@ def gui_fileprompt(extensions: str) -> str:
 		start_here = c
 	
 	newpath = fdg.askopenfilename(initialdir=start_here,
-								  title="Select input file: {%s}" % extensions,
-								  filetypes=extensions_labels)
+								  title="Select input file: [%s]" % ", ".join(ext_list),
+								  filetypes=labelled_extensions)
 	
 	# if user closed the prompt before giving a file path, quit here
 	if newpath == "":

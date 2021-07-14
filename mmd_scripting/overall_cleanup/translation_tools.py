@@ -1031,7 +1031,7 @@ def local_translate(in_list: STR_OR_STRLIST) -> STR_OR_STRLIST:
 # import _translate_to_english
 #
 # def main():
-# 	input_filename_pmx = core.prompt_user_filename(".pmx")
+# 	input_filename_pmx = core.prompt_user_filename("PMX file", ".pmx")
 # 	pmx = pmxlib.read_pmx(input_filename_pmx)
 #
 # 	matnames = [x[0] for x in pmx[4]]

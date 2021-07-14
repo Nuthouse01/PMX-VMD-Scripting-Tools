@@ -82,7 +82,7 @@ def showprompt():
 	
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
-	input_filename_pmx = core.prompt_user_filename(".pmx")
+	input_filename_pmx = core.prompt_user_filename("PMX file", ".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=True)
 	return pmx, input_filename_pmx
 

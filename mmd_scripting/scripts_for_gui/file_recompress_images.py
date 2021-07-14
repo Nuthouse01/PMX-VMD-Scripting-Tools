@@ -71,7 +71,7 @@ def main(moreinfo=False):
 	core.MY_PRINT_FUNC("Using Pillow version '%s'" % Image.__version__)
 	
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
-	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
+	input_filename_pmx = core.MY_FILEPROMPT_FUNC("PMX file", ".pmx")
 	
 	# absolute path to directory holding the pmx
 	input_filename_pmx_abs = os.path.normpath(os.path.abspath(input_filename_pmx))

@@ -43,7 +43,7 @@ rotamt = (-28, -28, 28, 28,)
 ###################
 
 def main():
-	m = core.prompt_user_filename(".pmx")
+	m = core.prompt_user_filename("PMX file", ".pmx")
 	
 	pmx = pmxlib.read_pmx(m)
 	
