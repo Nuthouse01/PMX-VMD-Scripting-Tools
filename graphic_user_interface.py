@@ -9,7 +9,7 @@ from os import path, listdir
 from mmd_scripting import __pkg_welcome__
 from mmd_scripting.core import nuthouse01_core as core
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.01 - 7/12/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.01 - 7/12/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
