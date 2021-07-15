@@ -10,8 +10,6 @@ TODO: create one function in 'core' that does all the bottom-of-the-script stuff
 
 TODO: better incorporate traceback module with everything, remove the "debug" flag thing
 
-TODO: add last-used-directory for each kind of file prompt, based on filtered extensions
-
 TODO: simple flag in core that indicates 'running from gui' or not, wouldn't help with imports but might be useful
     in other contexts?
 
