@@ -98,9 +98,11 @@ def gui_fileprompt(label: str, ext_list: Union[str,Sequence[str]]) -> str:
 	if isinstance(ext_list, str):
 		# if it comes in as a string, wrap it in a list
 		ext_list = [ext_list]
+	elif isinstance(ext_list, tuple):
+		ext_list = list(ext_list)
 	# replaces core func MY_FILEPROMPT_FUNC when running in GUI mode
 	
-	# ensure the extensions are sorted (for consistency)
+	# ensure the extensions are sorted (for consistency in JSON keys)
 	ext_list.sort()
 	
 	# labelled extensions: tuple of string label plus string of acceptable extensions, space-separated, with * prepended
