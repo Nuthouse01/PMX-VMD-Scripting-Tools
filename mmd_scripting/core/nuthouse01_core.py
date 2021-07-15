@@ -482,7 +482,7 @@ def write_persistent_storage_json(key:str, newval:Any) -> None:
 		# write the newval into the dict under new key
 		data[key] = newval
 	# serialize the dict into a big string
-	str_data = json.dumps(data, ensure_ascii=False)
+	str_data = json.dumps(data, ensure_ascii=False, indent="\t")
 	# use standard write-func to write to text file
 	# 'content' is designed to be list of strings that don't contain newlines, but there's no problem if i violate that
 	write_list_to_txtfile(dest_path=persist_path,
