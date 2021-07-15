@@ -100,6 +100,9 @@ def gui_fileprompt(label: str, ext_list: Union[str,Sequence[str]]) -> str:
 		ext_list = [ext_list]
 	# replaces core func MY_FILEPROMPT_FUNC when running in GUI mode
 	
+	# ensure the extensions are sorted (for consistency)
+	ext_list.sort()
+	
 	# labelled extensions: tuple of string label plus string of acceptable extensions, space-separated, with * prepended
 	if ext_list:
 		ext_list_flattened = " ".join(["*"+a for a in ext_list])
@@ -110,7 +113,9 @@ def gui_fileprompt(label: str, ext_list: Union[str,Sequence[str]]) -> str:
 	labelled_extensions = (labelled_extensions,)  # it just needs this, dont ask why
 	
 	# dont trust file dialog to remember last-opened path, manually save/read it
-	json_data = core.get_persistent_storage_json('last-input-path')
+	# NEW: file dialog start path is stored independently for each file type!!
+	json_key = "last-input-path-" + ",".join(ext_list)
+	json_data = core.get_persistent_storage_json(json_key)
 	if json_data is None:
 		# if never used before, start wherever i am right now i guess
 		start_here = path.abspath(".")
@@ -132,7 +137,7 @@ def gui_fileprompt(label: str, ext_list: Union[str,Sequence[str]]) -> str:
 		raise RuntimeError()
 	
 	# they got an existing file! update the last_opened_dir file
-	core.write_persistent_storage_json('last-input-path', path.dirname(newpath))
+	core.write_persistent_storage_json(json_key, path.dirname(newpath))
 	
 	return newpath
 
