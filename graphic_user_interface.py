@@ -1,9 +1,12 @@
 import importlib
+import sys
+import inspect
 import threading
 import tkinter as tk
 import tkinter.filedialog as fdg
 import tkinter.font as tkfont
 import tkinter.scrolledtext as tkst
+import traceback
 from os import path, listdir
 from typing import Sequence, Union
 
@@ -33,43 +36,68 @@ ALSO_PRINT_TO_CONSOLE = False
 # do I want to sort by usefulness? or do I want to group by categories? or maybe just alphabetical? idk
 SCRIPT_LIST = []
 
-def populate_script_list():
-	# first, assert that the current directory is where i think it is
-	thisscriptname = path.split(__file__)[1]
-	assert thisscriptname in listdir(".")
-	# second, build a list of all files in "scripts_for_gui"
-	path_to_scripts = "mmd_scripting/scripts_for_gui/"
-	filenames = listdir(path_to_scripts)
+def module_to_dispname(mod) -> str:
+	s = path.basename(mod.__file__)
+	return s
+
+def populate_script_list(external_script_list: list, path_to_scripts: str):
+	# to make this work even when "graphic_use_interface" is invoked from some other directory,
+	# i'll get the absolute path of the GUI file & turn that into absolute path to the scripts!
+	path_to_gui = path.dirname(__file__)
+	# build a list of all files in "scripts_for_gui"
+	filenames = listdir(path.join(path_to_gui, path_to_scripts))
 	# remove anything that starts with underscore
 	filenames = [a for a in filenames if not a.startswith("_")]
+	# remove anything that doesnt end with .py
+	filenames = [a for a in filenames if a.endswith(".py")]
+	
 	# now i should have a list of all the scripts in the folder!
 	# then, iterate over the list and import each file
 	script_list = []
-	for filename in filenames:
-		mname = path_to_scripts + filename  # prepend the path to the scripts folder
-		mname = path.splitext(mname)[0]  # strip the .py
-		mname = mname.replace("/", ".")  # replace the folderseparator slashes with dots
+	for script_name in filenames:
+		module_name = path.join(path_to_scripts, script_name)  # prepend the path to the scripts folder
+		module_name = path.normpath(module_name)  # guarantee they use consistent path separator
+		module_name = path.splitext(module_name)[0]  # strip the .py
+		module_name = module_name.replace(path.sep, ".")  # replace the folderseparator slashes with dots
 		try:
-			module = importlib.import_module(mname)  # actual magical import
+			module = importlib.import_module(module_name)  # actual dynamic import
 		except Exception as e:
-			core.MY_PRINT_FUNC("ERROR: exception while importing script '%s'" % filename)
-			core.MY_PRINT_FUNC(e.__class__.__name__, e)
-			# todo possibly print full traceback?
+			# print an error and full traceback if this failed to parse!
+			exc_type, exc_value, exc_traceback = sys.exc_info()
+			printme_list = traceback.format_exception(e.__class__, e, exc_traceback)
+			# now i have the complete traceback info as a list of strings, each ending with newline
+			# but, I want to remove some of these layers to make things less confusing
+			# lets remove the the invisible internal layers that the importlib is using
+			printme_list = [p for p in printme_list if "_bootstrap" not in p]
+			core.MY_PRINT_FUNC("")
+			core.MY_PRINT_FUNC("".join(printme_list))
+			core.MY_PRINT_FUNC("ERROR1: exception while importing script '%s' from folder '%s'\n" % (script_name, path_to_scripts))
 			continue
-		# a valid script only needs main() and helptext
-		# todo: validate that "main" accepts exactly one boolean argument!
-		if hasattr(module, "main") and callable(module.main) and \
-				hasattr(module, "helptext") and isinstance(module.helptext, str):
-			# store the displayname with the module object
-			# do i want the module to have .py or not? hm....
-			# if i don't want it, then strip .py outside the loop
-			script_list.append((filename, module))
-		else:
-			core.MY_PRINT_FUNC("WARNING: '%s' is in the '%s' folder but is not a valid script" % (filename, path_to_scripts))
-	
-	# store this list into the global
-	global SCRIPT_LIST
-	SCRIPT_LIST = script_list
+		# OKAY! the file was parsed & imported without error, does it define the things I need?
+		
+		# validate that it has helptext
+		if not (hasattr(module, "helptext") and isinstance(module.helptext, str)):
+			core.MY_PRINT_FUNC("ERROR2: '%s' is in the '%s' folder but is not a valid script!" % (script_name, path_to_scripts))
+			core.MY_PRINT_FUNC("must contain string 'helptext'\n")
+			continue
+			
+		# validate that "main" accepts exactly one boolean argument!
+		if not (hasattr(module, "main") and callable(module.main) and len(inspect.signature(module.main).parameters) == 1):
+			core.MY_PRINT_FUNC("ERROR3: '%s' is in the '%s' folder but is not a valid script!" % (script_name, path_to_scripts))
+			core.MY_PRINT_FUNC("must contain function 'main(moreinfo=True)'\n")
+			continue
+		
+		# validate that there is nothing with the same name already in the list
+		if module_to_dispname(module) in [module_to_dispname(m) for m in script_list]:
+			core.MY_PRINT_FUNC("ERROR4: '%s' is in the '%s' folder but is not a valid script!" % (script_name, path_to_scripts))
+			core.MY_PRINT_FUNC("somehow, some other script with the same name has already been imported! duplicate names are not allowd.\n")
+			continue
+
+		# if all validation passes, then store the module object
+		script_list.append(module)
+	core.MY_PRINT_FUNC("Loaded %d scripts from folder '%s'" % (len(script_list), path_to_scripts))
+	# append this list into the global
+	external_script_list.extend(script_list)
 	return None
 	
 
@@ -276,23 +304,20 @@ class Application(tk.Frame):
 		lab.pack(side=tk.LEFT)
 
 		# underlying variable tied to the dropdown menu, needed to run self.change_mode when the selection changes
+		self.script_list = SCRIPT_LIST
+		self.displayed_names = [module_to_dispname(m) for m in self.script_list]
 		self.optionvar = tk.StringVar(master)
 		self.optionvar.trace("w", self.change_mode)
 		# set the default script, this should invoke "self.change_mode" at least once
 		lastused = core.get_persistent_storage_json('last-script')
-		if lastused is None:
-			# if entry doesn't exist, choose the top of the list
-			self.optionvar.set(SCRIPT_LIST[0][0])
+		if (lastused is not None) and (lastused in self.displayed_names):
+			# if the JSON contains a "lastused" value, and that value also matches one of the currently loaded scripts,
+			self.optionvar.set( lastused)
 		else:
-			# if entry does exist, look for it
-			idx = core.my_list_search(SCRIPT_LIST, lambda x: x[0] == lastused)
-			if idx is None:
-				# if not in the current list of scripts, choose the top of the list
-				self.optionvar.set(SCRIPT_LIST[0][0])
-			else:
-				self.optionvar.set(SCRIPT_LIST[idx][0])
+			# otherwise, just use the top of the list
+			self.optionvar.set( displayed_names[0])
 		# build the visible dropdown menu
-		self.which_script = tk.OptionMenu(self.which_script_frame, self.optionvar, *[x[0] for x in SCRIPT_LIST])
+		self.which_script = tk.OptionMenu(self.which_script_frame, self.optionvar, *self.displayed_names)
 		self.which_script.pack(side=tk.LEFT, padx=10)
 		
 		###############################################
@@ -440,15 +465,12 @@ class Application(tk.Frame):
 	def change_mode(self, *_):
 		# get the the currently displayed item in the dropdown menu
 		newstr = self.optionvar.get()
-		# find which index within SCRIPT_LIST it corresponds to
-		idx = core.my_list_search(SCRIPT_LIST, lambda x: x[0] == newstr)
+		# find which index within SCRIPT_LIST it corresponds to (guaranteed to succeed)
+		idx = self.displayed_names.index(newstr)
 		# set helptext and execute func
-		dispname, module = SCRIPT_LIST[idx]
-		self.loaded_script = module
+		self.loaded_script = self.script_list[idx]
 		
-		core.MY_PRINT_FUNC(">>>>>>>>>>")
-		core.MY_PRINT_FUNC("Load new script '%s'" % newstr)
-		core.MY_PRINT_FUNC("")
+		core.MY_PRINT_FUNC(">>>>>>>>>>\nLoad new script '%s'\n" % newstr)
 		return
 		
 	def clear_func(self):
@@ -486,6 +508,8 @@ def launch_gui(title):
 
 if __name__ == '__main__':
 	print(_SCRIPT_VERSION)
-	populate_script_list()
+	# path_to_scripts = "mmd_scripting/scripts_for_gui/"
+	populate_script_list(SCRIPT_LIST, "mmd_scripting/scripts_for_gui/")
+	SCRIPT_LIST.sort(key=module_to_dispname)
 	launch_gui("Nuthouse01 MMD PMX VMD tools")
 
