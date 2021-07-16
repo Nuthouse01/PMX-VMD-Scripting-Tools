@@ -40,12 +40,18 @@ def module_to_dispname(mod) -> str:
 	s = path.basename(mod.__file__)
 	return s
 
-def populate_script_list(external_script_list: list, path_to_scripts: str):
+def get_scripts_from_folder(path_to_scripts: str) -> list:
+	# TODO: doing dynamic imports like this will not work when the package is bundled with pyinstaller! not sure how to fix...
+	# https://stackoverflow.com/questions/46399311/pyinstaller-adding-dynamically-loaded-modules
 	# to make this work even when "graphic_use_interface" is invoked from some other directory,
 	# i'll get the absolute path of the GUI file & turn that into absolute path to the scripts!
 	path_to_gui = path.dirname(__file__)
 	# build a list of all files in "scripts_for_gui"
-	filenames = listdir(path.join(path_to_gui, path_to_scripts))
+	absdir = path.join(path_to_gui, path_to_scripts)
+	if not path.isdir(absdir):
+		core.MY_PRINT_FUNC("ERROR: tried to import scripts from '%s' but it does not exist!" % path_to_scripts)
+		return []
+	filenames = listdir(absdir)
 	# remove anything that starts with underscore
 	filenames = [a for a in filenames if not a.startswith("_")]
 	# remove anything that doesnt end with .py
@@ -96,9 +102,7 @@ def populate_script_list(external_script_list: list, path_to_scripts: str):
 		# if all validation passes, then store the module object
 		script_list.append(module)
 	core.MY_PRINT_FUNC("Loaded %d scripts from folder '%s'" % (len(script_list), path_to_scripts))
-	# append this list into the global
-	external_script_list.extend(script_list)
-	return None
+	return script_list
 	
 
 # DO NOT TOUCH: global vars for passing info between GUI input popup and the thread the script lives in
@@ -298,27 +302,20 @@ class Application(tk.Frame):
 		###############################################
 		# second, build the dropdown menu
 		# frame that holds the dropdown + the label
-		self.which_script_frame = tk.Frame(master)
-		self.which_script_frame.pack(side=tk.TOP, padx=10, pady=5)
-		lab = tk.Label(self.which_script_frame, text="Active script:")
+		self.script_select_frame = tk.Frame(master)
+		self.script_select_frame.pack(side=tk.TOP, padx=10, pady=5)
+		lab = tk.Label(self.script_select_frame, text="Active script:")
 		lab.pack(side=tk.LEFT)
 
+		self.script_list_dispnames = []
+		self.script_list_modules = []
+		
 		# underlying variable tied to the dropdown menu, needed to run self.change_mode when the selection changes
-		self.script_list = SCRIPT_LIST
-		self.displayed_names = [module_to_dispname(m) for m in self.script_list]
-		self.optionvar = tk.StringVar(master)
-		self.optionvar.trace("w", self.change_mode)
-		# set the default script, this should invoke "self.change_mode" at least once
-		lastused = core.get_persistent_storage_json('last-script')
-		if (lastused is not None) and (lastused in self.displayed_names):
-			# if the JSON contains a "lastused" value, and that value also matches one of the currently loaded scripts,
-			self.optionvar.set( lastused)
-		else:
-			# otherwise, just use the top of the list
-			self.optionvar.set( displayed_names[0])
-		# build the visible dropdown menu
-		self.which_script = tk.OptionMenu(self.which_script_frame, self.optionvar, *self.displayed_names)
-		self.which_script.pack(side=tk.LEFT, padx=10)
+		self.script_select_optionvar = tk.StringVar(master)
+		self.script_select_optionvar.trace("w", self.change_mode)
+		# build the visible dropdown menu, containing only placeholder list
+		self.script_select_optionmenu = tk.OptionMenu(self.script_select_frame, self.script_select_optionvar, "foobar")
+		self.script_select_optionmenu.pack(side=tk.LEFT, padx=10)
 		
 		###############################################
 		# third, build the GUI control buttons
@@ -379,8 +376,8 @@ class Application(tk.Frame):
 		print_header()
 		# start the popup loop
 		self.spin_to_handle_inputs()
-		# load the initial script to populate payload & helptext
-		self.change_mode()
+		# read all modules from the "scripts_for_gui" folder & populate the optionmenu
+		self.rebuild_script_list()
 		
 		# done with init
 		return
@@ -430,18 +427,49 @@ class Application(tk.Frame):
 		thread = threading.Thread(name="do-the-thing", target=self.run_the_script, daemon=True)
 		# start the thread
 		thread.start()
+		
+	def rebuild_script_list(self):
+		# first, wipe away what I already have
+		self.script_list_dispnames = []
+		self.script_list_modules = []
+		self.script_select_optionmenu.destroy()
+		
+		# then, re-read from the desired folder(s)
+		self.script_list_modules.extend(get_scripts_from_folder("mmd_scripting/scripts_for_gui/"))
+		# self.script_list_modules.extend(get_scripts_from_folder("mmd_scripting/wip/"))
+		# self.script_list_modules.extend(get_scripts_from_folder("mmd_scripting/scripts_not_for_gui/"))
+		
+		if len(self.script_list_modules) == 0:
+			return
+		
+		# then, sort them! by name or by last used, idk, doesn't really matter
+		self.script_list_modules.sort(key=module_to_dispname)
+		# then rebuild displayed_names
+		self.script_list_dispnames = [module_to_dispname(m) for m in self.script_list_modules]
+		
+		# set the default script, this should invoke "self.change_mode" at least once
+		lastused = core.get_persistent_storage_json('last-script')
+		if (lastused is not None) and (lastused in self.script_list_dispnames):
+			# if the JSON contains a "lastused" value, and that value also matches one of the currently loaded scripts,
+			self.script_select_optionvar.set(lastused)
+		else:
+			# otherwise, just use the top of the list
+			self.script_select_optionvar.set(self.script_list_dispnames[0])
+		# build the visible dropdown menu
+		self.script_select_optionmenu = tk.OptionMenu(self.script_select_frame, self.script_select_optionvar,
+													  *self.script_list_dispnames)
+		self.script_select_optionmenu.pack(side=tk.LEFT, padx=10)
+		return
 	
 	def run_the_script(self):
-		script_name = str(self.optionvar.get())
+		script_name = str(self.script_select_optionvar.get())
 		core.MY_PRINT_FUNC("="*50)
 		core.MY_PRINT_FUNC(script_name)
-		# set the 'last used script' item in the json
-		core.write_persistent_storage_json('last-script', script_name)
 		
 		# disable all gui elements for the duration of this function
 		# run_butt, spinbox, clear, help, debug
 		self.run_butt.configure(state='disabled')
-		self.which_script.configure(state='disabled')
+		self.script_select_optionmenu.configure(state='disabled')
 		self.clear_butt.configure(state='disabled')
 		self.help_butt.configure(state='disabled')
 		self.debug_check.configure(state='disabled')
@@ -456,7 +484,7 @@ class Application(tk.Frame):
 		
 		# re-enable GUI elements when finished running
 		self.run_butt.configure(state='normal')
-		self.which_script.configure(state='normal')
+		self.script_select_optionmenu.configure(state='normal')
 		self.clear_butt.configure(state='normal')
 		self.help_butt.configure(state='normal')
 		self.debug_check.configure(state='normal')
@@ -464,12 +492,14 @@ class Application(tk.Frame):
 	
 	def change_mode(self, *_):
 		# get the the currently displayed item in the dropdown menu
-		newstr = self.optionvar.get()
+		newstr = self.script_select_optionvar.get()
 		# find which index within SCRIPT_LIST it corresponds to (guaranteed to succeed)
-		idx = self.displayed_names.index(newstr)
+		idx = self.script_list_dispnames.index(newstr)
 		# set helptext and execute func
-		self.loaded_script = self.script_list[idx]
-		
+		self.loaded_script = self.script_list_modules[idx]
+		# set the 'last used script' item in the json
+		core.write_persistent_storage_json('last-script', newstr)
+
 		core.MY_PRINT_FUNC(">>>>>>>>>>\nLoad new script '%s'\n" % newstr)
 		return
 		
@@ -509,7 +539,5 @@ def launch_gui(title):
 if __name__ == '__main__':
 	print(_SCRIPT_VERSION)
 	# path_to_scripts = "mmd_scripting/scripts_for_gui/"
-	populate_script_list(SCRIPT_LIST, "mmd_scripting/scripts_for_gui/")
-	SCRIPT_LIST.sort(key=module_to_dispname)
 	launch_gui("Nuthouse01 MMD PMX VMD tools")
 
