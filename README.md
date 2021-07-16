@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README  
-Created by Nuthouse01 - v1.07.00 - 7/13/2021
+Created by Nuthouse01 - v1.07.01 - 7/13/2021
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!  
 If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)  
@@ -250,6 +250,13 @@ The following files should be included with this README:
   <summary>Click to expand!</summary>
 
 ```
+v1.07.01:
+NEW: minor improvements in the GUI!
+    GUI will automatically find/load all scripts within "scripts_for_gui" folder
+    GUI will select the "last used script" when launched
+    file input dialogue remembers different locations for each filetype
+add "_SCRIPT_TEMPLATE"
+
 v1.07.00:
 overhaul the structure and imports to make it more like a proper package
 bugfix in the new "bone_set_arm_localaxis" script
