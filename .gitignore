@@ -1,5 +1,7 @@
 __pycache__
 build
-*.spec
+dist
 handy_tools_DONOTSHARE
 mmd_scripting.egg-info
+
+*.spec
