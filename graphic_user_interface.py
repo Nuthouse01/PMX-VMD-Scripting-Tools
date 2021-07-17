@@ -1,6 +1,6 @@
 import importlib
-import sys
 import inspect
+import sys
 import threading
 import tkinter as tk
 import tkinter.filedialog as fdg
@@ -12,6 +12,34 @@ from typing import Sequence, Union
 
 from mmd_scripting import __pkg_welcome__
 from mmd_scripting.core import nuthouse01_core as core
+from mmd_scripting.scripts_for_gui import bone_make_semistandard_auto_armtwist, bone_set_arm_localaxis, \
+	bone_armik_addremove, bone_endpoint_addremove, bone_add_sdef_autotwist_handtwist_adapter, check_model_compatibility, \
+	convert_vmd_to_txt, convert_vpd_to_vmd, file_sort_textures, file_translate_filenames, file_recompress_images, \
+	make_ik_from_vmd, model_overall_cleanup, model_scale, model_shift, morph_scale, morph_hide, morph_invert, \
+	translate_source_bone, vmd_armtwist_insert, vmd_rename_bones_morphs
+
+SCRIPTS_WHEN_FROZEN = [
+	bone_make_semistandard_auto_armtwist,
+	bone_set_arm_localaxis,
+	bone_armik_addremove,
+	bone_endpoint_addremove,
+	bone_add_sdef_autotwist_handtwist_adapter,
+	check_model_compatibility,
+	convert_vmd_to_txt,
+	convert_vpd_to_vmd,
+	file_sort_textures,
+	file_translate_filenames,
+	file_recompress_images,
+	make_ik_from_vmd,
+	model_overall_cleanup,
+	model_scale,
+	model_shift,
+	morph_scale,
+	morph_hide,
+	morph_invert,
+	translate_source_bone,
+	vmd_armtwist_insert,
+	vmd_rename_bones_morphs]
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.01 - 7/12/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -32,41 +60,42 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.01 - 7/12/2021"
 ALSO_PRINT_TO_CONSOLE = False
 
 
-# SCRIPT_LIST is the list of all things I found to fill the GUI with
-# do I want to sort by usefulness? or do I want to group by categories? or maybe just alphabetical? idk
-SCRIPT_LIST = []
-
 def module_to_dispname(mod) -> str:
-	s = path.basename(mod.__file__)
+	s = path.splitext(path.basename(mod.__file__))[0]
 	return s
 
-def get_scripts_from_folder(path_to_scripts: str) -> list:
-	# TODO: doing dynamic imports like this will not work when the package is bundled with pyinstaller! not sure how to fix...
-	# https://stackoverflow.com/questions/46399311/pyinstaller-adding-dynamically-loaded-modules
+def get_scripts_from_folder(path_to_scripts: str, existing_scripts: list):
+	"""
+	Look thru all the scripts in a specified folder, import them, validate them, and append them onto the
+	'existing_scripts' list.
+	:param path_to_scripts: string path from 'graphic_user_interface.py' to the desired folder
+	:param existing_scripts: list to be filled
+	"""
 	# to make this work even when "graphic_use_interface" is invoked from some other directory,
 	# i'll get the absolute path of the GUI file & turn that into absolute path to the scripts!
-	path_to_gui = path.dirname(__file__)
+	path_to_here = path.dirname(__file__)
 	# build a list of all files in "scripts_for_gui"
-	absdir = path.join(path_to_gui, path_to_scripts)
+	absdir = path.join(path_to_here, path_to_scripts)
 	if not path.isdir(absdir):
 		core.MY_PRINT_FUNC("ERROR: tried to import scripts from '%s' but it does not exist!" % path_to_scripts)
 		return []
-	filenames = listdir(absdir)
+	filenames_in_scriptdir = listdir(absdir)
 	# remove anything that starts with underscore
-	filenames = [a for a in filenames if not a.startswith("_")]
+	filenames_in_scriptdir = [a for a in filenames_in_scriptdir if not a.startswith("_")]
 	# remove anything that doesnt end with .py
-	filenames = [a for a in filenames if a.endswith(".py")]
+	filenames_in_scriptdir = [a for a in filenames_in_scriptdir if a.endswith(".py")]
 	
 	# now i should have a list of all the scripts in the folder!
 	# then, iterate over the list and import each file
 	script_list = []
-	for script_name in filenames:
+	for script_name in filenames_in_scriptdir:
 		module_name = path.join(path_to_scripts, script_name)  # prepend the path to the scripts folder
 		module_name = path.normpath(module_name)  # guarantee they use consistent path separator
 		module_name = path.splitext(module_name)[0]  # strip the .py
 		module_name = module_name.replace(path.sep, ".")  # replace the folderseparator slashes with dots
 		try:
 			module = importlib.import_module(module_name)  # actual dynamic import
+			script_list.append(module)
 		except Exception as e:
 			# print an error and full traceback if this failed to parse!
 			exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -79,30 +108,33 @@ def get_scripts_from_folder(path_to_scripts: str) -> list:
 			core.MY_PRINT_FUNC("".join(printme_list))
 			core.MY_PRINT_FUNC("ERROR1: exception while importing script '%s' from folder '%s'\n" % (script_name, path_to_scripts))
 			continue
-		# OKAY! the file was parsed & imported without error, does it define the things I need?
-		
+	# now, iterate over all the laoded modules and validate that they define the things I need.
+	successes = 0
+	for module in script_list:
 		# validate that it has helptext
 		if not (hasattr(module, "helptext") and isinstance(module.helptext, str)):
-			core.MY_PRINT_FUNC("ERROR2: '%s' is in the '%s' folder but is not a valid script!" % (script_name, path_to_scripts))
+			core.MY_PRINT_FUNC("ERROR2: '%s' is in the '%s' folder but is not a valid script!" % (module_to_dispname(module), path_to_scripts))
 			core.MY_PRINT_FUNC("must contain string 'helptext'\n")
 			continue
 			
 		# validate that "main" accepts exactly one boolean argument!
 		if not (hasattr(module, "main") and callable(module.main) and len(inspect.signature(module.main).parameters) == 1):
-			core.MY_PRINT_FUNC("ERROR3: '%s' is in the '%s' folder but is not a valid script!" % (script_name, path_to_scripts))
+			core.MY_PRINT_FUNC("ERROR3: '%s' is in the '%s' folder but is not a valid script!" % (module_to_dispname(module), path_to_scripts))
 			core.MY_PRINT_FUNC("must contain function 'main(moreinfo=True)'\n")
 			continue
 		
 		# validate that there is nothing with the same name already in the list
-		if module_to_dispname(module) in [module_to_dispname(m) for m in script_list]:
-			core.MY_PRINT_FUNC("ERROR4: '%s' is in the '%s' folder but is not a valid script!" % (script_name, path_to_scripts))
+		if module_to_dispname(module) in [module_to_dispname(m) for m in existing_scripts]:
+			core.MY_PRINT_FUNC("ERROR4: '%s' is in the '%s' folder but is not a valid script!" % (module_to_dispname(module), path_to_scripts))
 			core.MY_PRINT_FUNC("somehow, some other script with the same name has already been imported! duplicate names are not allowd.\n")
 			continue
 
 		# if all validation passes, then store the module object
-		script_list.append(module)
-	core.MY_PRINT_FUNC("Loaded %d scripts from folder '%s'" % (len(script_list), path_to_scripts))
-	return script_list
+		existing_scripts.append(module)
+		successes += 1
+		
+	core.MY_PRINT_FUNC("Loaded %d scripts from folder '%s'" % (successes, path_to_scripts))
+	return None
 	
 
 # DO NOT TOUCH: global vars for passing info between GUI input popup and the thread the script lives in
@@ -435,9 +467,12 @@ class Application(tk.Frame):
 		self.script_select_optionmenu.destroy()
 		
 		# then, re-read from the desired folder(s)
-		self.script_list_modules.extend(get_scripts_from_folder("mmd_scripting/scripts_for_gui/"))
-		# self.script_list_modules.extend(get_scripts_from_folder("mmd_scripting/wip/"))
-		# self.script_list_modules.extend(get_scripts_from_folder("mmd_scripting/scripts_not_for_gui/"))
+		if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+			self.script_list_modules = SCRIPTS_WHEN_FROZEN
+		else:
+			get_scripts_from_folder("mmd_scripting/scripts_for_gui/", self.script_list_modules)
+			# get_scripts_from_folder("mmd_scripting/scripts_not_for_gui/", self.script_list_modules)
+			# get_scripts_from_folder("mmd_scripting/wip/", self.script_list_modules)
 		
 		if len(self.script_list_modules) == 0:
 			return
