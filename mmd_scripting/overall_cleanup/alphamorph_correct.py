@@ -14,27 +14,25 @@ DEBUG = False
 # just take a wild guess what this field controls
 PRINT_AFFECTED_MORPHS = False
 
-# TODO: reconsider whether zeroing out tex/toon/alpha is really necessary/helpful/correct... YYB doesn't do it
+# i know that zeroing out tex/toon/sph alpha IS correct because the "alphamorph" PMXE plugin does it that way!
 # opacity, edge size, edge alpha, tex, toon, sph
-# template =          [0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0]
 template = pmxstruct.PmxMorphItemMaterial(
-	mat_idx=999, is_add=0, diffRGB=[1,1,1], specRGB=[1,1,1],ambRGB=[1,1,1], specpower=1, edgeRGB=[1,1,1], 
+	mat_idx=999, is_add=False, diffRGB=[1,1,1], specRGB=[1,1,1],ambRGB=[1,1,1], specpower=1, edgeRGB=[1,1,1],
 	alpha=0, edgealpha=0, edgesize=0, texRGBA=[1,1,1,0], sphRGBA=[1,1,1,0], toonRGBA=[1,1,1,0]
 )
 # the above template multiplies everything by 0, 
 # this gets the same result by subtracting 1 from everthing
-# template_minusone = [1, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1, 0, 0, 0, -1, 0, 0, 0, -1, 0, 0, 0, -1]
 template_minusone = pmxstruct.PmxMorphItemMaterial(
-	mat_idx=999, is_add=1, diffRGB=[0,0,0], specRGB=[0,0,0],ambRGB=[0,0,0], specpower=0, edgeRGB=[0,0,0],
+	mat_idx=999, is_add=True, diffRGB=[0,0,0], specRGB=[0,0,0],ambRGB=[0,0,0], specpower=0, edgeRGB=[0,0,0],
 	alpha=-1, edgealpha=-1, edgesize=-1, texRGBA=[0,0,0,-1], sphRGBA=[0,0,0,-1], toonRGBA=[0,0,0,-1]
 )
 
 
 helptext = '''====================
 alphamorph_correct:
-This function fixes improper "material hide" morphs in a model.
-Many models simply set the opacity to 0, but forget to zero out the edging effects or other needed fields.
-This also changes all alphamorphs to use the "multiply by 0" approach when the target material is opaque(visible) by default, and use the "add -1" approach when the target is transparent(hidden) by default.
+This function fixes improper "material hide" morphs in a model. Many models simply set the opacity to 0, but forget to zero out the edging effects or other needed fields.
+To standardize "hide" morphs: when the target material is initially opaque(visible) this will change alphamorphs to use the "multiply by 0" approach; when the target is initially transparent(hidden) they will use the "add -1" approach.
+To standardize "appear" morphs: when the target is initially transparent(hidden) its edge alpha will be set to 0, and the "appear" morph will add back the correct edge alpha amount.
 '''
 
 iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_alphamorph.pmx"
@@ -96,6 +94,9 @@ def alphamorph_correct(pmx: pmxstruct.Pmx, moreinfo=False):
 
 
 	# identify materials that start transparent but still have edging
+	# only transfer the EDGE ALPHA, not edge size... in some cases turning on mutiple instances of the "appear" morph
+	# would cause edge size to grow bigger than planned, this is undesireable. this can also happen if the desired
+	# edge alpha is <1.0 so there are still failure conditions but not transferring the edge size makes some cases better.
 	mats_fixed = 0
 	for d,mat in enumerate(pmx.materials):
 		# if opacity is zero AND edge is enabled AND edge has nonzero opacity AND edge has nonzero size
@@ -113,16 +114,16 @@ def alphamorph_correct(pmx: pmxstruct.Pmx, moreinfo=False):
 					# if not operating on the right material, skip it
 					if matitem.mat_idx != d: continue
 					# if adding and opacity > 0:
-					if matitem.is_add == 1 and matitem.alpha > 0:
+					if matitem.is_add and matitem.alpha > 0:
 						# set it to add the edge amounts from the material
 						matitem.edgealpha = mat.edgealpha
-						matitem.edgesize =  mat.edgesize
+						# matitem.edgesize =  mat.edgesize
 						this_num_edgefixed += 1
 			# done looping over morphs
-			# if it modified any locations, zero out the edge params in the material
+			# if it modified any locations, zero out the edge alpha in the material
 			if this_num_edgefixed != 0:
 				mat.edgealpha = 0
-				mat.edgesize = 0
+				# mat.edgesize = 0
 				num_fixed += this_num_edgefixed
 				mats_fixed += 1
 				if moreinfo:
