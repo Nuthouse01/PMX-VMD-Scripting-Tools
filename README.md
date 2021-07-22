@@ -251,8 +251,9 @@ The following files should be included with this README:
 
 ```
 v1.07.01:
+"morph invert" script now supports material morphs & group morphs
 NEW: minor improvements in the GUI!
-    GUI will automatically find/load all scripts within "scripts_for_gui" folder
+    GUI will automatically find/load all scripts within "scripts_for_gui" folder, so if you write your own & stick it in there it will just work
     GUI will select the "last used script" when launched
     file input dialogue remembers different locations for each filetype
 add "_SCRIPT_TEMPLATE"

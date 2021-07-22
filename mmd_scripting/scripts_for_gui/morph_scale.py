@@ -3,7 +3,7 @@ from mmd_scripting.core import nuthouse01_core as core
 from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
 from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.01 - 7/21/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -21,7 +21,7 @@ morph_scale:
 Scale the magnitude of a morph by a given value. The result is appended as a new, separate morph.
 Example: increase the strength of a vertex morph by 2.5x, or reduce its strength to 0.7x what it was.
 For bone morphs, you can scale the rotation component separately from the motion (translation) component.
-This script will work for vertex morph, UV morph, or bone morph, and does only 1 morph at a time.
+This script will work for VERTEX, BONE, UV, or MATERIAL morph, and does only 1 morph at a time.
 
 Output: PMX file '[modelname]_[morph#]scal.pmx'
 '''
@@ -52,53 +52,64 @@ def get_idx_in_pmxsublist(s: str, pmxlist: List):
 
 
 
-def morph_scale(morph: pmxstruct.PmxMorph, scale: Union[List[float], float], bone_mode=0) -> bool:
-	# note: this function allows for X/Y/Z dimensions to be scaled by different values, but the interface still only allows
-	# scaling all 3 by the same value.
-	# bone_mode: 1 = motion(translation), 2 = rotation, 3 = both
-	# return false if it somehow has an invalid morph type, return true otherwise
+def morph_scale(morph: pmxstruct.PmxMorph, scale: Union[List[float], float], bone_mode=0) -> pmxstruct.PmxMorph:
+	"""
+	Supports BONE, VERTEX, UV, MATERIAL. That's it. Input "scale" can be a single float or list of up to 4.
+	Return a new morph object.
+	:param morph: morph to scale
+	:param scale: numeric amount to scale by, positive or negative, can be 0
+	:param bone_mode: what to scale if the morph is bone-type. 1 = motion(translation), 2 = rotation, 3 = both.
+	:return: new morph after scaling
+	"""
 	
 	# independent x/y/z scale for bone & vertex morphs
 	# UV and UV# morphs have independent x/y/z/w
 	# material morphs only use one value
 	
+	newmorph = morph.copy()
+	morphtype = newmorph.morphtype
+	
 	# accept scale as either int/float or list of 3 int/float
-	if isinstance(scale,int) or isinstance(scale,float):
+	if isinstance(scale,(int,float)):
 		scale = [scale] * 4
 	if len(scale) < 4:
 		scale.extend([1] * (4 - len(scale)))
 
-	if morph.morphtype == pmxstruct.MorphType.BONE:  # bone
+	if morphtype == pmxstruct.MorphType.BONE:  # bone
 		# bone_mode: 1 = motion(translation), 2 = rotation, 3 = both
 		if bone_mode in (2,3):  # if ==2 or ==3, then do rotation
-			for d, item in enumerate(morph.items):
+			for d, item in enumerate(newmorph.items):
 				item: pmxstruct.PmxMorphItemBone  # type annotation for pycharm
 				# i guess scaling in euclid-space is good enough? assuming all resulting components are <180
 				# most bone morphs only rotate around one axis anyways
 				item.rot = [x * s for x,s in zip(item.rot, scale)]
+				
 		if bone_mode in (1,3):  # if ==1 or ==3, then do translation
-			for d, item in enumerate(morph.items):
+			for d, item in enumerate(newmorph.items):
 				item: pmxstruct.PmxMorphItemBone  # type annotation for pycharm
 				# scale the morph XYZ
 				item.move = [x * s for x,s in zip(item.move, scale)]
-	elif morph.morphtype == pmxstruct.MorphType.VERTEX:  # vertex
+				
+	elif morphtype == pmxstruct.MorphType.VERTEX:  # vertex
 		# for each item in this morph:
-		for d, item in enumerate(morph.items):
+		for d, item in enumerate(newmorph.items):
 			item: pmxstruct.PmxMorphItemVertex  # type annotation for pycharm
 			# scale the morph XYZ
 			item.move = [x * s for x, s in zip(item.move, scale)]
-	elif morph.morphtype in (pmxstruct.MorphType.UV,
-							 pmxstruct.MorphType.UV_EXT1,
-							 pmxstruct.MorphType.UV_EXT2,
-							 pmxstruct.MorphType.UV_EXT3,
-							 pmxstruct.MorphType.UV_EXT4):  # UV  UV1 UV2 UV3 UV4
-		for d, item in enumerate(morph.items):
+			
+	elif morphtype in (pmxstruct.MorphType.UV,
+								pmxstruct.MorphType.UV_EXT1,
+								pmxstruct.MorphType.UV_EXT2,
+								pmxstruct.MorphType.UV_EXT3,
+								pmxstruct.MorphType.UV_EXT4):  # UV  UV1 UV2 UV3 UV4
+		for d, item in enumerate(newmorph.items):
 			item: pmxstruct.PmxMorphItemUV  # type annotation for pycharm
 			# scale the morph UV
 			item.move = [x * s for x, s in zip(item.move, scale)]
-	elif morph.morphtype == pmxstruct.MorphType.MATERIAL:  # material
-		core.MY_PRINT_FUNC("material morph is WIP")
-		for d, item in enumerate(morph.items):
+			
+	elif morphtype == pmxstruct.MorphType.MATERIAL:  # material
+		# core.MY_PRINT_FUNC("material morph is WIP")
+		for d, item in enumerate(newmorph.items):
 			item: pmxstruct.PmxMorphItemMaterial  # type annotation for pycharm
 			if item.is_add:
 				# to scale additive morphs, just scale like normal
@@ -127,9 +138,8 @@ def morph_scale(morph: pmxstruct.PmxMorph, scale: Union[List[float], float], bon
 				item.toonRGBA = [((d - 1) * scale[0]) + 1 for d in item.toonRGBA]
 				item.sphRGBA =  [((d - 1) * scale[0]) + 1 for d in item.sphRGBA]
 	else:
-		core.MY_PRINT_FUNC("Unhandled morph type")
-		return False
-	return True
+		core.MY_PRINT_FUNC("Unhandled morph type: %s" % str(morphtype))
+	return newmorph
 
 
 
@@ -178,26 +188,20 @@ def main(moreinfo=True):
 		return None
 	factor = float(factor_str)
 	
-	# important values: target_index, factor, morphtype, bone_mode
-	# first create the new morph that is a copy of current
+	# important values: target_index, factor, bone_mode
+	##### do the actual scale!! deepcopy and return a new object.
+	newmorph = morph_scale(pmx.morphs[target_index], factor, bone_mode)
+	
 	if SCALE_MORPH_IN_PLACE:
-		newmorph = pmx.morphs[target_index]
+		# if scaling in place, then override the old one.
+		pmx.morphs[target_index] = newmorph
 	else:
-		newmorph = pmx.morphs[target_index].copy()
-		# then modify the names
+		# otherwise, modify the name & append
 		name_suffix = "*" + (str(factor)[0:6])
 		newmorph.name_jp += name_suffix
 		newmorph.name_en += name_suffix
-	# now scale the actual values
-	
-	r = morph_scale(newmorph, factor, bone_mode)
-	
-	if not r:
-		core.MY_PRINT_FUNC("quitting")
-		return None
+		pmx.morphs.append(newmorph)
 		
-	pmx.morphs.append(newmorph)
-	
 	# write out
 	output_filename_pmx = input_filename_pmx[0:-4] + ("_%dscal.pmx" % target_index)
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
