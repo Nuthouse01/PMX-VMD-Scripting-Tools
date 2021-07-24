@@ -7,7 +7,7 @@ import sys
 from os import path, listdir, getenv, makedirs
 from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar, Union
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.01 - 7/14/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.01 - 7/23/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 

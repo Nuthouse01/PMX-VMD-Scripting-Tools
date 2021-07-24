@@ -41,7 +41,7 @@ SCRIPTS_WHEN_FROZEN = [
 	vmd_armtwist_insert,
 	vmd_rename_bones_morphs]
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.01 - 7/12/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.01 - 7/23/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
