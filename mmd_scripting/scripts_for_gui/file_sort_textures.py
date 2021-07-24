@@ -435,7 +435,7 @@ Note: unlike my other scripts, this overwrites the original input PMX file(s) in
 
 def main(moreinfo=False):
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
-	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
+	input_filename_pmx = core.MY_FILEPROMPT_FUNC("PMX file", ".pmx")
 	
 	# texture sorting plan:
 	# 1. get startpath = basepath of input PMX

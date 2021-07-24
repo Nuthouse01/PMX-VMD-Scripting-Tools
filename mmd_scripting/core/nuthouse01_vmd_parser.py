@@ -705,7 +705,7 @@ def main():
 	core.MY_PRINT_FUNC("Specify a VMD file to attempt parsing")
 	core.MY_PRINT_FUNC("Because MikuMikuDance pads with garbage, but I pad with zeros, the binary file I write back will not be exactly bitwise identical")
 	core.MY_PRINT_FUNC("But I can read the version I wrote and verify that the internal representation matches")
-	input_filename = core.prompt_user_filename(".vmd")
+	input_filename = core.prompt_user_filename("VMD file", ".vmd")
 	# input_filename = "vmdtest.vmd"
 	Z= read_vmd(input_filename)
 	write_vmd("____vmdparser_selftest_DELETEME.vmd", Z)

@@ -1,19 +1,47 @@
+import importlib
+import inspect
+import sys
 import threading
 import tkinter as tk
 import tkinter.filedialog as fdg
 import tkinter.font as tkfont
 import tkinter.scrolledtext as tkst
-from os import path
+import traceback
+from os import path, listdir
+from typing import Sequence, Union
 
 from mmd_scripting import __pkg_welcome__
-from mmd_scripting.scripts_for_gui import model_scale, file_translate_filenames, bone_armik_addremove, convert_vmd_to_txt, \
-	bone_endpoint_addremove, morph_scale, morph_invert, vmd_rename_bones_morphs, make_ik_from_vmd, \
-	model_overall_cleanup, file_sort_textures, check_model_compatibility, morph_hide, translate_source_bone, \
-	bone_add_sdef_autotwist_handtwist_adapter, model_shift, bone_make_semistandard_auto_armtwist, vmd_armtwist_insert, \
-	bone_set_arm_localaxis, file_recompress_images, convert_vpd_to_vmd
 from mmd_scripting.core import nuthouse01_core as core
+from mmd_scripting.scripts_for_gui import bone_make_semistandard_auto_armtwist, bone_set_arm_localaxis, \
+	bone_armik_addremove, bone_endpoint_addremove, bone_add_sdef_autotwist_handtwist_adapter, check_model_compatibility, \
+	convert_vmd_to_txt, convert_vpd_to_vmd, file_sort_textures, file_translate_filenames, file_recompress_images, \
+	make_ik_from_vmd, model_overall_cleanup, model_scale, model_shift, morph_scale, morph_hide, morph_invert, \
+	translate_source_bone, vmd_armtwist_insert, vmd_rename_bones_morphs
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.01 - 7/12/2021"
+SCRIPTS_WHEN_FROZEN = [
+	bone_make_semistandard_auto_armtwist,
+	bone_set_arm_localaxis,
+	bone_armik_addremove,
+	bone_endpoint_addremove,
+	bone_add_sdef_autotwist_handtwist_adapter,
+	check_model_compatibility,
+	convert_vmd_to_txt,
+	convert_vpd_to_vmd,
+	file_sort_textures,
+	file_translate_filenames,
+	file_recompress_images,
+	make_ik_from_vmd,
+	model_overall_cleanup,
+	model_scale,
+	model_shift,
+	morph_scale,
+	morph_hide,
+	morph_invert,
+	translate_source_bone,
+	vmd_armtwist_insert,
+	vmd_rename_bones_morphs]
+
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.01 - 7/23/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -31,47 +59,83 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.01 - 7/12/2021"
 # when running from EXE, in noconsole mode, this does nothing at all.
 ALSO_PRINT_TO_CONSOLE = False
 
-# list of all possible displayed names in the dropdown list, with associated helptext and mainfunc
-# do I want to sort by usefulness? or do I want to group by categories? or maybe just alphabetical? idk
-all_script_list = [
-	("model_overall_cleanup.py", model_overall_cleanup.helptext, model_overall_cleanup.main),
-	("file_sort_textures.py", file_sort_textures.helptext, file_sort_textures.main),
-	("file_translate_names.py", file_translate_filenames.helptext, file_translate_filenames.main),
-	("file_recompress_images.py", file_recompress_images.helptext, file_recompress_images.main),
-	("bone_make_semistandard_auto_armtwist.py", bone_make_semistandard_auto_armtwist.helptext, bone_make_semistandard_auto_armtwist.main),
-	("morph_invert.py", morph_invert.helptext, morph_invert.main),
-	("morph_hide.py", morph_hide.helptext, morph_hide.main),
-	("morph_scale.py", morph_scale.helptext, morph_scale.main),
-	("check_model_compatibility.py", check_model_compatibility.helptext, check_model_compatibility.main),
-	("model_shift.py", model_shift.helptext, model_shift.main),
-	("model_scale.py", model_scale.helptext, model_scale.main),
-	("vmd_rename_bones_morphs.py", vmd_rename_bones_morphs.helptext, vmd_rename_bones_morphs.main),
-	("convert_vmd_to_txt.py", convert_vmd_to_txt.helptext, convert_vmd_to_txt.main),
-	("convert_vpd_to_vmd.py", convert_vpd_to_vmd.helptext, convert_vpd_to_vmd.main),
-	("translate_source_bone.py", translate_source_bone.helptext, translate_source_bone.main),
-	("bone_armik_addremove.py", bone_armik_addremove.helptext, bone_armik_addremove.main),
-	("bone_endpoint_addremove.py", bone_endpoint_addremove.helptext, bone_endpoint_addremove.main),
-	("vmd_armtwist_insert.py", vmd_armtwist_insert.helptext, vmd_armtwist_insert.main),
-	("make_ik_from_vmd.py", make_ik_from_vmd.helptext, make_ik_from_vmd.main),
-	("bone_add_sdef_autotwist_handtwist_adapter.py", bone_add_sdef_autotwist_handtwist_adapter.helptext,
-	 bone_add_sdef_autotwist_handtwist_adapter.main),
-	("bone_set_arm_localaxis.py", bone_set_arm_localaxis.helptext, bone_set_arm_localaxis.main),
-]
 
+def module_to_dispname(mod) -> str:
+	s = path.splitext(path.basename(mod.__file__))[0]
+	return s
 
-# DO NOT TOUCH: mapping from MY_FILEPROMPT_FUNC filetype input to the info the gui filedialog needs
-FILE_EXTENSION_MAP = {
-	".vpd .vmd": ("VPD/VMD file", "*.vpd *.vmd *.vmd.bak"),
-	".vmd .vpd": ("VPD/VMD file", "*.vpd *.vmd *.vmd.bak"),
-	".vmd .txt": ("VMD/TXT file", "*.txt *.vmd *.vmd.bak"),
-	".txt .vmd": ("VMD/TXT file", "*.txt *.vmd *.vmd.bak"),
-	".vpd": ("VPD file", "*.vpd"),
-	".csv": ("CSV file", "*.csv"),
-	".txt": ("Text file", "*.txt"),
-	".pmx": ("PMX model", "*.pmx"),
-	".vmd": ("VMD file", "*.vmd *.vmd.bak"),
-	"*": tuple()
-}
+def get_scripts_from_folder(path_to_scripts: str, existing_scripts: list):
+	"""
+	Look thru all the scripts in a specified folder, import them, validate them, and append them onto the
+	'existing_scripts' list.
+	:param path_to_scripts: string path from 'graphic_user_interface.py' to the desired folder
+	:param existing_scripts: list to be filled
+	"""
+	# to make this work even when "graphic_use_interface" is invoked from some other directory,
+	# i'll get the absolute path of the GUI file & turn that into absolute path to the scripts!
+	path_to_here = path.dirname(__file__)
+	# build a list of all files in "scripts_for_gui"
+	absdir = path.join(path_to_here, path_to_scripts)
+	if not path.isdir(absdir):
+		core.MY_PRINT_FUNC("ERROR: tried to import scripts from '%s' but it does not exist!" % path_to_scripts)
+		return []
+	filenames_in_scriptdir = listdir(absdir)
+	# remove anything that starts with underscore
+	filenames_in_scriptdir = [a for a in filenames_in_scriptdir if not a.startswith("_")]
+	# remove anything that doesnt end with .py
+	filenames_in_scriptdir = [a for a in filenames_in_scriptdir if a.endswith(".py")]
+	
+	# now i should have a list of all the scripts in the folder!
+	# then, iterate over the list and import each file
+	script_list = []
+	for script_name in filenames_in_scriptdir:
+		module_name = path.join(path_to_scripts, script_name)  # prepend the path to the scripts folder
+		module_name = path.normpath(module_name)  # guarantee they use consistent path separator
+		module_name = path.splitext(module_name)[0]  # strip the .py
+		module_name = module_name.replace(path.sep, ".")  # replace the folderseparator slashes with dots
+		try:
+			module = importlib.import_module(module_name)  # actual dynamic import
+			script_list.append(module)
+		except Exception as e:
+			# print an error and full traceback if this failed to parse!
+			exc_type, exc_value, exc_traceback = sys.exc_info()
+			printme_list = traceback.format_exception(e.__class__, e, exc_traceback)
+			# now i have the complete traceback info as a list of strings, each ending with newline
+			# but, I want to remove some of these layers to make things less confusing
+			# lets remove the the invisible internal layers that the importlib is using
+			printme_list = [p for p in printme_list if "_bootstrap" not in p]
+			core.MY_PRINT_FUNC("")
+			core.MY_PRINT_FUNC("".join(printme_list))
+			core.MY_PRINT_FUNC("ERROR1: exception while importing script '%s' from folder '%s'\n" % (script_name, path_to_scripts))
+			continue
+	# now, iterate over all the laoded modules and validate that they define the things I need.
+	successes = 0
+	for module in script_list:
+		# validate that it has helptext
+		if not (hasattr(module, "helptext") and isinstance(module.helptext, str)):
+			core.MY_PRINT_FUNC("ERROR2: '%s' is in the '%s' folder but is not a valid script!" % (module_to_dispname(module), path_to_scripts))
+			core.MY_PRINT_FUNC("must contain string 'helptext'\n")
+			continue
+			
+		# validate that "main" accepts exactly one boolean argument!
+		if not (hasattr(module, "main") and callable(module.main) and len(inspect.signature(module.main).parameters) == 1):
+			core.MY_PRINT_FUNC("ERROR3: '%s' is in the '%s' folder but is not a valid script!" % (module_to_dispname(module), path_to_scripts))
+			core.MY_PRINT_FUNC("must contain function 'main(moreinfo=True)'\n")
+			continue
+		
+		# validate that there is nothing with the same name already in the list
+		if module_to_dispname(module) in [module_to_dispname(m) for m in existing_scripts]:
+			core.MY_PRINT_FUNC("ERROR4: '%s' is in the '%s' folder but is not a valid script!" % (module_to_dispname(module), path_to_scripts))
+			core.MY_PRINT_FUNC("somehow, some other script with the same name has already been imported! duplicate names are not allowd.\n")
+			continue
+
+		# if all validation passes, then store the module object
+		existing_scripts.append(module)
+		successes += 1
+		
+	core.MY_PRINT_FUNC("Loaded %d scripts from folder '%s'" % (successes, path_to_scripts))
+	return None
+	
 
 # DO NOT TOUCH: global vars for passing info between GUI input popup and the thread the script lives in
 inputpopup_args = None
@@ -87,24 +151,37 @@ inputpopup_result = None
 
 
 
-def gui_fileprompt(extensions: str) -> str:
+def gui_fileprompt(label: str, ext_list: Union[str,Sequence[str]]) -> str:
 	"""
 	Use a Tkinter File Dialogue popup to prompt for a file. Same signature as core.prompt_user_filename().
 	
-	:param extensions: string of valid extensions, separated by spaces
+	:param label: {{short}} string label that identifies this kind of input, like "Text file" or "VMD file"
+	:param ext_list: list of acceptable extensions, or just one string
 	:return: case-correct absolute file path
 	"""
+	if isinstance(ext_list, str):
+		# if it comes in as a string, wrap it in a list
+		ext_list = [ext_list]
+	elif isinstance(ext_list, tuple):
+		ext_list = list(ext_list)
 	# replaces core func MY_FILEPROMPT_FUNC when running in GUI mode
 	
-	# make this list into a new, separate thing: list of identifiers + globs
-	if extensions in FILE_EXTENSION_MAP:
-		extensions_labels = FILE_EXTENSION_MAP[extensions]
+	# ensure the extensions are sorted (for consistency in JSON keys)
+	ext_list.sort()
+	
+	# labelled extensions: tuple of string label plus string of acceptable extensions, space-separated, with * prepended
+	if ext_list:
+		ext_list_flattened = " ".join(["*"+a for a in ext_list])
 	else:
-		extensions_labels = ("Unknown type", extensions)
-	extensions_labels = (extensions_labels,)
+		# if given an empty list, then accept any extension! pretty sure this is the right syntax for that?
+		ext_list_flattened = "*"
+	labelled_extensions = (label, ext_list_flattened)
+	labelled_extensions = (labelled_extensions,)  # it just needs this, dont ask why
 	
 	# dont trust file dialog to remember last-opened path, manually save/read it
-	json_data = core.get_persistent_storage_json('last-opened-path')
+	# NEW: file dialog start path is stored independently for each file type!!
+	json_key = "last-input-path-" + ",".join(ext_list)
+	json_data = core.get_persistent_storage_json(json_key)
 	if json_data is None:
 		# if never used before, start wherever i am right now i guess
 		start_here = path.abspath(".")
@@ -117,8 +194,8 @@ def gui_fileprompt(extensions: str) -> str:
 		start_here = c
 	
 	newpath = fdg.askopenfilename(initialdir=start_here,
-								  title="Select input file: {%s}" % extensions,
-								  filetypes=extensions_labels)
+								  title="Select input file: [%s]" % ", ".join(ext_list),
+								  filetypes=labelled_extensions)
 	
 	# if user closed the prompt before giving a file path, quit here
 	if newpath == "":
@@ -126,7 +203,7 @@ def gui_fileprompt(extensions: str) -> str:
 		raise RuntimeError()
 	
 	# they got an existing file! update the last_opened_dir file
-	core.write_persistent_storage_json('last-opened-path', path.dirname(newpath))
+	core.write_persistent_storage_json(json_key, path.dirname(newpath))
 	
 	return newpath
 
@@ -235,15 +312,12 @@ def gui_inputpopup(args, explain_info=None):
 			button.pack(side=tk.LEFT, padx=10, pady=10)
 	
 	return None
-
-
-# this lets the window be moved or resized as the target function is executing
-def run_as_thread(func):
-	thread = threading.Thread(name="do-the-thing", target=func, daemon=True)
-	# start the thread
-	thread.start()
-
-
+	
+def print_header():
+	core.MY_PRINT_FUNC(__pkg_welcome__)
+	core.MY_PRINT_FUNC("Begin by selecting a script above, then click 'Run'")
+	core.MY_PRINT_FUNC("Click 'Help' to print out details of what the selected script does")
+	return
 
 
 class Application(tk.Frame):
@@ -254,34 +328,33 @@ class Application(tk.Frame):
 		# first, set up non-ui class members
 		# this variable is used in this new print function, very important
 		self.last_print_was_progress = False
-		# payload is pointer to currently selected main() func, helptext is the currently selected help string
-		self.payload = None
-		self.helptext = ""
-		# list of all possible displayed names in the OptionMenu, with assoc helptext and mainfunc
-		self.all_script_list = all_script_list
+		# loaded_script is the module object that matches the selected name
+		self.loaded_script = None
 		
 		###############################################
 		# second, build the dropdown menu
 		# frame that holds the dropdown + the label
-		self.which_script_frame = tk.Frame(master)
-		self.which_script_frame.pack(side=tk.TOP, padx=10, pady=5)
-		lab = tk.Label(self.which_script_frame, text="Active script:")
+		self.script_select_frame = tk.Frame(master)
+		self.script_select_frame.pack(side=tk.TOP, padx=10, pady=5)
+		lab = tk.Label(self.script_select_frame, text="Active script:")
 		lab.pack(side=tk.LEFT)
 
+		self.script_list_dispnames = []
+		self.script_list_modules = []
+		
 		# underlying variable tied to the dropdown menu, needed to run self.change_mode when the selection changes
-		self.optionvar = tk.StringVar(master)
-		self.optionvar.trace("w", self.change_mode)
-		self.optionvar.set(self.all_script_list[0][0])
-		# build the acutal dropdown menu
-		self.which_script = tk.OptionMenu(self.which_script_frame, self.optionvar, *[x[0] for x in self.all_script_list])
-		self.which_script.pack(side=tk.LEFT, padx=10)
+		self.script_select_optionvar = tk.StringVar(master)
+		self.script_select_optionvar.trace("w", self.change_mode)
+		# build the visible dropdown menu, containing only placeholder list
+		self.script_select_optionmenu = tk.OptionMenu(self.script_select_frame, self.script_select_optionvar, "foobar")
+		self.script_select_optionmenu.pack(side=tk.LEFT, padx=10)
 		
 		###############################################
 		# third, build the GUI control buttons
 		self.control_frame = tk.Frame(master, relief=tk.RAISED, borderwidth=1)
 		self.control_frame.pack(side=tk.TOP, fill='x', padx=10, pady=5)
 		
-		self.run_butt = tk.Button(self.control_frame, text="RUN", width=7, command=lambda: run_as_thread(self.do_the_thing))
+		self.run_butt = tk.Button(self.control_frame, text="RUN", width=7, command=self.run_the_script_as_thread)
 		button_default_font = self.run_butt.cget("font")
 		# print(button_default_font)
 		# RUN button has bigger font than the other buttons
@@ -332,11 +405,11 @@ class Application(tk.Frame):
 		core.MY_JUSTIFY_STRINGLIST = self.gui_justify_stringlist
 		
 		# print version & instructions
-		self.print_header()
+		print_header()
 		# start the popup loop
 		self.spin_to_handle_inputs()
-		# load the initial script to populate payload & helptext
-		self.change_mode()
+		# read all modules from the "scripts_for_gui" folder & populate the optionmenu
+		self.rebuild_script_list()
 		
 		# done with init
 		return
@@ -349,7 +422,7 @@ class Application(tk.Frame):
 		if self.last_print_was_progress:	self._overwrite(the_string)
 		# if last print was a normal print, then print normally
 		else: 								self._write(the_string)
-		# don't force scrolling down for progress update printouts
+		# DO force scrolling down for non-progress printouts
 		if not is_progress: 				self.edit_space.see(tk.END)
 		# at the end, store this value for next time
 		self.last_print_was_progress = is_progress
@@ -379,51 +452,90 @@ class Application(tk.Frame):
 		self.after(200, self.spin_to_handle_inputs)
 		
 	def help_func(self):
-		core.MY_PRINT_FUNC(self.helptext)
+		core.MY_PRINT_FUNC(self.loaded_script.helptext)
 	
-	def do_the_thing(self):
+	# this lets the window be moved or resized as the target function is executing
+	def run_the_script_as_thread(self):
+		thread = threading.Thread(name="do-the-thing", target=self.run_the_script, daemon=True)
+		# start the thread
+		thread.start()
+		
+	def rebuild_script_list(self):
+		# first, wipe away what I already have
+		self.script_list_dispnames = []
+		self.script_list_modules = []
+		self.script_select_optionmenu.destroy()
+		
+		# then, re-read from the desired folder(s)
+		if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+			self.script_list_modules = SCRIPTS_WHEN_FROZEN
+		else:
+			get_scripts_from_folder("mmd_scripting/scripts_for_gui/", self.script_list_modules)
+			# get_scripts_from_folder("mmd_scripting/scripts_not_for_gui/", self.script_list_modules)
+			# get_scripts_from_folder("mmd_scripting/wip/", self.script_list_modules)
+		
+		if len(self.script_list_modules) == 0:
+			return
+		
+		# then, sort them! by name or by last used, idk, doesn't really matter
+		self.script_list_modules.sort(key=module_to_dispname)
+		# then rebuild displayed_names
+		self.script_list_dispnames = [module_to_dispname(m) for m in self.script_list_modules]
+		
+		# set the default script, this should invoke "self.change_mode" at least once
+		lastused = core.get_persistent_storage_json('last-script')
+		if (lastused is not None) and (lastused in self.script_list_dispnames):
+			# if the JSON contains a "lastused" value, and that value also matches one of the currently loaded scripts,
+			self.script_select_optionvar.set(lastused)
+		else:
+			# otherwise, just use the top of the list
+			self.script_select_optionvar.set(self.script_list_dispnames[0])
+		# build the visible dropdown menu
+		self.script_select_optionmenu = tk.OptionMenu(self.script_select_frame, self.script_select_optionvar,
+													  *self.script_list_dispnames)
+		self.script_select_optionmenu.pack(side=tk.LEFT, padx=10)
+		return
+	
+	def run_the_script(self):
+		script_name = str(self.script_select_optionvar.get())
 		core.MY_PRINT_FUNC("="*50)
-		core.MY_PRINT_FUNC(str(self.optionvar.get()))
+		core.MY_PRINT_FUNC(script_name)
+		
 		# disable all gui elements for the duration of this function
 		# run_butt, spinbox, clear, help, debug
 		self.run_butt.configure(state='disabled')
-		self.which_script.configure(state='disabled')
+		self.script_select_optionmenu.configure(state='disabled')
 		self.clear_butt.configure(state='disabled')
 		self.help_butt.configure(state='disabled')
 		self.debug_check.configure(state='disabled')
 		
 		try:
-			self.payload(bool(self.debug_check_var.get()))
+			moreinfo = bool(self.debug_check_var.get())
+			self.loaded_script.main(moreinfo)
 		except Exception as e:
+			# todo: print full traceback for any exception EXCEPT make a special condition for "cancelled file dialogue"
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("ERROR: failed to complete target script")
 		
 		# re-enable GUI elements when finished running
 		self.run_butt.configure(state='normal')
-		self.which_script.configure(state='normal')
+		self.script_select_optionmenu.configure(state='normal')
 		self.clear_butt.configure(state='normal')
 		self.help_butt.configure(state='normal')
 		self.debug_check.configure(state='normal')
 		return
 	
-	def print_header(self):
-		core.MY_PRINT_FUNC(__pkg_welcome__)
-		core.MY_PRINT_FUNC("Begin by selecting a script above, then click 'Run'")
-		core.MY_PRINT_FUNC("Click 'Help' to print out details of what the selected script does")
-		return
-		
 	def change_mode(self, *_):
-		# need to have *args here even if i dont use them
-		# the the currently displayed item in the dropdown menu
-		newstr = self.optionvar.get()
-		# find which index within all_script_list it corresponds to
-		idx = [x[0] for x in self.all_script_list].index(newstr)
+		# get the the currently displayed item in the dropdown menu
+		newstr = self.script_select_optionvar.get()
+		# find which index within SCRIPT_LIST it corresponds to (guaranteed to succeed)
+		idx = self.script_list_dispnames.index(newstr)
 		# set helptext and execute func
-		self.helptext = self.all_script_list[idx][1]
-		self.payload = self.all_script_list[idx][2]
-		core.MY_PRINT_FUNC(">>>>>>>>>>")
-		core.MY_PRINT_FUNC("Load new script '%s'" % newstr)
-		core.MY_PRINT_FUNC("")
+		self.loaded_script = self.script_list_modules[idx]
+		# set the 'last used script' item in the json
+		core.write_persistent_storage_json('last-script', newstr)
+
+		core.MY_PRINT_FUNC(">>>>>>>>>>\nLoad new script '%s'\n" % newstr)
 		return
 		
 	def clear_func(self):
@@ -431,7 +543,7 @@ class Application(tk.Frame):
 		self.edit_space.configure(state='normal')
 		self.edit_space.delete("1.0", tk.END)
 		# these print functions will immediately set it back to the 'disabled' state
-		self.print_header()
+		print_header()
 		return
 	
 	def gui_justify_stringlist(self, j: list, right=False) -> list:
@@ -461,5 +573,6 @@ def launch_gui(title):
 
 if __name__ == '__main__':
 	print(_SCRIPT_VERSION)
+	# path_to_scripts = "mmd_scripting/scripts_for_gui/"
 	launch_gui("Nuthouse01 MMD PMX VMD tools")
 

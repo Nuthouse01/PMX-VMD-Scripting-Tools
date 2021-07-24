@@ -16,6 +16,11 @@ echo +++++++++++++++++++++++++++++++++++++++++++++++++++
 python -m pip install -e .
 
 echo +++++++++++++++++++++++++++++++++++++++++++++++++++
+echo Last, ensure that any old config files are deleted
+echo +++++++++++++++++++++++++++++++++++++++++++++++++++
+python mmd_scripting/scratch_stuff/delete_old_config.py
+
+echo +++++++++++++++++++++++++++++++++++++++++++++++++++
 echo Done!
 echo +++++++++++++++++++++++++++++++++++++++++++++++++++
 pause

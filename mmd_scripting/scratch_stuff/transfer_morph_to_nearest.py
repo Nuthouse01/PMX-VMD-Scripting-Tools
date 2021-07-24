@@ -18,12 +18,12 @@ def main():
 	
 	# prompt PMX name
 	print("Please enter name of DESTINATION PMX model file:")
-	dest_name_pmx = core.prompt_user_filename(".pmx")
+	dest_name_pmx = core.prompt_user_filename("PMX file", ".pmx")
 	dest_pmx = pmxlib.read_pmx(dest_name_pmx, moreinfo=True)
 	
 	# prompt PMX name
 	print("Please enter name of SOURCE PMX model file:")
-	source_name_pmx = core.prompt_user_filename(".pmx")
+	source_name_pmx = core.prompt_user_filename("PMX file", ".pmx")
 	source_pmx = pmxlib.read_pmx(source_name_pmx, moreinfo=True)
 	
 	while True:

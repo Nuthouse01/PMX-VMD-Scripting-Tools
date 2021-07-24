@@ -595,9 +595,9 @@ def main(moreinfo=False):
 	# prompt for "convert text -> VMD" or "VMD -> text"
 	core.MY_PRINT_FUNC("For VMD->TXT, please enter the name of a .vmd file.\nOr for TXT->VMD, please enter the name of a .txt file.")
 	core.MY_PRINT_FUNC("")
-	input_filename = core.MY_FILEPROMPT_FUNC(".vmd .txt")
+	input_filename = core.MY_FILEPROMPT_FUNC("VMD or TXT file", (".vmd",".txt"))
 	
-	if input_filename.lower().endswith((".vmd", ".vmd.bak")):
+	if input_filename.lower().endswith(".vmd"):
 		# activate correct function
 		convert_vmd_to_txt(input_filename, moreinfo=moreinfo)
 	else:

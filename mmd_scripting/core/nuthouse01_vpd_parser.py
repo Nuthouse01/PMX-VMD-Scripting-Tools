@@ -278,7 +278,7 @@ def write_vpd(vpd_filepath: str, vmd: vmdstruct.Vmd, moreinfo=False):
 
 def main():
 	core.MY_PRINT_FUNC("Specify a vpd file to attempt parsing")
-	input_filename = core.prompt_user_filename(".vpd")
+	input_filename = core.prompt_user_filename("VPD file", ".vpd")
 	# input_filename = "vpdtest.vpd"
 	Z= read_vpd(input_filename)
 	write_vpd("____vpdparser_selftest_DELETEME.vpd", Z)

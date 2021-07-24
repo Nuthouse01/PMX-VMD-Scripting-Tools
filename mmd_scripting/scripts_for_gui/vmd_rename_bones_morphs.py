@@ -24,7 +24,7 @@ def main(moreinfo=True):
 	###################################################################################
 	# prompt VMD file name
 	core.MY_PRINT_FUNC("Please enter name of VMD dance input file:")
-	input_filename_vmd = core.MY_FILEPROMPT_FUNC(".vmd")
+	input_filename_vmd = core.MY_FILEPROMPT_FUNC("VMD file", ".vmd")
 	vmd = vmdlib.read_vmd(input_filename_vmd, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("")
 	

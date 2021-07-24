@@ -17,7 +17,7 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 
 
 def main():
-	pmxname = core.prompt_user_filename(".pmx")
+	pmxname = core.prompt_user_filename("PMX file", ".pmx")
 	
 	pmx = pmxlib.read_pmx(pmxname, moreinfo=True)
 	

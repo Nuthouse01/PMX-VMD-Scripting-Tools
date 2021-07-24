@@ -1,22 +1,14 @@
 
-TODO: establish template for 'scripts', i.e. contains main(), helptext... is that it?
-
-TODO: make the GUI automatically find & import all 'scripts' in 'FOOBAR' folder, rather than manually listing them???
-    can only be done after restructuring is complete
-
 #####
 
 TODO: WIP-sdef-armtwist should invoke bone-sdeftwist-hand-adapter
 
-TODO: examine professional SDEF armtwist examples (miku, bb, tamo) and create a graph that profiles the weight balance with respect to the length along the segment
+TODO: examine professional SDEF armtwist examples (miku, bb, tamo, check SPS?) and create a graph that profiles the weight balance with respect to the length along the segment
 
 TODO: create one function in 'core' that does all the bottom-of-the-script stuff...?
     also lets me add traceback module to everything
 
 TODO: better incorporate traceback module with everything, remove the "debug" flag thing
-
-TODO: improve the 'file extension to filedialogue filter' thingy, surely i can do better
-    add last-used-directory for each kind of file prompt, based on filtered extensions
 
 TODO: simple flag in core that indicates 'running from gui' or not, wouldn't help with imports but might be useful
     in other contexts?
@@ -34,6 +26,31 @@ TODO: can i create one base class that is the parent of both VMD and PMX? they h
 
 
 
+=======================================================================
+OTHER TOOLS
+
+https://bowlroll.net/file/197410
+"VMD sizing tool"
+has a bunch of features I don't understand
+has github, I can steal ideas from him! :D
+seems entirely JP tho, i bet the comments are JP as well :(
+
+
+https://bowlroll.net/file/66955
+"VMD twist-motion separator"
+sounds exactly the same as my twist-decomposition script, right?
+	but for some reason he says to use this to fix problems with the "shoulders"
+	is that just a translation thing, or what?
+	
+
+https://learnmmd.com/http:/learnmmd.com/mmd-animationsmoother-tool/
+https://www.deviantart.com/haztract/art/MMD-Program-English-Animation-Smoother-Ver-0-94-786539567
+"vmd animation smoothing tool"
+tries to solve the same problem as my WIP vmd smoothing script, but uses a different approach
+mine tries to leave keyframes where they are but build the bezier curves to be smooth
+theirs uses massive overkeying and also changes the times/positions from the input
+pros and cons
+I wonder if i can find the source code anywhere?
 
 
 

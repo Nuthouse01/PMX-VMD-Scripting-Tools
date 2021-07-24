@@ -29,7 +29,7 @@ def main():
 	# promt vertex CSV name
 	# input: vertex CSV file with all the vertexes that I want to modify
 	print("Please enter name of vertex CSV input file with the vertices to be moved:")
-	input_filename_vertex_source = core.prompt_user_filename(".csv")
+	input_filename_vertex_source = core.prompt_user_filename("CSV file", ".csv")
 	rawlist_vertex_source = core.read_file_to_csvlist(input_filename_vertex_source, use_jis_encoding=True)
 	
 	# verify that these are the correct kind of CSVs
@@ -39,7 +39,7 @@ def main():
 	# promt vertex CSV name
 	# input: vertex CSV file with all the vertexes that I want to modify
 	print("Please enter name of vertex CSV input file with the destination geometry:")
-	input_filename_vertex_dest = core.prompt_user_filename(".csv")
+	input_filename_vertex_dest = core.prompt_user_filename("CSV file", ".csv")
 	rawlist_vertex_dest = core.read_file_to_csvlist(input_filename_vertex_dest, use_jis_encoding=True)
 	
 	# verify that these are the correct kind of CSVs

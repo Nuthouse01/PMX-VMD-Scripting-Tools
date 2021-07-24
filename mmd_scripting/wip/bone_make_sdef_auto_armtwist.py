@@ -299,7 +299,7 @@ def divvy_weights(pmx: pmxstruct.Pmx, vert_zip, axis_limits, bone_hasweight, bon
 def main(moreinfo=True):
 	# prompt PMX name
 	core.MY_PRINT_FUNC("Please enter name of PMX input file:")
-	input_filename_pmx = core.MY_FILEPROMPT_FUNC(".pmx")
+	input_filename_pmx = core.MY_FILEPROMPT_FUNC("PMX file", ".pmx")
 	# input_filename_pmx = "../../python_scripts/grasstest_better.pmx"
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=moreinfo)
 	

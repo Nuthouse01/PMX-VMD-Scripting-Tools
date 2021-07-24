@@ -73,7 +73,7 @@ def main(moreinfo=False):
 	# prompt for "convert text -> VMD" or "VMD -> text"
 	core.MY_PRINT_FUNC("For VPD->VMD, please enter the name of a .vpd file.\nOr for VMD->VPD, please enter the name of a .vmd file.")
 	core.MY_PRINT_FUNC("")
-	input_filename = core.MY_FILEPROMPT_FUNC(".vpd .vmd")
+	input_filename = core.MY_FILEPROMPT_FUNC("VMD or VPD file",(".vmd",".vpd"))
 	
 	if input_filename.lower().endswith(".vpd"):
 		# POSE -> MOTION

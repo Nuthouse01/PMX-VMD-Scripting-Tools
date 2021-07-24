@@ -1160,7 +1160,7 @@ def write_pmx(pmx_filename: str, pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 ########################################################################################################################
 def main():
 	core.MY_PRINT_FUNC("Specify a PMX file to attempt parsing and writeback")
-	input_filename = core.prompt_user_filename(".pmx")
+	input_filename = core.prompt_user_filename("PMX file", ".pmx")
 	# input_filename = "pmxtest.pmx"
 	Z = read_pmx(input_filename, moreinfo=True)
 	write_pmx("____pmxparser_selftest_DELETEME.pmx", Z, moreinfo=True)
