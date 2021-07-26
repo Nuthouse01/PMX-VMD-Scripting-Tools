@@ -3,7 +3,7 @@
 
 TODO: WIP-sdef-armtwist should invoke bone-sdeftwist-hand-adapter
 
-TODO: examine professional SDEF armtwist examples (miku, bb, tamo, check SPS?) and create a graph that profiles the weight balance with respect to the length along the segment
+TODO: examine professional SDEF armtwist examples (miku, bb, tamo, check SPS?, ab8/10) and create a graph that profiles the weight balance with respect to the length along the segment
 
 TODO: create one function in 'core' that does all the bottom-of-the-script stuff...?
     also lets me add traceback module to everything
