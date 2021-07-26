@@ -199,8 +199,7 @@ def gui_fileprompt(label: str, ext_list: Union[str,Sequence[str]]) -> str:
 	
 	# if user closed the prompt before giving a file path, quit here
 	if newpath == "":
-		core.MY_PRINT_FUNC("ERROR: this script requires an input file to run")
-		raise RuntimeError()
+		raise RuntimeError("file dialogue aborted")
 	
 	# they got an existing file! update the last_opened_dir file
 	core.write_persistent_storage_json(json_key, path.dirname(newpath))
@@ -522,9 +521,19 @@ class Application(tk.Frame):
 			moreinfo = bool(self.debug_check_var.get())
 			self.loaded_script.main(moreinfo)
 		except Exception as e:
-			# todo: print full traceback for any exception EXCEPT make a special condition for "cancelled file dialogue"
-			core.MY_PRINT_FUNC(e.__class__.__name__, e)
-			core.MY_PRINT_FUNC("ERROR: failed to complete target script")
+			# if this exception SPECIFICALLY CAME FROM FILEDIALOGUE ABORT,
+			if isinstance(e, RuntimeError) and len(e.args) == 1 and e.args[0] == "file dialogue aborted":
+				# just print this polite little message
+				core.MY_PRINT_FUNC("ERROR: this script requires an input file to run.")
+			# if it is an exception from any other source,
+			else:
+				# print the full traceback
+				exc_type, exc_value, exc_traceback = sys.exc_info()
+				printme_list = traceback.format_exception(e.__class__, e, exc_traceback)
+				# now i have the complete traceback info as a list of strings, each ending with newline
+				core.MY_PRINT_FUNC("")
+				core.MY_PRINT_FUNC("".join(printme_list))
+				core.MY_PRINT_FUNC("ERROR: the script did not complete succesfully.")
 		
 		# re-enable GUI elements when finished running
 		self.run_butt.configure(state='normal')
