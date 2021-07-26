@@ -6,9 +6,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.01 - 7/12/2021"
 
 # read vmd, prompt "find", prompt "replace", do find-replace, repeat, writeout
 
-# when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
-# but if launched in a new window it exits immediately so you can't read it.
-DEBUG = False
 
 
 
@@ -92,24 +89,6 @@ def main(moreinfo=True):
 	return None
 
 if __name__ == '__main__':
-	print(_SCRIPT_VERSION)
-	# print info to explain the purpose of this file
+	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
 	core.MY_PRINT_FUNC(helptext)
-	core.MY_PRINT_FUNC("")
-	if DEBUG:
-		main()
-	else:
-		try:
-			# print info to explain the purpose of this file
-			core.MY_PRINT_FUNC(helptext)
-			core.MY_PRINT_FUNC("")
-			
-			main()
-		except (KeyboardInterrupt, SystemExit):
-			# this is normal and expected, do nothing and die normally
-			pass
-		except Exception as ee:
-			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee.__class__.__name__, ee)
-			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
-	core.pause_and_quit("Done with everything! Goodbye!")
+	core.RUN_WITH_TRACEBACK(main)
