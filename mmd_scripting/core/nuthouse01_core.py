@@ -4,10 +4,11 @@ import math
 import re
 import struct
 import sys
+import traceback
 from os import path, listdir, getenv, makedirs
 from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar, Union
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.01 - 7/23/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.02 - 7/23/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -521,6 +522,31 @@ def _get_persistent_storage_path(filename="") -> str:
 		return retme
 	return appdata
 
+def RUN_WITH_TRACEBACK(func: Callable, *args) -> None:
+	"""
+	Used to execute the "main" function of a script in direct-run mode.
+	If it runs succesfully, do a pause-and-quit afterward.
+	If an exception occurs, print the traceback info and do a pause-and-quit.
+	If it was CTRL+C aborted, do not pause-and-quit.
+	:param func: main-function
+	:param args: optional args to pass to main-function
+	"""
+	try:
+		MY_PRINT_FUNC("")
+		func(*args)
+		pause_and_quit("Done with everything! Goodbye!")
+	except (KeyboardInterrupt, SystemExit):
+		# this is normal and expected, do nothing and die
+		pass
+	except Exception as e:
+		# print an error and full traceback if an exception was received!
+		exc_type, exc_value, exc_traceback = sys.exc_info()
+		printme_list = traceback.format_exception(e.__class__, e, exc_traceback)
+		# now i have the complete traceback info as a list of strings, each ending with newline
+		MY_PRINT_FUNC("")
+		MY_PRINT_FUNC("".join(printme_list))
+		pause_and_quit("ERROR: the script did not complete succesfully.")
+		
 
 ########################################################################################################################
 # these functions do CSV read/write and binary-file read/write
