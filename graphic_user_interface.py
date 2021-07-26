@@ -454,12 +454,6 @@ class Application(tk.Frame):
 	def help_func(self):
 		core.MY_PRINT_FUNC(self.loaded_script.helptext)
 	
-	# this lets the window be moved or resized as the target function is executing
-	def run_the_script_as_thread(self):
-		thread = threading.Thread(name="do-the-thing", target=self.run_the_script, daemon=True)
-		# start the thread
-		thread.start()
-		
 	def rebuild_script_list(self):
 		# first, wipe away what I already have
 		self.script_list_dispnames = []
@@ -496,7 +490,22 @@ class Application(tk.Frame):
 		self.script_select_optionmenu.pack(side=tk.LEFT, padx=10)
 		return
 	
+	def run_the_script_as_thread(self):
+		"""
+		Attached to the big-ass "RUN" button. Invokes the "run_the_script" function in a new thread.
+		If not launched in a new thread, the UI is entirely locked up while the script is running, can't even resize
+		the window. Honestly not sure why the print function even works when it's being called from a separate thread
+		but don't question it.
+		"""
+		# new thread is set as a "daemon" which means "if the parent dies, the child dies too" i think
+		thread = threading.Thread(name="do-the-thing", target=self.run_the_script, daemon=True)
+		# start the thread
+		thread.start()
+	
 	def run_the_script(self):
+		"""
+		Disable all GUI elements, then invoke the script, then re-enable all GUI elements.
+		"""
 		script_name = str(self.script_select_optionvar.get())
 		core.MY_PRINT_FUNC("="*50)
 		core.MY_PRINT_FUNC(script_name)
