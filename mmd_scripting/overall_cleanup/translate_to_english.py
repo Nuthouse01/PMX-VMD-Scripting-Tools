@@ -1,6 +1,7 @@
 from time import time
 from typing import List, Tuple, TypeVar
 
+import mmd_scripting.core.nhio as nhio
 from mmd_scripting.core import nuthouse01_core as core
 from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
 from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
@@ -119,7 +120,7 @@ def check_translate_budget(num_proposed: int) -> bool:
 	"""
 	# get the log of past translation requests
 	# formatted as list of (timestamp, numrequests) sub-lists
-	record = core.get_persistent_storage_json('googletrans-request-history')
+	record = nhio.get_persistent_storage_json('googletrans-request-history')
 	# if it doesn't exist in the json, then init it as empty list
 	if record is None:
 		record = []
@@ -144,7 +145,7 @@ def check_translate_budget(num_proposed: int) -> bool:
 		newentry = [now, num_proposed]
 		record.append(newentry)
 		# write the record to file
-		core.write_persistent_storage_json('googletrans-request-history', record)
+		nhio.write_persistent_storage_json('googletrans-request-history', record)
 		return True
 	else:
 		# cannot do the translate, this would exceed the budget

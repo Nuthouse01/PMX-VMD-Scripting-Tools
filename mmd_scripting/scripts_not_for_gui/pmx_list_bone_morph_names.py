@@ -1,3 +1,4 @@
+import mmd_scripting.core.nhio as nhio
 from mmd_scripting.core import nuthouse01_core as core
 from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
 
@@ -49,12 +50,12 @@ def main(moreinfo=True):
 	# output_filename_bone = output_filename_bone.replace(" ", "_")
 	output_filename_bone = core.get_unused_file_name(output_filename_bone)
 	core.MY_PRINT_FUNC("...writing result to file '%s'..." % output_filename_bone)
-	core.write_csvlist_to_file(output_filename_bone, bonelist_out, use_jis_encoding=False)
+	nhio.write_csvlist_to_file(output_filename_bone, bonelist_out, use_jis_encoding=False)
 
 	output_filename_morph = "%s_morph_names.txt" % input_filename_pmx[0:-4]
 	output_filename_morph = core.get_unused_file_name(output_filename_morph)
 	core.MY_PRINT_FUNC("...writing result to file '%s'..." % output_filename_morph)
-	core.write_csvlist_to_file(output_filename_morph, morphlist_out, use_jis_encoding=False)
+	nhio.write_csvlist_to_file(output_filename_morph, morphlist_out, use_jis_encoding=False)
 	core.MY_PRINT_FUNC("Done!")
 	return None
 

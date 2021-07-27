@@ -1,6 +1,7 @@
 import copy
 import math
 
+import mmd_scripting.core.nhio as nhio
 from mmd_scripting.core import nuthouse01_core as core
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.03 - 10/10/2020"
@@ -82,7 +83,7 @@ def main():
 	# input: vertex CSV file with all the vertexes that I want to modify
 	print("Please enter name of vertex CSV input file:")
 	input_filename_vertex = core.prompt_user_filename("CSV file", ".csv")
-	rawlist_vertex = core.read_file_to_csvlist(input_filename_vertex, use_jis_encoding=True)
+	rawlist_vertex = nhio.read_file_to_csvlist(input_filename_vertex, use_jis_encoding=True)
 	
 	# verify that these are the correct kind of CSVs
 	if rawlist_vertex[0] != core.pmxe_vertex_csv_header:
@@ -170,7 +171,7 @@ def main():
 	output_filename = core.get_unused_file_name(output_filename)
 	print("Writing aligned result to '" + output_filename + "'...")
 	# export modified CSV
-	core.write_csvlist_to_file(output_filename, rawlist_vertex, use_jis_encoding=True)
+	nhio.write_csvlist_to_file(output_filename, rawlist_vertex, use_jis_encoding=True)
 	
 	core.pause_and_quit("Done with everything! Goodbye!")
 	

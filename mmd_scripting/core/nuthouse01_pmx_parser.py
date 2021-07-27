@@ -1,6 +1,7 @@
 import math
 from typing import List, Tuple
 
+import mmd_scripting.core.nhio as nhio
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 
@@ -1052,7 +1053,7 @@ def read_pmx(pmx_filename: str, moreinfo=False) -> pmxstruct.Pmx:
 	pmx_filename_clean = core.get_clean_basename(pmx_filename) + ".pmx"
 	# assumes the calling function already verified correct file extension
 	core.MY_PRINT_FUNC("Begin reading PMX file '%s'" % pmx_filename_clean)
-	pmx_bytes = core.read_binfile_to_bytes(pmx_filename)
+	pmx_bytes = nhio.read_binfile_to_bytes(pmx_filename)
 	core.MY_PRINT_FUNC("...total size   = %s" % core.prettyprint_file_size(len(pmx_bytes)))
 	core.MY_PRINT_FUNC("Begin parsing PMX file '%s'" % pmx_filename_clean)
 	core.reset_unpack()
@@ -1148,7 +1149,7 @@ def write_pmx(pmx_filename: str, pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 
 	core.MY_PRINT_FUNC("Begin writing PMX file '%s'" % pmx_filename_clean)
 	core.MY_PRINT_FUNC("...total size   = %s" % core.prettyprint_file_size(len(output_bytes)))
-	core.write_bytes_to_binfile(pmx_filename, output_bytes)
+	nhio.write_bytes_to_binfile(pmx_filename, output_bytes)
 	core.MY_PRINT_FUNC("Done writing PMX file '%s'" % pmx_filename_clean)
 	# done with everything!
 	return None
@@ -1163,8 +1164,8 @@ def main():
 	write_pmx("____pmxparser_selftest_DELETEME.pmx", Z, moreinfo=True)
 	ZZ = read_pmx("____pmxparser_selftest_DELETEME.pmx", moreinfo=True)
 	core.MY_PRINT_FUNC("")
-	bb = core.read_binfile_to_bytes(input_filename)
-	bb2 = core.read_binfile_to_bytes("____pmxparser_selftest_DELETEME.pmx")
+	bb = nhio.read_binfile_to_bytes(input_filename)
+	bb2 = nhio.read_binfile_to_bytes("____pmxparser_selftest_DELETEME.pmx")
 	core.MY_PRINT_FUNC("Is the binary EXACTLY identical to original?", bb == bb2)
 	exact_result = Z == ZZ
 	core.MY_PRINT_FUNC("Is the readback EXACTLY identical to original?", exact_result)

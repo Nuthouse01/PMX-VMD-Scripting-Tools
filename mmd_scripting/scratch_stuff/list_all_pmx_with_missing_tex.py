@@ -1,8 +1,9 @@
 import os
 
-from mmd_scripting.scripts_for_gui import file_sort_textures
+import mmd_scripting.core.nhio as nhio
 from mmd_scripting.core import nuthouse01_core as core
 from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
+from mmd_scripting.scripts_for_gui import file_sort_textures
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -103,12 +104,12 @@ def main(moreinfo=False):
 		core.MY_PRINT_FUNC("WARNING: failed in some way on %d PMX files" % len(list_of_pmx_that_somehow_failed))
 		core.MY_PRINT_FUNC("Writing the full list to text file:")
 		output_filename_failures = core.get_unused_file_name(FAILED_LIST_FILE)
-		core.write_list_to_txtfile(output_filename_failures, list_of_pmx_that_somehow_failed)
+		nhio.write_list_to_txtfile(output_filename_failures, list_of_pmx_that_somehow_failed)
 	core.MY_PRINT_FUNC("Found %d / %d PMX files that are missing at least one texture source" %
 					   (len(list_of_pmx_with_missing_tex), len(relative_all_pmx)))
 	core.MY_PRINT_FUNC("Writing the full list to text file:")
 	output_filename_missingtex = core.get_unused_file_name(MISSINGTEX_LIST_FILE)
-	core.write_list_to_txtfile(output_filename_missingtex, list_of_pmx_with_missing_tex)
+	nhio.write_list_to_txtfile(output_filename_missingtex, list_of_pmx_with_missing_tex)
 	
 	# print(list_of_pmx_with_missing_tex)
 	
