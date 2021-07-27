@@ -11,6 +11,10 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.02 - 7/13/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
+__all__ = ['JointType', 'MaterialFlags', 'MorphPanel', 'MorphType', 'Pmx', 'PmxBone', 'PmxBoneIkLink', 'PmxFrame',
+		   'PmxFrameItem', 'PmxHeader', 'PmxJoint', 'PmxMaterial', 'PmxMorph', 'PmxMorphItemBone', 'PmxMorphItemFlip',
+		   'PmxMorphItemGroup', 'PmxMorphItemImpulse', 'PmxMorphItemMaterial', 'PmxMorphItemUV', 'PmxMorphItemVertex',
+		   'PmxRigidBody', 'PmxSoftBody', 'PmxVertex', 'RigidBodyPhysMode', 'RigidBodyShape', 'SphMode', 'WeightMode']
 
 ############################################################################################
 ######## IMPORTANT NOTES ###################################################################

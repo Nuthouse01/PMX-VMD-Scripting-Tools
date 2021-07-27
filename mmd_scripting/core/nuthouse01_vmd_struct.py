@@ -11,6 +11,8 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.02 - 7/12/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
+__all__ = ['ShadowMode', 'Vmd', 'VmdBoneFrame', 'VmdCamFrame', 'VmdHeader', 'VmdIkbone', 'VmdIkdispFrame',
+		   'VmdLightFrame', 'VmdMorphFrame', 'VmdShadowFrame']
 
 # this is an abstract base class that all the PMX classes inherit
 # this lets them all get the __str__ method and forces them all to implement list()
