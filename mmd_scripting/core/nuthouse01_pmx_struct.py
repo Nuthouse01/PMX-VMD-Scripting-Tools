@@ -7,7 +7,7 @@ from typing import List, Union, Set
 
 import mmd_scripting.core.nuthouse01_core as core
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.00 - 7/13/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.02 - 7/13/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -50,25 +50,27 @@ class _BasePmx(abc.ABC):
 			# run all assertion checks on this item
 			self._validate(parentlist)
 			return True
-		except AssertionError:
+		except AssertionError as e3:
 			# if there is an assertion error, print the raw traceback to default console
-			traceback.print_exc()
+			# traceback.print_exc()
 			exc_type, exc_value, exc_traceback = sys.exc_info()
 			something = traceback.extract_tb(exc_traceback, limit=None)
 			
 			# print some more selective stack trace info to the GUI
 			# maybe print the whole stack trace to GUI console? it formats just fine
 			lowesttrace = something[-1]
-			core.MY_PRINT_FUNC('VALIDATE ERROR: "{}" object failed validation check "{}" at line "{}" in nuthouse01_pmx_struct.py'.format(
+			core.MY_PRINT_FUNC('VALIDATE ERROR: Object "{}" failed validation check "{}" at line "{}" in nuthouse01_pmx_struct.py'.format(
 				self.__class__.__name__, lowesttrace.line, lowesttrace.lineno
 			))
+			core.MY_PRINT_FUNC("This happens when the PMX/VMD object has incorrect data sizes/types.")
+			core.MY_PRINT_FUNC("Figure out why/how bad data got into this field, then stop it from happening in the future!")
 			
 			# determine "which index this is within the whole object" if possible???
 			if parentlist is not None:
 				idx = self.idx_within(parentlist)
 				if idx is not None:
 					core.MY_PRINT_FUNC('Object {} found at index {} of containing list'.format(self.__class__.__name__, idx))
-			raise RuntimeError("validation fail")
+			raise RuntimeError("validation fail") from e3
 		except RuntimeError:
 			# if there is a runtime error, only do the "determine which index this is" part
 			# determine "which index this is within the whole object" if possible???
@@ -76,7 +78,8 @@ class _BasePmx(abc.ABC):
 				idx = self.idx_within(parentlist)
 				if idx is not None:
 					core.MY_PRINT_FUNC('Object {} found at index {} of containing list'.format(self.__class__.__name__, idx))
-			raise RuntimeError("validation fail")
+			# raise with no arg to re-raise the same exception
+			raise
 
 	def __str__(self) -> str: return str(self.list())
 	def __eq__(self, other) -> bool:
