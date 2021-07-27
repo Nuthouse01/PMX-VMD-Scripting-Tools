@@ -314,10 +314,6 @@ def main(moreinfo=True):
 
 
 if __name__ == '__main__':
-	print(_SCRIPT_VERSION)
-	# print info to explain the purpose of this file
+	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
 	core.MY_PRINT_FUNC(helptext)
-	core.MY_PRINT_FUNC("")
-	
-	main()
-	core.pause_and_quit("Done with everything! Goodbye!")
+	core.RUN_WITH_TRACEBACK(main)
