@@ -1,7 +1,9 @@
 import csv
 import json
+import os
+import stat
 import sys
-from os import path, getenv, makedirs
+from os import path
 from typing import Any, List
 
 from mmd_scripting.core.nuthouse01_core import MY_PRINT_FUNC
@@ -10,6 +12,15 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.02 - 7/23/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
+# this is the name of my "app", the folder within "appdata" that is mine
+MY_APP_NAME = "nuthouse01_mmd_tools"
+# this is the name of the persistent json file that contains settings & history
+MY_JSON_NAME = "persist.txt"
+
+#######################################################################################################################
+# these functions access the persistent json for settings or history
+#######################################################################################################################
+
 def get_persistent_storage_json(key:str) -> Any:
 	"""
 	Access the storage JSON dict, attempt to retrieve the item under the specified key.
@@ -17,7 +28,7 @@ def get_persistent_storage_json(key:str) -> Any:
 	:param key: string key in dict
 	:return: item living under the dict
 	"""
-	persist_path = _get_persistent_storage_path("persist.txt")
+	persist_path = _get_persistent_storage_path(MY_JSON_NAME)
 	# read the json to list-of-strings using standard read-func
 	str_data = read_txtfile_to_list(src_path=persist_path,
 									use_jis_encoding=False,
@@ -45,7 +56,7 @@ def write_persistent_storage_json(key:str, newval:Any) -> None:
 	:param key: string key in dict
 	:param newval: new data to store under that key
 	"""
-	persist_path = _get_persistent_storage_path("persist.txt")
+	persist_path = _get_persistent_storage_path(MY_JSON_NAME)
 	# read the json to list-of-strings using standard read-func
 	str_data = read_txtfile_to_list(src_path=persist_path,
 									use_jis_encoding=False,
@@ -65,10 +76,10 @@ def write_persistent_storage_json(key:str, newval:Any) -> None:
 	str_data = json.dumps(data, ensure_ascii=False, indent="\t")
 	# use standard write-func to write to text file
 	# 'content' is designed to be list of strings that don't contain newlines, but there's no problem if i violate that
-	write_list_to_txtfile(dest_path=persist_path,
-						  content=[str_data],
-						  use_jis_encoding=False,
-						  quiet=True)
+	write_str_to_txtfile(dest_path=persist_path,
+						 content=str_data,
+						 use_jis_encoding=False,
+						 quiet=True)
 	return None
 
 
@@ -83,25 +94,26 @@ def _get_persistent_storage_path(filename="") -> str:
 	:param filename: filename within the persistent storage directory
 	:return: absolute file path to the persitient directory, or the file within it
 	"""
-	# this is the name of my "app"
-	appname = "nuthouse01_mmd_tools"
 	# build the appropriate path for windows or unix
 	if sys.platform == 'win32':
-		appdata = path.join(getenv('APPDATA'), appname)
+		appdata = path.join(os.getenv('APPDATA'), MY_APP_NAME)
 	else:
-		appdata = path.expanduser(path.join("~", "." + appname))
+		appdata = path.expanduser(path.join("~", "." + MY_APP_NAME))
 	# if the folder(s) don't exist, then make them
 	if not path.exists(appdata):
-		makedirs(appdata)
+		os.makedirs(appdata)
 	# if a filename was given, return it added onto the path
 	if filename:
 		retme = path.join(appdata, filename)
 		# if it doesn't exist, create it empty
 		if not path.exists(retme):
-			write_list_to_txtfile(retme, [], quiet=True)
+			write_str_to_txtfile(retme, "", quiet=True)
 		return retme
 	return appdata
 
+#######################################################################################################################
+# these functions do CSV read/write and binary-file read/write
+#######################################################################################################################
 
 def write_csvlist_to_file(dest_path:str, content:List[List[Any]], use_jis_encoding=False, quiet=False) -> None:
 	"""
@@ -211,6 +223,20 @@ def read_file_to_csvlist(src_path:str, use_jis_encoding=False, quiet=False) -> L
 	return data
 
 
+def write_list_to_txtfile(dest_path: str, content: List[str], use_jis_encoding=False, quiet=False) -> None:
+	"""
+	WRITE a list of strings from memory into a TEXT file.
+
+	:param dest_path: destination file path, as a string, relative from CWD or absolute
+	:param content: list of lines, each line is a string
+	:param use_jis_encoding: by default, assume utf-8 encoding. if this=True, use shift_jis instead.
+	:param quiet: by default, print the absolute path being written to. if this=True, don't do this.
+	"""
+	writeme = "\n".join(content)
+	write_str_to_txtfile(dest_path, writeme, use_jis_encoding=use_jis_encoding, quiet=quiet)
+	return None
+
+
 def write_bytes_to_binfile(dest_path:str, content:bytearray, quiet=False) -> None:
 	"""
 	WRITE a BINARY file from memory to disk.
@@ -220,18 +246,30 @@ def write_bytes_to_binfile(dest_path:str, content:bytearray, quiet=False) -> Non
 	:param quiet: by default, print the absolute path being written to. if this=True, don't do this.
 	"""
 	dest_path = path.abspath(path.normpath(dest_path))
-	if not quiet:  # unless disabled, print the absolute path to the file being written
-		MY_PRINT_FUNC(dest_path)
-	if not path.exists(path.dirname(dest_path)):  # assert that the destination folder exists
-		MY_PRINT_FUNC("ERROR: unable to write binary file '%s', the containing folder(s) do not exist!" % dest_path)
-		raise RuntimeError()
+	# unless disabled, print the absolute path to the file being written
+	if not quiet: MY_PRINT_FUNC(dest_path)
+	# assert that the destination folder exists
+	if not path.exists(path.dirname(dest_path)):
+		raise RuntimeError("ERROR: unable to write binary file '%s', the containing folder(s) do not exist!" % dest_path)
+	# check if it is okay to write to this dest name
+	if path.exists(dest_path):
+		if not path.isfile(dest_path):
+			# don't want to overwrite a folder with a file, that would be bad
+			raise RuntimeError("ERROR: unable to write binary file '%s', the dest name already exists as a non-file object!" % dest_path)
+		else:
+			# the file exists already and is about to be overwritten, check whether it is set to read-only?
+			if not os.access(dest_path, os.W_OK):
+				MY_PRINT_FUNC("WARNING: binary file '%s' currently set to READ-ONLY, but I want to overwrite it so I am going to change its permissions!" % dest_path)
+				current_permissions = stat.S_IMODE(os.lstat(dest_path).st_mode)
+				ALL_WRITE_PERMISSION = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
+				os.chmod(dest_path, current_permissions | ALL_WRITE_PERMISSION)
 	try:
 		with open(dest_path, "wb") as my_file:  # w = write, b = binary
 			my_file.write(content)  # plain old no-frills write
 	except IOError as e:
 		MY_PRINT_FUNC(e.__class__.__name__, e)
 		MY_PRINT_FUNC("ERROR: unable to write binary file '%s', maybe its a permissions issue?" % dest_path)
-		raise RuntimeError()
+		raise
 	return None
 
 
@@ -244,51 +282,61 @@ def read_binfile_to_bytes(src_path:str, quiet=False) -> bytearray:
 	:return: bytearray obj
 	"""
 	src_path = path.abspath(path.normpath(src_path))
-	if not quiet:  # unless disabled, print the absolute path to the file being read
-		MY_PRINT_FUNC(src_path)
-	if not path.isfile(src_path):  # assert that the given path exists and is a file, not a folder
-		MY_PRINT_FUNC("ERROR: attempt to read binary file '%s', but it does not exist!" % src_path)
-		raise RuntimeError()
+	# unless disabled, print the absolute path to the file being read
+	if not quiet: MY_PRINT_FUNC(src_path)
+	# assert that the given path exists and is a file, not a folder
+	if not path.isfile(src_path):
+		raise RuntimeError("ERROR: attempt to read binary file '%s', but it does not exist! (or exists but is not a file)" % src_path)
 	try:
 		with open(src_path, mode='rb') as file:  # r=read, b=binary
 			raw = file.read()  # plain old no-frills dump file from disk to memory
 	except IOError as e:
 		MY_PRINT_FUNC(e.__class__.__name__, e)
-		MY_PRINT_FUNC("ERROR: error wile reading '%s', maybe you typed it wrong?" % src_path)
-		raise RuntimeError()
+		MY_PRINT_FUNC("ERROR: error wile reading binary file '%s', maybe you typed it wrong?" % src_path)
+		raise
 	return bytearray(raw)
 
 
-def write_list_to_txtfile(dest_path:str, content:List[str], use_jis_encoding=False, quiet=False) -> None:
+def write_str_to_txtfile(dest_path: str, content: str, use_jis_encoding=False, quiet=False) -> None:
 	"""
-	WRITE a TEXT file from memory to disk.
-	
+	WRITE a string from memory to a TEXT file.
+
 	:param dest_path: destination file path, as a string, relative from CWD or absolute
 	:param content: list of lines, each line is a string
 	:param use_jis_encoding: by default, assume utf-8 encoding. if this=True, use shift_jis instead.
 	:param quiet: by default, print the absolute path being written to. if this=True, don't do this.
 	"""
 	dest_path = path.abspath(path.normpath(dest_path))
-	if not quiet:  # unless disabled, print the absolute path to the file being written
-		MY_PRINT_FUNC(dest_path)
-	if not path.exists(path.dirname(dest_path)):  # assert that the destination folder exists
-		MY_PRINT_FUNC("ERROR: unable to write text file '%s', the containing folder(s) do not exist!" % dest_path)
-		raise RuntimeError()
-	# default encoding is utf-8, but use shift_jis if use_jis_encoding is given
+	# unless disabled, print the absolute path to the file being read
+	if not quiet: MY_PRINT_FUNC(dest_path)
+	# assert that the destination folder exists
+	if not path.exists(path.dirname(dest_path)):
+		raise RuntimeError("ERROR: unable to write text file '%s', the containing folder(s) do not exist!" % dest_path)
+	# check if it is okay to write to this dest name
+	if path.exists(dest_path):
+		if not path.isfile(dest_path):
+			# don't want to overwrite a folder with a file, that would be bad
+			raise RuntimeError("ERROR: unable to write text file '%s', the dest name already exists as a non-file object!" % dest_path)
+		else:
+			# the file exists already and is about to be overwritten, check whether it is set to read-only?
+			if not os.access(dest_path, os.W_OK):
+				MY_PRINT_FUNC("WARNING: text file '%s' currently set to READ-ONLY, but I want to overwrite it so I am going to change its permissions!" % dest_path)
+				current_permissions = stat.S_IMODE(os.lstat(dest_path).st_mode)
+				ALL_WRITE_PERMISSION = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
+				os.chmod(dest_path, current_permissions | ALL_WRITE_PERMISSION)
+	# default encoding is utf-8, but use shift_jis if use_jis_encoding is True
 	enc = "shift_jis" if use_jis_encoding else "utf-8"
-	# join the list of lines into a single string
-	writeme = "\n".join(content)
 	try:
 		with open(dest_path, "wt", encoding=enc, errors="strict") as my_file:  # w=write, t=text
-			my_file.write(writeme)  # plain old no-frills write
-	except ValueError as e:
+			my_file.write(content)  # plain old no-frills write
+	except UnicodeEncodeError as e:
 		MY_PRINT_FUNC(e.__class__.__name__, e)
 		MY_PRINT_FUNC("ERROR: attempt to write text file '%s', but encoding '%s' could not handle contents!" % (dest_path, enc))
-		raise RuntimeError()
+		raise
 	except IOError as e:
 		MY_PRINT_FUNC(e.__class__.__name__, e)
 		MY_PRINT_FUNC("ERROR: unable to write text file '%s', maybe its a permissions issue?" % dest_path)
-		raise RuntimeError()
+		raise
 	return None
 
 
@@ -302,23 +350,23 @@ def read_txtfile_to_list(src_path:str, use_jis_encoding=False, quiet=False) -> L
 	:return: list of lines, each line is a string
 	"""
 	src_path = path.abspath(path.normpath(src_path))
-	if not quiet:  # unless disabled, print the absolute path to the file being read
-		MY_PRINT_FUNC(src_path)
-	if not path.isfile(src_path):  # assert that the given path exists and is a file, not a folder
-		MY_PRINT_FUNC("ERROR: attempt to read text file '%s', but it does not exist!" % src_path)
-		raise RuntimeError()
+	# unless disabled, print the absolute path to the file being read
+	if not quiet: MY_PRINT_FUNC(src_path)
+	# assert that the given path exists and is a file, not a folder
+	if not path.isfile(src_path):
+		raise RuntimeError("ERROR: attempt to read text file '%s', but it does not exist! (or exists but is not a file)" % src_path)
 	# default encoding is utf-8, but use shift_jis if use_jis_encoding is given
 	enc = "shift_jis" if use_jis_encoding else "utf-8"
 	try:
 		with open(src_path, "rt", encoding=enc, errors="strict") as my_file:  # r=read, t=text
 			rb_unicode = my_file.read()
-	except ValueError as e:
+	except UnicodeDecodeError as e:
 		MY_PRINT_FUNC(e.__class__.__name__, e)
 		MY_PRINT_FUNC("ERROR: attempt to read text file '%s', but encoding '%s' could not handle contents!" % (src_path, enc))
-		raise RuntimeError()
+		raise
 	except IOError as e:
 		MY_PRINT_FUNC(e.__class__.__name__, e)
-		MY_PRINT_FUNC("Err: error wile reading '%s', maybe you typed it wrong?" % src_path)
-		raise RuntimeError()
+		MY_PRINT_FUNC("ERROR: error wile reading text file '%s', maybe you typed it wrong?" % src_path)
+		raise
 	# break rb_unicode into a list object at standard line endings and return
 	return rb_unicode.splitlines()
