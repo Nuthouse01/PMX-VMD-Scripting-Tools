@@ -1,6 +1,10 @@
 
 #####
 
+TODO: how to deal with files that are marked as read-only?
+TODO: remove material morph items that point at -2 or invalid numbers? need to find a way to replicate this bug, see how it is saved so i know what to delete... also same in group morphs
+TODO: split "core" files into multiple?
+
 TODO: WIP-sdef-armtwist should invoke bone-sdeftwist-hand-adapter
 
 TODO: examine professional SDEF armtwist examples (miku, bb, tamo, check SPS?, ab8/10) and create a graph that profiles the weight balance with respect to the length along the segment
