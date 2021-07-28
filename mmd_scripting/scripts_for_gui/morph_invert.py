@@ -1,6 +1,6 @@
-from mmd_scripting.core import nuthouse01_core as core
-from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
-from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
+import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.scripts_for_gui import morph_scale
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.01 - 7/23/2021"

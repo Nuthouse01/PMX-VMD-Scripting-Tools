@@ -1,4 +1,4 @@
-from mmd_scripting.core import nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_core as core
 
 _SCRIPT_VERSION = "Script version:  <author> - <pkg version when created> - <date when created>"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.

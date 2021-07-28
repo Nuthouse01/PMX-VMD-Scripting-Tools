@@ -1,10 +1,10 @@
 import math
 from typing import List
 
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
+import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.scripts_for_gui import bone_make_semistandard_auto_armtwist
-from mmd_scripting.core import nuthouse01_core as core
-from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
-from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.00 - 7/13/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.

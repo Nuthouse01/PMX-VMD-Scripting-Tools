@@ -3,9 +3,9 @@ from typing import List, Dict, TypeVar, Tuple, Optional, Sequence
 
 # import numpy as np
 # import matplotlib.pyplot as plt
-from mmd_scripting.core import nuthouse01_core as core
-from mmd_scripting.core import nuthouse01_vmd_parser as vmdlib
-from mmd_scripting.core import nuthouse01_vmd_struct as vmdstruct
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_vmd_parser as vmdlib
+import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.08 - 6/3/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.

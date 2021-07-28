@@ -1,8 +1,8 @@
 import copy
 import math
 
+import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_io as io
-from mmd_scripting.core import nuthouse01_core as core
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.03 - 10/10/2020"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
