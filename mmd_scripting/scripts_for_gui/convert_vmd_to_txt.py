@@ -1,6 +1,6 @@
 from typing import List
 
-import mmd_scripting.core.nhio as nhio
+import mmd_scripting.core.nuthouse01_io as io
 from mmd_scripting.core import nuthouse01_core as core
 from mmd_scripting.core import nuthouse01_vmd_parser as vmdlib
 from mmd_scripting.core import nuthouse01_vmd_struct as vmdstruct
@@ -459,7 +459,7 @@ def read_vmdtext(vmdtext_filename: str) -> vmdstruct.Vmd:
 	
 	cleanname = core.filepath_splitdir(vmdtext_filename)[1]
 	core.MY_PRINT_FUNC("Begin reading VMD-as-text file '%s'" % cleanname)
-	vmdtext_rawlist = nhio.read_file_to_csvlist(vmdtext_filename)
+	vmdtext_rawlist = io.read_file_to_csvlist(vmdtext_filename)
 	core.MY_PRINT_FUNC("...total size   = %s lines" % len(vmdtext_rawlist))
 	core.MY_PRINT_FUNC("Begin parsing VMD-as-text file '%s'" % cleanname)
 	
@@ -500,7 +500,7 @@ def write_vmdtext(vmdtext_filename: str, nicelist: vmdstruct.Vmd):
 	# done formatting!
 	core.MY_PRINT_FUNC("Begin writing VMD-as-text file '%s'" % cleanname)
 	core.MY_PRINT_FUNC("...total size   = %s lines" % len(rawlist))
-	nhio.write_csvlist_to_file(vmdtext_filename, rawlist)
+	io.write_csvlist_to_file(vmdtext_filename, rawlist)
 	core.MY_PRINT_FUNC("Done writing VMD-as-text file '%s'" % cleanname)
 	return
 

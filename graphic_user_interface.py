@@ -10,7 +10,7 @@ import traceback
 from os import path, listdir
 from typing import Sequence, Union
 
-import mmd_scripting.core.nhio as nhio
+import mmd_scripting.core.nuthouse01_io as io
 import mmd_scripting.core.nuthouse01_core as core
 from mmd_scripting import __pkg_welcome__
 from mmd_scripting.scripts_for_gui import bone_make_semistandard_auto_armtwist, bone_set_arm_localaxis, \
@@ -182,7 +182,7 @@ def gui_fileprompt(label: str, ext_list: Union[str,Sequence[str]]) -> str:
 	# dont trust file dialog to remember last-opened path, manually save/read it
 	# NEW: file dialog start path is stored independently for each file type!!
 	json_key = "last-input-path-" + ",".join(ext_list)
-	json_data = nhio.get_persistent_storage_json(json_key)
+	json_data = io.get_persistent_storage_json(json_key)
 	if json_data is None:
 		# if never used before, start wherever i am right now i guess
 		start_here = path.abspath(".")
@@ -203,7 +203,7 @@ def gui_fileprompt(label: str, ext_list: Union[str,Sequence[str]]) -> str:
 		raise RuntimeError("file dialogue aborted")
 	
 	# they got an existing file! update the last_opened_dir file
-	nhio.write_persistent_storage_json(json_key, path.dirname(newpath))
+	io.write_persistent_storage_json(json_key, path.dirname(newpath))
 	
 	return newpath
 
@@ -477,7 +477,7 @@ class Application(tk.Frame):
 		self.script_list_dispnames = [module_to_dispname(m) for m in self.script_list_modules]
 		
 		# set the default script, this should invoke "self.change_mode" at least once
-		lastused = nhio.get_persistent_storage_json('last-script')
+		lastused = io.get_persistent_storage_json('last-script')
 		if (lastused is not None) and (lastused in self.script_list_dispnames):
 			# if the JSON contains a "lastused" value, and that value also matches one of the currently loaded scripts,
 			self.script_select_optionvar.set(lastused)
@@ -552,7 +552,7 @@ class Application(tk.Frame):
 		# set helptext and execute func
 		self.loaded_script = self.script_list_modules[idx]
 		# set the 'last used script' item in the json
-		nhio.write_persistent_storage_json('last-script', newstr)
+		io.write_persistent_storage_json('last-script', newstr)
 
 		core.MY_PRINT_FUNC(">>>>>>>>>>\nLoad new script '%s'\n" % newstr)
 		return

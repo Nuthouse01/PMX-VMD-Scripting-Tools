@@ -1,6 +1,6 @@
 import re
 
-import mmd_scripting.core.nhio as nhio
+import mmd_scripting.core.nuthouse01_io as io
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
@@ -53,7 +53,7 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> vmdstruct.Vmd:
 	core.MY_PRINT_FUNC("Begin reading VPD file '%s'" % cleanname)
 	
 	# read textfile to linelist, no CSV fields to untangle here
-	lines = nhio.read_txtfile_to_list(vpd_filepath, use_jis_encoding=True)
+	lines = io.read_txtfile_to_list(vpd_filepath, use_jis_encoding=True)
 	
 	# verify magic header "Vocaloid Pose Data file"
 	if lines[0] != "Vocaloid Pose Data file":
@@ -264,7 +264,7 @@ def write_vpd(vpd_filepath: str, vmd: vmdstruct.Vmd, moreinfo=False):
 		printlist.extend(newitem)
 	
 	# ok, now i'm done building the printlist! now actually write it!
-	nhio.write_list_to_txtfile(vpd_filepath, printlist, use_jis_encoding=True)
+	io.write_list_to_txtfile(vpd_filepath, printlist, use_jis_encoding=True)
 	core.MY_PRINT_FUNC("Done writing VPD file '%s'" % cleanname)
 
 	return None
@@ -282,8 +282,8 @@ def main():
 	write_vpd("____vpdparser_selftest_DELETEME.vpd", Z)
 	ZZ = read_vpd("____vpdparser_selftest_DELETEME.vpd")
 	core.MY_PRINT_FUNC("")
-	bb = nhio.read_binfile_to_bytes(input_filename)
-	bb2 = nhio.read_binfile_to_bytes("____vpdparser_selftest_DELETEME.vpd")
+	bb = io.read_binfile_to_bytes(input_filename)
+	bb2 = io.read_binfile_to_bytes("____vpdparser_selftest_DELETEME.vpd")
 	# now compare bb (original binary) with bb2 (read-write)
 	# now compare Z (first read) wtih ZZ (read-write-read)
 	core.MY_PRINT_FUNC("Is the binary EXACTLY identical to original?", bb == bb2)

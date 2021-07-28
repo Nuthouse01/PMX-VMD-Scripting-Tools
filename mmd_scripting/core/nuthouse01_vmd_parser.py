@@ -2,7 +2,7 @@ import math
 import struct
 from typing import List, Union
 
-import mmd_scripting.core.nhio as nhio
+import mmd_scripting.core.nuthouse01_io as io
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
@@ -584,7 +584,7 @@ def read_vmd(vmd_filename: str, moreinfo=False) -> vmdstruct.Vmd:
 	# creates object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
 	# assumes the calling function already verified correct file extension
 	core.MY_PRINT_FUNC("Begin reading VMD file '%s'" % vmd_filename_clean)
-	vmd_bytes = nhio.read_binfile_to_bytes(vmd_filename)
+	vmd_bytes = io.read_binfile_to_bytes(vmd_filename)
 	core.MY_PRINT_FUNC("...total size   = %s" % core.prettyprint_file_size(len(vmd_bytes)))
 	core.MY_PRINT_FUNC("Begin parsing VMD file '%s'" % vmd_filename_clean)
 	core.reset_unpack()
@@ -690,7 +690,7 @@ def write_vmd(vmd_filename: str, vmd: vmdstruct.Vmd, moreinfo=False):
 	
 	core.MY_PRINT_FUNC("Begin writing VMD file '%s'" % vmd_filename_clean)
 	core.MY_PRINT_FUNC("...total size   = %s" % core.prettyprint_file_size(len(output_bytes)))
-	nhio.write_bytes_to_binfile(vmd_filename, output_bytes)
+	io.write_bytes_to_binfile(vmd_filename, output_bytes)
 	core.MY_PRINT_FUNC("Done writing VMD file '%s'" % vmd_filename_clean)
 	# done with everything!
 	return
@@ -709,8 +709,8 @@ def main():
 	write_vmd("____vmdparser_selftest_DELETEME.vmd", Z)
 	ZZ = read_vmd("____vmdparser_selftest_DELETEME.vmd")
 	core.MY_PRINT_FUNC("")
-	bb = nhio.read_binfile_to_bytes(input_filename)
-	bb2 = nhio.read_binfile_to_bytes("____vmdparser_selftest_DELETEME.vmd")
+	bb = io.read_binfile_to_bytes(input_filename)
+	bb2 = io.read_binfile_to_bytes("____vmdparser_selftest_DELETEME.vmd")
 	core.MY_PRINT_FUNC("Is the binary EXACTLY identical to original?", bb == bb2)
 	exact_result = Z == ZZ
 	core.MY_PRINT_FUNC("Is the readback EXACTLY identical to original?", exact_result)
