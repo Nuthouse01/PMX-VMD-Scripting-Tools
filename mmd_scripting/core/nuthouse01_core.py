@@ -384,17 +384,93 @@ def prompt_user_filename(label: str, ext_list: Union[str,Sequence[str]]) -> str:
 	# it exists, so make it absolute
 	name = path.abspath(path.normpath(name))
 	# windows is case insensitive, so this doesn't matter, but to make it match the same case as the existing file:
-	# inputname > dir name > list files in dir > compare-case-insensitive with inputname > get case-correct name
-	manyfiles = listdir(path.dirname(name))
-	for casename in manyfiles:
-		if casename.lower() == path.basename(name).lower():
-			return path.join(path.dirname(name), casename)
-	# just in case something goes sideways
-	return name
+	return filepath_make_casecorrect(name)
 
 # global variable holding a function pointer that i can overwrite with a different function pointer when in GUI mode
 MY_FILEPROMPT_FUNC = prompt_user_filename
 
+def filepath_split(initial_name: str) -> Tuple[str,str,str]:
+	"""
+	Split a path into 3 components: Directories, Basename, and Extension.
+	Directories or Extension might be empty strings, depending on the input.
+	Directories will end with a fileseperator if it is not empty, so the three can be reassembled with string concat.
+	:param initial_name: string filepath
+	:return: (Directories, Basename, Extension)
+	"""
+	initial_name = path.normpath(initial_name)
+	D,temp = path.split(initial_name)
+	N,E = path.splitext(temp)
+	if D:
+		D = D + path.sep
+	return D, N, E
+
+def filepath_insert_suffix(initial_name: str, suffix:str) -> str:
+	"""
+	Simple function, insert the suffix between the Basename and Extension.
+	:param initial_name: string filepath
+	:param suffix: string to append to filepath
+	:return: string filepath
+	"""
+	D,N,E = filepath_split(initial_name)
+	ret = D + N + suffix + E
+	return ret
+
+def filepath_make_casecorrect(initial_name: str) -> str:
+	"""
+	Make the given path match the case of the file/folders on the disk.
+	If the path does not exist, then make it casecorrect up to the point where it no longer exists.
+	:param initial_name: string filepath
+	:return: string filepath, exactly the same as input except for letter case
+	"""
+	initial_name = path.normpath(initial_name)
+	# all "." are removed, all ".." are removed except for leading...
+	# first, break the given path into all of its segments
+	seglist = initial_name.split(path.sep)
+	if len(seglist) == 0:
+		raise ValueError("ERROR: input path '%s' is too short" % initial_name)
+
+	if path.isabs(initial_name):
+		first = seglist.pop(0) + path.sep
+		if path.ismount(first):
+			# windows absolute path! begins with a drive letter
+			reassemble_name = first.upper()
+		elif first == "":
+			# ???? linux ????
+			reassemble_name = path.sep
+		else:
+			MY_PRINT_FUNC("path is abs, but doesn't start with drive or filesep? what? '%s'" % initial_name)
+			reassemble_name = first
+	else:
+		# if not an absolute path, it needs to start as "." so that listdir works right (need to remove this when done tho)
+		reassemble_name = "."
+	
+	while seglist:
+		nextseg = seglist.pop(0)
+		if nextseg == "..":
+			reassemble_name = path.join(reassemble_name, nextseg)
+		else:
+			try:
+				whats_here = listdir(reassemble_name)
+			except FileNotFoundError:
+				# fallback just in case I forgot about something
+				return initial_name
+			whats_here = [str(w) for w in whats_here]
+			whats_here_lower = [w.lower() for w in whats_here]
+			try:
+				# find which entry in listdir corresponds to nextseg, when both sides are lowered
+				idx = whats_here_lower.index(nextseg.lower())
+			except ValueError:
+				# the next segment isnt available in the listdir! the path is invalid from here on out!
+				# so, just join everything remaining & break out of the loop.
+				reassemble_name = path.join(reassemble_name, nextseg, *seglist)
+				break
+			# the next segment IS available in the listdir, so use the case-correct version of it
+			reassemble_name = path.join(reassemble_name, whats_here[idx])
+			# then, loop!
+	# call normpath one more time to get rid of leading ".\\" when path is relative!
+	reassemble_name = path.normpath(reassemble_name)
+	return reassemble_name
+	
 def get_clean_basename(initial_name: str) -> str:
 	"""
 	Remove extension and all folders from a file name: D:/docs/user/mmd/whatever/mikumodel.pmx -> mikumodel
