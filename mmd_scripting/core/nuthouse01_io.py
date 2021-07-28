@@ -186,7 +186,7 @@ def read_file_to_csvlist(src_path:str, use_jis_encoding=False, quiet=False) -> L
 		core.MY_PRINT_FUNC("ERROR: malformed CSV format in the text file prevented parsing from text to list form, check your commas")
 		core.MY_PRINT_FUNC("file '{}', line #{}".format(src_path, reader.line_num))
 		core.MY_PRINT_FUNC("input line = '{}'".format(rb_list[reader.line_num]))
-		raise RuntimeError()
+		raise
 	# ideally the csv reader should detect what type each thing is but the encoding is making it all fucky
 	# so, just read everything in as a string i guess, then build a new list 'data' where all the types are correct
 	data = []
