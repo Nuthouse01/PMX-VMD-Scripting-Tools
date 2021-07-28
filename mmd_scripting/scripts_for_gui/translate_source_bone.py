@@ -313,7 +313,8 @@ def main(moreinfo=True):
 	insert_single_bone(pmx_file_obj, leg_right_toe_ik_obj, last_leg_item_index + 4)
 	
 	# output the file
-	output_filename_pmx = input_filename_pmx[0:-4] + "_sourcetrans.pmx"
+	output_filename_pmx = core.filepath_insert_suffix(input_filename_pmx, "_sourcetrans")
+	output_filename_pmx = core.filepath_get_unused_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx_file_obj, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("Done!")
 	return None

@@ -30,7 +30,9 @@ def convert_vpd_to_vmd(vpd_path: str, moreinfo=True):
 	vmd = vpdlib.read_vpd(vpd_path, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("")
 	# identify an unused filename for writing the output
-	vmd_outpath = core.filepath_get_unused_name(vpd_path[0:-4] + ".vmd")
+	base = core.filepath_splitext(vpd_path)[0]
+	base += ".vmd"
+	vmd_outpath = core.filepath_get_unused_name(base)
 	# write the output VMD file
 	vmdlib.write_vmd(vmd_outpath, vmd, moreinfo=moreinfo)
 	# done!
@@ -50,7 +52,9 @@ def convert_vmd_to_vpd(vmd_path: str, moreinfo=True):
 	vmd = vmdlib.read_vmd(vmd_path, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("")
 	# identify an unused filename for writing the output
-	vpd_outpath = core.filepath_get_unused_name(vmd_path[0:-4] + ".vpd")
+	base = core.filepath_splitext(vmd_path)[0]
+	base += ".vpd"
+	vpd_outpath = core.filepath_get_unused_name(base)
 	# write the output VPD file
 	vpdlib.write_vpd(vpd_outpath, vmd, moreinfo=moreinfo)
 	# done!

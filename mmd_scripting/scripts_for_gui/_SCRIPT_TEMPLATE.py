@@ -29,7 +29,7 @@ def main(moreinfo=True):
 	#
 	#
 	core.MY_PRINT_FUNC("")
-	# output_filename_vmd = "%s_renamed.vmd" % input_filename_vmd[0:-4]
+	# output_filename_vmd = core.filepath_insert_suffix(input_filename_vmd, "_renamed")
 	# output_filename_vmd = core.filepath_get_unused_name(output_filename_vmd)
 	# vmdlib.write_vmd(output_filename_vmd, vmd, moreinfo=moreinfo)
 	

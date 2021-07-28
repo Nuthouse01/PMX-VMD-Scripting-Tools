@@ -98,7 +98,7 @@ def main(moreinfo=True):
 	core.MY_PRINT_FUNC("")
 	
 	# write out
-	output_filename_pmx = input_filename_pmx[0:-4] + "_endpoints.pmx"
+	output_filename_pmx = core.filepath_insert_suffix(input_filename_pmx, "_endpoints")
 	output_filename_pmx = core.filepath_get_unused_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("Done!")

@@ -200,7 +200,7 @@ def main(moreinfo=True):
 		pmx.morphs.append(newmorph)
 		
 	# write out
-	output_filename_pmx = input_filename_pmx[0:-4] + ("_%dscal.pmx" % target_index)
+	output_filename_pmx = core.filepath_insert_suffix(input_filename_pmx, ("_%dscal.pmx" % target_index))
 	output_filename_pmx = core.filepath_get_unused_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("Done!")

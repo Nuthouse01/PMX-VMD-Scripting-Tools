@@ -526,14 +526,16 @@ def convert_txt_to_vmd(input_filename, moreinfo=True):
 	Read a VMD-as-text file from disk, convert it, and write to disk as a VMD motion file.
 	The output will have the same path and basename, but the opposite file extension.
 	
-	:param input_filename: filepath to input vmd, absolute or relative to CWD
+	:param input_filename: filepath to input txt, absolute or relative to CWD
 	:param moreinfo: default false. if true, get extra printouts with more info about stuff.
 	"""
 	# read the VMD-as-text into the nicelist format, all in one function
 	vmd_nicelist = read_vmdtext(input_filename)
 	core.MY_PRINT_FUNC("")
 	# identify an unused filename for writing the output
-	dumpname = core.filepath_get_unused_name(input_filename[0:-4] + ".vmd")
+	base = core.filepath_splitext(input_filename)[0]
+	base += ".vmd"
+	dumpname = core.filepath_get_unused_name(base)
 	# write the output VMD file
 	vmdlib.write_vmd(dumpname, vmd_nicelist, moreinfo=moreinfo)
 	
@@ -555,7 +557,9 @@ def convert_vmd_to_txt(input_filename: str, moreinfo=True):
 	vmd_nicelist = vmdlib.read_vmd(input_filename, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("")
 	# identify an unused filename for writing the output
-	dumpname = core.filepath_get_unused_name(input_filename[0:-4] + filestr_txt)
+	base = core.filepath_splitext(input_filename)[0]
+	base += filestr_txt
+	dumpname = core.filepath_get_unused_name(base)
 	# write the output VMD-as-text file
 	write_vmdtext(dumpname, vmd_nicelist)
 	

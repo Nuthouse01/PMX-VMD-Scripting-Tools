@@ -566,7 +566,7 @@ def main(moreinfo=True):
 	normalize_weights(pmx)
 	
 	# 11. write out
-	output_filename_pmx = input_filename_pmx[0:-4] + "_magictwist.pmx"
+	output_filename_pmx = core.filepath_insert_suffix(input_filename_pmx, "_sdefautotwist")
 	output_filename_pmx = core.filepath_get_unused_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("Done!")

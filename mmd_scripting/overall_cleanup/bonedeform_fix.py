@@ -160,7 +160,7 @@ def bonedeform_fix(pmx: pmxstruct.Pmx, moreinfo=False):
 
 def end(pmx, input_filename_pmx):
 	# write out
-	output_filename_pmx = input_filename_pmx[0:-4] + "_bonedeform.pmx"
+	output_filename_pmx = core.filepath_insert_suffix(input_filename_pmx, "_bonedeform")
 	output_filename_pmx = core.filepath_get_unused_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx, moreinfo=True)
 	return None

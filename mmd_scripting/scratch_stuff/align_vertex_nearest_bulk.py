@@ -67,7 +67,7 @@ def main():
 		
 	# write out
 	# build the output file name and ensure it is free
-	output_filename = input_filename_vertex_source[:-4] + "_aligned.csv"
+	output_filename = core.filepath_insert_suffix(input_filename_vertex_source, "_aligned")
 	output_filename = core.filepath_get_unused_name(output_filename)
 	print("Writing aligned result to '" + output_filename + "'...")
 	# export modified CSV

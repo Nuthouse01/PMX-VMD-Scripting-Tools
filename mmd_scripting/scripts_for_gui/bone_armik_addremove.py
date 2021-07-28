@@ -70,10 +70,7 @@ def main(moreinfo=True):
 		# add IK branch
 		core.MY_PRINT_FUNC(">>>> Adding arm IK <<<")
 		# set output name
-		if input_filename_pmx.lower().endswith(pmx_noik_suffix.lower()):
-			output_filename = input_filename_pmx[0:-(len(pmx_noik_suffix))] + pmx_yesik_suffix
-		else:
-			output_filename = input_filename_pmx[0:-4] + pmx_yesik_suffix
+		SUFFIX = pmx_yesik_suffix
 		for side in [jp_l, jp_r]:
 			# first find all 3 arm bones
 			# even if i insert into the list, this will still be a valid reference i think
@@ -186,10 +183,7 @@ def main(moreinfo=True):
 		# remove IK branch
 		core.MY_PRINT_FUNC(">>>> Removing arm IK <<<")
 		# set output name
-		if input_filename_pmx.lower().endswith(pmx_yesik_suffix.lower()):
-			output_filename = input_filename_pmx[0:-(len(pmx_yesik_suffix))] + pmx_noik_suffix
-		else:
-			output_filename = input_filename_pmx[0:-4] + pmx_noik_suffix
+		SUFFIX = pmx_noik_suffix
 		# identify all bones in ik chain of hand ik bones
 		bone_dellist = []
 		for b in [r, l]:
@@ -211,6 +205,7 @@ def main(moreinfo=True):
 		pass
 	
 	# write out
+	output_filename = core.filepath_insert_suffix(input_filename_pmx, SUFFIX)
 	output_filename = core.filepath_get_unused_name(output_filename)
 	pmxlib.write_pmx(output_filename, pmx, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("Done!")

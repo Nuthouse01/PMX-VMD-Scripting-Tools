@@ -46,13 +46,13 @@ def main(moreinfo=True):
 	
 	
 	# write out
-	output_filename_bone = "%s_bone_names.txt" % input_filename_pmx[0:-4]
-	# output_filename_bone = output_filename_bone.replace(" ", "_")
+	basename_pmx = core.filepath_splitext(input_filename_pmx)[0]
+	output_filename_bone = basename_pmx + "_bone_names.txt"
 	output_filename_bone = core.filepath_get_unused_name(output_filename_bone)
 	core.MY_PRINT_FUNC("...writing result to file '%s'..." % output_filename_bone)
 	nhio.write_csvlist_to_file(output_filename_bone, bonelist_out, use_jis_encoding=False)
 
-	output_filename_morph = "%s_morph_names.txt" % input_filename_pmx[0:-4]
+	output_filename_morph = basename_pmx + "_morph_names.txt"
 	output_filename_morph = core.filepath_get_unused_name(output_filename_morph)
 	core.MY_PRINT_FUNC("...writing result to file '%s'..." % output_filename_morph)
 	nhio.write_csvlist_to_file(output_filename_morph, morphlist_out, use_jis_encoding=False)

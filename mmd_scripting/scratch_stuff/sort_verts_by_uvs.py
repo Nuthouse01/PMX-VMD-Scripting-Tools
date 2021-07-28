@@ -63,8 +63,7 @@ def main():
 				item.vert_idx = old_to_new[item.vert_idx]
 		
 	# softbodies: eh, who cares
-	
-	pmxname_done = pmxname[:-4] + "_Vsort.pmx"
+	pmxname_done = core.filepath_insert_suffix(pmxname, "_Vsort")
 	pmxlib.write_pmx(pmxname_done, pmx, moreinfo=True)
 	print("done")
 	
