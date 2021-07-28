@@ -72,7 +72,7 @@ def find_shiftjis_unsupported_names(pmx: pmxstruct.Pmx, filepath: str) -> int:
 	# also check the model name and the filepath
 	core.set_encoding("shift_jis")
 	failct = 0
-	print(filepath)
+	# print(filepath)
 	# first, full absolute file path:
 	try:
 		_ = core.encode_string_with_escape(filepath)
