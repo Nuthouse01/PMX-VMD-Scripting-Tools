@@ -1050,7 +1050,7 @@ def encode_pmx_softbodies(nice: List[pmxstruct.PmxSoftBody]) -> bytearray:
 def read_pmx(pmx_filename: str, moreinfo=False) -> pmxstruct.Pmx:
 	global PMX_MOREINFO
 	PMX_MOREINFO = moreinfo
-	pmx_filename_clean = core.get_clean_basename(pmx_filename) + ".pmx"
+	pmx_filename_clean = core.filepath_splitdir(pmx_filename)[1]
 	# assumes the calling function already verified correct file extension
 	core.MY_PRINT_FUNC("Begin reading PMX file '%s'" % pmx_filename_clean)
 	pmx_bytes = nhio.read_binfile_to_bytes(pmx_filename)
@@ -1100,7 +1100,7 @@ def read_pmx(pmx_filename: str, moreinfo=False) -> pmxstruct.Pmx:
 def write_pmx(pmx_filename: str, pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 	global PMX_MOREINFO
 	PMX_MOREINFO = moreinfo
-	pmx_filename_clean = core.get_clean_basename(pmx_filename) + ".pmx"
+	pmx_filename_clean = core.filepath_splitdir(pmx_filename)[1]
 	# recives object 	(......)
 	# before writing, validate that the object is properly structured
 	# if it fails, it prints a bunch & raises a RuntimeError

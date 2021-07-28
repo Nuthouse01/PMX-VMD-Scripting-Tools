@@ -324,7 +324,6 @@ def main(moreinfo=False):
 	core.MY_PRINT_FUNC("++++ Done with cleanup, saving improvements to file ++++")
 	
 	# write out
-	# output_filename_pmx = "%s_better.pmx" % core.get_clean_basename(input_filename_pmx)
 	output_filename_pmx = input_filename_pmx[0:-4] + "_better.pmx"
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx, moreinfo=moreinfo)

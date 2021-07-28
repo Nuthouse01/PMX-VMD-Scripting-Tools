@@ -49,7 +49,7 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> vmdstruct.Vmd:
 	:param moreinfo: if true, get extra printouts with more info about stuff
 	:return: VMD object
 	"""
-	cleanname = core.get_clean_basename(vpd_filepath) + ".vpd"
+	cleanname = core.filepath_splitdir(vpd_filepath)[1]
 	core.MY_PRINT_FUNC("Begin reading VPD file '%s'" % cleanname)
 	
 	# read textfile to linelist, no CSV fields to untangle here
@@ -220,7 +220,7 @@ def write_vpd(vpd_filepath: str, vmd: vmdstruct.Vmd, moreinfo=False):
 	:param vmd: input VMD object
 	:param moreinfo: if true, get extra printouts with more info about stuff
 	"""
-	cleanname = core.get_clean_basename(vpd_filepath) + ".vpd"
+	cleanname = core.filepath_splitdir(vpd_filepath)[1]
 	core.MY_PRINT_FUNC("Begin writing VPD file '%s'" % cleanname)
 
 	# first, lets partition boneframes & morphframes into those at/notat time=0

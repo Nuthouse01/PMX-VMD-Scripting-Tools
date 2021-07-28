@@ -389,20 +389,21 @@ def prompt_user_filename(label: str, ext_list: Union[str,Sequence[str]]) -> str:
 # global variable holding a function pointer that i can overwrite with a different function pointer when in GUI mode
 MY_FILEPROMPT_FUNC = prompt_user_filename
 
-def filepath_split(initial_name: str) -> Tuple[str,str,str]:
+def filepath_splitdir(initial_name: str) -> Tuple[str,str]:
 	"""
-	Split a path into 3 components: Directories, Basename, and Extension.
-	Directories or Extension might be empty strings, depending on the input.
-	Directories will end with a fileseperator if it is not empty, so the three can be reassembled with string concat.
+	Alias for path.split()
 	:param initial_name: string filepath
-	:return: (Directories, Basename, Extension)
+	:return: (directories, filename)
 	"""
-	initial_name = path.normpath(initial_name)
-	D,temp = path.split(initial_name)
-	N,E = path.splitext(temp)
-	if D:
-		D = D + path.sep
-	return D, N, E
+	return path.split(initial_name)
+
+def filepath_splitext(initial_name: str) -> Tuple[str,str]:
+	"""
+	Alias for path.splitext()
+	:param initial_name: string filepath
+	:return: (directories+filename, extension)
+	"""
+	return path.splitext(initial_name)
 
 def filepath_insert_suffix(initial_name: str, suffix:str) -> str:
 	"""
@@ -411,8 +412,8 @@ def filepath_insert_suffix(initial_name: str, suffix:str) -> str:
 	:param suffix: string to append to filepath
 	:return: string filepath
 	"""
-	D,N,E = filepath_split(initial_name)
-	ret = D + N + suffix + E
+	N,E = filepath_splitext(initial_name)
+	ret = N + suffix + E
 	return ret
 
 def filepath_make_casecorrect(initial_name: str) -> str:
@@ -471,15 +472,6 @@ def filepath_make_casecorrect(initial_name: str) -> str:
 	reassemble_name = path.normpath(reassemble_name)
 	return reassemble_name
 	
-def get_clean_basename(initial_name: str) -> str:
-	"""
-	Remove extension and all folders from a file name: D:/docs/user/mmd/whatever/mikumodel.pmx -> mikumodel
-	
-	:param initial_name: input path, abs or relative
-	:return: stripped path
-	"""
-	return path.splitext(path.basename(initial_name))[0]
-
 def get_unused_file_name(initial_name: str, namelist=None) -> str:
 	"""
 	Given a desired filepath, generate a path that is guaranteed to be unused & safe to write to.

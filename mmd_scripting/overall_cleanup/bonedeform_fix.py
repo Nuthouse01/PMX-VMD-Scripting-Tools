@@ -160,7 +160,6 @@ def bonedeform_fix(pmx: pmxstruct.Pmx, moreinfo=False):
 
 def end(pmx, input_filename_pmx):
 	# write out
-	# output_filename_pmx = "%s_dispframe.pmx" % core.get_clean_basename(input_filename_pmx)
 	output_filename_pmx = input_filename_pmx[0:-4] + "_bonedeform.pmx"
 	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx, moreinfo=True)

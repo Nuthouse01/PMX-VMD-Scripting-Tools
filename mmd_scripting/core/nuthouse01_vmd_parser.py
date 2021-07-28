@@ -580,7 +580,7 @@ def parse_vmd_used_dict(frames: List[Union[vmdstruct.VmdBoneFrame, vmdstruct.Vmd
 ########################################################################################################################
 
 def read_vmd(vmd_filename: str, moreinfo=False) -> vmdstruct.Vmd:
-	vmd_filename_clean = core.get_clean_basename(vmd_filename) + ".vmd"
+	vmd_filename_clean = core.filepath_splitdir(vmd_filename)[1]
 	# creates object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
 	# assumes the calling function already verified correct file extension
 	core.MY_PRINT_FUNC("Begin reading VMD file '%s'" % vmd_filename_clean)
@@ -635,7 +635,7 @@ def read_vmd(vmd_filename: str, moreinfo=False) -> vmdstruct.Vmd:
 	return vmd
 
 def write_vmd(vmd_filename: str, vmd: vmdstruct.Vmd, moreinfo=False):
-	vmd_filename_clean = core.get_clean_basename(vmd_filename) + ".vmd"
+	vmd_filename_clean = core.filepath_splitdir(vmd_filename)[1]
 	# recives object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
 	
 	# first, verify that the data is valid before trying to write

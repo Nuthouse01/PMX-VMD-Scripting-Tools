@@ -457,7 +457,7 @@ def read_vmdtext(vmdtext_filename: str) -> vmdstruct.Vmd:
 	# also check that headers are where they should be and each line has the proper number of items on it
 	# return nicelist = [header, modelname, bone_list, morph_list, cam_list, light_list, shadow_list, ikdisp_list]
 	
-	cleanname = core.get_clean_basename(vmdtext_filename) + ".txt"
+	cleanname = core.filepath_splitdir(vmdtext_filename)[1]
 	core.MY_PRINT_FUNC("Begin reading VMD-as-text file '%s'" % cleanname)
 	vmdtext_rawlist = nhio.read_file_to_csvlist(vmdtext_filename)
 	core.MY_PRINT_FUNC("...total size   = %s lines" % len(vmdtext_rawlist))
@@ -492,7 +492,7 @@ def read_vmdtext(vmdtext_filename: str) -> vmdstruct.Vmd:
 
 def write_vmdtext(vmdtext_filename: str, nicelist: vmdstruct.Vmd):
 	# assume the output filename has already been validated as unused, etc
-	cleanname = core.get_clean_basename(vmdtext_filename) + ".txt"
+	cleanname = core.filepath_splitdir(vmdtext_filename)[1]
 	core.MY_PRINT_FUNC("Begin formatting VMD-as-text file '%s'" % cleanname)
 	
 	rawlist = format_nicelist_as_rawlist(nicelist)

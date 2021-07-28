@@ -62,9 +62,9 @@ def main(moreinfo=True):
 	
 	# ensure that the VMD contains at least some morphs, to prevent zero-divide error
 	if len(morphs_in_vmd) == 0:
-		core.MY_PRINT_FUNC("MORPH SKIP: VMD '%s' does not contain any morphs that are used in a meaningful way." % core.get_clean_basename(input_filename))
+		core.MY_PRINT_FUNC("MORPH SKIP: VMD '%s' does not contain any morphs that are used in a meaningful way." % core.filepath_splitdir(input_filename)[1])
 	elif len(morphs_in_model) == 0:
-		core.MY_PRINT_FUNC("MORPH SKIP: PMX '%s' does not contain any morphs." % core.get_clean_basename(input_filename_pmx))
+		core.MY_PRINT_FUNC("MORPH SKIP: PMX '%s' does not contain any morphs." % core.filepath_splitdir(input_filename_pmx)[1])
 	else:
 		
 		# convert pmx-morph names to bytes
@@ -156,9 +156,9 @@ def main(moreinfo=True):
 	
 	# ensure that the VMD contains at least some bones, to prevent zero-divide error
 	if len(bones_in_vmd) == 0:
-		core.MY_PRINT_FUNC("BONE SKIP: VMD '%s' does not contain any bones that are used in a meaningful way." % core.get_clean_basename(input_filename))
+		core.MY_PRINT_FUNC("BONE SKIP: VMD '%s' does not contain any bones that are used in a meaningful way." % core.filepath_splitdir(input_filename)[1])
 	elif len(bones_in_model) == 0:
-		core.MY_PRINT_FUNC("BONE SKIP: PMX '%s' does not contain any bones." % core.get_clean_basename(input_filename_pmx))
+		core.MY_PRINT_FUNC("BONE SKIP: PMX '%s' does not contain any bones." % core.filepath_splitdir(input_filename_pmx)[1])
 	else:
 		
 		# convert pmx-bone names to bytes
