@@ -211,7 +211,7 @@ def main(moreinfo=True):
 		pass
 	
 	# write out
-	output_filename = core.get_unused_file_name(output_filename)
+	output_filename = core.filepath_get_unused_name(output_filename)
 	pmxlib.write_pmx(output_filename, pmx, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("Done!")
 	return None

@@ -472,7 +472,7 @@ def filepath_make_casecorrect(initial_name: str) -> str:
 	reassemble_name = path.normpath(reassemble_name)
 	return reassemble_name
 	
-def get_unused_file_name(initial_name: str, namelist=None) -> str:
+def filepath_get_unused_name(initial_name: str, namelist=None) -> str:
 	"""
 	Given a desired filepath, generate a path that is guaranteed to be unused & safe to write to.
 	Append integers to the end of the basename until it passes.

@@ -150,7 +150,7 @@ def make_zipfile_backup(startpath: str, backup_suffix: str) -> str:
 	"""
 	# need to add .zip for checking against already-exising files and for printing
 	zipname = startpath + "." + backup_suffix + ".zip"
-	zipname = core.get_unused_file_name(zipname)
+	zipname = core.filepath_get_unused_name(zipname)
 	core.MY_PRINT_FUNC("...making backup archive:")
 	core.MY_PRINT_FUNC(zipname)
 	try:
@@ -599,9 +599,9 @@ def main(moreinfo=False):
 		# if the name I build is not the name it already has, queue it for actual rename
 		if newname != p.name:
 			# resolve potential collisions by adding numbers suffix to file names
-			# first need to make path absolute so get_unused_file_name can check the disk.
+			# first need to make path absolute so filepath_get_unused_name can check the disk.
 			# then check uniqueness against files on disk and files in namelist (files that WILL be on disk)
-			newname = core.get_unused_file_name(os.path.join(startpath, newname), namelist=all_new_names)
+			newname = core.filepath_get_unused_name(os.path.join(startpath, newname), namelist=all_new_names)
 			# now dest path is guaranteed unique against other existing files & other proposed name changes
 			all_new_names.add(newname.lower())
 			# make the path no longer absolute: undo adding "startpath" above
@@ -641,9 +641,9 @@ def main(moreinfo=False):
 		# if the name I build is not the name it already has, queue it for actual rename
 		if newname != p.name:
 			# resolve potential collisions by adding numbers suffix to file names
-			# first need to make path absolute so get_unused_file_name can check the disk.
+			# first need to make path absolute so filepath_get_unused_name can check the disk.
 			# then check uniqueness against files on disk and files in namelist (files that WILL be on disk)
-			newname = core.get_unused_file_name(os.path.join(startpath, newname), namelist=all_new_names)
+			newname = core.filepath_get_unused_name(os.path.join(startpath, newname), namelist=all_new_names)
 			# now dest path is guaranteed unique against other existing files & other proposed name changes
 			all_new_names.add(newname.lower())
 			# make the path no longer absolute: undo adding "startpath" above
@@ -802,7 +802,7 @@ def main(moreinfo=False):
 		# NOTE: this is OVERWRITING THE PREVIOUS PMX FILE, NOT CREATING A NEW ONE
 		# because I make a zipfile backup I don't need to feel worried about preserving the old version
 		output_filename_pmx = os.path.join(startpath, this_pmx_name)
-		# output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
+		# output_filename_pmx = core.filepath_get_unused_name(output_filename_pmx)
 		pmxlib.write_pmx(output_filename_pmx, this_pmx_obj, moreinfo=moreinfo)
 	
 	core.MY_PRINT_FUNC("Done!")

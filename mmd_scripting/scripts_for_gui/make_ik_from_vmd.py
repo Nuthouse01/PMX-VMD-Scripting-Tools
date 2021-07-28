@@ -773,7 +773,7 @@ def main(moreinfo=True):
 	# write out
 	basename = core.filepath_splitext(core.filepath_splitdir(input_filename_pmx_source)[1])[0]
 	output_filename_vmd = "%s_ik_for_%s.vmd" % (input_filename_vmd[0:-4], basename)
-	output_filename_vmd = core.get_unused_file_name(output_filename_vmd)
+	output_filename_vmd = core.filepath_get_unused_name(output_filename_vmd)
 	vmdlib.write_vmd(output_filename_vmd, vmd_out, moreinfo=moreinfo)
 
 	core.MY_PRINT_FUNC("Done!")

@@ -533,7 +533,7 @@ def convert_txt_to_vmd(input_filename, moreinfo=True):
 	vmd_nicelist = read_vmdtext(input_filename)
 	core.MY_PRINT_FUNC("")
 	# identify an unused filename for writing the output
-	dumpname = core.get_unused_file_name(input_filename[0:-4] + ".vmd")
+	dumpname = core.filepath_get_unused_name(input_filename[0:-4] + ".vmd")
 	# write the output VMD file
 	vmdlib.write_vmd(dumpname, vmd_nicelist, moreinfo=moreinfo)
 	
@@ -555,7 +555,7 @@ def convert_vmd_to_txt(input_filename: str, moreinfo=True):
 	vmd_nicelist = vmdlib.read_vmd(input_filename, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("")
 	# identify an unused filename for writing the output
-	dumpname = core.get_unused_file_name(input_filename[0:-4] + filestr_txt)
+	dumpname = core.filepath_get_unused_name(input_filename[0:-4] + filestr_txt)
 	# write the output VMD-as-text file
 	write_vmdtext(dumpname, vmd_nicelist)
 	
@@ -570,7 +570,7 @@ def convert_vmd_to_txt(input_filename: str, moreinfo=True):
 	# 	return None
 	# else:
 	# 	# identify an unused filename for writing the output
-	# 	summname = core.get_unused_file_name(core.get_clean_basename(dumpname) + "_summary" + filestr_txt)
+	# 	summname = core.filepath_get_unused_name(core.get_clean_basename(dumpname) + "_summary" + filestr_txt)
 	# 	write_summary_dicts(bonedict, morphdict, summname)
 	
 	# done!

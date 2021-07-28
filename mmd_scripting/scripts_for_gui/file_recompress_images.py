@@ -254,10 +254,10 @@ def main(moreinfo=False):
 				
 				newname = base + ".png"
 				# resolve potential collisions by adding numbers suffix to file names
-				# first need to make path absolute so get_unused_file_name can check the disk.
+				# first need to make path absolute so filepath_get_unused_name can check the disk.
 				newname = os.path.join(startpath, newname)
 				# then check uniqueness against files on disk
-				newname = core.get_unused_file_name(newname)
+				newname = core.filepath_get_unused_name(newname)
 				# now dest path is guaranteed unique against other existing files
 				# make the path no longer absolute: undo adding "startpath" above
 				newname = os.path.relpath(newname, startpath)
@@ -280,10 +280,10 @@ def main(moreinfo=False):
 		if im.format in IMG_TYPE_TO_EXT and currext not in IMG_TYPE_TO_EXT[im.format]:
 			newname = base + IMG_TYPE_TO_EXT[im.format][0]
 			# resolve potential collisions by adding numbers suffix to file names
-			# first need to make path absolute so get_unused_file_name can check the disk.
+			# first need to make path absolute so filepath_get_unused_name can check the disk.
 			newname = os.path.join(startpath, newname)
 			# then check uniqueness against files on disk
-			newname = core.get_unused_file_name(newname)
+			newname = core.filepath_get_unused_name(newname)
 			# now dest path is guaranteed unique against other existing files
 			# make the path no longer absolute: undo adding "startpath" above
 			newname = os.path.relpath(newname, startpath)
@@ -349,7 +349,7 @@ def main(moreinfo=False):
 		# NOTE: this is OVERWRITING THE PREVIOUS PMX FILE, NOT CREATING A NEW ONE
 		# because I make a zipfile backup I don't need to feel worried about preserving the old version
 		output_filename_pmx = os.path.join(startpath, this_pmx_name)
-		# output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
+		# output_filename_pmx = core.filepath_get_unused_name(output_filename_pmx)
 		pmxlib.write_pmx(output_filename_pmx, this_pmx_obj, moreinfo=moreinfo)
 	
 	# =========================================================================================================

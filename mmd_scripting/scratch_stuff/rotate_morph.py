@@ -96,7 +96,7 @@ def main():
 								  items=newmorphitems)
 	pmx.morphs.append(newmorph)
 	# done iter, now write
-	OUT = core.get_unused_file_name("NEW.pmx")
+	OUT = core.filepath_get_unused_name("NEW.pmx")
 	pmxlib.write_pmx(OUT, pmx)
 	print("done")
 
