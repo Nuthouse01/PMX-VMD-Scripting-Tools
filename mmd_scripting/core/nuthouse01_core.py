@@ -488,15 +488,15 @@ def get_unused_file_name(initial_name: str, namelist=None) -> str:
 	else:                namelist_lower = [n.lower() for n in namelist]
 	basename, extension = path.splitext(initial_name)
 	test_name = basename + extension  # first, try it without adding any numbers
-	for append_num in range(2, 1000):
+	for append_num in range(1, 1000):
 		if not path.exists(test_name) and (test_name.lower() not in namelist_lower):
 			# if test_name doesn't exist on disk, AND it isn't in the list (case-insensitive matching), then its a good name
 			return test_name
 		else:
-			test_name = basename + str(append_num) + extension  # each future test_name has a number inserted in it
-	# if it hits here, it tried 1,000 file names and none of them worked
-	MY_PRINT_FUNC("Err: unable to find unused variation of '%s' for file-write" % initial_name)
-	raise RuntimeError()
+			# if test_name is already used, then assemle a new name that includes a number
+			test_name = "%s (%d)%s" % (basename, append_num, extension)
+	# if it hits here, it tried 999 file names and none of them worked
+	raise RuntimeError("ERROR: unable to find unused variation of '%s' for file-write" % initial_name)
 
 
 def RUN_WITH_TRACEBACK(func: Callable, *args) -> None:
