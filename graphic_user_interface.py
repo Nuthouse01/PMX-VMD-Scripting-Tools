@@ -409,7 +409,15 @@ class Application(tk.Frame):
 		# start the popup loop
 		self.spin_to_handle_inputs()
 		# read all modules from the "scripts_for_gui" folder & populate the optionmenu
-		self.rebuild_script_list()
+		try:
+			self.rebuild_script_list()
+		except Exception as e:
+			# print the full traceback
+			exc_type, exc_value, exc_traceback = sys.exc_info()
+			printme_list = traceback.format_exception(e.__class__, e, exc_traceback)
+			# now i have the complete traceback info as a list of strings, each ending with newline
+			core.MY_PRINT_FUNC("")
+			core.MY_PRINT_FUNC("".join(printme_list))
 		
 		# done with init
 		return
@@ -545,16 +553,25 @@ class Application(tk.Frame):
 		return
 	
 	def change_mode(self, *_):
-		# get the the currently displayed item in the dropdown menu
-		newstr = self.script_select_optionvar.get()
-		# find which index within SCRIPT_LIST it corresponds to (guaranteed to succeed)
-		idx = self.script_list_dispnames.index(newstr)
-		# set helptext and execute func
-		self.loaded_script = self.script_list_modules[idx]
-		# set the 'last used script' item in the json
-		io.write_persistent_storage_json('last-script', newstr)
-
-		core.MY_PRINT_FUNC(">>>>>>>>>>\nLoad new script '%s'\n" % newstr)
+		try:
+			# get the the currently displayed item in the dropdown menu
+			newstr = self.script_select_optionvar.get()
+			# find which index within SCRIPT_LIST it corresponds to (guaranteed to succeed)
+			idx = self.script_list_dispnames.index(newstr)
+			# set helptext and execute func
+			self.loaded_script = self.script_list_modules[idx]
+			# set the 'last used script' item in the json
+			io.write_persistent_storage_json('last-script', newstr)
+	
+			core.MY_PRINT_FUNC(">>>>>>>>>>\nLoad new script '%s'\n" % newstr)
+		except Exception as e:
+			# print the full traceback
+			exc_type, exc_value, exc_traceback = sys.exc_info()
+			printme_list = traceback.format_exception(e.__class__, e, exc_traceback)
+			# now i have the complete traceback info as a list of strings, each ending with newline
+			core.MY_PRINT_FUNC("")
+			core.MY_PRINT_FUNC("".join(printme_list))
+		
 		return
 		
 	def clear_func(self):
