@@ -6,7 +6,7 @@ import sys
 from os import path
 from typing import Any, List
 
-from mmd_scripting.core.nuthouse01_core import MY_PRINT_FUNC
+import mmd_scripting.core.nuthouse01_core as core
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.02 - 7/23/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -182,10 +182,10 @@ def read_file_to_csvlist(src_path:str, use_jis_encoding=False, quiet=False) -> L
 		for row in reader:
 			csv_content.append(row)
 	except csv.Error as e:
-		MY_PRINT_FUNC(e.__class__.__name__, e)
-		MY_PRINT_FUNC("ERROR: malformed CSV format in the text file prevented parsing from text to list form, check your commas")
-		MY_PRINT_FUNC("file '{}', line #{}".format(src_path, reader.line_num))
-		MY_PRINT_FUNC("input line = '{}'".format(rb_list[reader.line_num]))
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		core.MY_PRINT_FUNC("ERROR: malformed CSV format in the text file prevented parsing from text to list form, check your commas")
+		core.MY_PRINT_FUNC("file '{}', line #{}".format(src_path, reader.line_num))
+		core.MY_PRINT_FUNC("input line = '{}'".format(rb_list[reader.line_num]))
 		raise RuntimeError()
 	# ideally the csv reader should detect what type each thing is but the encoding is making it all fucky
 	# so, just read everything in as a string i guess, then build a new list 'data' where all the types are correct
@@ -247,7 +247,7 @@ def write_bytes_to_binfile(dest_path:str, content:bytearray, quiet=False) -> Non
 	"""
 	dest_path = path.abspath(path.normpath(dest_path))
 	# unless disabled, print the absolute path to the file being written
-	if not quiet: MY_PRINT_FUNC(dest_path)
+	if not quiet: core.MY_PRINT_FUNC(dest_path)
 	# assert that the destination folder exists
 	if not path.exists(path.dirname(dest_path)):
 		raise RuntimeError("ERROR: unable to write binary file '%s', the containing folder(s) do not exist!" % dest_path)
@@ -259,7 +259,7 @@ def write_bytes_to_binfile(dest_path:str, content:bytearray, quiet=False) -> Non
 		else:
 			# the file exists already and is about to be overwritten, check whether it is set to read-only?
 			if not os.access(dest_path, os.W_OK):
-				MY_PRINT_FUNC("WARNING: binary file '%s' currently set to READ-ONLY, but I want to overwrite it so I am going to change its permissions!" % dest_path)
+				core.MY_PRINT_FUNC("WARNING: binary file '%s' currently set to READ-ONLY, but I want to overwrite it so I am going to change its permissions!" % dest_path)
 				current_permissions = stat.S_IMODE(os.lstat(dest_path).st_mode)
 				ALL_WRITE_PERMISSION = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
 				os.chmod(dest_path, current_permissions | ALL_WRITE_PERMISSION)
@@ -267,8 +267,8 @@ def write_bytes_to_binfile(dest_path:str, content:bytearray, quiet=False) -> Non
 		with open(dest_path, "wb") as my_file:  # w = write, b = binary
 			my_file.write(content)  # plain old no-frills write
 	except IOError as e:
-		MY_PRINT_FUNC(e.__class__.__name__, e)
-		MY_PRINT_FUNC("ERROR: unable to write binary file '%s', maybe its a permissions issue?" % dest_path)
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		core.MY_PRINT_FUNC("ERROR: unable to write binary file '%s', maybe its a permissions issue?" % dest_path)
 		raise
 	return None
 
@@ -283,7 +283,7 @@ def read_binfile_to_bytes(src_path:str, quiet=False) -> bytearray:
 	"""
 	src_path = path.abspath(path.normpath(src_path))
 	# unless disabled, print the absolute path to the file being read
-	if not quiet: MY_PRINT_FUNC(src_path)
+	if not quiet: core.MY_PRINT_FUNC(src_path)
 	# assert that the given path exists and is a file, not a folder
 	if not path.isfile(src_path):
 		raise RuntimeError("ERROR: attempt to read binary file '%s', but it does not exist! (or exists but is not a file)" % src_path)
@@ -291,8 +291,8 @@ def read_binfile_to_bytes(src_path:str, quiet=False) -> bytearray:
 		with open(src_path, mode='rb') as file:  # r=read, b=binary
 			raw = file.read()  # plain old no-frills dump file from disk to memory
 	except IOError as e:
-		MY_PRINT_FUNC(e.__class__.__name__, e)
-		MY_PRINT_FUNC("ERROR: error wile reading binary file '%s', maybe you typed it wrong?" % src_path)
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		core.MY_PRINT_FUNC("ERROR: error wile reading binary file '%s', maybe you typed it wrong?" % src_path)
 		raise
 	return bytearray(raw)
 
@@ -308,7 +308,7 @@ def write_str_to_txtfile(dest_path: str, content: str, use_jis_encoding=False, q
 	"""
 	dest_path = path.abspath(path.normpath(dest_path))
 	# unless disabled, print the absolute path to the file being read
-	if not quiet: MY_PRINT_FUNC(dest_path)
+	if not quiet: core.MY_PRINT_FUNC(dest_path)
 	# assert that the destination folder exists
 	if not path.exists(path.dirname(dest_path)):
 		raise RuntimeError("ERROR: unable to write text file '%s', the containing folder(s) do not exist!" % dest_path)
@@ -320,7 +320,7 @@ def write_str_to_txtfile(dest_path: str, content: str, use_jis_encoding=False, q
 		else:
 			# the file exists already and is about to be overwritten, check whether it is set to read-only?
 			if not os.access(dest_path, os.W_OK):
-				MY_PRINT_FUNC("WARNING: text file '%s' currently set to READ-ONLY, but I want to overwrite it so I am going to change its permissions!" % dest_path)
+				core.MY_PRINT_FUNC("WARNING: text file '%s' currently set to READ-ONLY, but I want to overwrite it so I am going to change its permissions!" % dest_path)
 				current_permissions = stat.S_IMODE(os.lstat(dest_path).st_mode)
 				ALL_WRITE_PERMISSION = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
 				os.chmod(dest_path, current_permissions | ALL_WRITE_PERMISSION)
@@ -330,12 +330,12 @@ def write_str_to_txtfile(dest_path: str, content: str, use_jis_encoding=False, q
 		with open(dest_path, "wt", encoding=enc, errors="strict") as my_file:  # w=write, t=text
 			my_file.write(content)  # plain old no-frills write
 	except UnicodeEncodeError as e:
-		MY_PRINT_FUNC(e.__class__.__name__, e)
-		MY_PRINT_FUNC("ERROR: attempt to write text file '%s', but encoding '%s' could not handle contents!" % (dest_path, enc))
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		core.MY_PRINT_FUNC("ERROR: attempt to write text file '%s', but encoding '%s' could not handle contents!" % (dest_path, enc))
 		raise
 	except IOError as e:
-		MY_PRINT_FUNC(e.__class__.__name__, e)
-		MY_PRINT_FUNC("ERROR: unable to write text file '%s', maybe its a permissions issue?" % dest_path)
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		core.MY_PRINT_FUNC("ERROR: unable to write text file '%s', maybe its a permissions issue?" % dest_path)
 		raise
 	return None
 
@@ -351,7 +351,7 @@ def read_txtfile_to_list(src_path:str, use_jis_encoding=False, quiet=False) -> L
 	"""
 	src_path = path.abspath(path.normpath(src_path))
 	# unless disabled, print the absolute path to the file being read
-	if not quiet: MY_PRINT_FUNC(src_path)
+	if not quiet: core.MY_PRINT_FUNC(src_path)
 	# assert that the given path exists and is a file, not a folder
 	if not path.isfile(src_path):
 		raise RuntimeError("ERROR: attempt to read text file '%s', but it does not exist! (or exists but is not a file)" % src_path)
@@ -361,12 +361,12 @@ def read_txtfile_to_list(src_path:str, use_jis_encoding=False, quiet=False) -> L
 		with open(src_path, "rt", encoding=enc, errors="strict") as my_file:  # r=read, t=text
 			rb_unicode = my_file.read()
 	except UnicodeDecodeError as e:
-		MY_PRINT_FUNC(e.__class__.__name__, e)
-		MY_PRINT_FUNC("ERROR: attempt to read text file '%s', but encoding '%s' could not handle contents!" % (src_path, enc))
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		core.MY_PRINT_FUNC("ERROR: attempt to read text file '%s', but encoding '%s' could not handle contents!" % (src_path, enc))
 		raise
 	except IOError as e:
-		MY_PRINT_FUNC(e.__class__.__name__, e)
-		MY_PRINT_FUNC("ERROR: error wile reading text file '%s', maybe you typed it wrong?" % src_path)
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		core.MY_PRINT_FUNC("ERROR: error wile reading text file '%s', maybe you typed it wrong?" % src_path)
 		raise
 	# break rb_unicode into a list object at standard line endings and return
 	return rb_unicode.splitlines()
