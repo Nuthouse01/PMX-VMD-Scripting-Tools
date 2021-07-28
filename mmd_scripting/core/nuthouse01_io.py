@@ -257,6 +257,7 @@ def write_bytes_to_binfile(dest_path:str, content:bytearray, quiet=False) -> Non
 			# don't want to overwrite a folder with a file, that would be bad
 			raise RuntimeError("ERROR: unable to write binary file '%s', the dest name already exists as a non-file object!" % dest_path)
 		else:
+			if not quiet: core.MY_PRINT_FUNC("WARNING: binary file '%s' already exists, I am going to overwrite it!" % dest_path)
 			# the file exists already and is about to be overwritten, check whether it is set to read-only?
 			if not os.access(dest_path, os.W_OK):
 				core.MY_PRINT_FUNC("WARNING: binary file '%s' currently set to READ-ONLY, but I want to overwrite it so I am going to change its permissions!" % dest_path)
@@ -318,6 +319,7 @@ def write_str_to_txtfile(dest_path: str, content: str, use_jis_encoding=False, q
 			# don't want to overwrite a folder with a file, that would be bad
 			raise RuntimeError("ERROR: unable to write text file '%s', the dest name already exists as a non-file object!" % dest_path)
 		else:
+			if not quiet: core.MY_PRINT_FUNC("WARNING: text file '%s' already exists, I am going to overwrite it!" % dest_path)
 			# the file exists already and is about to be overwritten, check whether it is set to read-only?
 			if not os.access(dest_path, os.W_OK):
 				core.MY_PRINT_FUNC("WARNING: text file '%s' currently set to READ-ONLY, but I want to overwrite it so I am going to change its permissions!" % dest_path)
