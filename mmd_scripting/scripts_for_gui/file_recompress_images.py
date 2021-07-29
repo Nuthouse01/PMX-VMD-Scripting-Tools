@@ -4,7 +4,7 @@ import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 from mmd_scripting.scripts_for_gui import file_sort_textures
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.02 - 6/10/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -58,6 +58,13 @@ Note: unlike my other scripts, this overwrites the original input PMX file(s) in
 # bmp will be re-compressed to png if the original bmp is in 15-bit or 16-bit encoding (mocumocudance compatability)
 # other image types are re-compressed to png if doing so saves 100kb or more
 # also, all images are renamed so that the file extension matches the actual image data format
+
+# TODO: refactor this! re-writing the images onto themself is a Bad Idea!
+#  1. create temp folder
+#  2. recompress to png & save into that temp foldder
+#  3. keep track of before name & after name
+#  4. display summary and ask for user confirm
+#  5. if yes, then create backup zip & replace the images & rewrite the PMXs
 
 def main(moreinfo=False):
 	# step zero: verify that Pillow exists
@@ -157,6 +164,7 @@ def main(moreinfo=False):
 	
 	# list of memory saved by recompressing each file. same order/length as "image_filerecords"
 	mem_saved = []
+	mem_original = []
 	
 	# make image persistient, so I know it always exists and I can always call "close" before open
 	im = None
@@ -167,10 +175,11 @@ def main(moreinfo=False):
 	for i, p in enumerate(image_filerecords):
 		abspath = os.path.join(startpath, p.name)
 		orig_size = os.path.getsize(abspath)
+		mem_original.append(orig_size)
 
 		# if not moreinfo, then each line overwrites the previous like a progress printout does
 		# if moreinfo, then each line is printed permanently
-		core.MY_PRINT_FUNC("...analyzing {:>3}/{:>3}, file='{}', size={}                ".format(
+		core.MY_PRINT_FUNC("...analyzing {:>3}/{:>3}, file='{}', size={}                          ".format(
 			i+1, len(image_filerecords), p.name, core.prettyprint_file_size(orig_size)), is_progress=(not moreinfo))
 		mem_saved.append(0)
 
@@ -357,7 +366,12 @@ def main(moreinfo=False):
 	# =========================================================================================================
 	# NOW PRINT MY RENAMINGS and other findings
 	
-	filerecord_with_savings = zip(image_filerecords, mem_saved)
+	mem_new = [original - saved for original, saved in zip(mem_original, mem_saved)]
+	
+	# attach the mem-savings to the name and stuff
+	filerecord_with_savings = list(zip(image_filerecords, mem_saved))
+	# sort descending by savings, most savings first
+	filerecord_with_savings.sort(key=core.get2nd, reverse=True)
 	changed_files = [u for u in filerecord_with_savings if u[0].newname is not None]
 
 	core.MY_PRINT_FUNC("="*60)
@@ -366,6 +380,11 @@ def main(moreinfo=False):
 		core.MY_PRINT_FUNC(pil_cannot_inspect_list)
 	if num_recompressed:
 		core.MY_PRINT_FUNC("Recompressed %d images! %s of disk space has been freed" % (num_recompressed, core.prettyprint_file_size(sum(mem_saved))))
+		core.MY_PRINT_FUNC("Reduction = {:.1%}... initial size = {:s}, new size = {:s}".format(
+			sum(mem_saved)/sum(mem_original),
+			core.prettyprint_file_size(sum(mem_original)),
+			core.prettyprint_file_size(sum(mem_new)),
+			))
 	if pil_imgext_mismatch:
 		core.MY_PRINT_FUNC("Renamed %d images that had incorrect extensions (included below)" % pil_imgext_mismatch)
 	oldname_list = [p[0].name for p in changed_files]
@@ -374,8 +393,7 @@ def main(moreinfo=False):
 	newname_list_j = core.MY_JUSTIFY_STRINGLIST(newname_list)
 	savings_list = [("" if p[1]==0 else "saved " + core.prettyprint_file_size(p[1])) for p in changed_files]
 	zipped = list(zip(oldname_list_j, newname_list_j, savings_list))
-	zipped_and_sorted = sorted(zipped, key=lambda y: file_sort_textures.sortbydirdepth(y[0]))
-	for o,n,s in zipped_and_sorted:
+	for o,n,s in zipped:
 		# print 'from' with the case/separator it uses in the PMX
 		core.MY_PRINT_FUNC("   {:s} --> {:s} | {:s}".format(o, n, s))
 		
