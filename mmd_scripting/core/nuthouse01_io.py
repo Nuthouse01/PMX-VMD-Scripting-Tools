@@ -259,11 +259,7 @@ def write_bytes_to_binfile(dest_path:str, content:bytearray, quiet=False) -> Non
 		else:
 			if not quiet: core.MY_PRINT_FUNC("WARNING: binary file '%s' already exists, I am going to overwrite it!" % dest_path)
 			# the file exists already and is about to be overwritten, check whether it is set to read-only?
-			if not os.access(dest_path, os.W_OK):
-				core.MY_PRINT_FUNC("WARNING: binary file '%s' currently set to READ-ONLY, but I want to overwrite it so I am going to change its permissions!" % dest_path)
-				current_permissions = stat.S_IMODE(os.lstat(dest_path).st_mode)
-				ALL_WRITE_PERMISSION = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
-				os.chmod(dest_path, current_permissions | ALL_WRITE_PERMISSION)
+			check_and_fix_readonly(dest_path)
 	try:
 		with open(dest_path, "wb") as my_file:  # w = write, b = binary
 			my_file.write(content)  # plain old no-frills write
@@ -321,11 +317,7 @@ def write_str_to_txtfile(dest_path: str, content: str, use_jis_encoding=False, q
 		else:
 			if not quiet: core.MY_PRINT_FUNC("WARNING: text file '%s' already exists, I am going to overwrite it!" % dest_path)
 			# the file exists already and is about to be overwritten, check whether it is set to read-only?
-			if not os.access(dest_path, os.W_OK):
-				core.MY_PRINT_FUNC("WARNING: text file '%s' currently set to READ-ONLY, but I want to overwrite it so I am going to change its permissions!" % dest_path)
-				current_permissions = stat.S_IMODE(os.lstat(dest_path).st_mode)
-				ALL_WRITE_PERMISSION = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
-				os.chmod(dest_path, current_permissions | ALL_WRITE_PERMISSION)
+			check_and_fix_readonly(dest_path)
 	# default encoding is utf-8, but use shift_jis if use_jis_encoding is True
 	enc = "shift_jis" if use_jis_encoding else "utf-8"
 	try:
@@ -372,3 +364,13 @@ def read_txtfile_to_list(src_path:str, use_jis_encoding=False, quiet=False) -> L
 		raise
 	# break rb_unicode into a list object at standard line endings and return
 	return rb_unicode.splitlines()
+
+def check_and_fix_readonly(filepath: str) -> None:
+	# the file exists already and is about to be overwritten, check whether it is set to read-only?
+	if not os.access(filepath, os.W_OK):
+		core.MY_PRINT_FUNC(
+			"WARNING: file '%s' currently set to READ-ONLY, but I want to overwrite it so I am going to change its permissions!" % filepath)
+		current_permissions = stat.S_IMODE(os.lstat(filepath).st_mode)
+		ALL_WRITE_PERMISSION = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
+		os.chmod(dest_path, current_permissions | ALL_WRITE_PERMISSION)
+	return

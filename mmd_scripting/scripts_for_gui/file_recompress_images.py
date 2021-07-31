@@ -1,6 +1,7 @@
 import os
 
 import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_io as io
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 from mmd_scripting.scripts_for_gui import file_sort_textures
 
@@ -255,6 +256,7 @@ def main(moreinfo=False):
 				# set p.newname = png, and delete original and move tempname to base.png
 				try:
 					# delete original
+					io.check_and_fix_readonly(os.path.join(startpath, p.name))
 					os.remove(os.path.join(startpath, p.name))
 				except OSError as e:
 					core.MY_PRINT_FUNC(e.__class__.__name__, e)
