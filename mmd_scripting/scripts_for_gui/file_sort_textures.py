@@ -3,17 +3,14 @@ import re
 import shutil
 from typing import List, Dict
 
-from mmd_scripting.core import nuthouse01_core as core
-from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
-from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
+import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-# when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
-# but if launched in a new window it exits immediately so you can't read it.
-DEBUG = False
 
 
 # fun fact: SPH and SPA files are just BMP files with the wrong file extension
@@ -153,7 +150,7 @@ def make_zipfile_backup(startpath: str, backup_suffix: str) -> str:
 	"""
 	# need to add .zip for checking against already-exising files and for printing
 	zipname = startpath + "." + backup_suffix + ".zip"
-	zipname = core.get_unused_file_name(zipname)
+	zipname = core.filepath_get_unused_name(zipname)
 	core.MY_PRINT_FUNC("...making backup archive:")
 	core.MY_PRINT_FUNC(zipname)
 	try:
@@ -320,7 +317,6 @@ def build_filerecord_list(pmx_dict: Dict[str, pmxstruct.Pmx], exist_files: List[
 	merge_across_pmx = 0
 	
 	for pmxpath, pmx in pmx_dict.items():
-		if DEBUG: print(pmxpath)
 		
 		###################################################################
 		###################################################################
@@ -603,9 +599,9 @@ def main(moreinfo=False):
 		# if the name I build is not the name it already has, queue it for actual rename
 		if newname != p.name:
 			# resolve potential collisions by adding numbers suffix to file names
-			# first need to make path absolute so get_unused_file_name can check the disk.
+			# first need to make path absolute so filepath_get_unused_name can check the disk.
 			# then check uniqueness against files on disk and files in namelist (files that WILL be on disk)
-			newname = core.get_unused_file_name(os.path.join(startpath, newname), namelist=all_new_names)
+			newname = core.filepath_get_unused_name(os.path.join(startpath, newname), namelist=all_new_names)
 			# now dest path is guaranteed unique against other existing files & other proposed name changes
 			all_new_names.add(newname.lower())
 			# make the path no longer absolute: undo adding "startpath" above
@@ -645,9 +641,9 @@ def main(moreinfo=False):
 		# if the name I build is not the name it already has, queue it for actual rename
 		if newname != p.name:
 			# resolve potential collisions by adding numbers suffix to file names
-			# first need to make path absolute so get_unused_file_name can check the disk.
+			# first need to make path absolute so filepath_get_unused_name can check the disk.
 			# then check uniqueness against files on disk and files in namelist (files that WILL be on disk)
-			newname = core.get_unused_file_name(os.path.join(startpath, newname), namelist=all_new_names)
+			newname = core.filepath_get_unused_name(os.path.join(startpath, newname), namelist=all_new_names)
 			# now dest path is guaranteed unique against other existing files & other proposed name changes
 			all_new_names.add(newname.lower())
 			# make the path no longer absolute: undo adding "startpath" above
@@ -806,7 +802,7 @@ def main(moreinfo=False):
 		# NOTE: this is OVERWRITING THE PREVIOUS PMX FILE, NOT CREATING A NEW ONE
 		# because I make a zipfile backup I don't need to feel worried about preserving the old version
 		output_filename_pmx = os.path.join(startpath, this_pmx_name)
-		# output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
+		# output_filename_pmx = core.filepath_get_unused_name(output_filename_pmx)
 		pmxlib.write_pmx(output_filename_pmx, this_pmx_obj, moreinfo=moreinfo)
 	
 	core.MY_PRINT_FUNC("Done!")
@@ -814,26 +810,6 @@ def main(moreinfo=False):
 
 
 if __name__ == '__main__':
-	print(_SCRIPT_VERSION)
-	if DEBUG:
-		# print info to explain the purpose of this file
-		core.MY_PRINT_FUNC(helptext)
-		core.MY_PRINT_FUNC("")
-		
-		main()
-		core.pause_and_quit("Done with everything! Goodbye!")
-	else:
-		try:
-			# print info to explain the purpose of this file
-			core.MY_PRINT_FUNC(helptext)
-			core.MY_PRINT_FUNC("")
-			
-			main()
-			core.pause_and_quit("Done with everything! Goodbye!")
-		except (KeyboardInterrupt, SystemExit):
-			# this is normal and expected, do nothing and die normally
-			pass
-		except Exception as ee:
-			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee)
-			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
+	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
+	core.MY_PRINT_FUNC(helptext)
+	core.RUN_WITH_TRACEBACK(main)

@@ -1,15 +1,12 @@
 import os
 
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 from mmd_scripting.scripts_for_gui import file_sort_textures
-from mmd_scripting.core import nuthouse01_core as core
-from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 # this one is for you, syblomic-dash
 
-# when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
-# but if launched in a new window it exits immediately so you can't read it.
-DEBUG = False
 
 
 def main():
@@ -78,7 +75,7 @@ def main():
 			# NOTE: this is OVERWRITING THE PREVIOUS PMX FILE, NOT CREATING A NEW ONE
 			# because I make a zipfile backup I don't need to feel worried about preserving the old version
 			output_filename_pmx = os.path.join(startpath, this_pmx_name)
-			# output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
+			# output_filename_pmx = core.filepath_get_unused_name(output_filename_pmx)
 			pmxlib.write_pmx(output_filename_pmx, this_pmx_obj, moreinfo=False)
 
 	
@@ -87,16 +84,5 @@ def main():
 	
 
 if __name__ == '__main__':
-	print(_SCRIPT_VERSION)
-	if DEBUG:
-		main()
-	else:
-		try:
-			main()
-		except (KeyboardInterrupt, SystemExit):
-			# this is normal and expected, do nothing and die normally
-			pass
-		except Exception as ee:
-			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			print(ee)
-			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
+	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
+	core.RUN_WITH_TRACEBACK(main)

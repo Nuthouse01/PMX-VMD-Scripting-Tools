@@ -1,12 +1,9 @@
-from mmd_scripting.core import nuthouse01_core as core
-from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
-from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
+import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 
-# when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
-# but if launched in a new window it exits immediately so you can't read it.
-DEBUG = False
 
 THRESHOLD = 0.002
 
@@ -108,16 +105,5 @@ def main():
 	return None
 
 if __name__ == '__main__':
-	print(_SCRIPT_VERSION)
-	if DEBUG:
-		main()
-	else:
-		try:
-			main()
-		except (KeyboardInterrupt, SystemExit):
-			# this is normal and expected, do nothing and die normally
-			pass
-		except Exception as ee:
-			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			print(ee)
-			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
+	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
+	core.RUN_WITH_TRACEBACK(main)

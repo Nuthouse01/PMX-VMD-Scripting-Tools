@@ -1,14 +1,14 @@
 
 #####
 
+TODO: refactor file_recompress_images to be less bad
+
+TODO: remove material morph items that point at -2 or invalid numbers? need to find a way to replicate this bug, see how it is saved so i know what to delete... also same in group morphs
+TODO: split "core" files into multiple?
+
 TODO: WIP-sdef-armtwist should invoke bone-sdeftwist-hand-adapter
 
-TODO: examine professional SDEF armtwist examples (miku, bb, tamo, check SPS?) and create a graph that profiles the weight balance with respect to the length along the segment
-
-TODO: create one function in 'core' that does all the bottom-of-the-script stuff...?
-    also lets me add traceback module to everything
-
-TODO: better incorporate traceback module with everything, remove the "debug" flag thing
+TODO: examine professional SDEF armtwist examples (miku, bb, tamo, check SPS?, ab8/10) and create a graph that profiles the weight balance with respect to the length along the segment
 
 TODO: simple flag in core that indicates 'running from gui' or not, wouldn't help with imports but might be useful
     in other contexts?

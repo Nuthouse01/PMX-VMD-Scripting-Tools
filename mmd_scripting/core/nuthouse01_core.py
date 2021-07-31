@@ -1,13 +1,12 @@
-import csv
-import json
 import math
 import re
 import struct
 import sys
-from os import path, listdir, getenv, makedirs
+import traceback
+from os import path, listdir
 from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar, Union
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.01 - 7/23/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.02 - 7/30/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -385,27 +384,95 @@ def prompt_user_filename(label: str, ext_list: Union[str,Sequence[str]]) -> str:
 	# it exists, so make it absolute
 	name = path.abspath(path.normpath(name))
 	# windows is case insensitive, so this doesn't matter, but to make it match the same case as the existing file:
-	# inputname > dir name > list files in dir > compare-case-insensitive with inputname > get case-correct name
-	manyfiles = listdir(path.dirname(name))
-	for casename in manyfiles:
-		if casename.lower() == path.basename(name).lower():
-			return path.join(path.dirname(name), casename)
-	# just in case something goes sideways
-	return name
+	return filepath_make_casecorrect(name)
 
 # global variable holding a function pointer that i can overwrite with a different function pointer when in GUI mode
 MY_FILEPROMPT_FUNC = prompt_user_filename
 
-def get_clean_basename(initial_name: str) -> str:
+def filepath_splitdir(initial_name: str) -> Tuple[str,str]:
 	"""
-	Remove extension and all folders from a file name: D:/docs/user/mmd/whatever/mikumodel.pmx -> mikumodel
-	
-	:param initial_name: input path, abs or relative
-	:return: stripped path
+	Alias for path.split()
+	:param initial_name: string filepath
+	:return: (directories, filename)
 	"""
-	return path.splitext(path.basename(initial_name))[0]
+	return path.split(initial_name)
 
-def get_unused_file_name(initial_name: str, namelist=None) -> str:
+def filepath_splitext(initial_name: str) -> Tuple[str,str]:
+	"""
+	Alias for path.splitext()
+	:param initial_name: string filepath
+	:return: (directories+filename, extension)
+	"""
+	return path.splitext(initial_name)
+
+def filepath_insert_suffix(initial_name: str, suffix:str) -> str:
+	"""
+	Simple function, insert the suffix between the Basename and Extension.
+	:param initial_name: string filepath
+	:param suffix: string to append to filepath
+	:return: string filepath
+	"""
+	N,E = filepath_splitext(initial_name)
+	ret = N + suffix + E
+	return ret
+
+def filepath_make_casecorrect(initial_name: str) -> str:
+	"""
+	Make the given path match the case of the file/folders on the disk.
+	If the path does not exist, then make it casecorrect up to the point where it no longer exists.
+	:param initial_name: string filepath
+	:return: string filepath, exactly the same as input except for letter case
+	"""
+	initial_name = path.normpath(initial_name)
+	# all "." are removed, all ".." are removed except for leading...
+	# first, break the given path into all of its segments
+	seglist = initial_name.split(path.sep)
+	if len(seglist) == 0:
+		raise ValueError("ERROR: input path '%s' is too short" % initial_name)
+
+	if path.isabs(initial_name):
+		first = seglist.pop(0) + path.sep
+		if path.ismount(first):
+			# windows absolute path! begins with a drive letter
+			reassemble_name = first.upper()
+		elif first == "":
+			# ???? linux ????
+			reassemble_name = path.sep
+		else:
+			MY_PRINT_FUNC("path is abs, but doesn't start with drive or filesep? what? '%s'" % initial_name)
+			reassemble_name = first
+	else:
+		# if not an absolute path, it needs to start as "." so that listdir works right (need to remove this when done tho)
+		reassemble_name = "."
+	
+	while seglist:
+		nextseg = seglist.pop(0)
+		if nextseg == "..":
+			reassemble_name = path.join(reassemble_name, nextseg)
+		else:
+			try:
+				whats_here = listdir(reassemble_name)
+			except FileNotFoundError:
+				# fallback just in case I forgot about something
+				return initial_name
+			whats_here = [str(w) for w in whats_here]
+			whats_here_lower = [w.lower() for w in whats_here]
+			try:
+				# find which entry in listdir corresponds to nextseg, when both sides are lowered
+				idx = whats_here_lower.index(nextseg.lower())
+			except ValueError:
+				# the next segment isnt available in the listdir! the path is invalid from here on out!
+				# so, just join everything remaining & break out of the loop.
+				reassemble_name = path.join(reassemble_name, nextseg, *seglist)
+				break
+			# the next segment IS available in the listdir, so use the case-correct version of it
+			reassemble_name = path.join(reassemble_name, whats_here[idx])
+			# then, loop!
+	# call normpath one more time to get rid of leading ".\\" when path is relative!
+	reassemble_name = path.normpath(reassemble_name)
+	return reassemble_name
+	
+def filepath_get_unused_name(initial_name: str, namelist=None) -> str:
 	"""
 	Given a desired filepath, generate a path that is guaranteed to be unused & safe to write to.
 	Append integers to the end of the basename until it passes.
@@ -421,326 +488,43 @@ def get_unused_file_name(initial_name: str, namelist=None) -> str:
 	else:                namelist_lower = [n.lower() for n in namelist]
 	basename, extension = path.splitext(initial_name)
 	test_name = basename + extension  # first, try it without adding any numbers
-	for append_num in range(2, 1000):
+	for append_num in range(1, 1000):
 		if not path.exists(test_name) and (test_name.lower() not in namelist_lower):
 			# if test_name doesn't exist on disk, AND it isn't in the list (case-insensitive matching), then its a good name
 			return test_name
 		else:
-			test_name = basename + str(append_num) + extension  # each future test_name has a number inserted in it
-	# if it hits here, it tried 1,000 file names and none of them worked
-	MY_PRINT_FUNC("Err: unable to find unused variation of '%s' for file-write" % initial_name)
-	raise RuntimeError()
+			# if test_name is already used, then assemle a new name that includes a number
+			test_name = "%s (%d)%s" % (basename, append_num, extension)
+	# if it hits here, it tried 999 file names and none of them worked
+	raise RuntimeError("ERROR: unable to find unused variation of '%s' for file-write" % initial_name)
 
-def get_persistent_storage_json(key:str) -> Any:
+
+def RUN_WITH_TRACEBACK(func: Callable, *args) -> None:
 	"""
-	Access the storage JSON dict, attempt to retrieve the item under the specified key.
-	If the key doesn't exist in the dict, return None.
-	:param key: string key in dict
-	:return: item living under the dict
+	Used to execute the "main" function of a script in direct-run mode.
+	If it runs succesfully, do a pause-and-quit afterward.
+	If an exception occurs, print the traceback info and do a pause-and-quit.
+	If it was CTRL+C aborted, do not pause-and-quit.
+	:param func: main-function
+	:param args: optional args to pass to main-function
 	"""
-	persist_path = _get_persistent_storage_path("persist.txt")
-	# read the json to list-of-strings using standard read-func
-	str_data = read_txtfile_to_list(src_path=persist_path,
-									use_jis_encoding=False,
-									quiet=True)
-	# join the list-of-strings with newlines
-	str_data_joined = "\n".join(str_data)
-	if str_data_joined == "":
-		# if it's empty, the key is guaranteed not in it
-		return None
-	# parse the megastring with json library, get a dict
-	# floats & ints will be properly interpreted and returned as numbers :)
-	# note: what kind of errors can the json module create????
-	data = json.loads(str_data_joined)
 	try:
-		# if the key exists in the dict, then return the value it holds
-		return data[key]
-	except KeyError:
-		# if the key is not in the dict, then return None
-		return None
+		MY_PRINT_FUNC("")
+		func(*args)
+		pause_and_quit("Done with everything! Goodbye!")
+	except (KeyboardInterrupt, SystemExit):
+		# this is normal and expected, do nothing and die
+		pass
+	except Exception as e:
+		# print an error and full traceback if an exception was received!
+		exc_type, exc_value, exc_traceback = sys.exc_info()
+		printme_list = traceback.format_exception(e.__class__, e, exc_traceback)
+		# now i have the complete traceback info as a list of strings, each ending with newline
+		MY_PRINT_FUNC("")
+		MY_PRINT_FUNC("".join(printme_list))
+		pause_and_quit("ERROR: the script did not complete succesfully.")
+		
 
-def write_persistent_storage_json(key:str, newval:Any) -> None:
-	"""
-	Access the storage JSON dict and set a new value to hold under the specified key. Then write it to file.
-	:param key: string key in dict
-	:param newval: new data to store under that key
-	"""
-	persist_path = _get_persistent_storage_path("persist.txt")
-	# read the json to list-of-strings using standard read-func
-	str_data = read_txtfile_to_list(src_path=persist_path,
-									use_jis_encoding=False,
-									quiet=True)
-	# join the list-of-strings with newlines
-	str_data_joined = "\n".join(str_data)
-	if str_data_joined == "":
-		# if it's empty, create a new dict that contains only this key
-		data = {key: newval}
-	else:
-		# parse the megastring with json library, get a dict
-		# note: what kind of errors can the json module create????
-		data = json.loads(str_data_joined)
-		# write the newval into the dict under new key
-		data[key] = newval
-	# serialize the dict into a big string
-	str_data = json.dumps(data, ensure_ascii=False, indent="\t")
-	# use standard write-func to write to text file
-	# 'content' is designed to be list of strings that don't contain newlines, but there's no problem if i violate that
-	write_list_to_txtfile(dest_path=persist_path,
-						  content=[str_data],
-						  use_jis_encoding=False,
-						  quiet=True)
-	return None
-
-def _get_persistent_storage_path(filename="") -> str:
-	"""
-	Get the path to a storage location that will persist between runs, usually in APPDATA folder.
-	If not given a filename, return the path to the folder.
-	If given a filename, and the file does not exist, create it empty & return the path to this new file.
-	If the file does exist, return the path to the existing file.
-	This should only be used internally.
-	
-	:param filename: filename within the persistent storage directory
-	:return: absolute file path to the persitient directory, or the file within it
-	"""
-	# this is the name of my "app"
-	appname = "nuthouse01_mmd_tools"
-	# build the appropriate path for windows or unix
-	if sys.platform == 'win32':
-		appdata = path.join(getenv('APPDATA'), appname)
-	else:
-		appdata = path.expanduser(path.join("~", "." + appname))
-	# if the folder(s) don't exist, then make them
-	if not path.exists(appdata):
-		makedirs(appdata)
-	# if a filename was given, return it added onto the path
-	if filename:
-		retme = path.join(appdata, filename)
-		# if it doesn't exist, create it empty
-		if not path.exists(retme):
-			write_list_to_txtfile(retme, [], quiet=True)
-		return retme
-	return appdata
-
-
-########################################################################################################################
-# these functions do CSV read/write and binary-file read/write
-########################################################################################################################
-
-def write_csvlist_to_file(dest_path:str, content:List[List[Any]], use_jis_encoding=False, quiet=False) -> None:
-	"""
-	Receive a list-of-lists format and write it to textfile on disk in CSV format.
-	
-	:param dest_path: destination file path, as a string, relative from CWD or absolute
-	:param content: list-of-lists format, OR list-of-strings format
-	:param use_jis_encoding: by default, assume utf-8 encoding. if this=True, use shift_jis instead.
-	:param quiet: by default, print the absolute path being written to. if this=True, don't do this.
-	"""
-	# replace csv.writer with my own convert-to-csv block to get the escaping behavior i needed
-	# when PMXE writes a CSV, it backslash-escapes backslashes and dots and spaces, but it doesn't need these to be escaped when reading
-	# also, doublequotes are escaped with an additional doublequote
-	# also, strings are wrapped in doublequotes if it contains any doublequotes, contains any commas, or starts or ends with whitespace
-	buildme = []
-	for line in content:
-		newline = []
-		if isinstance(line, str):  # if it is already a string, don't do anything fancy, just use it
-			newline_str = line
-		else:  # if it is not a string, it should be a list or tuple, so iterate over it
-			for item in line:
-				# check if it needs special treatment, apply if needed
-				if isinstance(item, str):
-					# make a copy so I am not modifying the input list
-					newstr = item
-					# first, escape all doublequotes with more doublequotes
-					newstr.replace('"', '""')
-					# then check if the whole thing needs wrapped:
-					# contains any doublequotes, contains any commas, or starts or ends with whitespace
-					if ('"' in newstr) or (',' in newstr) or (len(newstr) > 0 and (newstr[0].isspace() or newstr[-1].isspace())):
-						newstr = '"%s"' % newstr
-					newline.append(newstr)
-				else:
-					# convert to string & append onto newline
-					newline.append(str(item))
-			# done with this line: join the items with commas
-			newline_str = ",".join(newline)
-		# whether line was string or was list, it is now converted to string & can be appended
-		buildme.append(newline_str)
-	# # add this so it has one empty line at the end just cuz
-	# buildme.append("")
-
-	# do actual write-to-disk
-	write_list_to_txtfile(dest_path, buildme, use_jis_encoding=use_jis_encoding, quiet=quiet)
-
-	return None
-
-def read_file_to_csvlist(src_path:str, use_jis_encoding=False, quiet=False) -> List[List[Any]]:
-	"""
-	Read a CSV text file from disk & return a type-correct list-of-lists format
-	
-	:param src_path: source file path, as a string, relative from CWD or absolute
-	:param use_jis_encoding: by default, assume utf-8 encoding. if this=True, use shift_jis instead.
-	:param quiet: by default, print the absolute path being written to. if this=True, don't do this.
-	:return: list-of-lists format
-	"""
-	# do actual read-from-disk & split at line breaks
-	rb_list = read_txtfile_to_list(src_path, use_jis_encoding=use_jis_encoding, quiet=quiet)
-	
-	# use stock CSV reader to handle unescaping stuff & break each line into a list of fields
-	# 'csv_content' is now list-of-lists format, but is not yet type-correct, each item is strings
-	reader = csv.reader(rb_list, delimiter=',', quoting=csv.QUOTE_ALL)
-	csv_content = []
-	try:
-		for row in reader:
-			csv_content.append(row)
-	except csv.Error as e:
-		MY_PRINT_FUNC(e.__class__.__name__, e)
-		MY_PRINT_FUNC("ERROR: malformed CSV format in the text file prevented parsing from text to list form, check your commas")
-		MY_PRINT_FUNC("file '{}', line #{}".format(src_path, reader.line_num))
-		MY_PRINT_FUNC("input line = '{}'".format(rb_list[reader.line_num]))
-		raise RuntimeError()
-	# ideally the csv reader should detect what type each thing is but the encoding is making it all fucky
-	# so, just read everything in as a string i guess, then build a new list 'data' where all the types are correct
-	data = []
-	for row in csv_content:
-		newrow = []
-		for item in row:
-			# manual type conversion: everything in the document is either int,float,bool,string
-			# is it an integer?
-			try:
-				newrow.append(int(item))
-				continue
-			except ValueError:
-				pass
-			# is it a float?
-			try:
-				newrow.append(float(item))
-				continue
-			except ValueError:
-				pass
-			# is it a bool?
-			if item.lower() == "true":
-				newrow.append(True)
-				continue
-			if item.lower() == "false":
-				newrow.append(False)
-				continue
-			# is it a none?
-			if item == "None":
-				newrow.append(None)
-				continue
-			# i guess its just a string, then. keep it unchanged
-			newrow.append(item)
-		data.append(newrow)
-	return data
-
-def write_bytes_to_binfile(dest_path:str, content:bytearray, quiet=False) -> None:
-	"""
-	WRITE a BINARY file from memory to disk.
-	
-	:param dest_path: destination file path, as a string, relative from CWD or absolute
-	:param content: bytearray obj or bytes obj
-	:param quiet: by default, print the absolute path being written to. if this=True, don't do this.
-	"""
-	dest_path = path.abspath(path.normpath(dest_path))
-	if not quiet:  # unless disabled, print the absolute path to the file being written
-		MY_PRINT_FUNC(dest_path)
-	if not path.exists(path.dirname(dest_path)):  # assert that the destination folder exists
-		MY_PRINT_FUNC("ERROR: unable to write binary file '%s', the containing folder(s) do not exist!" % dest_path)
-		raise RuntimeError()
-	try:
-		with open(dest_path, "wb") as my_file:  # w = write, b = binary
-			my_file.write(content)  # plain old no-frills write
-	except IOError as e:
-		MY_PRINT_FUNC(e.__class__.__name__, e)
-		MY_PRINT_FUNC("ERROR: unable to write binary file '%s', maybe its a permissions issue?" % dest_path)
-		raise RuntimeError()
-	return None
-
-def read_binfile_to_bytes(src_path:str, quiet=False) -> bytearray:
-	"""
-	READ a BINARY file from disk into memory.
-	
-	:param src_path: source file path, as a string, relative from CWD or absolute
-	:param quiet: by default, print the absolute path being written to. if this=True, don't do this.
-	:return: bytearray obj
-	"""
-	src_path = path.abspath(path.normpath(src_path))
-	if not quiet:  # unless disabled, print the absolute path to the file being read
-		MY_PRINT_FUNC(src_path)
-	if not path.isfile(src_path):  # assert that the given path exists and is a file, not a folder
-		MY_PRINT_FUNC("ERROR: attempt to read binary file '%s', but it does not exist!" % src_path)
-		raise RuntimeError()
-	try:
-		with open(src_path, mode='rb') as file:  # r=read, b=binary
-			raw = file.read()  # plain old no-frills dump file from disk to memory
-	except IOError as e:
-		MY_PRINT_FUNC(e.__class__.__name__, e)
-		MY_PRINT_FUNC("ERROR: error wile reading '%s', maybe you typed it wrong?" % src_path)
-		raise RuntimeError()
-	return bytearray(raw)
-
-def write_list_to_txtfile(dest_path:str, content:List[str], use_jis_encoding=False, quiet=False) -> None:
-	"""
-	WRITE a TEXT file from memory to disk.
-	
-	:param dest_path: destination file path, as a string, relative from CWD or absolute
-	:param content: list of lines, each line is a string
-	:param use_jis_encoding: by default, assume utf-8 encoding. if this=True, use shift_jis instead.
-	:param quiet: by default, print the absolute path being written to. if this=True, don't do this.
-	"""
-	dest_path = path.abspath(path.normpath(dest_path))
-	if not quiet:  # unless disabled, print the absolute path to the file being written
-		MY_PRINT_FUNC(dest_path)
-	if not path.exists(path.dirname(dest_path)):  # assert that the destination folder exists
-		MY_PRINT_FUNC("ERROR: unable to write text file '%s', the containing folder(s) do not exist!" % dest_path)
-		raise RuntimeError()
-	# default encoding is utf-8, but use shift_jis if use_jis_encoding is given
-	enc = "shift_jis" if use_jis_encoding else "utf-8"
-	# join the list of lines into a single string
-	writeme = "\n".join(content)
-	try:
-		with open(dest_path, "wt", encoding=enc, errors="strict") as my_file:  # w=write, t=text
-			my_file.write(writeme)  # plain old no-frills write
-	except ValueError as e:
-		MY_PRINT_FUNC(e.__class__.__name__, e)
-		MY_PRINT_FUNC("ERROR: attempt to write text file '%s', but encoding '%s' could not handle contents!" % (dest_path, enc))
-		raise RuntimeError()
-	except IOError as e:
-		MY_PRINT_FUNC(e.__class__.__name__, e)
-		MY_PRINT_FUNC("ERROR: unable to write text file '%s', maybe its a permissions issue?" % dest_path)
-		raise RuntimeError()
-	return None
-
-def read_txtfile_to_list(src_path:str, use_jis_encoding=False, quiet=False) -> List[str]:
-	"""
-	READ a TEXT file from disk into memory.
-	
-	:param src_path: source file path, as a string, relative from CWD or absolute
-	:param use_jis_encoding: by default, assume utf-8 encoding. if this=True, use shift_jis instead.
-	:param quiet: by default, print the absolute path being written to. if this=True, don't do this.
-	:return: list of lines, each line is a string
-	"""
-	src_path = path.abspath(path.normpath(src_path))
-	if not quiet:  # unless disabled, print the absolute path to the file being read
-		MY_PRINT_FUNC(src_path)
-	if not path.isfile(src_path):  # assert that the given path exists and is a file, not a folder
-		MY_PRINT_FUNC("ERROR: attempt to read text file '%s', but it does not exist!" % src_path)
-		raise RuntimeError()
-	# default encoding is utf-8, but use shift_jis if use_jis_encoding is given
-	enc = "shift_jis" if use_jis_encoding else "utf-8"
-	try:
-		with open(src_path, "rt", encoding=enc, errors="strict") as my_file:  # r=read, t=text
-			rb_unicode = my_file.read()
-	except ValueError as e:
-		MY_PRINT_FUNC(e.__class__.__name__, e)
-		MY_PRINT_FUNC("ERROR: attempt to read text file '%s', but encoding '%s' could not handle contents!" % (src_path, enc))
-		raise RuntimeError()
-	except IOError as e:
-		MY_PRINT_FUNC(e.__class__.__name__, e)
-		MY_PRINT_FUNC("Err: error wile reading '%s', maybe you typed it wrong?" % src_path)
-		raise RuntimeError()
-	# break rb_unicode into a list object at standard line endings and return
-	return rb_unicode.splitlines()
-	
 
 ########################################################################################################################
 # searching thru sorted lists for MASSIVE speedup

@@ -1,16 +1,14 @@
 import os
 
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_io as io
+import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 from mmd_scripting.scripts_for_gui import file_sort_textures
-from mmd_scripting.core import nuthouse01_core as core
-from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-# when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
-# but if launched in a new window it exits immediately so you can't read it.
-DEBUG = True
 
 FAILED_LIST_FILE =     "all_pmx_that_failed_to_read.txt"
 MISSINGTEX_LIST_FILE = "all_pmx_with_missing_tex.txt"
@@ -105,13 +103,13 @@ def main(moreinfo=False):
 	if list_of_pmx_that_somehow_failed:
 		core.MY_PRINT_FUNC("WARNING: failed in some way on %d PMX files" % len(list_of_pmx_that_somehow_failed))
 		core.MY_PRINT_FUNC("Writing the full list to text file:")
-		output_filename_failures = core.get_unused_file_name(FAILED_LIST_FILE)
-		core.write_list_to_txtfile(output_filename_failures, list_of_pmx_that_somehow_failed)
+		output_filename_failures = core.filepath_get_unused_name(FAILED_LIST_FILE)
+		io.write_list_to_txtfile(output_filename_failures, list_of_pmx_that_somehow_failed)
 	core.MY_PRINT_FUNC("Found %d / %d PMX files that are missing at least one texture source" %
 					   (len(list_of_pmx_with_missing_tex), len(relative_all_pmx)))
 	core.MY_PRINT_FUNC("Writing the full list to text file:")
-	output_filename_missingtex = core.get_unused_file_name(MISSINGTEX_LIST_FILE)
-	core.write_list_to_txtfile(output_filename_missingtex, list_of_pmx_with_missing_tex)
+	output_filename_missingtex = core.filepath_get_unused_name(MISSINGTEX_LIST_FILE)
+	io.write_list_to_txtfile(output_filename_missingtex, list_of_pmx_with_missing_tex)
 	
 	# print(list_of_pmx_with_missing_tex)
 	
@@ -120,26 +118,6 @@ def main(moreinfo=False):
 
 
 if __name__ == '__main__':
-	print(_SCRIPT_VERSION)
-	if DEBUG:
-		# print info to explain the purpose of this file
-		core.MY_PRINT_FUNC(helptext)
-		core.MY_PRINT_FUNC("")
-		
-		main()
-		core.pause_and_quit("Done with everything! Goodbye!")
-	else:
-		try:
-			# print info to explain the purpose of this file
-			core.MY_PRINT_FUNC(helptext)
-			core.MY_PRINT_FUNC("")
-			
-			main()
-			core.pause_and_quit("Done with everything! Goodbye!")
-		except (KeyboardInterrupt, SystemExit):
-			# this is normal and expected, do nothing and die normally
-			pass
-		except Exception as ee:
-			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee)
-			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
+	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
+	core.MY_PRINT_FUNC(helptext)
+	core.RUN_WITH_TRACEBACK(main)

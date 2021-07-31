@@ -10,8 +10,9 @@ import traceback
 from os import path, listdir
 from typing import Sequence, Union
 
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_io as io
 from mmd_scripting import __pkg_welcome__
-from mmd_scripting.core import nuthouse01_core as core
 from mmd_scripting.scripts_for_gui import bone_make_semistandard_auto_armtwist, bone_set_arm_localaxis, \
 	bone_armik_addremove, bone_endpoint_addremove, bone_add_sdef_autotwist_handtwist_adapter, check_model_compatibility, \
 	convert_vmd_to_txt, convert_vpd_to_vmd, file_sort_textures, file_translate_filenames, file_recompress_images, \
@@ -181,7 +182,7 @@ def gui_fileprompt(label: str, ext_list: Union[str,Sequence[str]]) -> str:
 	# dont trust file dialog to remember last-opened path, manually save/read it
 	# NEW: file dialog start path is stored independently for each file type!!
 	json_key = "last-input-path-" + ",".join(ext_list)
-	json_data = core.get_persistent_storage_json(json_key)
+	json_data = io.get_persistent_storage_json(json_key)
 	if json_data is None:
 		# if never used before, start wherever i am right now i guess
 		start_here = path.abspath(".")
@@ -199,11 +200,10 @@ def gui_fileprompt(label: str, ext_list: Union[str,Sequence[str]]) -> str:
 	
 	# if user closed the prompt before giving a file path, quit here
 	if newpath == "":
-		core.MY_PRINT_FUNC("ERROR: this script requires an input file to run")
-		raise RuntimeError()
+		raise RuntimeError("file dialogue aborted")
 	
 	# they got an existing file! update the last_opened_dir file
-	core.write_persistent_storage_json(json_key, path.dirname(newpath))
+	io.write_persistent_storage_json(json_key, path.dirname(newpath))
 	
 	return newpath
 
@@ -409,7 +409,15 @@ class Application(tk.Frame):
 		# start the popup loop
 		self.spin_to_handle_inputs()
 		# read all modules from the "scripts_for_gui" folder & populate the optionmenu
-		self.rebuild_script_list()
+		try:
+			self.rebuild_script_list()
+		except Exception as e:
+			# print the full traceback
+			exc_type, exc_value, exc_traceback = sys.exc_info()
+			printme_list = traceback.format_exception(e.__class__, e, exc_traceback)
+			# now i have the complete traceback info as a list of strings, each ending with newline
+			core.MY_PRINT_FUNC("")
+			core.MY_PRINT_FUNC("".join(printme_list))
 		
 		# done with init
 		return
@@ -454,12 +462,6 @@ class Application(tk.Frame):
 	def help_func(self):
 		core.MY_PRINT_FUNC(self.loaded_script.helptext)
 	
-	# this lets the window be moved or resized as the target function is executing
-	def run_the_script_as_thread(self):
-		thread = threading.Thread(name="do-the-thing", target=self.run_the_script, daemon=True)
-		# start the thread
-		thread.start()
-		
 	def rebuild_script_list(self):
 		# first, wipe away what I already have
 		self.script_list_dispnames = []
@@ -483,7 +485,7 @@ class Application(tk.Frame):
 		self.script_list_dispnames = [module_to_dispname(m) for m in self.script_list_modules]
 		
 		# set the default script, this should invoke "self.change_mode" at least once
-		lastused = core.get_persistent_storage_json('last-script')
+		lastused = io.get_persistent_storage_json('last-script')
 		if (lastused is not None) and (lastused in self.script_list_dispnames):
 			# if the JSON contains a "lastused" value, and that value also matches one of the currently loaded scripts,
 			self.script_select_optionvar.set(lastused)
@@ -496,7 +498,22 @@ class Application(tk.Frame):
 		self.script_select_optionmenu.pack(side=tk.LEFT, padx=10)
 		return
 	
+	def run_the_script_as_thread(self):
+		"""
+		Attached to the big-ass "RUN" button. Invokes the "run_the_script" function in a new thread.
+		If not launched in a new thread, the UI is entirely locked up while the script is running, can't even resize
+		the window. Honestly not sure why the print function even works when it's being called from a separate thread
+		but don't question it.
+		"""
+		# new thread is set as a "daemon" which means "if the parent dies, the child dies too" i think
+		thread = threading.Thread(name="do-the-thing", target=self.run_the_script, daemon=True)
+		# start the thread
+		thread.start()
+	
 	def run_the_script(self):
+		"""
+		Disable all GUI elements, then invoke the script, then re-enable all GUI elements.
+		"""
 		script_name = str(self.script_select_optionvar.get())
 		core.MY_PRINT_FUNC("="*50)
 		core.MY_PRINT_FUNC(script_name)
@@ -513,9 +530,19 @@ class Application(tk.Frame):
 			moreinfo = bool(self.debug_check_var.get())
 			self.loaded_script.main(moreinfo)
 		except Exception as e:
-			# todo: print full traceback for any exception EXCEPT make a special condition for "cancelled file dialogue"
-			core.MY_PRINT_FUNC(e.__class__.__name__, e)
-			core.MY_PRINT_FUNC("ERROR: failed to complete target script")
+			# if this exception SPECIFICALLY CAME FROM FILEDIALOGUE ABORT,
+			if isinstance(e, RuntimeError) and len(e.args) == 1 and e.args[0] == "file dialogue aborted":
+				# just print this polite little message
+				core.MY_PRINT_FUNC("ERROR: this script requires an input file to run.")
+			# if it is an exception from any other source,
+			else:
+				# print the full traceback
+				exc_type, exc_value, exc_traceback = sys.exc_info()
+				printme_list = traceback.format_exception(e.__class__, e, exc_traceback)
+				# now i have the complete traceback info as a list of strings, each ending with newline
+				core.MY_PRINT_FUNC("")
+				core.MY_PRINT_FUNC("".join(printme_list))
+				core.MY_PRINT_FUNC("ERROR: the script did not complete succesfully.")
 		
 		# re-enable GUI elements when finished running
 		self.run_butt.configure(state='normal')
@@ -526,16 +553,25 @@ class Application(tk.Frame):
 		return
 	
 	def change_mode(self, *_):
-		# get the the currently displayed item in the dropdown menu
-		newstr = self.script_select_optionvar.get()
-		# find which index within SCRIPT_LIST it corresponds to (guaranteed to succeed)
-		idx = self.script_list_dispnames.index(newstr)
-		# set helptext and execute func
-		self.loaded_script = self.script_list_modules[idx]
-		# set the 'last used script' item in the json
-		core.write_persistent_storage_json('last-script', newstr)
-
-		core.MY_PRINT_FUNC(">>>>>>>>>>\nLoad new script '%s'\n" % newstr)
+		try:
+			# get the the currently displayed item in the dropdown menu
+			newstr = self.script_select_optionvar.get()
+			# find which index within SCRIPT_LIST it corresponds to (guaranteed to succeed)
+			idx = self.script_list_dispnames.index(newstr)
+			# set helptext and execute func
+			self.loaded_script = self.script_list_modules[idx]
+			# set the 'last used script' item in the json
+			io.write_persistent_storage_json('last-script', newstr)
+	
+			core.MY_PRINT_FUNC(">>>>>>>>>>\nLoad new script '%s'\n" % newstr)
+		except Exception as e:
+			# print the full traceback
+			exc_type, exc_value, exc_traceback = sys.exc_info()
+			printme_list = traceback.format_exception(e.__class__, e, exc_traceback)
+			# now i have the complete traceback info as a list of strings, each ending with newline
+			core.MY_PRINT_FUNC("")
+			core.MY_PRINT_FUNC("".join(printme_list))
+		
 		return
 		
 	def clear_func(self):

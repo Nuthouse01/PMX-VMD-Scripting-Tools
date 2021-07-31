@@ -1,17 +1,14 @@
 import os
 
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 from mmd_scripting.overall_cleanup import translate_to_english as translate_to_english
 from mmd_scripting.scripts_for_gui import file_sort_textures
-from mmd_scripting.core import nuthouse01_core as core
-from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-# when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
-# but if launched in a new window it exits immediately so you can't read it.
-DEBUG = False
 
 
 # this is recommended true, for obvious reasons
@@ -141,9 +138,9 @@ def main(moreinfo=False):
 	for p, newname in zip(filerecord_list, newname_list):
 		if newname != p.name:
 			# resolve potential collisions by adding numbers suffix to file names
-			# first need to make path absolute so get_unused_file_name can check the disk.
+			# first need to make path absolute so filepath_get_unused_name can check the disk.
 			# then check uniqueness against files on disk and files in namelist (files that WILL be on disk)
-			newname = core.get_unused_file_name(os.path.join(startpath, newname), namelist=all_new_names)
+			newname = core.filepath_get_unused_name(os.path.join(startpath, newname), namelist=all_new_names)
 			# now dest path is guaranteed unique against other existing files & other proposed name changes
 			all_new_names.add(newname.lower())
 			# make the path no longer absolute: undo adding "startpath" above
@@ -222,26 +219,6 @@ def main(moreinfo=False):
 
 
 if __name__ == '__main__':
-	print(_SCRIPT_VERSION)
-	if DEBUG:
-		# print info to explain the purpose of this file
-		core.MY_PRINT_FUNC(helptext)
-		core.MY_PRINT_FUNC("")
-		
-		main()
-		core.pause_and_quit("Done with everything! Goodbye!")
-	else:
-		try:
-			# print info to explain the purpose of this file
-			core.MY_PRINT_FUNC(helptext)
-			core.MY_PRINT_FUNC("")
-			
-			main()
-			core.pause_and_quit("Done with everything! Goodbye!")
-		except (KeyboardInterrupt, SystemExit):
-			# this is normal and expected, do nothing and die normally
-			pass
-		except Exception as ee:
-			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee)
-			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
+	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
+	core.MY_PRINT_FUNC(helptext)
+	core.RUN_WITH_TRACEBACK(main)

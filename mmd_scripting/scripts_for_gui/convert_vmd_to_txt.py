@@ -1,8 +1,9 @@
 from typing import List
 
-from mmd_scripting.core import nuthouse01_core as core
-from mmd_scripting.core import nuthouse01_vmd_parser as vmdlib
-from mmd_scripting.core import nuthouse01_vmd_struct as vmdstruct
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_io as io
+import mmd_scripting.core.nuthouse01_vmd_parser as vmdlib
+import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.03 - 10/10/2020"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -78,9 +79,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.03 - 10/10/2020"
 # constants & options
 ########################################################################################################################
 
-# when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
-# but if launched in a new window it exits immediately so you can't read it.
-DEBUG = False
 
 # do you want to print a summary of bones & morphs in the VMD file?
 # now that "model_compatability_check.py" exists, this feature is turned off by default
@@ -459,9 +457,9 @@ def read_vmdtext(vmdtext_filename: str) -> vmdstruct.Vmd:
 	# also check that headers are where they should be and each line has the proper number of items on it
 	# return nicelist = [header, modelname, bone_list, morph_list, cam_list, light_list, shadow_list, ikdisp_list]
 	
-	cleanname = core.get_clean_basename(vmdtext_filename) + ".txt"
+	cleanname = core.filepath_splitdir(vmdtext_filename)[1]
 	core.MY_PRINT_FUNC("Begin reading VMD-as-text file '%s'" % cleanname)
-	vmdtext_rawlist = core.read_file_to_csvlist(vmdtext_filename)
+	vmdtext_rawlist = io.read_file_to_csvlist(vmdtext_filename)
 	core.MY_PRINT_FUNC("...total size   = %s lines" % len(vmdtext_rawlist))
 	core.MY_PRINT_FUNC("Begin parsing VMD-as-text file '%s'" % cleanname)
 	
@@ -494,7 +492,7 @@ def read_vmdtext(vmdtext_filename: str) -> vmdstruct.Vmd:
 
 def write_vmdtext(vmdtext_filename: str, nicelist: vmdstruct.Vmd):
 	# assume the output filename has already been validated as unused, etc
-	cleanname = core.get_clean_basename(vmdtext_filename) + ".txt"
+	cleanname = core.filepath_splitdir(vmdtext_filename)[1]
 	core.MY_PRINT_FUNC("Begin formatting VMD-as-text file '%s'" % cleanname)
 	
 	rawlist = format_nicelist_as_rawlist(nicelist)
@@ -502,7 +500,7 @@ def write_vmdtext(vmdtext_filename: str, nicelist: vmdstruct.Vmd):
 	# done formatting!
 	core.MY_PRINT_FUNC("Begin writing VMD-as-text file '%s'" % cleanname)
 	core.MY_PRINT_FUNC("...total size   = %s lines" % len(rawlist))
-	core.write_csvlist_to_file(vmdtext_filename, rawlist)
+	io.write_csvlist_to_file(vmdtext_filename, rawlist)
 	core.MY_PRINT_FUNC("Done writing VMD-as-text file '%s'" % cleanname)
 	return
 
@@ -528,14 +526,16 @@ def convert_txt_to_vmd(input_filename, moreinfo=True):
 	Read a VMD-as-text file from disk, convert it, and write to disk as a VMD motion file.
 	The output will have the same path and basename, but the opposite file extension.
 	
-	:param input_filename: filepath to input vmd, absolute or relative to CWD
+	:param input_filename: filepath to input txt, absolute or relative to CWD
 	:param moreinfo: default false. if true, get extra printouts with more info about stuff.
 	"""
 	# read the VMD-as-text into the nicelist format, all in one function
 	vmd_nicelist = read_vmdtext(input_filename)
 	core.MY_PRINT_FUNC("")
 	# identify an unused filename for writing the output
-	dumpname = core.get_unused_file_name(input_filename[0:-4] + ".vmd")
+	base = core.filepath_splitext(input_filename)[0]
+	base += ".vmd"
+	dumpname = core.filepath_get_unused_name(base)
 	# write the output VMD file
 	vmdlib.write_vmd(dumpname, vmd_nicelist, moreinfo=moreinfo)
 	
@@ -557,7 +557,9 @@ def convert_vmd_to_txt(input_filename: str, moreinfo=True):
 	vmd_nicelist = vmdlib.read_vmd(input_filename, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("")
 	# identify an unused filename for writing the output
-	dumpname = core.get_unused_file_name(input_filename[0:-4] + filestr_txt)
+	base = core.filepath_splitext(input_filename)[0]
+	base += filestr_txt
+	dumpname = core.filepath_get_unused_name(base)
 	# write the output VMD-as-text file
 	write_vmdtext(dumpname, vmd_nicelist)
 	
@@ -572,7 +574,7 @@ def convert_vmd_to_txt(input_filename: str, moreinfo=True):
 	# 	return None
 	# else:
 	# 	# identify an unused filename for writing the output
-	# 	summname = core.get_unused_file_name(core.get_clean_basename(dumpname) + "_summary" + filestr_txt)
+	# 	summname = core.filepath_get_unused_name(core.get_clean_basename(dumpname) + "_summary" + filestr_txt)
 	# 	write_summary_dicts(bonedict, morphdict, summname)
 	
 	# done!
@@ -611,26 +613,6 @@ def main(moreinfo=False):
 ########################################################################################################################
 
 if __name__ == '__main__':
-	print(_SCRIPT_VERSION)
-	if DEBUG:
-		# print info to explain the purpose of this file
-		core.MY_PRINT_FUNC(helptext)
-		core.MY_PRINT_FUNC("")
-		
-		main()
-		core.pause_and_quit("Done with everything! Goodbye!")
-	else:
-		try:
-			# print info to explain the purpose of this file
-			core.MY_PRINT_FUNC(helptext)
-			core.MY_PRINT_FUNC("")
-			
-			main()
-			core.pause_and_quit("Done with everything! Goodbye!")
-		except (KeyboardInterrupt, SystemExit):
-			# this is normal and expected, do nothing and die normally
-			pass
-		except Exception as ee:
-			# if an unexpected error occurs, catch it and print it and call core.pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee.__class__.__name__, ee)
-			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
+	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
+	core.MY_PRINT_FUNC(helptext)
+	core.RUN_WITH_TRACEBACK(main)

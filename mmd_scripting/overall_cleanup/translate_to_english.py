@@ -1,18 +1,16 @@
 from time import time
 from typing import List, Tuple, TypeVar
 
-from mmd_scripting.core import nuthouse01_core as core
-from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
-from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_io as io
+import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
+import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.overall_cleanup import translation_tools
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.01 - 7/12/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-# when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
-# but if launched in a new window it exits immediately so you can't read it.
-DEBUG = False
 
 
 # by default, respect existing english names if they exist and are latin-only
@@ -122,7 +120,7 @@ def check_translate_budget(num_proposed: int) -> bool:
 	"""
 	# get the log of past translation requests
 	# formatted as list of (timestamp, numrequests) sub-lists
-	record = core.get_persistent_storage_json('googletrans-request-history')
+	record = io.get_persistent_storage_json('googletrans-request-history')
 	# if it doesn't exist in the json, then init it as empty list
 	if record is None:
 		record = []
@@ -147,7 +145,7 @@ def check_translate_budget(num_proposed: int) -> bool:
 		newentry = [now, num_proposed]
 		record.append(newentry)
 		# write the record to file
-		core.write_persistent_storage_json('googletrans-request-history', record)
+		io.write_persistent_storage_json('googletrans-request-history', record)
 		return True
 	else:
 		# cannot do the translate, this would exceed the budget
@@ -668,9 +666,8 @@ def translate_to_english(pmx: pmxstruct.Pmx, moreinfo=False):
 	
 def end(pmx, input_filename_pmx):
 	# write out
-	# output_filename_pmx = "%s_translate.pmx" % core.get_clean_basename(input_filename_pmx)
-	output_filename_pmx = input_filename_pmx[0:-4] + "_translate.pmx"
-	output_filename_pmx = core.get_unused_file_name(output_filename_pmx)
+	output_filename_pmx = core.filepath_insert_suffix(input_filename_pmx, "_translate")
+	output_filename_pmx = core.filepath_get_unused_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx, moreinfo=True)
 	return None
 
@@ -684,16 +681,6 @@ def main():
 
 
 if __name__ == '__main__':
-	print(_SCRIPT_VERSION)
-	if DEBUG:
-		main()
-	else:
-		try:
-			main()
-		except (KeyboardInterrupt, SystemExit):
-			# this is normal and expected, do nothing and die normally
-			pass
-		except Exception as ee:
-			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee)
-			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
+	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
+	core.MY_PRINT_FUNC(helptext)
+	core.RUN_WITH_TRACEBACK(main)

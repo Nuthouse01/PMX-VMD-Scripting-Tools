@@ -1,11 +1,11 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README  
-Created by Nuthouse01 - v1.07.01 - 7/13/2021
+Created by Nuthouse01 - v1.07.02 - 7/30/2021
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!  
 If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)  
-If you want to contribute a script or bugfix you've made, please make a Git Pull Request that merges onto the "DEVELOPMENT" branch. Any pull requests onto "master" branch will be rejected.
+If you want to contribute a script or bugfix you've made, please make a Git Pull Request that merges onto the "develop" branch. Any pull requests onto "master" branch will be rejected.
 
 ###### Legal:
 This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause. You are permitted to examine and modify the code as you see fit, but I make no guarantees about the safety or quality of the result.  
@@ -250,6 +250,18 @@ The following files should be included with this README:
   <summary>Click to expand!</summary>
 
 ```
+v1.07.02:
+several minor changes to reduce the "boilerplate" code, no functional changes
+   new func "RUN_WITH_TRACEBACK" to simplify direct-run code
+   new func "filepath_insert_suffix" for creating output file name
+   tweak how core files are imported
+split the file I/O functions into a separate file, nuthouse01_io.py
+add proper traceback display to GUI
+improve exceptions in validation, file I/O
+change "get_unused_filename" numbering template (very minor change)
+file write will not fail, even if destination exists and is read-only
+"file recompress images": changed to work even if images are read-only
+
 v1.07.01:
 "morph invert" script now supports material morphs & group morphs
 NEW: minor improvements in the GUI!

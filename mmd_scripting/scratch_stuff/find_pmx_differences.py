@@ -1,4 +1,4 @@
-from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
+import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.08 - 6/3/2021"
 

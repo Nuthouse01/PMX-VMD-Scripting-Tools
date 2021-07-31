@@ -1,7 +1,8 @@
 import copy
 import math
 
-from mmd_scripting.core import nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_io as io
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.03 - 10/10/2020"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -11,9 +12,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.03 - 10/10/2020"
 
 # third, constants
 
-# when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
-# but if launched in a new window it exits immediately so you can't read it.
-DEBUG = False
 
 
 # fourth, functions
@@ -85,7 +83,7 @@ def main():
 	# input: vertex CSV file with all the vertexes that I want to modify
 	print("Please enter name of vertex CSV input file:")
 	input_filename_vertex = core.prompt_user_filename("CSV file", ".csv")
-	rawlist_vertex = core.read_file_to_csvlist(input_filename_vertex, use_jis_encoding=True)
+	rawlist_vertex = io.read_file_to_csvlist(input_filename_vertex, use_jis_encoding=True)
 	
 	# verify that these are the correct kind of CSVs
 	if rawlist_vertex[0] != core.pmxe_vertex_csv_header:
@@ -170,10 +168,10 @@ def main():
 	rawlist_vertex = [header] + rawlist_vertex
 	# build the output file name and ensure it is free
 	output_filename = input_filename_vertex[:-4] + "_aligned.csv"
-	output_filename = core.get_unused_file_name(output_filename)
+	output_filename = core.filepath_get_unused_name(output_filename)
 	print("Writing aligned result to '" + output_filename + "'...")
 	# export modified CSV
-	core.write_csvlist_to_file(output_filename, rawlist_vertex, use_jis_encoding=True)
+	io.write_csvlist_to_file(output_filename, rawlist_vertex, use_jis_encoding=True)
 	
 	core.pause_and_quit("Done with everything! Goodbye!")
 	
@@ -182,17 +180,5 @@ def main():
 
 
 if __name__ == '__main__':
-	print(_SCRIPT_VERSION)
-	if DEBUG:
-		main()
-	else:
-		try:
-			main()
-		except (KeyboardInterrupt, SystemExit):
-			# this is normal and expected, do nothing and die normally
-			pass
-		except Exception as ee:
-			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			print(ee)
-			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
-			
+	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
+	core.RUN_WITH_TRACEBACK(main)

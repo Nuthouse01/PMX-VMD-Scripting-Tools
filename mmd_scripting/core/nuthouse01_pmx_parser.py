@@ -1,6 +1,7 @@
 import math
 from typing import List, Tuple
 
+import mmd_scripting.core.nuthouse01_io as io
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 
@@ -13,9 +14,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 # MASSIVE thanks to FelixJones on Github for already exporing & documenting the PMX file structure!
 # https://gist.github.com/felixjones/f8a06bd48f9da9a4539f
 
-# when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
-# but if launched in a new window it exits immediately so you can't read it.
-DEBUG = False
 
 # by default encode files with utf-16
 # utf-8 might make files very slightly smaller but i haven't tested it
@@ -1052,10 +1050,10 @@ def encode_pmx_softbodies(nice: List[pmxstruct.PmxSoftBody]) -> bytearray:
 def read_pmx(pmx_filename: str, moreinfo=False) -> pmxstruct.Pmx:
 	global PMX_MOREINFO
 	PMX_MOREINFO = moreinfo
-	pmx_filename_clean = core.get_clean_basename(pmx_filename) + ".pmx"
+	pmx_filename_clean = core.filepath_splitdir(pmx_filename)[1]
 	# assumes the calling function already verified correct file extension
 	core.MY_PRINT_FUNC("Begin reading PMX file '%s'" % pmx_filename_clean)
-	pmx_bytes = core.read_binfile_to_bytes(pmx_filename)
+	pmx_bytes = io.read_binfile_to_bytes(pmx_filename)
 	core.MY_PRINT_FUNC("...total size   = %s" % core.prettyprint_file_size(len(pmx_bytes)))
 	core.MY_PRINT_FUNC("Begin parsing PMX file '%s'" % pmx_filename_clean)
 	core.reset_unpack()
@@ -1102,7 +1100,7 @@ def read_pmx(pmx_filename: str, moreinfo=False) -> pmxstruct.Pmx:
 def write_pmx(pmx_filename: str, pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 	global PMX_MOREINFO
 	PMX_MOREINFO = moreinfo
-	pmx_filename_clean = core.get_clean_basename(pmx_filename) + ".pmx"
+	pmx_filename_clean = core.filepath_splitdir(pmx_filename)[1]
 	# recives object 	(......)
 	# before writing, validate that the object is properly structured
 	# if it fails, it prints a bunch & raises a RuntimeError
@@ -1151,7 +1149,7 @@ def write_pmx(pmx_filename: str, pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 
 	core.MY_PRINT_FUNC("Begin writing PMX file '%s'" % pmx_filename_clean)
 	core.MY_PRINT_FUNC("...total size   = %s" % core.prettyprint_file_size(len(output_bytes)))
-	core.write_bytes_to_binfile(pmx_filename, output_bytes)
+	io.write_bytes_to_binfile(pmx_filename, output_bytes)
 	core.MY_PRINT_FUNC("Done writing PMX file '%s'" % pmx_filename_clean)
 	# done with everything!
 	return None
@@ -1166,8 +1164,8 @@ def main():
 	write_pmx("____pmxparser_selftest_DELETEME.pmx", Z, moreinfo=True)
 	ZZ = read_pmx("____pmxparser_selftest_DELETEME.pmx", moreinfo=True)
 	core.MY_PRINT_FUNC("")
-	bb = core.read_binfile_to_bytes(input_filename)
-	bb2 = core.read_binfile_to_bytes("____pmxparser_selftest_DELETEME.pmx")
+	bb = io.read_binfile_to_bytes(input_filename)
+	bb2 = io.read_binfile_to_bytes("____pmxparser_selftest_DELETEME.pmx")
 	core.MY_PRINT_FUNC("Is the binary EXACTLY identical to original?", bb == bb2)
 	exact_result = Z == ZZ
 	core.MY_PRINT_FUNC("Is the readback EXACTLY identical to original?", exact_result)
@@ -1181,16 +1179,5 @@ def main():
 ########################################################################################################################
 # after all the funtions are defined, actually execute main()
 if __name__ == '__main__':
-	print(_SCRIPT_VERSION)
-	if DEBUG:
-		main()
-	else:
-		try:
-			main()
-		except (KeyboardInterrupt, SystemExit):
-			# this is normal and expected, do nothing and die normally
-			pass
-		except Exception as ee:
-			# if an unexpected error occurs, catch it and print it and call core.pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee.__class__.__name__, ee)
-			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
+	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
+	core.RUN_WITH_TRACEBACK(main)

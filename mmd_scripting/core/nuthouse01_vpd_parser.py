@@ -1,5 +1,6 @@
 import re
 
+import mmd_scripting.core.nuthouse01_io as io
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
@@ -12,9 +13,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.03 - 10/10/2020"
 # constants & options
 ########################################################################################################################
 
-# when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
-# but if launched in a new window it exits immediately so you can't read it.
-DEBUG = False
 
 
 
@@ -51,11 +49,11 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> vmdstruct.Vmd:
 	:param moreinfo: if true, get extra printouts with more info about stuff
 	:return: VMD object
 	"""
-	cleanname = core.get_clean_basename(vpd_filepath) + ".vpd"
+	cleanname = core.filepath_splitdir(vpd_filepath)[1]
 	core.MY_PRINT_FUNC("Begin reading VPD file '%s'" % cleanname)
 	
 	# read textfile to linelist, no CSV fields to untangle here
-	lines = core.read_txtfile_to_list(vpd_filepath, use_jis_encoding=True)
+	lines = io.read_txtfile_to_list(vpd_filepath, use_jis_encoding=True)
 	
 	# verify magic header "Vocaloid Pose Data file"
 	if lines[0] != "Vocaloid Pose Data file":
@@ -222,7 +220,7 @@ def write_vpd(vpd_filepath: str, vmd: vmdstruct.Vmd, moreinfo=False):
 	:param vmd: input VMD object
 	:param moreinfo: if true, get extra printouts with more info about stuff
 	"""
-	cleanname = core.get_clean_basename(vpd_filepath) + ".vpd"
+	cleanname = core.filepath_splitdir(vpd_filepath)[1]
 	core.MY_PRINT_FUNC("Begin writing VPD file '%s'" % cleanname)
 
 	# first, lets partition boneframes & morphframes into those at/notat time=0
@@ -266,7 +264,7 @@ def write_vpd(vpd_filepath: str, vmd: vmdstruct.Vmd, moreinfo=False):
 		printlist.extend(newitem)
 	
 	# ok, now i'm done building the printlist! now actually write it!
-	core.write_list_to_txtfile(vpd_filepath, printlist, use_jis_encoding=True)
+	io.write_list_to_txtfile(vpd_filepath, printlist, use_jis_encoding=True)
 	core.MY_PRINT_FUNC("Done writing VPD file '%s'" % cleanname)
 
 	return None
@@ -284,8 +282,8 @@ def main():
 	write_vpd("____vpdparser_selftest_DELETEME.vpd", Z)
 	ZZ = read_vpd("____vpdparser_selftest_DELETEME.vpd")
 	core.MY_PRINT_FUNC("")
-	bb = core.read_binfile_to_bytes(input_filename)
-	bb2 = core.read_binfile_to_bytes("____vpdparser_selftest_DELETEME.vpd")
+	bb = io.read_binfile_to_bytes(input_filename)
+	bb2 = io.read_binfile_to_bytes("____vpdparser_selftest_DELETEME.vpd")
 	# now compare bb (original binary) with bb2 (read-write)
 	# now compare Z (first read) wtih ZZ (read-write-read)
 	core.MY_PRINT_FUNC("Is the binary EXACTLY identical to original?", bb == bb2)
@@ -305,16 +303,5 @@ def main():
 ########################################################################################################################
 
 if __name__ == '__main__':
-	print(_SCRIPT_VERSION)
-	if DEBUG:
-		main()
-	else:
-		try:
-			main()
-		except (KeyboardInterrupt, SystemExit):
-			# this is normal and expected, do nothing and die normally
-			pass
-		except Exception as ee:
-			# if an unexpected error occurs, catch it and print it and call core.pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee.__class__.__name__, ee)
-			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
+	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
+	core.RUN_WITH_TRACEBACK(main)

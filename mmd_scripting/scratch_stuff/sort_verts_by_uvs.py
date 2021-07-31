@@ -1,6 +1,6 @@
-from mmd_scripting.core import nuthouse01_core as core
-from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
-from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
+import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 
@@ -63,8 +63,7 @@ def main():
 				item.vert_idx = old_to_new[item.vert_idx]
 		
 	# softbodies: eh, who cares
-	
-	pmxname_done = pmxname[:-4] + "_Vsort.pmx"
+	pmxname_done = core.filepath_insert_suffix(pmxname, "_Vsort")
 	pmxlib.write_pmx(pmxname_done, pmx, moreinfo=True)
 	print("done")
 	

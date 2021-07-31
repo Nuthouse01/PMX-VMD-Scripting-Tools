@@ -2,6 +2,7 @@ import math
 import struct
 from typing import List, Union
 
+import mmd_scripting.core.nuthouse01_io as io
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
@@ -59,9 +60,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 # constants & options
 ########################################################################################################################
 
-# when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
-# but if launched in a new window it exits immediately so you can't read it.
-DEBUG = False
 
 
 # VMD format doesn't need to sort by frame number, but i can do it
@@ -582,11 +580,11 @@ def parse_vmd_used_dict(frames: List[Union[vmdstruct.VmdBoneFrame, vmdstruct.Vmd
 ########################################################################################################################
 
 def read_vmd(vmd_filename: str, moreinfo=False) -> vmdstruct.Vmd:
-	vmd_filename_clean = core.get_clean_basename(vmd_filename) + ".vmd"
+	vmd_filename_clean = core.filepath_splitdir(vmd_filename)[1]
 	# creates object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
 	# assumes the calling function already verified correct file extension
 	core.MY_PRINT_FUNC("Begin reading VMD file '%s'" % vmd_filename_clean)
-	vmd_bytes = core.read_binfile_to_bytes(vmd_filename)
+	vmd_bytes = io.read_binfile_to_bytes(vmd_filename)
 	core.MY_PRINT_FUNC("...total size   = %s" % core.prettyprint_file_size(len(vmd_bytes)))
 	core.MY_PRINT_FUNC("Begin parsing VMD file '%s'" % vmd_filename_clean)
 	core.reset_unpack()
@@ -637,7 +635,7 @@ def read_vmd(vmd_filename: str, moreinfo=False) -> vmdstruct.Vmd:
 	return vmd
 
 def write_vmd(vmd_filename: str, vmd: vmdstruct.Vmd, moreinfo=False):
-	vmd_filename_clean = core.get_clean_basename(vmd_filename) + ".vmd"
+	vmd_filename_clean = core.filepath_splitdir(vmd_filename)[1]
 	# recives object 	(header, boneframe_list, morphframe_list, camframe_list, lightframe_list, shadowframe_list, ikdispframe_list)
 	
 	# first, verify that the data is valid before trying to write
@@ -692,7 +690,7 @@ def write_vmd(vmd_filename: str, vmd: vmdstruct.Vmd, moreinfo=False):
 	
 	core.MY_PRINT_FUNC("Begin writing VMD file '%s'" % vmd_filename_clean)
 	core.MY_PRINT_FUNC("...total size   = %s" % core.prettyprint_file_size(len(output_bytes)))
-	core.write_bytes_to_binfile(vmd_filename, output_bytes)
+	io.write_bytes_to_binfile(vmd_filename, output_bytes)
 	core.MY_PRINT_FUNC("Done writing VMD file '%s'" % vmd_filename_clean)
 	# done with everything!
 	return
@@ -711,8 +709,8 @@ def main():
 	write_vmd("____vmdparser_selftest_DELETEME.vmd", Z)
 	ZZ = read_vmd("____vmdparser_selftest_DELETEME.vmd")
 	core.MY_PRINT_FUNC("")
-	bb = core.read_binfile_to_bytes(input_filename)
-	bb2 = core.read_binfile_to_bytes("____vmdparser_selftest_DELETEME.vmd")
+	bb = io.read_binfile_to_bytes(input_filename)
+	bb2 = io.read_binfile_to_bytes("____vmdparser_selftest_DELETEME.vmd")
 	core.MY_PRINT_FUNC("Is the binary EXACTLY identical to original?", bb == bb2)
 	exact_result = Z == ZZ
 	core.MY_PRINT_FUNC("Is the readback EXACTLY identical to original?", exact_result)
@@ -729,16 +727,5 @@ def main():
 ########################################################################################################################
 
 if __name__ == '__main__':
-	print(_SCRIPT_VERSION)
-	if DEBUG:
-		main()
-	else:
-		try:
-			main()
-		except (KeyboardInterrupt, SystemExit):
-			# this is normal and expected, do nothing and die normally
-			pass
-		except Exception as ee:
-			# if an unexpected error occurs, catch it and print it and call core.pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee.__class__.__name__, ee)
-			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
+	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
+	core.RUN_WITH_TRACEBACK(main)

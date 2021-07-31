@@ -1,6 +1,6 @@
-from mmd_scripting.core import nuthouse01_core as core
-from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
-from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
+import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.overall_cleanup.prune_unused_bones import insert_single_bone
 
 _SCRIPT_VERSION = "Script version:  khanghugo - 9/21/2020 - v5.02"
@@ -313,7 +313,8 @@ def main(moreinfo=True):
 	insert_single_bone(pmx_file_obj, leg_right_toe_ik_obj, last_leg_item_index + 4)
 	
 	# output the file
-	output_filename_pmx = input_filename_pmx[0:-4] + "_sourcetrans.pmx"
+	output_filename_pmx = core.filepath_insert_suffix(input_filename_pmx, "_sourcetrans")
+	output_filename_pmx = core.filepath_get_unused_name(output_filename_pmx)
 	pmxlib.write_pmx(output_filename_pmx, pmx_file_obj, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("Done!")
 	return None

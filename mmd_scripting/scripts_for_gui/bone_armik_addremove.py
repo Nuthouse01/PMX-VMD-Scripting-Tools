@@ -1,17 +1,14 @@
 from typing import List
 
-from mmd_scripting.core import nuthouse01_core as core
-from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
-from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
+import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.overall_cleanup.prune_unused_bones import delete_multiple_bones, insert_single_bone
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-# when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
-# but if launched in a new window it exits immediately so you can't read it.
-DEBUG = False
 
 helptext = '''=================================================
 bone_armik_addremove:
@@ -73,10 +70,7 @@ def main(moreinfo=True):
 		# add IK branch
 		core.MY_PRINT_FUNC(">>>> Adding arm IK <<<")
 		# set output name
-		if input_filename_pmx.lower().endswith(pmx_noik_suffix.lower()):
-			output_filename = input_filename_pmx[0:-(len(pmx_noik_suffix))] + pmx_yesik_suffix
-		else:
-			output_filename = input_filename_pmx[0:-4] + pmx_yesik_suffix
+		SUFFIX = pmx_yesik_suffix
 		for side in [jp_l, jp_r]:
 			# first find all 3 arm bones
 			# even if i insert into the list, this will still be a valid reference i think
@@ -189,10 +183,7 @@ def main(moreinfo=True):
 		# remove IK branch
 		core.MY_PRINT_FUNC(">>>> Removing arm IK <<<")
 		# set output name
-		if input_filename_pmx.lower().endswith(pmx_yesik_suffix.lower()):
-			output_filename = input_filename_pmx[0:-(len(pmx_yesik_suffix))] + pmx_noik_suffix
-		else:
-			output_filename = input_filename_pmx[0:-4] + pmx_noik_suffix
+		SUFFIX = pmx_noik_suffix
 		# identify all bones in ik chain of hand ik bones
 		bone_dellist = []
 		for b in [r, l]:
@@ -214,33 +205,14 @@ def main(moreinfo=True):
 		pass
 	
 	# write out
-	output_filename = core.get_unused_file_name(output_filename)
+	output_filename = core.filepath_insert_suffix(input_filename_pmx, SUFFIX)
+	output_filename = core.filepath_get_unused_name(output_filename)
 	pmxlib.write_pmx(output_filename, pmx, moreinfo=moreinfo)
 	core.MY_PRINT_FUNC("Done!")
 	return None
 
 
 if __name__ == '__main__':
-	print(_SCRIPT_VERSION)
-	if DEBUG:
-		# print info to explain the purpose of this file
-		core.MY_PRINT_FUNC(helptext)
-		core.MY_PRINT_FUNC("")
-		
-		main()
-		core.pause_and_quit("Done with everything! Goodbye!")
-	else:
-		try:
-			# print info to explain the purpose of this file
-			core.MY_PRINT_FUNC(helptext)
-			core.MY_PRINT_FUNC("")
-			
-			main()
-			core.pause_and_quit("Done with everything! Goodbye!")
-		except (KeyboardInterrupt, SystemExit):
-			# this is normal and expected, do nothing and die normally
-			pass
-		except Exception as ee:
-			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee.__class__.__name__, ee)
-			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
+	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
+	core.MY_PRINT_FUNC(helptext)
+	core.RUN_WITH_TRACEBACK(main)

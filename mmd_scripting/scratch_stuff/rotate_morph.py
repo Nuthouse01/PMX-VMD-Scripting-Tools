@@ -1,9 +1,9 @@
 import math
 
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
+import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.scripts_for_gui import morph_scale
-from mmd_scripting.core import nuthouse01_core as core
-from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
-from mmd_scripting.core import nuthouse01_pmx_struct as pmxstruct
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 
@@ -96,7 +96,7 @@ def main():
 								  items=newmorphitems)
 	pmx.morphs.append(newmorph)
 	# done iter, now write
-	OUT = core.get_unused_file_name("NEW.pmx")
+	OUT = core.filepath_get_unused_name("NEW.pmx")
 	pmxlib.write_pmx(OUT, pmx)
 	print("done")
 

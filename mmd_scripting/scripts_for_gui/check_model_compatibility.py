@@ -1,7 +1,7 @@
-from mmd_scripting.core import nuthouse01_core as core
-from mmd_scripting.core import nuthouse01_pmx_parser as pmxlib
-from mmd_scripting.core import nuthouse01_vmd_parser as vmdlib
-from mmd_scripting.core import nuthouse01_vpd_parser as vpdlib
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
+import mmd_scripting.core.nuthouse01_vmd_parser as vmdlib
+import mmd_scripting.core.nuthouse01_vpd_parser as vpdlib
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.03 - 10/10/2020"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -12,9 +12,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.03 - 10/10/2020"
 ########################################################################################################################
 
 
-# when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
-# but if launched in a new window it exits immediately so you can't read it.
-DEBUG = False
 
 
 # if true, print items that match as well as items that miss
@@ -65,9 +62,9 @@ def main(moreinfo=True):
 	
 	# ensure that the VMD contains at least some morphs, to prevent zero-divide error
 	if len(morphs_in_vmd) == 0:
-		core.MY_PRINT_FUNC("MORPH SKIP: VMD '%s' does not contain any morphs that are used in a meaningful way." % core.get_clean_basename(input_filename))
+		core.MY_PRINT_FUNC("MORPH SKIP: VMD '%s' does not contain any morphs that are used in a meaningful way." % core.filepath_splitdir(input_filename)[1])
 	elif len(morphs_in_model) == 0:
-		core.MY_PRINT_FUNC("MORPH SKIP: PMX '%s' does not contain any morphs." % core.get_clean_basename(input_filename_pmx))
+		core.MY_PRINT_FUNC("MORPH SKIP: PMX '%s' does not contain any morphs." % core.filepath_splitdir(input_filename_pmx)[1])
 	else:
 		
 		# convert pmx-morph names to bytes
@@ -159,9 +156,9 @@ def main(moreinfo=True):
 	
 	# ensure that the VMD contains at least some bones, to prevent zero-divide error
 	if len(bones_in_vmd) == 0:
-		core.MY_PRINT_FUNC("BONE SKIP: VMD '%s' does not contain any bones that are used in a meaningful way." % core.get_clean_basename(input_filename))
+		core.MY_PRINT_FUNC("BONE SKIP: VMD '%s' does not contain any bones that are used in a meaningful way." % core.filepath_splitdir(input_filename)[1])
 	elif len(bones_in_model) == 0:
-		core.MY_PRINT_FUNC("BONE SKIP: PMX '%s' does not contain any bones." % core.get_clean_basename(input_filename_pmx))
+		core.MY_PRINT_FUNC("BONE SKIP: PMX '%s' does not contain any bones." % core.filepath_splitdir(input_filename_pmx)[1])
 	else:
 		
 		# convert pmx-bone names to bytes
@@ -265,26 +262,6 @@ def main(moreinfo=True):
 
 
 if __name__ == '__main__':
-	print(_SCRIPT_VERSION)
-	if DEBUG:
-		# print info to explain the purpose of this file
-		core.MY_PRINT_FUNC(helptext)
-		core.MY_PRINT_FUNC("")
-		
-		main()
-		core.pause_and_quit("Done with everything! Goodbye!")
-	else:
-		try:
-			# print info to explain the purpose of this file
-			core.MY_PRINT_FUNC(helptext)
-			core.MY_PRINT_FUNC("")
-			
-			main()
-			core.pause_and_quit("Done with everything! Goodbye!")
-		except (KeyboardInterrupt, SystemExit):
-			# this is normal and expected, do nothing and die normally
-			pass
-		except Exception as ee:
-			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee.__class__.__name__, ee)
-			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
+	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
+	core.MY_PRINT_FUNC(helptext)
+	core.RUN_WITH_TRACEBACK(main)

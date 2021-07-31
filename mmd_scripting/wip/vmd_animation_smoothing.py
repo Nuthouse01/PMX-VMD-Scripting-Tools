@@ -3,9 +3,9 @@ from typing import List, Dict, TypeVar, Tuple, Optional, Sequence
 
 # import numpy as np
 # import matplotlib.pyplot as plt
-from mmd_scripting.core import nuthouse01_core as core
-from mmd_scripting.core import nuthouse01_vmd_parser as vmdlib
-from mmd_scripting.core import nuthouse01_vmd_struct as vmdstruct
+import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_vmd_parser as vmdlib
+import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.08 - 6/3/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -14,9 +14,6 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.08 - 6/3/2021"
 ANGLE_SHARPNESS_FACTORS = []
 
 
-# when debug=True, disable the catchall try-except block. this means the full stack trace gets printed when it crashes,
-# but if launched in a new window it exits immediately so you can't read it.
-DEBUG = True
 
 
 # if 1, slope outside a cut will be set to 0. AKA after a cut, accelerate from a stop.
@@ -867,8 +864,8 @@ def main(moreinfo=True):
 	
 	core.MY_PRINT_FUNC("")
 	# write out the VMD
-	output_filename_vmd = "%s_smoothed.vmd" % input_filename_vmd[0:-4]
-	output_filename_vmd = core.get_unused_file_name(output_filename_vmd)
+	output_filename_vmd = core.filepath_insert_suffix(input_filename_vmd, "_smoothed")
+	output_filename_vmd = core.filepath_get_unused_name(output_filename_vmd)
 	vmdlib.write_vmd(output_filename_vmd, vmd, moreinfo=moreinfo)
 	
 	# H = plt.hist([j for j in ANGLE_SHARPNESS_FACTORS if j!=0 and j!=1], bins=40, density=True)
@@ -880,26 +877,6 @@ def main(moreinfo=True):
 	return None
 
 if __name__ == '__main__':
-	print(_SCRIPT_VERSION)
-	if DEBUG:
-		# print info to explain the purpose of this file
-		core.MY_PRINT_FUNC(helptext)
-		core.MY_PRINT_FUNC("")
-		
-		main()
-		core.pause_and_quit("Done with everything! Goodbye!")
-	else:
-		try:
-			# print info to explain the purpose of this file
-			core.MY_PRINT_FUNC(helptext)
-			core.MY_PRINT_FUNC("")
-			
-			main()
-			core.pause_and_quit("Done with everything! Goodbye!")
-		except (KeyboardInterrupt, SystemExit):
-			# this is normal and expected, do nothing and die normally
-			pass
-		except Exception as ee:
-			# if an unexpected error occurs, catch it and print it and call pause_and_quit so the window stays open for a bit
-			core.MY_PRINT_FUNC(ee.__class__.__name__, ee)
-			core.pause_and_quit("ERROR: something truly strange and unexpected has occurred, sorry, good luck figuring out what tho")
+	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
+	core.MY_PRINT_FUNC(helptext)
+	core.RUN_WITH_TRACEBACK(main)
