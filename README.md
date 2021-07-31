@@ -259,7 +259,8 @@ split the file I/O functions into a separate file, nuthouse01_io.py
 add proper traceback display to GUI
 improve exceptions in validation, file I/O
 change "get_unused_filename" numbering template (very minor change)
-file write will check for & remove "read-only" status from wherever it wants to write
+file write will not fail, even if destination exists and is read-only
+"file recompress images": changed to work even if images are read-only
 
 v1.07.01:
 "morph invert" script now supports material morphs & group morphs
