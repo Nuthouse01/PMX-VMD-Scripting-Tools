@@ -12,7 +12,7 @@ from mmd_scripting.overall_cleanup import translate_to_english
 from mmd_scripting.overall_cleanup import uniquify_names
 from mmd_scripting.overall_cleanup import weight_cleanup
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 7/31/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -49,6 +49,8 @@ def find_toolong_bonemorph(pmx: pmxstruct.Pmx) -> (list,list):
 	core.set_encoding("shift_jis")
 	toolong_list_bone = []
 	for d,b in enumerate(pmx.bones):
+		# bones that are not "enabled" cannot be controlled with keyframes, so dont check them
+		if not b.has_enabled: continue
 		try:
 			bb = core.encode_string_with_escape(b.name_jp)
 			if len(bb) > 15:
@@ -58,6 +60,8 @@ def find_toolong_bonemorph(pmx: pmxstruct.Pmx) -> (list,list):
 			pass
 	toolong_list_morph = []
 	for d,m in enumerate(pmx.morphs):
+		# morphs that are "hidden" should probably not be directly manipulated by a user, so dont check them
+		if m.panel == pmxstruct.MorphPanel.HIDDEN: continue
 		try:
 			mb = core.encode_string_with_escape(m.name_jp)
 			if len(mb) > 15:
@@ -96,6 +100,8 @@ def find_shiftjis_unsupported_names(pmx: pmxstruct.Pmx, filepath: str) -> int:
 
 	# third, bones
 	for d,b in enumerate(pmx.bones):
+		# bones that are not "enabled" cannot be controlled with keyframes, so dont check them
+		if not b.has_enabled: continue
 		try:
 			_ = core.encode_string_with_escape(b.name_jp)
 		except UnicodeEncodeError as e:
@@ -107,6 +113,8 @@ def find_shiftjis_unsupported_names(pmx: pmxstruct.Pmx, filepath: str) -> int:
 			failct += 1
 	# fourth, morphs
 	for d,m in enumerate(pmx.morphs):
+		# morphs that are "hidden" should probably not be directly manipulated by a user, so dont check them
+		if m.panel == pmxstruct.MorphPanel.HIDDEN: continue
 		try:
 			_ = core.encode_string_with_escape(m.name_jp)
 		except UnicodeEncodeError as e:
