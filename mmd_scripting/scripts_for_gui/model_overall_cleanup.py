@@ -170,6 +170,27 @@ def find_jointless_physbodies(pmx: pmxstruct.Pmx)-> list:
 	retme = [i for i in range(len(pmx.rigidbodies)) if i not in anchored_bodies]
 	return retme
 	
+def find_always_invisible_materials(pmx: pmxstruct.Pmx) -> list:
+	# identify any materials that start transparent and have no morphs to make them visible
+	retme = []
+	for d,mat in enumerate(pmx.materials):
+		# if opacity is zero,
+		if mat.alpha == 0:
+			# are there any material morphs that add opacity to this material?
+			has_appear_morph = False
+			for morph in pmx.morphs:
+				# ignore any non-material morphs
+				if morph.morphtype != pmxstruct.MorphType.MATERIAL: continue
+				for item in morph.items:
+					item: pmxstruct.PmxMorphItemMaterial  # pycharm type annotation
+					# does this item add opacity to the material in question?
+					if item.mat_idx==d and item.is_add and item.alpha > 0:
+						has_appear_morph = True
+			# if there are no "appear" morphs for this material, then mark it as permanently hidden
+			if not has_appear_morph:
+				retme.append(d)
+	return retme
+
 
 
 ########################################################################################################################
@@ -292,6 +313,16 @@ def main(moreinfo=False):
 		if len(shadowy_mats) > MAX_WARNING_LIST:
 			ss = ss[0:-1] + ", ...]"
 		core.MY_PRINT_FUNC("These %d materials need edging disabled (index): %s" % (len(shadowy_mats), ss))
+	
+	invisible_mats = find_always_invisible_materials(pmx)
+	if invisible_mats:
+		core.MY_PRINT_FUNC("")
+		core.MY_PRINT_FUNC("Minor warning: this model contains transparent materials that never become visible.")
+		core.MY_PRINT_FUNC("These materials are probably just backup geometry or something, and can be safely deleted.")
+		ss = str(invisible_mats[0:MAX_WARNING_LIST])
+		if len(invisible_mats) > MAX_WARNING_LIST:
+			ss = ss[0:-1] + ", ...]"
+		core.MY_PRINT_FUNC("These %d materials are never visible (index): %s" % (len(invisible_mats), ss))
 	
 	boneless_bodies = find_boneless_bonebodies(pmx)
 	if boneless_bodies:
