@@ -250,11 +250,11 @@ def main(moreinfo=False):
 	core.MY_PRINT_FUNC("\n>>>> Deleting orphaned/unused vertices <<<<")
 	pmx, is_changed_t = prune_unused_vertices.prune_unused_vertices(pmx, moreinfo)
 	is_changed |= is_changed_t
-	core.MY_PRINT_FUNC("\n>>>> Deleting unused bones <<<<")
-	pmx, is_changed_t = prune_unused_bones.prune_unused_bones(pmx, moreinfo)
-	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Normalizing vertex weights & normals <<<<")
 	pmx, is_changed_t = weight_cleanup.weight_cleanup(pmx, moreinfo)
+	is_changed |= is_changed_t
+	core.MY_PRINT_FUNC("\n>>>> Deleting unused bones <<<<")
+	pmx, is_changed_t = prune_unused_bones.prune_unused_bones(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Pruning imperceptible vertex morphs <<<<")
 	pmx, is_changed_t = morph_winnow.morph_winnow(pmx, moreinfo)
