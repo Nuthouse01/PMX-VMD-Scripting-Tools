@@ -277,7 +277,8 @@ def main(moreinfo=False):
 
 	core.MY_PRINT_FUNC("")
 	core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-	core.MY_PRINT_FUNC("++++      Scanning for other potential issues      ++++")
+	core.MY_PRINT_FUNC("++++      Scanning for other potential issues       ++++")
+	core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 	core.MY_PRINT_FUNC("")
 	
 	num_badnames = find_shiftjis_unsupported_names(pmx, input_filename_pmx)
@@ -285,7 +286,8 @@ def main(moreinfo=False):
 		core.MY_PRINT_FUNC("WARNING: found %d JP names that cannot be encoded with SHIFT-JIS, please replace the bad characters in the strings printed above!" % num_badnames)
 		core.MY_PRINT_FUNC("If the filepath contains bad characters, then MMD project files (.pmm .emm) will not properly store/load model data between sessions.")
 		core.MY_PRINT_FUNC("If the modelname/bones/morphs contain bad characters, then they will work just fine in MMD but will not properly save/load in VMD motion files.")
-	
+		core.MY_PRINT_FUNC("")
+
 	def list_to_string_but_apply_max_length(L:list) -> str:
 		L2 = [str(foo) for foo in L]
 		asdf = "[" + ", ".join(L2[0:MAX_WARNING_LIST])
@@ -296,7 +298,6 @@ def main(moreinfo=False):
 	longbone, longmorph = find_toolong_bonemorph(pmx)
 	# also checks that bone/morph names can be stored in shift_jis for VMD usage
 	if longmorph or longbone:
-		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("Minor warning: this model contains bones/morphs with JP names that are too long (>15 bytes).")
 		core.MY_PRINT_FUNC("These will work just fine in MMD but will not properly save/load in VMD motion files.")
 		if longbone:
@@ -305,59 +306,62 @@ def main(moreinfo=False):
 		if longmorph:
 			ss = list_to_string_but_apply_max_length(longmorph)
 			core.MY_PRINT_FUNC("These %d morphs are too long (index[length]): %s" % (len(longmorph), ss))
-	
+		core.MY_PRINT_FUNC("")
+
 	shadowy_mats = find_shadowy_materials(pmx)
 	if shadowy_mats:
-		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("Minor warning: this model contains transparent materials with visible edging.")
 		core.MY_PRINT_FUNC("Edging is visible even if the material is transparent, so this will look like an ugly silhouette.")
 		core.MY_PRINT_FUNC("Either disable edging in MMD when using this model, or reduce the edge parameters to 0 and re-add them in the morph that restores its opacity.")
 		ss = list_to_string_but_apply_max_length(shadowy_mats)
 		core.MY_PRINT_FUNC("These %d materials need edging disabled (index): %s" % (len(shadowy_mats), ss))
+		core.MY_PRINT_FUNC("")
 	
 	invisible_mats = find_always_invisible_materials(pmx)
 	if invisible_mats:
-		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("Minor warning: this model contains transparent materials that never become visible.")
 		core.MY_PRINT_FUNC("These materials are probably just backup geometry or something, and can be safely deleted.")
 		ss = list_to_string_but_apply_max_length(invisible_mats)
 		core.MY_PRINT_FUNC("These %d materials are never visible (index): %s" % (len(invisible_mats), ss))
+		core.MY_PRINT_FUNC("")
 	
 	boneless_bodies = find_boneless_bonebodies(pmx)
 	if boneless_bodies:
-		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("WARNING: this model has bone-type rigidbodies that aren't anchored to any bones.")
 		core.MY_PRINT_FUNC("This won't crash MMD but it is probably a mistake that needs corrected.")
 		ss = list_to_string_but_apply_max_length(boneless_bodies)
 		core.MY_PRINT_FUNC("These %d bodies are boneless (index): %s" % (len(boneless_bodies), ss))
-		
+		core.MY_PRINT_FUNC("")
+
 	jointless_bodies = find_jointless_physbodies(pmx)
 	if jointless_bodies:
-		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("WARNING: this model has physics-type rigidbodies that aren't constrained by joints.")
 		core.MY_PRINT_FUNC("These will just roll around on the floor wasting processing power in MMD.")
 		ss = list_to_string_but_apply_max_length(jointless_bodies)
 		core.MY_PRINT_FUNC("These %d bodies are jointless (index): %s" % (len(jointless_bodies), ss))
-		
+		core.MY_PRINT_FUNC("")
+
 	crashing_joints = find_crashing_joints(pmx)
 	if crashing_joints:
 		# make the biggest fucking alert i can cuz this is a critical issue
-		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ")
 		core.MY_PRINT_FUNC("CRITICAL WARNING: this model contains invalid joints which WILL cause MMD to crash!")
 		core.MY_PRINT_FUNC("These must be manually deleted or repaired using PMXE.")
 		# do not apply the "max list length" limit, display all of them.
 		core.MY_PRINT_FUNC("These %d joints are invalid (index): %s" % (len(crashing_joints), crashing_joints))
+		core.MY_PRINT_FUNC("")
 	
-	core.MY_PRINT_FUNC("")
-	core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 	if not is_changed:
+		core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 		core.MY_PRINT_FUNC("++++             No writeback required              ++++")
+		core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 		core.MY_PRINT_FUNC("Done!")
 		return
 	
+	core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 	core.MY_PRINT_FUNC("++++ Done with cleanup, saving improvements to file ++++")
-	
+	core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+
 	# write out
 	output_filename_pmx = core.filepath_insert_suffix(input_filename_pmx, "_better")
 	output_filename_pmx = core.filepath_get_unused_name(output_filename_pmx)
