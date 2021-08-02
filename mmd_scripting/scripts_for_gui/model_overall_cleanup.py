@@ -18,7 +18,7 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 
 
 
-# what is the max # of items to show in the "warnings" section before concatenating?
+# what is the max # of items to show in the "warnings" section before truncating?
 MAX_WARNING_LIST = 15
 
 
