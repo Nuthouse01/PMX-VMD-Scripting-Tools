@@ -372,5 +372,5 @@ def check_and_fix_readonly(filepath: str) -> None:
 			"WARNING: file '%s' currently set to READ-ONLY, but I want to overwrite it so I am going to change its permissions!" % filepath)
 		current_permissions = stat.S_IMODE(os.lstat(filepath).st_mode)
 		ALL_WRITE_PERMISSION = stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
-		os.chmod(dest_path, current_permissions | ALL_WRITE_PERMISSION)
+		os.chmod(filepath, current_permissions | ALL_WRITE_PERMISSION)
 	return
