@@ -1,4 +1,5 @@
 import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_packer as pack
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.overall_cleanup import alphamorph_correct
@@ -46,13 +47,13 @@ def find_boneless_bonebodies(pmx: pmxstruct.Pmx) -> list:
 def find_toolong_bonemorph(pmx: pmxstruct.Pmx) -> (list,list):
 	# check for morphs with JP names that are too long and will not be successfully saved/loaded with VMD files
 	# for each morph, convert from string to bytes encoding to determine its length
-	core.set_encoding("shift_jis")
+	pack.set_encoding("shift_jis")
 	toolong_list_bone = []
 	for d,b in enumerate(pmx.bones):
 		# bones that are not "enabled" cannot be controlled with keyframes, so dont check them
 		if not b.has_enabled: continue
 		try:
-			bb = core.encode_string_with_escape(b.name_jp)
+			bb = pack.encode_string_with_escape(b.name_jp)
 			if len(bb) > 15:
 				toolong_list_bone.append("%d[%d]" % (d, len(bb)))
 		except UnicodeEncodeError:
@@ -63,7 +64,7 @@ def find_toolong_bonemorph(pmx: pmxstruct.Pmx) -> (list,list):
 		# morphs that are "hidden" should probably not be directly manipulated by a user, so dont check them
 		if m.panel == pmxstruct.MorphPanel.HIDDEN: continue
 		try:
-			mb = core.encode_string_with_escape(m.name_jp)
+			mb = pack.encode_string_with_escape(m.name_jp)
 			if len(mb) > 15:
 				toolong_list_morph.append("%d[%d]" % (d, len(mb)))
 		except UnicodeEncodeError:
@@ -74,12 +75,12 @@ def find_toolong_bonemorph(pmx: pmxstruct.Pmx) -> (list,list):
 def find_shiftjis_unsupported_names(pmx: pmxstruct.Pmx, filepath: str) -> int:
 	# checks that bone/morph names can be stored in shift_jis for VMD usage
 	# also check the model name and the filepath
-	core.set_encoding("shift_jis")
+	pack.set_encoding("shift_jis")
 	failct = 0
 	# print(filepath)
 	# first, full absolute file path:
 	try:
-		_ = core.encode_string_with_escape(filepath)
+		_ = pack.encode_string_with_escape(filepath)
 	except UnicodeEncodeError as e:
 		core.MY_PRINT_FUNC("Filepath")
 		# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
@@ -89,7 +90,7 @@ def find_shiftjis_unsupported_names(pmx: pmxstruct.Pmx, filepath: str) -> int:
 		failct += 1
 	# second, JP model name:
 	try:
-		_ = core.encode_string_with_escape(pmx.header.name_jp)
+		_ = pack.encode_string_with_escape(pmx.header.name_jp)
 	except UnicodeEncodeError as e:
 		core.MY_PRINT_FUNC("Model Name")
 		# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
@@ -103,7 +104,7 @@ def find_shiftjis_unsupported_names(pmx: pmxstruct.Pmx, filepath: str) -> int:
 		# bones that are not "enabled" cannot be controlled with keyframes, so dont check them
 		if not b.has_enabled: continue
 		try:
-			_ = core.encode_string_with_escape(b.name_jp)
+			_ = pack.encode_string_with_escape(b.name_jp)
 		except UnicodeEncodeError as e:
 			core.MY_PRINT_FUNC("Bone %d" % d)
 			# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
@@ -116,7 +117,7 @@ def find_shiftjis_unsupported_names(pmx: pmxstruct.Pmx, filepath: str) -> int:
 		# morphs that are "hidden" should probably not be directly manipulated by a user, so dont check them
 		if m.panel == pmxstruct.MorphPanel.HIDDEN: continue
 		try:
-			_ = core.encode_string_with_escape(m.name_jp)
+			_ = pack.encode_string_with_escape(m.name_jp)
 		except UnicodeEncodeError as e:
 			core.MY_PRINT_FUNC("Morph %d" % d)
 			# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
