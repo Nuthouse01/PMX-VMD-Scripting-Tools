@@ -1,12 +1,12 @@
 import math
 import re
 import struct
+from collections import defaultdict
 from typing import Any
 
 import mmd_scripting.core.nuthouse01_core as core
 
 # TODO: change how I handle the custom 't' atoms to make things more efficient
-# TODO: replace "occurance_dict" stuff with defaultdict
 
 ########################################################################################################################
 # these functions for binary file structure packing & unpacking
@@ -39,7 +39,7 @@ UNPACKER_ESCAPE_CHAR = "‡"
 # encoding to use when packing/unpackign strings
 UNPACKER_ENCODING = "utf8"
 # dict to store all strings that failed to translate, plus counts
-UNPACKER_FAILED_TRANSLATE_DICT = {}
+UNPACKER_FAILED_TRANSLATE_DICT = defaultdict(lambda: 0)
 # flag to indicate whether the last decoding needed escaping or not, cuz returning as a tuple is ugly
 UNPACKER_FAILED_TRANSLATE_FLAG = False
 # simple regex to find char "t" along with as many digits appear in front of it as possible
@@ -50,9 +50,8 @@ t_fmt_re = re.compile(t_fmt_pattern)
 # why do things with accessor functions? ¯\_(ツ)_/¯ cuz i want to
 def reset_unpack():
 	global UNPACKER_READFROM_BYTE
-	global UNPACKER_FAILED_TRANSLATE_DICT
 	UNPACKER_READFROM_BYTE = 0
-	UNPACKER_FAILED_TRANSLATE_DICT = {}
+	UNPACKER_FAILED_TRANSLATE_DICT.clear()
 
 
 def set_encoding(newencoding: str):
@@ -216,7 +215,6 @@ def _unpack_text(fmt:str, raw:bytearray) -> str:
 	:return: string
 	"""
 	global UNPACKER_READFROM_BYTE
-	global UNPACKER_FAILED_TRANSLATE_DICT
 	global UNPACKER_FAILED_TRANSLATE_FLAG
 	# input fmt string is exactly either "t" or "#t" or "##t", etc
 	try:
@@ -251,7 +249,7 @@ def _unpack_text(fmt:str, raw:bytearray) -> str:
 	# did it need escaping? add it to the dict for reporting later!
 	if UNPACKER_FAILED_TRANSLATE_FLAG:
 		UNPACKER_FAILED_TRANSLATE_FLAG = False
-		core.increment_occurance_dict(UNPACKER_FAILED_TRANSLATE_DICT, s)
+		UNPACKER_FAILED_TRANSLATE_DICT[s] += 1
 	# still need to return as a list for concatenation reasons
 	return s
 

@@ -1,5 +1,6 @@
 import math
 import struct
+from collections import defaultdict
 from typing import List, Union
 
 import mmd_scripting.core.nuthouse01_core as core
@@ -532,7 +533,8 @@ def encode_vmd_ikdispframe(nice:List[vmdstruct.VmdIkdispFrame], moreinfo:bool) -
 
 	return output
 
-
+# TODO: move this to somewhere more visible and generic
+# TODO: rewrite this while taking advantage of some functions in "wip.bone_make_sdef_auto_armtwist" or "make_ik_from_vmd"
 def parse_vmd_used_dict(frames: List[Union[vmdstruct.VmdBoneFrame, vmdstruct.VmdMorphFrame]], frametype="", moreinfo=False) -> dict:
 	"""
 	Generate a dictionary where keys are bones/morphs that are "actually used" and values are # of times they are used.
@@ -543,16 +545,18 @@ def parse_vmd_used_dict(frames: List[Union[vmdstruct.VmdBoneFrame, vmdstruct.Vmd
 	:param moreinfo: print extra info and stuff
 	:return: dict of {name: used_ct} that only includes names of "actually used" bones/morphs
 	"""
-	if frametype == "bone":
+	if len(frames) == 0:
+		return {}
+	elif isinstance(frames[0], vmdstruct.VmdBoneFrame):
 		t = True
-	elif frametype == "morph":
+	elif isinstance(frames[0], vmdstruct.VmdMorphFrame):
 		t = False
 	else:
-		core.MY_PRINT_FUNC("parse_vmd_used_dict invalid mode '%s' given" % frametype)
-		raise RuntimeError()
+		msg = "parse_vmd_used_dict: accepts list of (VmdBoneFrame,VmdMorphFrame) but input is type '%s'" % frames[0].__class__.__name__
+		raise ValueError(msg)
 	
-	bonedict = {}
-	# 1, ensure frames are in sorted order
+	bonedict = defaultdict(lambda: 0)
+	# 1, ensure frames are in sorted order by frame number
 	frames_sorted = sorted(frames, key=lambda x: x.f)
 	boneset = set()  # set of everything that exists, used or not
 	# 2, iterate over items and count all instances except first if first has no value
@@ -565,7 +569,7 @@ def parse_vmd_used_dict(frames: List[Union[vmdstruct.VmdBoneFrame, vmdstruct.Vmd
 			else:
 				if list(bone.pos) == [0.0,0.0,0.0] and list(bone.rot) == [0.0,0.0,0.0]:  # if it is not used now,
 					continue  # do not count it.
-		core.increment_occurance_dict(bonedict, bone.name)  # if it has been used before or is used now, count it.
+		bonedict += 1  # if it has been used before or is used now, count it.
 	# 3, if there are any "used" items then print a statement saying so
 	if len(bonedict) > 0 and moreinfo:
 		if t is False:

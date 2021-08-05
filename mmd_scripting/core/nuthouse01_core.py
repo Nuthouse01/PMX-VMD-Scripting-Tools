@@ -243,16 +243,6 @@ def flatten(x: Sequence) -> list:
 			retme.append(thing)
 	return retme
 
-def increment_occurance_dict(d: dict, k: Any) -> None:
-	"""
-	Increment occurance dict, updates in-place so nothing is returned.
-	"""
-	try:
-		d[k] += 1
-	except KeyError:
-		d[k] = 1
-	return None
-
 def justify_stringlist(j: List[str], right=False) -> List[str]:
 	"""
 	CONSOLE FUNCTION: justify all str in a list to match the length of the longest str in that list. Determined by
