@@ -1,54 +1,59 @@
-from collections import defaultdict
 from typing import List, Union, TypeVar, Dict
 
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
 
-# TODO: rewrite this while taking advantage of similar functions
-def parse_vmd_used_dict(frames: List[Union[vmdstruct.VmdBoneFrame, vmdstruct.VmdMorphFrame]], frametype="", moreinfo=False) -> dict:
+def parse_vmd_used_dict(frames: List[Union[vmdstruct.VmdBoneFrame, vmdstruct.VmdMorphFrame]], moreinfo=False) -> Dict[str,int]:
 	"""
 	Generate a dictionary where keys are bones/morphs that are "actually used" and values are # of times they are used.
 	"Actually used" means the first frame with a nonzero value and each frame after that. (ignore leading repeated zeros)
 	
 	:param frames: list of VmdBoneFrame obj or VmdMorphFrame obj
-	:param frametype: str "bone" or str "morph" to indicate which kind of frames are being processed
 	:param moreinfo: print extra info and stuff
 	:return: dict of {name: used_ct} that only includes names of "actually used" bones/morphs
 	"""
 	if len(frames) == 0:
 		return {}
-	elif isinstance(frames[0], vmdstruct.VmdBoneFrame):
-		t = True
+	
+	# functions used to judge if a frame is different from the base state
+	def is_zero_boneframe(F: vmdstruct.VmdBoneFrame) -> bool:
+		return list(F.pos) == [0.0,0.0,0.0] and list(F.rot) == [0.0,0.0,0.0]
+	def is_zero_morphframe(F: vmdstruct.VmdMorphFrame) -> bool:
+		return F.val == 0.0
+	
+	if isinstance(frames[0], vmdstruct.VmdBoneFrame):
+		is_zero = is_zero_boneframe
 	elif isinstance(frames[0], vmdstruct.VmdMorphFrame):
-		t = False
+		is_zero = is_zero_morphframe
 	else:
 		msg = "err: unsupported type to parse_vmd_used_dict(), accepts list of (VmdBoneFrame,VmdMorphFrame) but input is type '%s'" % frames[0].__class__.__name__
 		raise ValueError(msg)
-	
-	bonedict = defaultdict(lambda: 0)
-	# 1, ensure frames are in sorted order by frame number
-	frames_sorted = sorted(frames, key=lambda x: x.f)
-	boneset = set()  # set of everything that exists, used or not
-	# 2, iterate over items and count all instances except first if first has no value
-	for bone in frames_sorted:
-		boneset.add(bone.name)
-		if bone.name not in bonedict:  # if this has not been used before,
-			if t is False:
-				if bone.val == 0.0:  # if it is not used now,
-					continue  # do not count it.
-			else:
-				if list(bone.pos) == [0.0,0.0,0.0] and list(bone.rot) == [0.0,0.0,0.0]:  # if it is not used now,
-					continue  # do not count it.
-		bonedict += 1  # if it has been used before or is used now, count it.
-	# 3, if there are any "used" items then print a statement saying so
-	if len(bonedict) > 0 and moreinfo:
-		if t is False:
-			core.MY_PRINT_FUNC("...unique morphs, used/total= %d / %d" % (len(bonedict), len(boneset)))
-		else:
-			core.MY_PRINT_FUNC("...unique bones, used/total = %d / %d" % (len(bonedict), len(boneset)))
 
-	return bonedict
+	# 1. break the flat list into sublists for each bone or morph. each sublist is sorted by frame number.
+	allframes_dict = dictify_framelist(frames)
+	# use this dict to count the times things are used
+	usedframes_count_dict = {}
+
+	for name, framelist in allframes_dict:
+		# 2. for each frame target, count all the leading zeros!
+		num_leading_zeros = 0
+		for frame in framelist:
+			if is_zero(frame): num_leading_zeros += 1
+			else:              break
+		# all frames after the leading zeros are used!
+		num_useful_frames = len(framelist) - num_leading_zeros
+		if num_useful_frames:
+			usedframes_count_dict[name] = num_useful_frames
+	
+	# 3, if there are any "used" items then print a statement saying so
+	if usedframes_count_dict and moreinfo:
+		if isinstance(frames[0], vmdstruct.VmdBoneFrame):
+			core.MY_PRINT_FUNC("...unique bones, used/total = %d / %d" % (len(usedframes_count_dict), len(allframes_dict)))
+		else:
+			core.MY_PRINT_FUNC("...unique morphs, used/total= %d / %d" % (len(usedframes_count_dict), len(allframes_dict)))
+
+	return usedframes_count_dict
 
 
 BONEFRAME_OR_MORPHFRAME = TypeVar("BONEFRAME_OR_MORPHFRAME", vmdstruct.VmdBoneFrame, vmdstruct.VmdMorphFrame)

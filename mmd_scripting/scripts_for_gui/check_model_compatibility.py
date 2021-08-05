@@ -45,8 +45,8 @@ def main(moreinfo=True):
 		vmd = vmdlib.read_vmd(input_filename, moreinfo=moreinfo)
 	else:
 		vmd = vpdlib.read_vpd(input_filename, moreinfo=moreinfo)
-	bonedict = vmdutil.parse_vmd_used_dict(vmd.boneframes, frametype="bone", moreinfo=moreinfo)
-	morphdict = vmdutil.parse_vmd_used_dict(vmd.morphframes, frametype="morph", moreinfo=moreinfo)
+	bonedict = vmdutil.parse_vmd_used_dict(vmd.boneframes, moreinfo=moreinfo)
+	morphdict = vmdutil.parse_vmd_used_dict(vmd.morphframes, moreinfo=moreinfo)
 	
 	core.MY_PRINT_FUNC("")
 	
