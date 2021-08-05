@@ -1,10 +1,36 @@
-from typing import List, Union, TypeVar, Dict
+from typing import List, TypeVar, Dict
 
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
+BONEFRAME_OR_MORPHFRAME = TypeVar("BONEFRAME_OR_MORPHFRAME", vmdstruct.VmdBoneFrame, vmdstruct.VmdMorphFrame)
+def assert_no_overlapping_frames(frames: List[BONEFRAME_OR_MORPHFRAME]) -> List[BONEFRAME_OR_MORPHFRAME]:
+	"""
+	Remove any overlapping frames from the list: anything with the same name at the same timestep.
+	When an overlap is detected, which one is removed is arbitrary!
+	How do I want to report this? Not sure.
+	
+	:param frames: list of VmdBoneFrame obj or VmdMorphFrame obj
+	:return: new list of VmdBoneFrame obj or VmdMorphFrame obj with any overlapping frames removed.
+	"""
+	pairs = set()
+	ret = []
+	num_collisions = 0
+	for frame in frames:
+		# generate unique keys from the name+timestep
+		key = hash((frame.name, frame.f))
+		# has this unique key been used before?
+		if key in pairs:
+			# if yes, count it but don't keep it
+			num_collisions += 1
+		else:
+			# if no, keep this frame and make it part of the list that is returned
+			ret.append(frame)
+	if num_collisions:
+		core.MY_PRINT_FUNC("WARNING: removed %d overlapping frames (same name, same timestep)" % num_collisions)
+	return ret
 
-def parse_vmd_used_dict(frames: List[Union[vmdstruct.VmdBoneFrame, vmdstruct.VmdMorphFrame]], moreinfo=False) -> Dict[str,int]:
+def parse_vmd_used_dict(frames: List[BONEFRAME_OR_MORPHFRAME], moreinfo=False) -> Dict[str,int]:
 	"""
 	Generate a dictionary where keys are bones/morphs that are "actually used" and values are # of times they are used.
 	"Actually used" means the first frame with a nonzero value and each frame after that. (ignore leading repeated zeros)
@@ -56,7 +82,6 @@ def parse_vmd_used_dict(frames: List[Union[vmdstruct.VmdBoneFrame, vmdstruct.Vmd
 	return usedframes_count_dict
 
 
-BONEFRAME_OR_MORPHFRAME = TypeVar("BONEFRAME_OR_MORPHFRAME", vmdstruct.VmdBoneFrame, vmdstruct.VmdMorphFrame)
 def dictify_framelist(frames: List[BONEFRAME_OR_MORPHFRAME]) -> Dict[str, List[BONEFRAME_OR_MORPHFRAME]]:
 	"""
 	Split a list of boneframes into sublists where they are grouped by bone name. The sublists are
