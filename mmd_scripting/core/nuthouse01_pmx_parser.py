@@ -86,7 +86,7 @@ def parse_pmx_header(raw: bytearray) -> pmxstruct.PmxHeader:
 	# collects some returnable data, mostly just sets globals
 	# returnable: ver, name_jp, name_en, comment_jp, comment_en
 	
-	expectedmagic = bytearray([0x50, 0x4D, 0x58, 0x20])
+	expectedmagic = bytearray("PMX ", "utf-8")
 	fmt_magic = "4s f b"
 	(magic, ver, numglobal) = core.my_unpack(fmt_magic, raw)
 	if magic != expectedmagic:
@@ -620,7 +620,7 @@ def encode_pmx_lookahead(thispmx: pmxstruct.Pmx) -> Tuple[List[int], List[str]]:
 
 def encode_pmx_header(nice: pmxstruct.PmxHeader, lookahead: List[int]) -> bytearray:
 	# in hindsight this is not the best code i've ever written, but it works
-	expectedmagic = bytearray([0x50, 0x4D, 0x58, 0x20])
+	expectedmagic = bytearray("PMX ", "utf-8")
 	fmt_magic = "4s f b"
 	# note: hardcoding number of globals as 8 when the format is technically flexible
 	numglobal = 8
