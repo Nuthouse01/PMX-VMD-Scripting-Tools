@@ -6,6 +6,8 @@ from typing import Any
 
 import mmd_scripting.core.nuthouse01_core as core
 
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 7/30/2021"
+
 # TODO: change how I handle the custom 't' atoms to make things more efficient
 
 ########################################################################################################################

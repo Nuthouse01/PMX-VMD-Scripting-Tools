@@ -3,6 +3,11 @@ from typing import List, TypeVar, Dict
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 7/30/2021"
+
+################################################################################
+# this file defines some handy functions that help when manipulating VMDs
+
 BONEFRAME_OR_MORPHFRAME = TypeVar("BONEFRAME_OR_MORPHFRAME", vmdstruct.VmdBoneFrame, vmdstruct.VmdMorphFrame)
 def assert_no_overlapping_frames(frames: List[BONEFRAME_OR_MORPHFRAME]) -> List[BONEFRAME_OR_MORPHFRAME]:
 	"""
