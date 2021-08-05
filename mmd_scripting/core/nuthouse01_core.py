@@ -6,7 +6,7 @@ import traceback
 from os import path, listdir
 from typing import Any, Tuple, List, Sequence, Callable, Iterable, TypeVar, Union
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.02 - 7/30/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 8/4/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -472,15 +472,16 @@ def filepath_make_casecorrect(initial_name: str) -> str:
 	reassemble_name = path.normpath(reassemble_name)
 	return reassemble_name
 	
-def filepath_get_unused_name(initial_name: str, namelist=None) -> str:
+def filepath_get_unused_name(initial_name: str, checkdisk=True, namelist=None) -> str:
 	"""
 	Given a desired filepath, generate a path that is guaranteed to be unused & safe to write to.
 	Append integers to the end of the basename until it passes.
 	Often it doesn't need to append anything and returns initial_name unmodified.
 	
-	:param initial_name: desired file path, absolute or relative
-	:param namelist: optional list/set of forbidden names
-	:return: same file path as initial_name, but with integers appended until it becomes unique (if needed)
+	:param initial_name: desired file path, absolute or relative.
+	:param checkdisk: default True. if true, then check uniqueness against names on disk.
+	:param namelist: default empty. if given, then check uniqueness against these names. list or set.
+	:return: same file path as initial_name, but with integers inserted until it becomes unique (if needed)
 	"""
 	# if namelist is given, check against namelist as well as what's on the disk...
 	# make an all-lower version of namelist
@@ -489,8 +490,11 @@ def filepath_get_unused_name(initial_name: str, namelist=None) -> str:
 	basename, extension = path.splitext(initial_name)
 	test_name = basename + extension  # first, try it without adding any numbers
 	for append_num in range(1, 1000):
-		if not path.exists(test_name) and (test_name.lower() not in namelist_lower):
-			# if test_name doesn't exist on disk, AND it isn't in the list (case-insensitive matching), then its a good name
+		diskpass = not (checkdisk and path.exists(test_name))
+		listpass = (test_name.lower() not in namelist_lower)
+		if diskpass and listpass:
+			# if this name passes the disk check (or disk check is skipped), AND it passes the list check (or list is empty),
+			# then this name will be kept.
 			return test_name
 		else:
 			# if test_name is already used, then assemle a new name that includes a number
