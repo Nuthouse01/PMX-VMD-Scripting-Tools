@@ -280,6 +280,12 @@ The following files should be included with this README:
   <summary>Click to expand!</summary>
 
 ```
+v1.07.03:
+"model overall cleanup" do not check the length/encoding of bones/morphs that wont go into VMDs
+"model overall cleanup" add check for materials that are never visible
+add "what is this?" section to readme
+refactor "file recompress images" to ask for permission before making changes
+
 v1.07.02:
 several minor changes to reduce the "boilerplate" code, no functional changes
    new func "RUN_WITH_TRACEBACK" to simplify direct-run code
