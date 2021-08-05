@@ -1,7 +1,6 @@
 import math
 import struct
-from collections import defaultdict
-from typing import List, Union
+from typing import List
 
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_io as io
@@ -533,51 +532,6 @@ def encode_vmd_ikdispframe(nice:List[vmdstruct.VmdIkdispFrame], moreinfo:bool) -
 
 	return output
 
-# TODO: move this to somewhere more visible and generic
-# TODO: rewrite this while taking advantage of some functions in "wip.bone_make_sdef_auto_armtwist" or "make_ik_from_vmd"
-def parse_vmd_used_dict(frames: List[Union[vmdstruct.VmdBoneFrame, vmdstruct.VmdMorphFrame]], frametype="", moreinfo=False) -> dict:
-	"""
-	Generate a dictionary where keys are bones/morphs that are "actually used" and values are # of times they are used.
-	"Actually used" means the first frame with a nonzero value and each frame after that. (ignore leading repeated zeros)
-	
-	:param frames: list of VmdBoneFrame obj or VmdMorphFrame obj
-	:param frametype: str "bone" or str "morph" to indicate which kind of frames are being processed
-	:param moreinfo: print extra info and stuff
-	:return: dict of {name: used_ct} that only includes names of "actually used" bones/morphs
-	"""
-	if len(frames) == 0:
-		return {}
-	elif isinstance(frames[0], vmdstruct.VmdBoneFrame):
-		t = True
-	elif isinstance(frames[0], vmdstruct.VmdMorphFrame):
-		t = False
-	else:
-		msg = "parse_vmd_used_dict: accepts list of (VmdBoneFrame,VmdMorphFrame) but input is type '%s'" % frames[0].__class__.__name__
-		raise ValueError(msg)
-	
-	bonedict = defaultdict(lambda: 0)
-	# 1, ensure frames are in sorted order by frame number
-	frames_sorted = sorted(frames, key=lambda x: x.f)
-	boneset = set()  # set of everything that exists, used or not
-	# 2, iterate over items and count all instances except first if first has no value
-	for bone in frames_sorted:
-		boneset.add(bone.name)
-		if bone.name not in bonedict:  # if this has not been used before,
-			if t is False:
-				if bone.val == 0.0:  # if it is not used now,
-					continue  # do not count it.
-			else:
-				if list(bone.pos) == [0.0,0.0,0.0] and list(bone.rot) == [0.0,0.0,0.0]:  # if it is not used now,
-					continue  # do not count it.
-		bonedict += 1  # if it has been used before or is used now, count it.
-	# 3, if there are any "used" items then print a statement saying so
-	if len(bonedict) > 0 and moreinfo:
-		if t is False:
-			core.MY_PRINT_FUNC("...unique morphs, used/total= %d / %d" % (len(bonedict), len(boneset)))
-		else:
-			core.MY_PRINT_FUNC("...unique bones, used/total = %d / %d" % (len(bonedict), len(boneset)))
-
-	return bonedict
 
 
 ########################################################################################################################

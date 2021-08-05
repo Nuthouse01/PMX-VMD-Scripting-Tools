@@ -2,6 +2,7 @@ import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_packer as pack
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_vmd_parser as vmdlib
+import mmd_scripting.core.nuthouse01_vmd_utils as vmdutil
 import mmd_scripting.core.nuthouse01_vpd_parser as vpdlib
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.03 - 10/10/2020"
@@ -44,8 +45,8 @@ def main(moreinfo=True):
 		vmd = vmdlib.read_vmd(input_filename, moreinfo=moreinfo)
 	else:
 		vmd = vpdlib.read_vpd(input_filename, moreinfo=moreinfo)
-	bonedict = vmdlib.parse_vmd_used_dict(vmd.boneframes, frametype="bone", moreinfo=moreinfo)
-	morphdict = vmdlib.parse_vmd_used_dict(vmd.morphframes, frametype="morph", moreinfo=moreinfo)
+	bonedict = vmdutil.parse_vmd_used_dict(vmd.boneframes, frametype="bone", moreinfo=moreinfo)
+	morphdict = vmdutil.parse_vmd_used_dict(vmd.morphframes, frametype="morph", moreinfo=moreinfo)
 	
 	core.MY_PRINT_FUNC("")
 	
