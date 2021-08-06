@@ -1,5 +1,4 @@
 import math
-import re
 import struct
 from collections import defaultdict
 from typing import Any
@@ -44,9 +43,6 @@ UNPACKER_ENCODING = "utf8"
 UNPACKER_FAILED_TRANSLATE_DICT = defaultdict(lambda: 0)
 # flag to indicate whether the last decoding needed escaping or not, cuz returning as a tuple is ugly
 UNPACKER_FAILED_TRANSLATE_FLAG = False
-# simple regex to find char "t" along with as many digits appear in front of it as possible
-t_fmt_pattern = r"\d*t"
-t_fmt_re = re.compile(t_fmt_pattern)
 
 
 # why do things with accessor functions? ¯\_(ツ)_/¯ cuz i want to
@@ -54,17 +50,11 @@ def reset_unpack():
 	global UNPACKER_READFROM_BYTE
 	UNPACKER_READFROM_BYTE = 0
 	UNPACKER_FAILED_TRANSLATE_DICT.clear()
-
-
 def set_encoding(newencoding: str):
 	global UNPACKER_ENCODING
 	UNPACKER_ENCODING = newencoding
-
-
 def get_readfrom_byte():
 	return UNPACKER_READFROM_BYTE
-
-
 def print_failed_decodes():
 	if len(UNPACKER_FAILED_TRANSLATE_DICT) != 0:
 		core.MY_PRINT_FUNC("List of all strings that failed to decode, plus their occurance rate")
@@ -85,6 +75,9 @@ def decode_bytes_with_escape(r: bytearray) -> str:
 	:return: decoded string, possibly ending with escape char and hex digits
 	"""
 	global UNPACKER_FAILED_TRANSLATE_FLAG
+	if len(r) == 0:
+		# this is needed to prevent infinite recursion if something goes really really wrong
+		return ""
 	try:
 		s = r.decode(UNPACKER_ENCODING)				# try to decode the whole string
 		return s
@@ -109,6 +102,9 @@ def encode_string_with_escape(a: str) -> bytearray:
 	:param a: string that might contain my custom escape sequence
 	:return: bytearray after encoding
 	"""
+	if len(a) == 0:
+		# this is needed to prevent infinite recursion if something goes really really wrong
+		return bytearray()
 	try:
 		if len(a) > 3:									# is it long enough to maybe contain an escape char?
 			if a[-3] == UNPACKER_ESCAPE_CHAR:			# check if 3rd from end is an escape char
@@ -127,12 +123,8 @@ def encode_string_with_escape(a: str) -> bytearray:
 			e.reason = a
 			# then return it to be handled outside
 			raise e
-			# # to reduce redundant printouts, all the info I wanna print is put into RuntimeError and caught somewhere higher up
-			# newerrstr = "encode_string_with_escape: chr='%s', str='%s', encoding=%s, err=%s" % (a[e.start:e.end], a, e.encoding, e.reason),
-			# newerr = RuntimeError(newerrstr)
-			# raise newerr
 
-
+'''
 def my_unpack(fmt:str, raw:bytearray) -> Any:
 	"""
 	Use a given format string to convert the next section of a binary file bytearray into type-correct variables.
@@ -360,3 +352,131 @@ def _pack_text(fmt: str, args: str) -> bytearray:
 		newerrstr = "err=" + str(e) + "\nfmt=" + fmt + "\nargs=" + str(args)
 		newerr = RuntimeError(newerrstr)
 		raise newerr
+'''
+#######################################################
+
+def my_pack(fmt:str, args_in: Any) -> bytearray:
+	# fundamental wrapper around the "pack" functionality
+	# if the input is not a list, make it a list
+	# this is the only level that needs to worry about adding "<" to the format strings
+	
+	try:
+		afmt = "<" + fmt
+		if isinstance(args_in, (list, tuple)):
+			# if input args are a list, then flatten the list in the args to struct.pack
+			b = struct.pack(afmt, *args_in)  # now do the actual packing
+		else:
+			# otherwise, don't bother to listify and then delistify, just directly give it to struct.pack
+			b = struct.pack(afmt, args_in)  # now do the actual packing
+	except Exception as e:
+		core.MY_PRINT_FUNC("error in my_pack(fmt, args_in)")
+		core.MY_PRINT_FUNC("fmt=", fmt, "args_in=", args_in)
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		raise
+	return bytearray(b)
+
+
+def only_pack_text(S: str, L=None) -> bytearray:
+	# packer function that exclusively packs strings, only one at a time
+	# if L is an int, that's the manually-specified size to use
+	# if L is not specified, then it's auto-length... will be packed as an int containing the size, followed by the string
+	
+	try:
+		n = encode_string_with_escape(S)  # convert str to bytearray
+		
+		if L is None:
+			# this mode exclusively used for PMX parsing
+			# auto-length str: convert to bytearray, measure len, pack an int with that value before packing the string with exactly that length
+			fmt = "i" + str(len(n)) + "s"
+			b = my_pack(fmt, (len(n), n))  # now do the actual packing
+		else:
+			# this mode exclusively used for VMD parsing
+			# manual-length str: if a number is provided, then just pack that number of bytes
+			fmt = str(L) + "s"       # simply replace trailing t with s
+			b = my_pack(fmt, n)  # now do the actual packing
+	except Exception as e:
+		core.MY_PRINT_FUNC("error in only_pack_text(S,L)")
+		core.MY_PRINT_FUNC("S=", S, "L=", L)
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		raise
+	
+	return bytearray(b)
+
+
+def my_unpack(fmt:str, data:bytearray) -> Any:
+	# fundamental wrapper around the "unpack" functionality
+	# if the output is a single-item tuple, delistify it
+	# also automatically track the byteposition within the stream
+	# also check for NaN/Inf and replace them with real numbers if found
+	
+	global UNPACKER_READFROM_BYTE
+
+	try:
+		afmt = "<" + fmt
+		r = struct.unpack_from(afmt, data, UNPACKER_READFROM_BYTE)
+		UNPACKER_READFROM_BYTE += struct.calcsize(afmt)	# increment the global read-from tracker
+	except Exception as e:
+		core.MY_PRINT_FUNC("error in my_unpack(fmt, data)")
+		core.MY_PRINT_FUNC("fmt=",fmt,"data=","really big!","bytepos=", UNPACKER_READFROM_BYTE)
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		raise
+	# r is guaranteed to be a tuple... convert from tuple to list so i can always return list objects
+	retme = list(r)
+	# new: check for NaN and replace with 0
+	for i in range(len(retme)):
+		foo = retme[i]
+		if isinstance(foo, float):
+			if math.isnan(foo):
+				retme[i] = 0.0
+				core.MY_PRINT_FUNC("Warning: found NaN in place of float shortly before bytepos %d, replaced with 0.0" % UNPACKER_READFROM_BYTE)
+			if math.isinf(foo):
+				if foo > 0: retme[i] =  999999.0
+				else:       retme[i] = -999999.0
+				core.MY_PRINT_FUNC("Warning: found INF in place of float shortly before bytepos %d, replaced with +/- 999999.0" % UNPACKER_READFROM_BYTE)
+	# retme is guaranteed to be a list
+	# if it is only a single item, de-listify it here
+	if len(retme) == 1: return retme[0]
+	else:               return retme
+
+
+def only_unpack_text(data: bytearray, L=None) -> str:
+	# unpacker function that exclusively unpacks strings, only one at a time
+	# if L is given, then the string is fixed-length and L is the length
+	# if L is not given, then the string is auto length... first read an int, that is the size of the string, then read the string
+	
+	global UNPACKER_FAILED_TRANSLATE_FLAG
+
+	try:
+		if L is None:
+			# this mode exclusively used for PMX parsing
+			# auto-length str: a text type is an int followed by that many bytes
+			i = my_unpack("i", data)     # get an int that contains the length of the following string
+			strfmt = str(i) + "s"            # build fmt string that includes # of bytes to read
+			b = my_unpack(strfmt, data)  # unpack the actual string(bytearray)
+		
+		else:
+			# this mode exclusively used for VMD parsing
+			# manual-length str: if a number is provided, then just read that number of bytes
+			strfmt = str(L) + "s"            # build fmt string that includes # of bytes to read
+			b = my_unpack(strfmt, data)  # unpack the actual string(bytearray)
+			
+			# manual-text strings are null-terminated: everything after a null byte is invalid garbage to be discarded
+			terminator_idx = b.find(b'\x00')  # look for a null terminator
+			if terminator_idx != -1:          # if null is found...
+				b = b[0:terminator_idx]       # ...preserve only the bytes before it, not including it
+				
+		# b is now a bytearray that should be mappable onto a string, unless it is cut off mid-multibyte-char
+		s = decode_bytes_with_escape(b)
+	except Exception as e:
+		core.MY_PRINT_FUNC("error in only_unpack_text(data,L)")
+		core.MY_PRINT_FUNC("data=","really big!","L=",L)
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		raise
+	# translated string is now in s (maybe with the escape char tacked on)
+	# did it need escaping? add it to the dict for reporting later!
+	if UNPACKER_FAILED_TRANSLATE_FLAG:
+		UNPACKER_FAILED_TRANSLATE_FLAG = False
+		UNPACKER_FAILED_TRANSLATE_DICT[s] += 1
+	return s
+
+

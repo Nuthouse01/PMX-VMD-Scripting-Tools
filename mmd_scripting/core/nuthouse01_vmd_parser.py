@@ -85,19 +85,16 @@ ENCODE_PERCENT_MORPH = 0
 
 # set up the format specifier strings for packing/unpacking the binary data
 # DO NOT CHANGE THESE, NO MATTER WHAT
-fmt_header = "30t"
-fmt_modelname_new = "20t"
-fmt_modelname_old = "10t"
 fmt_number = "I"
-fmt_boneframe_no_interpcurve = "15t I 7f"
+fmt_boneframe_no_interpcurve = "I 7f"
 fmt_boneframe_interpcurve = "bb bb 12b xbb 45x"
 fmt_boneframe_interpcurve_oneline = "16b"
-fmt_morphframe = "15t I f"
+fmt_morphframe = "I f"
 fmt_camframe = "I 7f 24b I ?"
 fmt_lightframe = "I 3f 3f"
 fmt_shadowframe = "I b f"
 fmt_ikdispframe = "I ? I"
-fmt_ikframe = "20t ?"
+fmt_ikframe = "?"
 
 
 
@@ -110,37 +107,36 @@ def parse_vmd_header(raw:bytearray, moreinfo:bool) -> vmdstruct.VmdHeader:
 	# unpack the header, get file version and model name
 	# version only affects the length of the model name text field, but i'll return it anyway
 	try:
-		header = pack.my_unpack(fmt_header, raw)
+		header = pack.only_unpack_text(raw, L=30)
 	except Exception as e:
 		core.MY_PRINT_FUNC(e.__class__.__name__, e)
 		core.MY_PRINT_FUNC("section=header")
 		core.MY_PRINT_FUNC("Err: something went wrong while parsing, file is probably corrupt/malformed")
-		raise RuntimeError()
+		raise
 	
 	if header == "Vocaloid Motion Data 0002":
 		# if this matches, this is version >= 1.30
 		# but i will just return "2"
 		version = 2
 		# model name string is 20-chars long
-		useme = fmt_modelname_new
+		namelength = 20
 	elif header == "Vocaloid Motion Data file":
 		# this is actually untested & unverified, but according to the docs this is how it's labelled
 		# if this matches, this is version < 1.30
 		# but i will just return "1"
 		version = 1
 		# model name string is 10-chars long
-		useme = fmt_modelname_old
+		namelength = 10
 	else:
-		core.MY_PRINT_FUNC("ERR: found unsupported file version identifier string, '%s'" % header)
-		raise RuntimeError()
+		raise RuntimeError("ERR: found unsupported file version identifier string, '%s'" % header)
 	
 	try:
-		modelname = pack.my_unpack(useme, raw)
+		modelname = pack.only_unpack_text(raw, L=namelength)
 	except Exception as e:
 		core.MY_PRINT_FUNC(e.__class__.__name__, e)
 		core.MY_PRINT_FUNC("section=modelname")
 		core.MY_PRINT_FUNC("Err: something went wrong while parsing, file is probably corrupt/malformed")
-		raise RuntimeError()
+		raise
 	
 	if moreinfo: core.MY_PRINT_FUNC("...model name   = JP:'%s'" % modelname)
 	
@@ -161,7 +157,8 @@ def parse_vmd_boneframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdBoneF
 	for z in range(boneframe_ct):
 		try:
 			# unpack the bone-frame into variables
-			(bname_str, f, xp, yp, zp, xrot_q, yrot_q, zrot_q, wrot_q) = pack.my_unpack(fmt_boneframe_no_interpcurve, raw)
+			bname_str = pack.only_unpack_text(raw, L=15)
+			(f, xp, yp, zp, xrot_q, yrot_q, zrot_q, wrot_q) = pack.my_unpack(fmt_boneframe_no_interpcurve, raw)
 			# break inter_curve into its individual pieces, knowing that the 3rd and 4th bytes in line1 are overwritten with phys
 			# therefore we need to get their data from line2 which is left-shifted by 1 byte, but otherwise a copy
 			(x_ax, y_ax, phys1, phys2, x_ay, y_ay, z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by,
@@ -197,7 +194,7 @@ def parse_vmd_boneframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdBoneF
 			core.MY_PRINT_FUNC("totalframes=", boneframe_ct)
 			core.MY_PRINT_FUNC("section=boneframe")
 			core.MY_PRINT_FUNC("Err: something went wrong while parsing, file is probably corrupt/malformed")
-			raise RuntimeError()
+			raise
 	
 	return boneframe_list
 
@@ -216,7 +213,8 @@ def parse_vmd_morphframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdMorp
 	for z in range(morphframe_ct):
 		try:
 			# unpack the morphframe
-			(mname_str, f, v) = pack.my_unpack(fmt_morphframe, raw)
+			mname_str = pack.only_unpack_text(raw, L=15)
+			(f, v) = pack.my_unpack(fmt_morphframe, raw)
 			morphframe_list.append(vmdstruct.VmdMorphFrame(name=mname_str, f=f, val=v))
 			
 			# display progress printouts
@@ -342,8 +340,9 @@ def parse_vmd_ikdispframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdIkd
 			(f, disp, numbones) = pack.my_unpack(fmt_ikdispframe, raw)
 			ikbones = []
 			for j in range(numbones):
-				(ikname, enable) = pack.my_unpack(fmt_ikframe, raw)
-				ikbones.append(vmdstruct.VmdIkbone(name=ikname, enable=enable))
+				ikname_str = pack.only_unpack_text(raw, L=20)
+				enable = pack.my_unpack(fmt_ikframe, raw)
+				ikbones.append(vmdstruct.VmdIkbone(name=ikname_str, enable=enable))
 			ikdispframe_list.append(vmdstruct.VmdIkdispFrame(f=f, disp=disp, ikbones=ikbones))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
@@ -365,14 +364,13 @@ def encode_vmd_header(nice: vmdstruct.VmdHeader, moreinfo:bool) -> bytearray:
 	# header data
 	# first, version: if ver==1, then use "Vocaloid Motion Data file", if ver==2, then use "Vocaloid Motion Data 0002"
 	if nice.version == 2:
-		writeme = ["Vocaloid Motion Data 0002", nice.modelname]
-		output += pack.my_pack(fmt_header + fmt_modelname_new, writeme)
+		output += pack.only_pack_text("Vocaloid Motion Data 0002", L=30)
+		output += pack.only_pack_text(nice.modelname, L=20)
 	elif nice.version == 1:
-		writeme = ["Vocaloid Motion Data file", nice.modelname]
-		output += pack.my_pack(fmt_header + fmt_modelname_old, writeme)
+		output += pack.only_pack_text("Vocaloid Motion Data file", L=30)
+		output += pack.only_pack_text(nice.modelname, L=10)
 	else:
-		core.MY_PRINT_FUNC("ERR: unsupported VMD version value", nice.version)
-		raise ValueError
+		raise RuntimeError("ERR: unsupported VMD version value", nice.version)
 	
 	return output
 
@@ -392,11 +390,9 @@ def encode_vmd_boneframe(nice:List[vmdstruct.VmdBoneFrame], moreinfo:bool) -> by
 		quat = [x, y, z, w]  # x y z w
 		# then, do the part that isn't the interpolation curve (first 9 values in binary, 8 things in frame), save as frame
 		try:
+			output += pack.only_pack_text(frame.name, L=15)
 			# now encode/pack/append the non-interp, non-phys portion
-			packme = [frame.name, frame.f, *frame.pos, *quat]
-			# packme.extend(frame.pos)
-			# packme.extend(quat)
-			output += pack.my_pack(fmt_boneframe_no_interpcurve, packme)
+			output += pack.my_pack(fmt_boneframe_no_interpcurve, [frame.f, *frame.pos, *quat])
 			# then, create one line of the interpolation curve (last 16 values of frame obj)
 			interp = pack.my_pack(fmt_boneframe_interpcurve_oneline, frame.interp)
 		except Exception as e:
@@ -404,7 +400,7 @@ def encode_vmd_boneframe(nice:List[vmdstruct.VmdBoneFrame], moreinfo:bool) -> by
 			core.MY_PRINT_FUNC("line=", i)
 			core.MY_PRINT_FUNC("section=boneframe")
 			core.MY_PRINT_FUNC("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
-			raise RuntimeError()
+			raise
 		# do the dumb copy-and-shift thing to rebuild the original 4-line structure of redundant bytes
 		interp += interp[1:] + bytes(1) + interp[2:] + bytes(2) + interp[3:] + bytes(3)
 		# now overwrite the odd missing bytes with physics enable/disable data
@@ -431,13 +427,14 @@ def encode_vmd_morphframe(nice:List[vmdstruct.VmdMorphFrame], moreinfo:bool) -> 
 	# then, all the actual frames
 	for i, frame in enumerate(nice):
 		try:
-			output += pack.my_pack(fmt_morphframe, [frame.name, frame.f, frame.val])
+			output += pack.only_pack_text(frame.name, L=15)
+			output += pack.my_pack(fmt_morphframe, [frame.f, frame.val])
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
 			core.MY_PRINT_FUNC("section=morphframe")
 			core.MY_PRINT_FUNC("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
-			raise RuntimeError()
+			raise
 
 		# print a progress update every so often just because
 		core.print_progress_oneline(ENCODE_PERCENT_BONE + (ENCODE_PERCENT_MORPH * i / len(nice)))
@@ -523,13 +520,14 @@ def encode_vmd_ikdispframe(nice:List[vmdstruct.VmdIkdispFrame], moreinfo:bool) -
 			output += pack.my_pack(fmt_ikdispframe, [frame.f, frame.disp, len(frame.ikbones)])
 			# for each ikbone listed in the template:
 			for z in frame.ikbones:
-				output += pack.my_pack(fmt_ikframe, [z.name, z.enable])
+				output += pack.only_pack_text(z.name, L=20)
+				output += pack.my_pack(fmt_ikframe, z.enable)
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
 			core.MY_PRINT_FUNC("section=ikdispframe")
 			core.MY_PRINT_FUNC("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
-			raise RuntimeError()
+			raise
 
 	return output
 
