@@ -55,7 +55,7 @@ others: if <=127, use byte = b = type 1
         if <=32767 use short = h = type 2
         if <=2147483647 use int = i = type 4
         else crash
-TODO: for non-vertex, value of -1 means N/A
+for non-vertex, value of -1 means N/A
 for vertex, N/A is not possible
 """
 
@@ -91,43 +91,49 @@ def parse_pmx_header(raw: bytearray) -> pmxstruct.PmxHeader:
 	fmt_magic = "4s f b"
 	(magic, ver, numglobal) = pack.my_unpack(fmt_magic, raw)
 	if magic != expectedmagic:
-		core.MY_PRINT_FUNC("Warning: this file does not begin with the correct magic bytes. Maybe it was locked? Locks wont stop me!")
-		if PMX_MOREINFO: core.MY_PRINT_FUNC("Expected '%s' but found '%s'" % (expectedmagic.hex(), magic.hex()))
+		core.MY_PRINT_FUNC("WARNING: This file does not begin with the correct magic bytes. Maybe it was locked? Locks wont stop me!")
+		core.MY_PRINT_FUNC("         Expected '%s' but found '%s'" % (expectedmagic.hex(), magic.hex()))
 	
 	# only first 8 bytes have known uses
 	# more bytes have no known purpose but need to be accounted for anyway
 	if numglobal != 8:
-		core.MY_PRINT_FUNC("WARNING: this PMX has '%d' global variables, more than I know how to support!!!" % numglobal)
+		core.MY_PRINT_FUNC("WARNING: This PMX has '%d' global flags, this behavior is undefined!!!" % numglobal)
+		core.MY_PRINT_FUNC("         Technically the format supports any number of global flags but I only know the meanings of the first 8")
 	fmt_globals = str(numglobal) + "b"
 	globalflags = pack.my_unpack(fmt_globals, raw)	# this actually returns a tuple of ints, which works just fine, dont touch it
-	# print(globalflags)
+	if numglobal != 8:
+		core.MY_PRINT_FUNC("         Global flags = %s" % str(globalflags))
+	
 	# byte 0: encoding
-	if globalflags[0] == 0:
-		pack.set_encoding("utf_16_le")
-	elif globalflags[0] == 1:
-		pack.set_encoding("utf_8")
-	else:
-		core.MY_PRINT_FUNC("unsupported encoding value", globalflags[0])
+	if globalflags[0] == 0:   pack.set_encoding("utf_16_le")
+	elif globalflags[0] == 1: pack.set_encoding("utf_8")
+	else:                     raise RuntimeError("unsupported encoding value '%d'" % globalflags[0])
+	
 	# byte 1: additional vec4 per vertex
+	# store this in a global so it can be more easily passed to the vertex section
 	global ADDL_VERTEX_VEC4
 	ADDL_VERTEX_VEC4 = globalflags[1]
+	
 	# bytes 2-7: data size to use for index references
+	# store these in globals as well because passing them around as arguments would be annoying
+	# see comment around line 50 for more info
 	global IDX_VERT, IDX_TEX, IDX_MAT, IDX_BONE, IDX_MORPH, IDX_RB
 	vert_conv = {1:"B", 2:"H", 4:"i"}
-	conv =      {1:"b", 2:"h", 4:"i"}
 	IDX_VERT  = vert_conv[globalflags[2]]
+	conv =      {1:"b", 2:"h", 4:"i"}
 	IDX_TEX   = conv[globalflags[3]]
 	IDX_MAT   = conv[globalflags[4]]
 	IDX_BONE  = conv[globalflags[5]]
 	IDX_MORPH = conv[globalflags[6]]
 	IDX_RB    = conv[globalflags[7]]
+	
 	# finally handle the model names & comments
 	(name_jp, name_en, comment_jp, comment_en) = pack.my_unpack("t t t t", raw)
 	
 	# assemble all the info into a struct for returning
 	return pmxstruct.PmxHeader(ver=ver,
-								name_jp=name_jp, name_en=name_en,
-								comment_jp=comment_jp, comment_en=comment_en)
+							   name_jp=name_jp, name_en=name_en,
+							   comment_jp=comment_jp, comment_en=comment_en)
 	# return retme
 
 def parse_pmx_vertices(raw: bytearray) -> List[pmxstruct.PmxVertex]:
