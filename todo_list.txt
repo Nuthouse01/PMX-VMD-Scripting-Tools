@@ -1,8 +1,6 @@
 
 #####
 
-TODO: refactor file_recompress_images to be less bad
-
 TODO: remove material morph items that point at -2 or invalid numbers? need to find a way to replicate this bug, see how it is saved so i know what to delete... also same in group morphs
 TODO: split "core" files into multiple?
 
@@ -20,6 +18,9 @@ TODO: overhaul the how VMD interpolation data is stored, restructure to a more s
 TODO: can i create one base class that is the parent of both VMD and PMX? they have almost identical features
     i'm worried that it would be confusing if i did that tho? hm...
 
+TODO: remove the pmx.faces member and instead break the faces into one sublist for each material object? is this easier
+    or harder to understand? it lets me hide the "number of faces per material" field, which makes things simpler... and
+    it makes it much easier to duplicate or delete materials... hm...
 
 =======================================================================
 IDEA: "pose deducer" script, if given a natural T/A-pose version of a model + that same model that has been baked into a different pose,
