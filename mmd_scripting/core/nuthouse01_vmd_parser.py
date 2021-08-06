@@ -1,5 +1,6 @@
 import math
 import struct
+import time
 from typing import List
 
 import mmd_scripting.core.nuthouse01_core as core
@@ -662,14 +663,37 @@ def main():
 	core.MY_PRINT_FUNC("Specify a VMD file to attempt parsing")
 	core.MY_PRINT_FUNC("Because MikuMikuDance pads with garbage, but I pad with zeros, the binary file I write back will not be exactly bitwise identical")
 	core.MY_PRINT_FUNC("But I can read the version I wrote and verify that the internal representation matches")
-	input_filename = core.prompt_user_filename("VMD file", ".vmd")
+	
+	TEMPNAME = "____vmdparser_selftest_DELETEME.vmd"
+	input_filename = core.MY_FILEPROMPT_FUNC("VMD file", ".vmd")
 	# input_filename = "vmdtest.vmd"
 	Z= read_vmd(input_filename)
-	write_vmd("____vmdparser_selftest_DELETEME.vmd", Z)
-	ZZ = read_vmd("____vmdparser_selftest_DELETEME.vmd")
-	core.MY_PRINT_FUNC("")
+	write_vmd(TEMPNAME, Z)
+	ZZ = read_vmd(TEMPNAME)
 	bb = io.read_binfile_to_bytes(input_filename)
-	bb2 = io.read_binfile_to_bytes("____vmdparser_selftest_DELETEME.vmd")
+	bb2 = io.read_binfile_to_bytes(TEMPNAME)
+	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC("TIMING TEST:")
+	readtime = []
+	writetime = []
+	for i in range(10):
+		core.MY_PRINT_FUNC(i)
+		start = time.time()
+		_ = read_vmd(input_filename)
+		end = time.time()
+		readtime.append(end - start)
+	for i in range(10):
+		core.MY_PRINT_FUNC(i)
+		start = time.time()
+		write_vmd(TEMPNAME, Z)
+		end = time.time()
+		writetime.append(end - start)
+	core.MY_PRINT_FUNC("TIMING TEST RESULTS:", input_filename)
+	core.MY_PRINT_FUNC("READ")
+	core.MY_PRINT_FUNC("Avg = %f, min = %f, max = %f" % (sum(readtime)/len(readtime), min(readtime), max(readtime)))
+	core.MY_PRINT_FUNC("WRITE")
+	core.MY_PRINT_FUNC("Avg = %f, min = %f, max = %f" % (sum(writetime)/len(writetime), min(writetime), max(writetime)))
+	core.MY_PRINT_FUNC("")
 	core.MY_PRINT_FUNC("Is the binary EXACTLY identical to original?", bb == bb2)
 	exact_result = Z == ZZ
 	core.MY_PRINT_FUNC("Is the readback EXACTLY identical to original?", exact_result)
