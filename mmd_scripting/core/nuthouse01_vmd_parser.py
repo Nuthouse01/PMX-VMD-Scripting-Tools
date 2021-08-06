@@ -8,7 +8,7 @@ import mmd_scripting.core.nuthouse01_io as io
 import mmd_scripting.core.nuthouse01_packer as pack
 import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 8/6/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 # massive thanks and credit to "Isometric" for helping me discover the quaternion transformation method used in mmd!!!!
@@ -107,7 +107,7 @@ def parse_vmd_header(raw:bytearray, moreinfo:bool) -> vmdstruct.VmdHeader:
 	# unpack the header, get file version and model name
 	# version only affects the length of the model name text field, but i'll return it anyway
 	try:
-		header = pack.only_unpack_text(raw, L=30)
+		header = pack.my_string_unpack(raw, L=30)
 	except Exception as e:
 		core.MY_PRINT_FUNC(e.__class__.__name__, e)
 		core.MY_PRINT_FUNC("section=header")
@@ -131,7 +131,7 @@ def parse_vmd_header(raw:bytearray, moreinfo:bool) -> vmdstruct.VmdHeader:
 		raise RuntimeError("ERR: found unsupported file version identifier string, '%s'" % header)
 	
 	try:
-		modelname = pack.only_unpack_text(raw, L=namelength)
+		modelname = pack.my_string_unpack(raw, L=namelength)
 	except Exception as e:
 		core.MY_PRINT_FUNC(e.__class__.__name__, e)
 		core.MY_PRINT_FUNC("section=modelname")
@@ -157,7 +157,7 @@ def parse_vmd_boneframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdBoneF
 	for z in range(boneframe_ct):
 		try:
 			# unpack the bone-frame into variables
-			bname_str = pack.only_unpack_text(raw, L=15)
+			bname_str = pack.my_string_unpack(raw, L=15)
 			(f, xp, yp, zp, xrot_q, yrot_q, zrot_q, wrot_q) = pack.my_unpack(fmt_boneframe_no_interpcurve, raw)
 			# break inter_curve into its individual pieces, knowing that the 3rd and 4th bytes in line1 are overwritten with phys
 			# therefore we need to get their data from line2 which is left-shifted by 1 byte, but otherwise a copy
@@ -213,7 +213,7 @@ def parse_vmd_morphframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdMorp
 	for z in range(morphframe_ct):
 		try:
 			# unpack the morphframe
-			mname_str = pack.only_unpack_text(raw, L=15)
+			mname_str = pack.my_string_unpack(raw, L=15)
 			(f, v) = pack.my_unpack(fmt_morphframe, raw)
 			morphframe_list.append(vmdstruct.VmdMorphFrame(name=mname_str, f=f, val=v))
 			
@@ -340,7 +340,7 @@ def parse_vmd_ikdispframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdIkd
 			(f, disp, numbones) = pack.my_unpack(fmt_ikdispframe, raw)
 			ikbones = []
 			for j in range(numbones):
-				ikname_str = pack.only_unpack_text(raw, L=20)
+				ikname_str = pack.my_string_unpack(raw, L=20)
 				enable = pack.my_unpack(fmt_ikframe, raw)
 				ikbones.append(vmdstruct.VmdIkbone(name=ikname_str, enable=enable))
 			ikdispframe_list.append(vmdstruct.VmdIkdispFrame(f=f, disp=disp, ikbones=ikbones))
@@ -364,11 +364,11 @@ def encode_vmd_header(nice: vmdstruct.VmdHeader, moreinfo:bool) -> bytearray:
 	# header data
 	# first, version: if ver==1, then use "Vocaloid Motion Data file", if ver==2, then use "Vocaloid Motion Data 0002"
 	if nice.version == 2:
-		output += pack.only_pack_text("Vocaloid Motion Data 0002", L=30)
-		output += pack.only_pack_text(nice.modelname, L=20)
+		output += pack.my_string_pack("Vocaloid Motion Data 0002", L=30)
+		output += pack.my_string_pack(nice.modelname, L=20)
 	elif nice.version == 1:
-		output += pack.only_pack_text("Vocaloid Motion Data file", L=30)
-		output += pack.only_pack_text(nice.modelname, L=10)
+		output += pack.my_string_pack("Vocaloid Motion Data file", L=30)
+		output += pack.my_string_pack(nice.modelname, L=10)
 	else:
 		raise RuntimeError("ERR: unsupported VMD version value", nice.version)
 	
@@ -390,7 +390,7 @@ def encode_vmd_boneframe(nice:List[vmdstruct.VmdBoneFrame], moreinfo:bool) -> by
 		quat = [x, y, z, w]  # x y z w
 		# then, do the part that isn't the interpolation curve (first 9 values in binary, 8 things in frame), save as frame
 		try:
-			output += pack.only_pack_text(frame.name, L=15)
+			output += pack.my_string_pack(frame.name, L=15)
 			# now encode/pack/append the non-interp, non-phys portion
 			output += pack.my_pack(fmt_boneframe_no_interpcurve, [frame.f, *frame.pos, *quat])
 			# then, create one line of the interpolation curve (last 16 values of frame obj)
@@ -427,7 +427,7 @@ def encode_vmd_morphframe(nice:List[vmdstruct.VmdMorphFrame], moreinfo:bool) -> 
 	# then, all the actual frames
 	for i, frame in enumerate(nice):
 		try:
-			output += pack.only_pack_text(frame.name, L=15)
+			output += pack.my_string_pack(frame.name, L=15)
 			output += pack.my_pack(fmt_morphframe, [frame.f, frame.val])
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
@@ -520,7 +520,7 @@ def encode_vmd_ikdispframe(nice:List[vmdstruct.VmdIkdispFrame], moreinfo:bool) -
 			output += pack.my_pack(fmt_ikdispframe, [frame.f, frame.disp, len(frame.ikbones)])
 			# for each ikbone listed in the template:
 			for z in frame.ikbones:
-				output += pack.only_pack_text(z.name, L=20)
+				output += pack.my_string_pack(z.name, L=20)
 				output += pack.my_pack(fmt_ikframe, z.enable)
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)

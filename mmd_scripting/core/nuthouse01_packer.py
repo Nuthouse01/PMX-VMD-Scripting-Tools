@@ -5,9 +5,7 @@ from typing import Any
 
 import mmd_scripting.core.nuthouse01_core as core
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 7/30/2021"
-
-# TODO: change how I handle the custom 't' atoms to make things more efficient
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 8/6/2021"
 
 ########################################################################################################################
 # these functions for binary file structure packing & unpacking
@@ -27,11 +25,8 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 7/30/2021"
 #	this is exactly the same as the backslash and yen, they are internally mapped to the same values so they are indistinguishable
 #	when i encode as shift_jis and write to file, they are both printed as ~
 
-# these functions add extra utility to the standard python packing/unpacking library
-# they define a new atom "t" that represents an actual string type, if preceeded by numbers that indicates how many
-#   bytes of space it uses, if NOT preceeded by numbers then it is represented in binary form as an int which indicates
-#   how big the string is, followed by the actual string
-# vmd format uses the "##t" syntax, pmx format uses the "t" syntax
+
+
 
 # variable to keep track of where to start reading from next within the raw-file
 UNPACKER_READFROM_BYTE = 0
@@ -68,7 +63,7 @@ def decode_bytes_with_escape(r: bytearray) -> str:
 	mid multibyte char, and therefore be undecodeable. Instead of losing this data, I decode what I can and
 	the truncated char is converted to UNPACKER_ESCAPE_CHAR followed by hex digits that represent the remaining
 	byte. It's not useful to humans, but it is better than simply losing the data.
-	TODO: get example
+	TODO: get example?
 	All cases I tested require at most 1 escape char, but just to be safe it recursively calls as much as needed.
 	
 	:param r: bytearray object which represents a string through encoding UNPACKER_ENCODING
@@ -96,7 +91,7 @@ def encode_string_with_escape(a: str) -> bytearray:
 	mid multibyte char, and therefore be undecodeable. Instead of losing this data, I decode what I can and
 	the truncated char is converted to UNPACKER_ESCAPE_CHAR followed by hex digits that represent the remaining
 	byte. It's not useful to humans, but it is better than simply losing the data.
-	TODO: get example
+	TODO: get example?
 	All cases I tested require at most 1 escape char, but just to be safe it recursively calls as much as needed.
 	
 	:param a: string that might contain my custom escape sequence
@@ -124,242 +119,18 @@ def encode_string_with_escape(a: str) -> bytearray:
 			# then return it to be handled outside
 			raise e
 
-'''
-def my_unpack(fmt:str, raw:bytearray) -> Any:
+def my_pack(fmt:str, args_in: Any) -> bytearray:
 	"""
-	Use a given format string to convert the next section of a binary file bytearray into type-correct variables.
-	Uses global var UNPACKER_READFROM_BYTE to know where to start unpacking next.
-	Very similar to python struct.unpack() function, except: 1) automatically tracks where it has unpacked & where it
-	should unpack next via the size of the format strings, 2) if exactly 1 variable would be unpacked it is
-	automatically de-listed and returned naked, 3) new atom type "t" is supported and indicates auto-length strings,
-	4) new atom type "##t" is supported and indicates fixed-length strings.
+	Wrapper around the "struct.pack()" function. Not able to pack string objects!
+	Converts the given inputs to bytearray format according to the data sizes/types specified in the format string.
+	The number of arguments in 'args_in' must exactly match the number of things specified by the format string.
+	This always adds byte-alignment specifier "<" to the format string.
+	This accepts list-of-inputs or single input arg.
 	
-	:param fmt: string-type format argument very similar to formats for python "struct" lib
-	:param raw: bytearray being walked & unpacked
-	:return: if fmt specifies several variables, return all as list. if exactly one, return the variable without list wrapper.
-	"""
-	retlist = []
-	startfrom = 0
-	# first find where all "t" atoms in the format string are
-	t_atom_list = t_fmt_re.finditer(fmt)
-	for t_atom in t_atom_list:
-		# fmt_before definitely does not contain t: parse as normal & return value
-		fmt_before = fmt[startfrom:t_atom.start()]  # fmt_before might be empty or blank, but that's handled inside the func
-		before_vars = _unpack_other(fmt_before, raw)
-		retlist.extend(before_vars)  # before_vars might be empty list but thats ok
-		# fmt_t contains a "t" atom, guaranteed not blank, it gets specially handled
-		fmt_t = fmt[t_atom.start():t_atom.end()]
-		t_str = _unpack_text(fmt_t, raw)
-		retlist.append(t_str)  # t_str guaranteed to exist and be a lone string
-		# repeat the process starting from the section after the "t" atom
-		startfrom = t_atom.end()
-	# when there are no more "t" atoms, all that remains gets handled by default unpacker
-	other_vars = _unpack_other(fmt[startfrom:], raw)
-	retlist.extend(other_vars)  # other_vars might be empty list but thats ok
-	# if it has length of 1, then de-listify it
-	if len(retlist) == 1: return retlist[0]
-	else:                 return retlist
-
-
-def _unpack_other(fmt:str, raw:bytearray) -> list:
-	"""
-	Internal use only.
-	Handle unpacking of all types other than "t" atoms. "fmt" is guaranteed to not contain any "t" atoms.
-	
-	:param fmt: string-type format argument very similar to formats for python "struct" lib
-	:param raw: bytearray being walked & unpacked
-	:return: list of all variables that were unpacked corresponding to fmt
-	"""
-	global UNPACKER_READFROM_BYTE
-	if fmt == "" or fmt.isspace():
-		return []  # if fmt is emtpy then don't attempt to unpack
-	try:
-		autofmt = "<" + fmt
-		r = struct.unpack_from(autofmt, raw, UNPACKER_READFROM_BYTE)
-		UNPACKER_READFROM_BYTE += struct.calcsize(autofmt)	# increment the global read-from tracker
-	except Exception as e:
-		core.MY_PRINT_FUNC(e.__class__.__name__, e)
-		core.MY_PRINT_FUNC("unpack_other")
-		# repackage the error to add additional info and throw it again to be caught at a higher level
-		newerrstr = "err=" + str(e) + "\nfmt=" + fmt + "\nbytepos=" + str(UNPACKER_READFROM_BYTE)
-		newerr = RuntimeError(newerrstr)
-		raise newerr
-	# convert from tuple to list
-	retme = list(r)
-	# new: check for NaN and replace with 0
-	for i in range(len(retme)):
-		foo = retme[i]
-		if isinstance(foo, float):
-			if math.isnan(foo):
-				retme[i] = 0.0
-				core.MY_PRINT_FUNC("Warning: found NaN in place of float shortly before bytepos %d, replaced with 0.0" % UNPACKER_READFROM_BYTE)
-			if math.isinf(foo):
-				retme[i] = 0.0
-				core.MY_PRINT_FUNC("Warning: found INF in place of float shortly before bytepos %d, replaced with 0.0" % UNPACKER_READFROM_BYTE)
-	return retme
-
-
-def _unpack_text(fmt:str, raw:bytearray) -> str:
-	"""
-	Internal use only.
-	Handle unpacking of "t" atoms. "fmt" is guaranteed to contain only a "t" atom, nothing else.
-	
-	:param fmt: string-type format argument very similar to formats for python "struct" lib
-	:param raw: bytearray being walked & unpacked
-	:return: string
-	"""
-	global UNPACKER_READFROM_BYTE
-	global UNPACKER_FAILED_TRANSLATE_FLAG
-	# input fmt string is exactly either "t" or "#t" or "##t", etc
-	try:
-		if fmt == "t":		# this mode exclusively used for PMX parsing
-			# auto-text: a text type is an int followed by that many bytes
-			i = struct.unpack_from("<i", raw, UNPACKER_READFROM_BYTE)	# get how many bytes to read for str
-			UNPACKER_READFROM_BYTE += 4							# increment the global read-from tracker
-			autofmt = "<" + str(i[0]) + "s"						# build fmt string that includes # of bytes to read
-		else:				# this mode exclusively used for VMD parsing
-			# manual-text: if a number is provided with it in the format string, then just read that number of bytes
-			autofmt = "<" + fmt[:-1] + "s"						# build fmt string that includes # of bytes to read
-			
-		v = struct.unpack_from(autofmt, raw, UNPACKER_READFROM_BYTE)	# unpack the actual string(bytearray)
-		UNPACKER_READFROM_BYTE += struct.calcsize(autofmt)		# increment the global read-from tracker
-		r = v[0]												# un-listify the result
-		
-		if fmt != "t":
-			# manual-text strings are null-terminated: everything after a null byte is invalid garbage to be discarded
-			i = r.find(b'\x00')									# look for a null terminator
-			if i != -1:											# if null is found...
-				r = r[0:i]										# ...return only bytes before it
-	except Exception as e:
-		core.MY_PRINT_FUNC(e.__class__.__name__, e)
-		core.MY_PRINT_FUNC("unpack_text")
-		# repackage the error to add additional info and throw it again to be caught at a higher level
-		newerrstr = "err=" + str(e) + "\nfmt=" + fmt + "\nbytepos=" + str(UNPACKER_READFROM_BYTE)
-		newerr = RuntimeError(newerrstr)
-		raise newerr
-	# r is now a bytearray that should be mappable onto a string, unless it is cut off mid-multibyte-char
-	s = decode_bytes_with_escape(r)
-	# translated string is now in s (maybe with the escape char tacked on)
-	# did it need escaping? add it to the dict for reporting later!
-	if UNPACKER_FAILED_TRANSLATE_FLAG:
-		UNPACKER_FAILED_TRANSLATE_FLAG = False
-		UNPACKER_FAILED_TRANSLATE_DICT[s] += 1
-	# still need to return as a list for concatenation reasons
-	return s
-
-
-def my_pack(fmt: str, args_in: Any) -> bytearray:
-	"""
-	Use a given format string to convert a list of args into the next section of a binary file bytearray.
-	Very similar to python struct.unpack() function, except: 1) if the input arg is not a list/tuple it is automatically
-	wrapped in a list, 2) new atom type "t" is supported and indicates auto-length strings, 3) new atom type "##t" is
-	supported and indicates fixed-length strings.
-	
-	:param fmt: string-type format argument very similar to formats for python "struct" lib
+	:param fmt: string-type format for python "struct" lib
 	:param args_in: list of variables to pack, or a single variable not inside a list
 	:return: bytearray representation of these args
 	"""
-	
-	if isinstance(args_in, list):
-		args = args_in						# if given list, pass thru unchanged
-	elif isinstance(args_in, tuple):
-		args = list(args_in)				# if given tuple, make it a list
-	else:
-		args = [args_in]					# if given lone arg, wrap it with a list
-	
-	retbytes = bytearray()
-	startfrom = 0
-	startfrom_args = 0
-	
-	# first find where all "t" atoms in the format string are
-	# (note: returns an iterator, to get its length I need to walk the whole thing and then convert to list)
-	t_atom_list = [t for t in t_fmt_re.finditer(fmt)]
-	# then find where all strings in the input args list are
-	str_idx_list = [d for d,a in enumerate(args) if isinstance(a, str)]
-	# assert that they are the same length
-	if len(t_atom_list) != len(str_idx_list):
-		raise RuntimeError("given format string '%s' references %d strings, found %d in args list" %
-						   (fmt, len(t_atom_list), len(str_idx_list)))
-	
-	for t_atom, str_idx in zip(t_atom_list, str_idx_list):
-		# fmt_before definitely does not contain t: parse as normal & return value
-		fmt_before = fmt[startfrom:t_atom.start()]  # fmt_before might be empty or blank, but that's handled inside the func
-		bytes_before = _pack_other(fmt_before, args[startfrom_args:str_idx])
-		retbytes += bytes_before  # bytes_before might be empty but thats ok
-		# fmt_t contains a "t" atom, guaranteed not blank, it gets specially handled
-		fmt_t = fmt[t_atom.start():t_atom.end()]
-		bytes_t = _pack_text(fmt_t, args[str_idx])  # guaranteed to return non-empty
-		retbytes += bytes_t
-		# repeat the process starting from the section after the "t" atom
-		startfrom = t_atom.end()
-		startfrom_args = str_idx + 1
-	# when there are no more "t" atoms, all that remains gets handled by default packer
-	ret_other = _pack_other(fmt[startfrom:], args[startfrom_args:])
-	retbytes += ret_other
-
-	return retbytes
-
-
-def _pack_other(fmt: str, args: list) -> bytearray:
-	"""
-	Internal use only.
-	Handle packing of all types other than "t" atoms. "fmt" is guaranteed to not contain any "t" atoms.
-	
-	:param fmt: string-type format argument very similar to formats for python "struct" lib
-	:param args: list filled with variables to pack
-	:return: bytearray representation of the args
-	"""
-	if not args or fmt == "" or fmt.isspace():
-		return bytearray()  # if fmt is emtpy or args is empty then don't attempt to pack
-	try:
-		b = struct.pack("<" + fmt, *args)	# now do the actual packing
-		return bytearray(b)
-	except Exception as e:
-		core.MY_PRINT_FUNC(e.__class__.__name__, e)
-		core.MY_PRINT_FUNC("pack_other")
-		# repackage the error to add additional info and throw it again to be caught at a higher level
-		newerrstr = "err=" + str(e) + "\nfmt=" + fmt + "\nargs=" + str(args)
-		newerr = RuntimeError(newerrstr)
-		raise newerr
-
-
-def _pack_text(fmt: str, args: str) -> bytearray:
-	"""
-	Internal use only.
-	Handle packing of "t" atoms. "fmt" is guaranteed to contain only a "t" atom, nothing else.
-	
-	:param fmt: string-type format argument very similar to formats for python "struct" lib
-	:param args: string
-	:return: bytearray representation of the input string
-	"""
-	try:
-		n = encode_string_with_escape(args)		# convert str to bytearray
-		if fmt == "t":			# auto-text
-			# "t" means "i ##s" where ##=i. convert to bytearray, measure len, replace t with "i ##s"
-			autofmt = "<i" + str(len(n)) + "s"
-			autoargs = [len(n), n]
-		else:					# manual-text
-			autofmt = "<" + fmt[0:-1] + "s"		# simply replace trailing t with s
-			autoargs = [n]
-		
-		b = struct.pack(autofmt, *autoargs)		# now do the actual packing
-		return bytearray(b)
-	except Exception as e:
-		core.MY_PRINT_FUNC(e.__class__.__name__, e)
-		core.MY_PRINT_FUNC("pack_text")
-		# repackage the error to add additional info and throw it again to be caught at a higher level
-		# these are the args before replacing t with s, and before converting strings to bytearrays
-		newerrstr = "err=" + str(e) + "\nfmt=" + fmt + "\nargs=" + str(args)
-		newerr = RuntimeError(newerrstr)
-		raise newerr
-'''
-#######################################################
-
-def my_pack(fmt:str, args_in: Any) -> bytearray:
-	# fundamental wrapper around the "pack" functionality
-	# if the input is not a list, make it a list
-	# this is the only level that needs to worry about adding "<" to the format strings
-	
 	try:
 		afmt = "<" + fmt
 		if isinstance(args_in, (list, tuple)):
@@ -376,11 +147,20 @@ def my_pack(fmt:str, args_in: Any) -> bytearray:
 	return bytearray(b)
 
 
-def only_pack_text(S: str, L=None) -> bytearray:
-	# packer function that exclusively packs strings, only one at a time
-	# if L is an int, that's the manually-specified size to use
-	# if L is not specified, then it's auto-length... will be packed as an int containing the size, followed by the string
+def my_string_pack(S: str, L=None) -> bytearray:
+	"""
+	Packer function exclusively for packing strings.
+	Uses the encoding that was last set with a "set_encoding()" function call.
+	If L is given, it is the integer number of bytes that should be in the resulting bytearray. If the string would
+	encode to fewer bytes, it is zero-padded. If the string would encode to more bytes, it is truncated.
+	If L is *not* given, the string is encoded with an "auto-length" scheme, i.e. encoded as an integer which holds
+	the length of the string's byte representation, followed by the byte representation.
+	All VMD strings are manual-length, and all PMX strings are auto-length.
 	
+	:param S: the string to pack
+	:param L: optional integer length, number of bytes in the resulting bytearray
+	:return: bytearray representation of this string
+	"""
 	try:
 		n = encode_string_with_escape(S)  # convert str to bytearray
 		
@@ -395,7 +175,7 @@ def only_pack_text(S: str, L=None) -> bytearray:
 			fmt = str(L) + "s"       # simply replace trailing t with s
 			b = my_pack(fmt, n)  # now do the actual packing
 	except Exception as e:
-		core.MY_PRINT_FUNC("error in only_pack_text(S,L)")
+		core.MY_PRINT_FUNC("error in my_string_pack(S,L)")
 		core.MY_PRINT_FUNC("S=", S, "L=", L)
 		core.MY_PRINT_FUNC(e.__class__.__name__, e)
 		raise
@@ -404,11 +184,19 @@ def only_pack_text(S: str, L=None) -> bytearray:
 
 
 def my_unpack(fmt:str, data:bytearray) -> Any:
-	# fundamental wrapper around the "unpack" functionality
-	# if the output is a single-item tuple, delistify it
-	# also automatically track the byteposition within the stream
-	# also check for NaN/Inf and replace them with real numbers if found
+	"""
+	Wrapper around the "struct.unpack_from()" function. Not able to unpack string objects!
+	Parses the bytearray object into some number of friendly Python objects (ints, floats, bools, etc) according to
+	the data sizes/types specified in the format string.
+	If exactly 1 variable would be unpacked, it is automatically de-listed and returned naked.
+	This also removes any NaN or INF values it finds and replaces them with real numbers instead.
+	Uses global var UNPACKER_READFROM_BYTE to know where to start unpacking next (internally tracked, reset by
+	"reset_unpack()" function).
 	
+	:param fmt: string-type format for python "struct" lib
+	:param data: bytearray being walked & unpacked
+	:return: one variable or a list of variables, depending on the contents of the format string
+	"""
 	global UNPACKER_READFROM_BYTE
 
 	try:
@@ -439,11 +227,21 @@ def my_unpack(fmt:str, data:bytearray) -> Any:
 	else:               return retme
 
 
-def only_unpack_text(data: bytearray, L=None) -> str:
-	# unpacker function that exclusively unpacks strings, only one at a time
-	# if L is given, then the string is fixed-length and L is the length
-	# if L is not given, then the string is auto length... first read an int, that is the size of the string, then read the string
-	
+def my_string_unpack(data: bytearray, L=None) -> str:
+	"""
+	Unpacker function exclusively for unpacking strings.
+	Uses the encoding that was last set with a "set_encoding()" function call.
+	If L is given, it is the integer number of bytes that should read from the bytearray and interpreted as a string.
+	The string might possibly end in the middle of a multi-byte character and be undecodeable; see
+	"decode_bytes_with_escape()" for more info.
+	If L is *not* given, the string is decoded with an "auto-length" scheme, i.e. read an integer from the bytearray,
+	and use that integer's value as the number of bytes to read and interpret as a string.
+	All VMD strings are manual-length, and all PMX strings are auto-length.
+
+	:param data: bytearray being walked & unpacked
+	:param L: optional integer length, number of bytes in the resulting bytearray
+	:return: decoded string
+	"""
 	global UNPACKER_FAILED_TRANSLATE_FLAG
 
 	try:
@@ -468,7 +266,7 @@ def only_unpack_text(data: bytearray, L=None) -> str:
 		# b is now a bytearray that should be mappable onto a string, unless it is cut off mid-multibyte-char
 		s = decode_bytes_with_escape(b)
 	except Exception as e:
-		core.MY_PRINT_FUNC("error in only_unpack_text(data,L)")
+		core.MY_PRINT_FUNC("error in my_string_unpack(data,L)")
 		core.MY_PRINT_FUNC("data=","really big!","L=",L)
 		core.MY_PRINT_FUNC(e.__class__.__name__, e)
 		raise
