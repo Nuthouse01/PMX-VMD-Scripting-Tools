@@ -234,7 +234,7 @@ def flatten(x: Sequence) -> list:
 	"""
 	retme = []
 	for thing in x:
-		if isinstance(thing, list) or isinstance(thing, tuple):
+		if isinstance(thing, (list, tuple)):
 			if len(thing) == 0:
 				retme.append(None)
 			else:
