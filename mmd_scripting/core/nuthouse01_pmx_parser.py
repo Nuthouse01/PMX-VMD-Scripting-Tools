@@ -21,20 +21,14 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 8/6/2021"
 # utf-8 might make files very slightly smaller but i haven't tested it
 ENCODE_WITH_UTF8 = False
 
-# parsing progress printouts: depend on the actual number of bytes processed, very accurate & linear
-# encoding progress printouts: these vars estimate how long one item of each type will take to complete (relatively)
-ENCODE_FACTOR_VERT = 1
-ENCODE_FACTOR_FACE = .25
-ENCODE_FACTOR_MORPH = .5
-# dont touch these
-ENCODE_PERCENT_VERT = 0
-ENCODE_PERCENT_FACE = 0
-ENCODE_PERCENT_VERTFACE = 0
-ENCODE_PERCENT_MORPH = 0
-
 # flag to indicate whether more info is desired or not
 PMX_MOREINFO = False
 
+# parsing progress printouts: depend on the actual number of bytes processed, very accurate & linear
+# encoding progress printouts: manually estimate how long stuff will take and then track my progress against that
+# DONT TOUCH THESE TWO
+ENCODE_PERCENTPOINT_WEIGHTS = {}
+ENCODE_PERCENTPOINT_SOFAR = 0
 
 # how many extra vec4s each vertex has with it
 ADDL_VERTEX_VEC4 = 0
@@ -699,8 +693,12 @@ def encode_pmx_vertices(nice: List[pmxstruct.PmxVertex]) -> bytearray:
 	bdef1_fmt = IDX_BONE
 	bdef2_fmt = "2%s f" % IDX_BONE
 	bdef4_fmt = "4%s 4f" % IDX_BONE
-	sdef_fmt =  "2%s 10f" % IDX_BONE
+	sdef_fmt1 =  "2%s f" % IDX_BONE
+	sdef_fmt2 =  "9f"
 	qdef_fmt =  bdef4_fmt
+	
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["verts"]
 	
 	def weightpairs_to_weightbinary(wtype: pmxstruct.WeightMode, w: List[List[float]]) -> List[float]:
 		# convert the list of bone-weight pairs to the format/order used in the binary file
@@ -759,8 +757,8 @@ def encode_pmx_vertices(nice: List[pmxstruct.PmxVertex]) -> bytearray:
 		elif vert.weighttype == pmxstruct.WeightMode.SDEF:
 			# SDEF
 			# ([b1, b2, b1w], [c1, c2, c3], [r01, r02, r03], [r11, r12, r13])
-			packme = weightlist + core.flatten(vert.weight_sdef)
-			out += pack.my_pack(sdef_fmt, packme)
+			out += pack.my_pack(sdef_fmt1, weightlist)
+			out += pack.my_pack(sdef_fmt2, core.flatten(vert.weight_sdef))
 		elif vert.weighttype == pmxstruct.WeightMode.QDEF:
 			# it must be using QDEF, a type only for PMX v2.1 which I dont need to support so idgaf
 			# (b1, b2, b3, b4, b1w, b2w, b3w, b4w)
@@ -771,7 +769,8 @@ def encode_pmx_vertices(nice: List[pmxstruct.PmxVertex]) -> bytearray:
 		# then there is one final float after the weight crap
 		out += pack.my_pack("f", vert.edgescale)
 		# display progress printouts
-		core.print_progress_oneline(ENCODE_PERCENT_VERT * d / i)
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
 	return out
 
 def encode_pmx_surfaces(nice: List[List[int]]) -> bytearray:
@@ -781,15 +780,21 @@ def encode_pmx_surfaces(nice: List[List[int]]) -> bytearray:
 	i = len(nice)
 	out = pack.my_pack("i", i * 3)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of faces            =", i)
+	
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["faces"]
+
 	for d, face in enumerate(nice):
 		# each entry is a group of 3 vertex indeces that make a face
 		out += pack.my_pack("3" + IDX_VERT, face)
 		# display progress printouts
-		core.print_progress_oneline(ENCODE_PERCENT_VERT + (ENCODE_PERCENT_FACE * d / i))
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
 	return out
 
 def encode_pmx_textures(nice: List[str]) -> bytearray:
 	# first item is int, how many textures
+	# this section doesn't get any progress printouts cuz its relatively small i guess
 	i = len(nice)
 	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of textures         =", i)
@@ -802,8 +807,11 @@ def encode_pmx_materials(nice: List[pmxstruct.PmxMaterial], tex_list: List[str])
 	i = len(nice)
 	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of materials        =", i)
-	# this fmt is when the toon is using a texture reference
 	
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["materials"]
+
+	# this fmt is when the toon is using a texture reference
 	mat_fmtA = "4f 4f 3f B 5f 2%s b b %s" % (IDX_TEX, IDX_TEX)
 	# this fmt is when the toon is using a builtin toon, toon01.bmp thru toon10.bmp (values 0-9)
 	mat_fmtB = "4f 4f 3f B 5f 2%s b b b" % IDX_TEX
@@ -844,7 +852,10 @@ def encode_pmx_materials(nice: List[pmxstruct.PmxMaterial], tex_list: List[str])
 		# note: i structure the faces list into groups of 3 vertex indices, this is divided by 3 to match, so now i need to undivide
 		verts_ct = 3 * mat.faces_ct
 		out += pack.my_pack("i", verts_ct)
-		
+		# display progress printouts
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
+
 	return out
 
 def encode_pmx_bones(nice: List[pmxstruct.PmxBone]) -> bytearray:
@@ -852,6 +863,10 @@ def encode_pmx_bones(nice: List[pmxstruct.PmxBone]) -> bytearray:
 	i = len(nice)
 	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of bones            =", i)
+	
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["bones"]
+
 	fmt_bone = "3f %s i 2B" % IDX_BONE
 	fmt_bone_inherit = "%s f" % IDX_BONE
 	fmt_bone_ik = "%s i f i" % IDX_BONE
@@ -915,6 +930,10 @@ def encode_pmx_bones(nice: List[pmxstruct.PmxBone]) -> bytearray:
 					out += pack.my_pack(fmt_bone_ik_linkB, [iklink.idx, True, *limitminmax])
 				else:
 					out += pack.my_pack(fmt_bone_ik_linkA, [iklink.idx, False])
+		# display progress printouts
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
+
 	return out
 
 def encode_pmx_morphs(nice: List[pmxstruct.PmxMorph]) -> bytearray:
@@ -922,6 +941,10 @@ def encode_pmx_morphs(nice: List[pmxstruct.PmxMorph]) -> bytearray:
 	i = len(nice)
 	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of morphs           =", i)
+
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["morphitems"]
+
 	fmt_morph = "b b i"
 	fmt_morph_group = "%s f" % IDX_MORPH
 	fmt_morph_flip = fmt_morph_group
@@ -985,7 +1008,9 @@ def encode_pmx_morphs(nice: List[pmxstruct.PmxMorph]) -> bytearray:
 			core.MY_PRINT_FUNC("unsupported morph type value", morph.morphtype)
 		
 		# display progress printouts
-		core.print_progress_oneline(ENCODE_PERCENT_VERTFACE + (ENCODE_PERCENT_MORPH * d / i))
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment * len(morph.items)
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
+
 	return out
 
 def encode_pmx_dispframes(nice: List[pmxstruct.PmxFrame]) -> bytearray:
@@ -993,6 +1018,10 @@ def encode_pmx_dispframes(nice: List[pmxstruct.PmxFrame]) -> bytearray:
 	i = len(nice)
 	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of dispframes       =", i)
+	
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["frameitems"]
+
 	fmt_frame = "b i"
 	fmt_frame_item_morph = "b %s" % IDX_MORPH
 	fmt_frame_item_bone =  "b %s" % IDX_BONE
@@ -1005,6 +1034,10 @@ def encode_pmx_dispframes(nice: List[pmxstruct.PmxFrame]) -> bytearray:
 		for item in frame.items:
 			if item.is_morph: out += pack.my_pack(fmt_frame_item_morph, [item.is_morph, item.idx])
 			else:             out += pack.my_pack(fmt_frame_item_bone, [item.is_morph, item.idx])
+		# display progress printouts
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment * len(frame.items)
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
+	
 	return out
 
 def encode_pmx_rigidbodies(nice: List[pmxstruct.PmxRigidBody]) -> bytearray:
@@ -1012,6 +1045,10 @@ def encode_pmx_rigidbodies(nice: List[pmxstruct.PmxRigidBody]) -> bytearray:
 	i = len(nice)
 	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of rigidbodies      =", i)
+	
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["rigidbodies"]
+
 	fmt_rbody = "%s b H b 3f 3f 3f 5f b" % IDX_BONE
 	for d, b in enumerate(nice):
 		out += pack.my_string_pack(b.name_jp)
@@ -1032,6 +1069,9 @@ def encode_pmx_rigidbodies(nice: List[pmxstruct.PmxRigidBody]) -> bytearray:
 		packme = [b.bone_idx, group, collide_mask, b.shape.value, *b.size, *b.pos, *rot,
 				  b.phys_mass, b.phys_move_damp, b.phys_rot_damp, b.phys_repel, b.phys_friction, b.phys_mode.value]
 		out += pack.my_pack(fmt_rbody, packme)
+		# display progress printouts
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
 	
 	return out
 
@@ -1040,6 +1080,10 @@ def encode_pmx_joints(nice: List[pmxstruct.PmxJoint]) -> bytearray:
 	i = len(nice)
 	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of joints           =", i)
+	
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["joints"]
+
 	fmt_joint = "b 2%s 3f 3f 3f 3f 3f 3f 3f 3f" % IDX_RB
 	for d, j in enumerate(nice):
 		out += pack.my_string_pack(j.name_jp)
@@ -1053,6 +1097,10 @@ def encode_pmx_joints(nice: List[pmxstruct.PmxJoint]) -> bytearray:
 		packme = [j.jointtype.value, j.rb1_idx, j.rb2_idx, *j.pos, *rot, *j.movemin,
 				  *j.movemax, *rotmin, *rotmax, *j.movespring, *j.rotspring]
 		out += pack.my_pack(fmt_joint, packme)
+		# display progress printouts
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
+
 	return out
 
 def encode_pmx_softbodies(nice: List[pmxstruct.PmxSoftBody]) -> bytearray:
@@ -1062,6 +1110,10 @@ def encode_pmx_softbodies(nice: List[pmxstruct.PmxSoftBody]) -> bytearray:
 	i = len(nice)
 	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of softbodies       =", i)
+	
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["softbodies"]
+
 	fmt_sb = "b %s b H b iiffi 12f 6f 7i" % IDX_MAT
 	fmt_sb_anchor = "%s %s b" % (IDX_RB, IDX_VERT)
 	for d, s in enumerate(nice):
@@ -1091,10 +1143,65 @@ def encode_pmx_softbodies(nice: List[pmxstruct.PmxSoftBody]) -> bytearray:
 		out += pack.my_pack("i", len(s.vertex_pin_list))
 		for pin in s.vertex_pin_list:
 			out += pack.my_pack(IDX_VERT, pin)
+		# display progress printouts
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
 	
 	return out
 
-		PERCENTPOINT_WEIGHTS[category] = relative_value * factor
+def _prepare_progress_printouts_for_write_pmx(pmx: pmxstruct.Pmx) -> None:
+	# since i know the total size of the VMD object, and how many of each thing is within it,
+	# if i measure how long it takes to encode some number of each thing then I should be able to estimate
+	# how long it takes to encode each section and/or the whole thing!
+	# this function is to set global variables and stuff to aid with that goal
+
+	# verts, faces, and morphs are the only significant time sinks
+	# verts/faces/morphitems number ~10,000 to ~300,000
+	# this totally dwarfs the other categories... ~100 mats, ~500 bones/rigidbodies/joints/dispframes
+	# buuuuuuuuuuut i guess there's no harm in assigning weights to the smaller categories anyway
+	
+	relative_weights = {
+		# "header":		0,
+		"verts":		50,		# major
+		"faces":		8,		# major
+		# "textures":	0,
+		"materials":	100,
+		"bones":		80,
+		"morphitems":	8,		# major
+		"frameitems":	10,
+		"rigidbodies":	80,
+		"joints":		80,
+		"softbodies":	900,
+	}
+	total_relative_size = 0
+	total_relative_size += relative_weights["verts"] * len(pmx.verts)
+	total_relative_size += relative_weights["faces"] * len(pmx.faces)
+	total_relative_size += relative_weights["materials"] * len(pmx.materials)
+	total_relative_size += relative_weights["bones"] * len(pmx.bones)
+	total_relative_size += relative_weights["morphitems"] * sum(len(m.items) for m in pmx.morphs)
+	total_relative_size += relative_weights["frameitems"] * sum(len(m.items) for m in pmx.frames)
+	total_relative_size += relative_weights["rigidbodies"] * len(pmx.rigidbodies)
+	total_relative_size += relative_weights["joints"] * len(pmx.joints)
+	total_relative_size += relative_weights["softbodies"] * len(pmx.softbodies)
+	# deliberately skip textures cuz it would be messy, and header cuz it's just one atomic indivisible item
+	
+	# now i have the total relative size... normalize to 100%=1 and all the relative weights get reduced by same amount
+	factor = 1 / total_relative_size
+	for category, relative_value in relative_weights.items():
+		ENCODE_PERCENTPOINT_WEIGHTS[category] = relative_value * factor
+	
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["verts"] * len(pmx.verts))
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["faces"] * len(pmx.faces))
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["materials"] * len(pmx.materials))
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["bones"] * len(pmx.bones))
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["morphitems"] * sum(len(m.items) for m in pmx.morphs))
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["frameitems"] * sum(len(m.items) for m in pmx.frames))
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["rigidbodies"] * len(pmx.rigidbodies))
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["joints"] * len(pmx.joints))
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["softbodies"] * len(pmx.softbodies))
+
+	global ENCODE_PERCENTPOINT_SOFAR
+	ENCODE_PERCENTPOINT_SOFAR = 0
 	
 	return
 
@@ -1167,23 +1274,19 @@ def write_pmx(pmx_filename: str, pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 	# arg "pmx" is the same structure created by "read_pmx()"
 	# assume the object is perfect, no sanity-checking needed
 	output_bytes = bytearray()
-	global ENCODE_PERCENT_VERT
-	global ENCODE_PERCENT_VERTFACE
-	global ENCODE_PERCENT_MORPH
 	
-	# total progress = verts + faces/4 + sum of morphs/2
-	total_vert = len(pmx.verts) * ENCODE_FACTOR_VERT
-	total_face = len(pmx.faces) * ENCODE_FACTOR_FACE
-	total_morph = sum([len(m.items) for m in pmx.morphs]) * ENCODE_FACTOR_MORPH
-	ALLPROGRESSIZE = total_vert + total_face + total_morph
-	ENCODE_PERCENT_VERT = total_vert / ALLPROGRESSIZE
-	ENCODE_PERCENT_FACE = total_face / ALLPROGRESSIZE
-	ENCODE_PERCENT_VERTFACE = ENCODE_PERCENT_VERT + ENCODE_PERCENT_FACE
-	ENCODE_PERCENT_MORPH = total_morph / ALLPROGRESSIZE
-	# ENCODE_PERCENT_FACE = total_face / ALLPROGRESSIZE
-	# ENCODE_PERCENT_VERTFACE = ENCODE_PERCENT_VERT + ENCODE_PERCENT_FACE
-	# ENCODE_PERCENT_MORPH = total_morph / ALLPROGRESSIZE
+	# # stress-test code
+	# pmx.verts = pmx.verts * 10
+	# pmx.faces = pmx.faces * 10
+	# pmx.materials = pmx.materials * 1000
+	# pmx.bones = pmx.bones * 1000
+	# pmx.morphs = pmx.morphs * 10
+	# pmx.frames = pmx.frames * 10
+	# pmx.rigidbodies = pmx.rigidbodies * 1000
+	# pmx.joints = pmx.joints * 1000
 	
+	_prepare_progress_printouts_for_write_pmx(pmx)
+
 	core.print_progress_oneline(0)
 	lookahead, tex_list = encode_pmx_lookahead(pmx)
 	output_bytes += encode_pmx_header(pmx.header, lookahead)
