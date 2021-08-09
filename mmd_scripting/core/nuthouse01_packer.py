@@ -48,8 +48,6 @@ def reset_unpack():
 def set_encoding(newencoding: str):
 	global UNPACKER_ENCODING
 	UNPACKER_ENCODING = newencoding
-def get_readfrom_byte():
-	return UNPACKER_READFROM_BYTE
 def print_failed_decodes():
 	if len(UNPACKER_FAILED_TRANSLATE_DICT) != 0:
 		core.MY_PRINT_FUNC("List of all strings that failed to decode, plus their occurance rate")
