@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import List, Tuple
 
 import mmd_scripting.core.nuthouse01_core as core
@@ -137,7 +138,7 @@ def identify_unused_bones(pmx: pmxstruct.Pmx, moreinfo: bool) -> List[int]:
 	# python set: no duplicates! .add(newbone), "in", .discard(delbone)
 	# true_used_bones is set of BONE INDEXES
 	true_used_bones = set()  # exception bones + rigidbody bones + vertex bones
-	vertex_ct = {}  # how many vertexes does each bone control? sometimes useful info
+	vertex_ct = defaultdict(lambda: 0)  # how many vertexes does each bone control? sometimes useful info
 
 	# first: bones used by a rigidbody
 	for body in pmx.rigidbodies:
@@ -149,7 +150,7 @@ def identify_unused_bones(pmx: pmxstruct.Pmx, moreinfo: bool) -> List[int]:
 		for boneidx, weightval in vert.weight:
 			if weightval != 0:
 				true_used_bones.add(boneidx)
-				core.increment_occurance_dict(vertex_ct, boneidx)
+				vertex_ct[boneidx] += 1
 				
 	# NOTE: some vertices/rigidbodies depend on "invalid" (-1) bones, clean that up here
 	true_used_bones.discard(-1)

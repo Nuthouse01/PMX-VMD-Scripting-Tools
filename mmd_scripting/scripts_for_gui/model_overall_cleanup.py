@@ -1,4 +1,5 @@
 import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_packer as pack
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.overall_cleanup import alphamorph_correct
@@ -12,13 +13,13 @@ from mmd_scripting.overall_cleanup import translate_to_english
 from mmd_scripting.overall_cleanup import uniquify_names
 from mmd_scripting.overall_cleanup import weight_cleanup
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 8/9/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
 
 
-# what is the max # of items to show in the "warnings" section before concatenating?
+# what is the max # of items to show in the "warnings" section before truncating?
 MAX_WARNING_LIST = 15
 
 
@@ -46,11 +47,13 @@ def find_boneless_bonebodies(pmx: pmxstruct.Pmx) -> list:
 def find_toolong_bonemorph(pmx: pmxstruct.Pmx) -> (list,list):
 	# check for morphs with JP names that are too long and will not be successfully saved/loaded with VMD files
 	# for each morph, convert from string to bytes encoding to determine its length
-	core.set_encoding("shift_jis")
+	pack.set_encoding("shift_jis")
 	toolong_list_bone = []
 	for d,b in enumerate(pmx.bones):
+		# bones that are not "enabled" cannot be controlled with keyframes, so dont check them
+		if not b.has_enabled: continue
 		try:
-			bb = core.encode_string_with_escape(b.name_jp)
+			bb = pack.encode_string_with_escape(b.name_jp)
 			if len(bb) > 15:
 				toolong_list_bone.append("%d[%d]" % (d, len(bb)))
 		except UnicodeEncodeError:
@@ -58,8 +61,10 @@ def find_toolong_bonemorph(pmx: pmxstruct.Pmx) -> (list,list):
 			pass
 	toolong_list_morph = []
 	for d,m in enumerate(pmx.morphs):
+		# morphs that are "hidden" should probably not be directly manipulated by a user, so dont check them
+		if m.panel == pmxstruct.MorphPanel.HIDDEN: continue
 		try:
-			mb = core.encode_string_with_escape(m.name_jp)
+			mb = pack.encode_string_with_escape(m.name_jp)
 			if len(mb) > 15:
 				toolong_list_morph.append("%d[%d]" % (d, len(mb)))
 		except UnicodeEncodeError:
@@ -70,12 +75,12 @@ def find_toolong_bonemorph(pmx: pmxstruct.Pmx) -> (list,list):
 def find_shiftjis_unsupported_names(pmx: pmxstruct.Pmx, filepath: str) -> int:
 	# checks that bone/morph names can be stored in shift_jis for VMD usage
 	# also check the model name and the filepath
-	core.set_encoding("shift_jis")
+	pack.set_encoding("shift_jis")
 	failct = 0
 	# print(filepath)
 	# first, full absolute file path:
 	try:
-		_ = core.encode_string_with_escape(filepath)
+		_ = pack.encode_string_with_escape(filepath)
 	except UnicodeEncodeError as e:
 		core.MY_PRINT_FUNC("Filepath")
 		# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
@@ -85,7 +90,7 @@ def find_shiftjis_unsupported_names(pmx: pmxstruct.Pmx, filepath: str) -> int:
 		failct += 1
 	# second, JP model name:
 	try:
-		_ = core.encode_string_with_escape(pmx.header.name_jp)
+		_ = pack.encode_string_with_escape(pmx.header.name_jp)
 	except UnicodeEncodeError as e:
 		core.MY_PRINT_FUNC("Model Name")
 		# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
@@ -96,8 +101,10 @@ def find_shiftjis_unsupported_names(pmx: pmxstruct.Pmx, filepath: str) -> int:
 
 	# third, bones
 	for d,b in enumerate(pmx.bones):
+		# bones that are not "enabled" cannot be controlled with keyframes, so dont check them
+		if not b.has_enabled: continue
 		try:
-			_ = core.encode_string_with_escape(b.name_jp)
+			_ = pack.encode_string_with_escape(b.name_jp)
 		except UnicodeEncodeError as e:
 			core.MY_PRINT_FUNC("Bone %d" % d)
 			# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
@@ -107,8 +114,10 @@ def find_shiftjis_unsupported_names(pmx: pmxstruct.Pmx, filepath: str) -> int:
 			failct += 1
 	# fourth, morphs
 	for d,m in enumerate(pmx.morphs):
+		# morphs that are "hidden" should probably not be directly manipulated by a user, so dont check them
+		if m.panel == pmxstruct.MorphPanel.HIDDEN: continue
 		try:
-			_ = core.encode_string_with_escape(m.name_jp)
+			_ = pack.encode_string_with_escape(m.name_jp)
 		except UnicodeEncodeError as e:
 			core.MY_PRINT_FUNC("Morph %d" % d)
 			# note: UnicodeEncodeError.reason has been overwritten with the string I was trying to encode, other fields unchanged
@@ -162,6 +171,27 @@ def find_jointless_physbodies(pmx: pmxstruct.Pmx)-> list:
 	retme = [i for i in range(len(pmx.rigidbodies)) if i not in anchored_bodies]
 	return retme
 	
+def find_always_invisible_materials(pmx: pmxstruct.Pmx) -> list:
+	# identify any materials that start transparent and have no morphs to make them visible
+	retme = []
+	for d,mat in enumerate(pmx.materials):
+		# if opacity is zero,
+		if mat.alpha == 0:
+			# are there any material morphs that add opacity to this material?
+			has_appear_morph = False
+			for morph in pmx.morphs:
+				# ignore any non-material morphs
+				if morph.morphtype != pmxstruct.MorphType.MATERIAL: continue
+				for item in morph.items:
+					item: pmxstruct.PmxMorphItemMaterial  # pycharm type annotation
+					# does this item add opacity to the material in question?
+					if item.mat_idx==d and item.is_add and item.alpha > 0:
+						has_appear_morph = True
+			# if there are no "appear" morphs for this material, then mark it as permanently hidden
+			if not has_appear_morph:
+				retme.append(d)
+	return retme
+
 
 
 ########################################################################################################################
@@ -221,11 +251,11 @@ def main(moreinfo=False):
 	core.MY_PRINT_FUNC("\n>>>> Deleting orphaned/unused vertices <<<<")
 	pmx, is_changed_t = prune_unused_vertices.prune_unused_vertices(pmx, moreinfo)
 	is_changed |= is_changed_t
-	core.MY_PRINT_FUNC("\n>>>> Deleting unused bones <<<<")
-	pmx, is_changed_t = prune_unused_bones.prune_unused_bones(pmx, moreinfo)
-	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Normalizing vertex weights & normals <<<<")
 	pmx, is_changed_t = weight_cleanup.weight_cleanup(pmx, moreinfo)
+	is_changed |= is_changed_t
+	core.MY_PRINT_FUNC("\n>>>> Deleting unused bones <<<<")
+	pmx, is_changed_t = prune_unused_bones.prune_unused_bones(pmx, moreinfo)
 	is_changed |= is_changed_t
 	core.MY_PRINT_FUNC("\n>>>> Pruning imperceptible vertex morphs <<<<")
 	pmx, is_changed_t = morph_winnow.morph_winnow(pmx, moreinfo)
@@ -248,7 +278,8 @@ def main(moreinfo=False):
 
 	core.MY_PRINT_FUNC("")
 	core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-	core.MY_PRINT_FUNC("++++      Scanning for other potential issues      ++++")
+	core.MY_PRINT_FUNC("++++      Scanning for other potential issues       ++++")
+	core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 	core.MY_PRINT_FUNC("")
 	
 	num_badnames = find_shiftjis_unsupported_names(pmx, input_filename_pmx)
@@ -256,73 +287,82 @@ def main(moreinfo=False):
 		core.MY_PRINT_FUNC("WARNING: found %d JP names that cannot be encoded with SHIFT-JIS, please replace the bad characters in the strings printed above!" % num_badnames)
 		core.MY_PRINT_FUNC("If the filepath contains bad characters, then MMD project files (.pmm .emm) will not properly store/load model data between sessions.")
 		core.MY_PRINT_FUNC("If the modelname/bones/morphs contain bad characters, then they will work just fine in MMD but will not properly save/load in VMD motion files.")
+		core.MY_PRINT_FUNC("")
+
+	def list_to_string_but_apply_max_length(L:list) -> str:
+		L2 = [str(foo) for foo in L]
+		asdf = "[" + ", ".join(L2[0:MAX_WARNING_LIST])
+		if len(L) > MAX_WARNING_LIST: asdf += ", ...]"
+		else:                         asdf += "]"
+		return asdf
 	
 	longbone, longmorph = find_toolong_bonemorph(pmx)
 	# also checks that bone/morph names can be stored in shift_jis for VMD usage
 	if longmorph or longbone:
-		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("Minor warning: this model contains bones/morphs with JP names that are too long (>15 bytes).")
 		core.MY_PRINT_FUNC("These will work just fine in MMD but will not properly save/load in VMD motion files.")
 		if longbone:
-			ss = "[" + ", ".join(longbone[0:MAX_WARNING_LIST]) + "]"
-			if len(longbone) > MAX_WARNING_LIST:
-				ss = ss[0:-1] + ", ...]"
+			ss = list_to_string_but_apply_max_length(longbone)
 			core.MY_PRINT_FUNC("These %d bones are too long (index[length]): %s" % (len(longbone), ss))
 		if longmorph:
-			ss = "[" + ", ".join(longmorph[0:MAX_WARNING_LIST]) + "]"
-			if len(longmorph) > MAX_WARNING_LIST:
-				ss = ss[0:-1] + ", ...]"
+			ss = list_to_string_but_apply_max_length(longmorph)
 			core.MY_PRINT_FUNC("These %d morphs are too long (index[length]): %s" % (len(longmorph), ss))
-	
+		core.MY_PRINT_FUNC("")
+
 	shadowy_mats = find_shadowy_materials(pmx)
 	if shadowy_mats:
-		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("Minor warning: this model contains transparent materials with visible edging.")
 		core.MY_PRINT_FUNC("Edging is visible even if the material is transparent, so this will look like an ugly silhouette.")
 		core.MY_PRINT_FUNC("Either disable edging in MMD when using this model, or reduce the edge parameters to 0 and re-add them in the morph that restores its opacity.")
-		ss = str(shadowy_mats[0:MAX_WARNING_LIST])
-		if len(shadowy_mats) > MAX_WARNING_LIST:
-			ss = ss[0:-1] + ", ...]"
+		ss = list_to_string_but_apply_max_length(shadowy_mats)
 		core.MY_PRINT_FUNC("These %d materials need edging disabled (index): %s" % (len(shadowy_mats), ss))
+		core.MY_PRINT_FUNC("")
+	
+	invisible_mats = find_always_invisible_materials(pmx)
+	if invisible_mats:
+		core.MY_PRINT_FUNC("Minor warning: this model contains transparent materials that never become visible.")
+		core.MY_PRINT_FUNC("These materials are probably just backup geometry or something, and can be safely deleted.")
+		ss = list_to_string_but_apply_max_length(invisible_mats)
+		core.MY_PRINT_FUNC("These %d materials are never visible (index): %s" % (len(invisible_mats), ss))
+		core.MY_PRINT_FUNC("")
 	
 	boneless_bodies = find_boneless_bonebodies(pmx)
 	if boneless_bodies:
-		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("WARNING: this model has bone-type rigidbodies that aren't anchored to any bones.")
 		core.MY_PRINT_FUNC("This won't crash MMD but it is probably a mistake that needs corrected.")
-		ss = str(boneless_bodies[0:MAX_WARNING_LIST])
-		if len(boneless_bodies) > MAX_WARNING_LIST:
-			ss = ss[0:-1] + ", ...]"
+		ss = list_to_string_but_apply_max_length(boneless_bodies)
 		core.MY_PRINT_FUNC("These %d bodies are boneless (index): %s" % (len(boneless_bodies), ss))
-		
+		core.MY_PRINT_FUNC("")
+
 	jointless_bodies = find_jointless_physbodies(pmx)
 	if jointless_bodies:
-		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("WARNING: this model has physics-type rigidbodies that aren't constrained by joints.")
 		core.MY_PRINT_FUNC("These will just roll around on the floor wasting processing power in MMD.")
-		ss = str(jointless_bodies[0:MAX_WARNING_LIST])
-		if len(jointless_bodies) > MAX_WARNING_LIST:
-			ss = ss[0:-1] + ", ...]"
+		ss = list_to_string_but_apply_max_length(jointless_bodies)
 		core.MY_PRINT_FUNC("These %d bodies are jointless (index): %s" % (len(jointless_bodies), ss))
-		
+		core.MY_PRINT_FUNC("")
+
 	crashing_joints = find_crashing_joints(pmx)
 	if crashing_joints:
 		# make the biggest fucking alert i can cuz this is a critical issue
-		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ! ")
 		core.MY_PRINT_FUNC("CRITICAL WARNING: this model contains invalid joints which WILL cause MMD to crash!")
 		core.MY_PRINT_FUNC("These must be manually deleted or repaired using PMXE.")
+		# do not apply the "max list length" limit, display all of them.
 		core.MY_PRINT_FUNC("These %d joints are invalid (index): %s" % (len(crashing_joints), crashing_joints))
+		core.MY_PRINT_FUNC("")
 	
-	core.MY_PRINT_FUNC("")
-	core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 	if not is_changed:
+		core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 		core.MY_PRINT_FUNC("++++             No writeback required              ++++")
+		core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 		core.MY_PRINT_FUNC("Done!")
 		return
 	
+	core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 	core.MY_PRINT_FUNC("++++ Done with cleanup, saving improvements to file ++++")
-	
+	core.MY_PRINT_FUNC("++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+
 	# write out
 	output_filename_pmx = core.filepath_insert_suffix(input_filename_pmx, "_better")
 	output_filename_pmx = core.filepath_get_unused_name(output_filename_pmx)

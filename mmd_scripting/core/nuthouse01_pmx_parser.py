@@ -1,11 +1,13 @@
 import math
+import time
 from typing import List, Tuple
 
-import mmd_scripting.core.nuthouse01_io as io
 import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_io as io
+import mmd_scripting.core.nuthouse01_packer as pack
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 8/9/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -19,20 +21,14 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 # utf-8 might make files very slightly smaller but i haven't tested it
 ENCODE_WITH_UTF8 = False
 
-# parsing progress printouts: depend on the actual number of bytes processed, very accurate & linear
-# encoding progress printouts: these vars estimate how long one item of each type will take to complete (relatively)
-ENCODE_FACTOR_VERT = 1
-ENCODE_FACTOR_FACE = .25
-ENCODE_FACTOR_MORPH = .5
-# dont touch these
-ENCODE_PERCENT_VERT = 0
-ENCODE_PERCENT_FACE = 0
-ENCODE_PERCENT_VERTFACE = 0
-ENCODE_PERCENT_MORPH = 0
-
 # flag to indicate whether more info is desired or not
 PMX_MOREINFO = False
 
+# parsing progress printouts: depend on the actual number of bytes processed, very accurate & linear
+# encoding progress printouts: manually estimate how long stuff will take and then track my progress against that
+# DONT TOUCH THESE TWO
+ENCODE_PERCENTPOINT_WEIGHTS = {}
+ENCODE_PERCENTPOINT_SOFAR = 0
 
 # how many extra vec4s each vertex has with it
 ADDL_VERTEX_VEC4 = 0
@@ -54,7 +50,7 @@ others: if <=127, use byte = b = type 1
         if <=32767 use short = h = type 2
         if <=2147483647 use int = i = type 4
         else crash
-TODO: for non-vertex, value of -1 means N/A
+for non-vertex, value of -1 means N/A
 for vertex, N/A is not possible
 """
 
@@ -86,52 +82,62 @@ def parse_pmx_header(raw: bytearray) -> pmxstruct.PmxHeader:
 	# collects some returnable data, mostly just sets globals
 	# returnable: ver, name_jp, name_en, comment_jp, comment_en
 	
-	expectedmagic = bytearray([0x50, 0x4D, 0x58, 0x20])
+	expectedmagic = bytearray("PMX ", "utf-8")
 	fmt_magic = "4s f b"
-	(magic, ver, numglobal) = core.my_unpack(fmt_magic, raw)
+	(magic, ver, numglobal) = pack.my_unpack(fmt_magic, raw)
 	if magic != expectedmagic:
-		core.MY_PRINT_FUNC("Warning: this file does not begin with the correct magic bytes. Maybe it was locked? Locks wont stop me!")
-		if PMX_MOREINFO: core.MY_PRINT_FUNC("Expected '%s' but found '%s'" % (expectedmagic.hex(), magic.hex()))
+		core.MY_PRINT_FUNC("WARNING: This file does not begin with the correct magic bytes. Maybe it was locked? Locks wont stop me!")
+		core.MY_PRINT_FUNC("         Expected '%s' but found '%s'" % (expectedmagic.hex(), magic.hex()))
 	
 	# only first 8 bytes have known uses
 	# more bytes have no known purpose but need to be accounted for anyway
 	if numglobal != 8:
-		core.MY_PRINT_FUNC("WARNING: this PMX has '%d' global variables, more than I know how to support!!!" % numglobal)
+		core.MY_PRINT_FUNC("WARNING: This PMX has '%d' global flags, this behavior is undefined!!!" % numglobal)
+		core.MY_PRINT_FUNC("         Technically the format supports any number of global flags but I only know the meanings of the first 8")
 	fmt_globals = str(numglobal) + "b"
-	globalflags = core.my_unpack(fmt_globals, raw)	# this actually returns a tuple of ints, which works just fine, dont touch it
-	# print(globalflags)
+	globalflags = pack.my_unpack(fmt_globals, raw)	# this actually returns a tuple of ints, which works just fine, dont touch it
+	if numglobal != 8:
+		core.MY_PRINT_FUNC("         Global flags = %s" % str(globalflags))
+	
 	# byte 0: encoding
-	if globalflags[0] == 0:
-		core.set_encoding("utf_16_le")
-	elif globalflags[0] == 1:
-		core.set_encoding("utf_8")
-	else:
-		core.MY_PRINT_FUNC("unsupported encoding value", globalflags[0])
+	if globalflags[0] == 0:   pack.set_encoding("utf_16_le")
+	elif globalflags[0] == 1: pack.set_encoding("utf_8")
+	else:                     raise RuntimeError("unsupported encoding value '%d'" % globalflags[0])
+	
 	# byte 1: additional vec4 per vertex
+	# store this in a global so it can be more easily passed to the vertex section
 	global ADDL_VERTEX_VEC4
 	ADDL_VERTEX_VEC4 = globalflags[1]
+	
 	# bytes 2-7: data size to use for index references
+	# store these in globals as well because passing them around as arguments would be annoying
+	# see comment around line 50 for more info
 	global IDX_VERT, IDX_TEX, IDX_MAT, IDX_BONE, IDX_MORPH, IDX_RB
 	vert_conv = {1:"B", 2:"H", 4:"i"}
-	conv =      {1:"b", 2:"h", 4:"i"}
 	IDX_VERT  = vert_conv[globalflags[2]]
+	conv =      {1:"b", 2:"h", 4:"i"}
 	IDX_TEX   = conv[globalflags[3]]
 	IDX_MAT   = conv[globalflags[4]]
 	IDX_BONE  = conv[globalflags[5]]
 	IDX_MORPH = conv[globalflags[6]]
 	IDX_RB    = conv[globalflags[7]]
+	
 	# finally handle the model names & comments
-	(name_jp, name_en, comment_jp, comment_en) = core.my_unpack("t t t t", raw)
+	# (name_jp, name_en, comment_jp, comment_en) = pack.my_unpack("t t t t", raw)
+	name_jp = pack.my_string_unpack(raw)
+	name_en = pack.my_string_unpack(raw)
+	comment_jp = pack.my_string_unpack(raw)
+	comment_en = pack.my_string_unpack(raw)
 	
 	# assemble all the info into a struct for returning
 	return pmxstruct.PmxHeader(ver=ver,
-								name_jp=name_jp, name_en=name_en,
-								comment_jp=comment_jp, comment_en=comment_en)
+							   name_jp=name_jp, name_en=name_en,
+							   comment_jp=comment_jp, comment_en=comment_en)
 	# return retme
 
 def parse_pmx_vertices(raw: bytearray) -> List[pmxstruct.PmxVertex]:
 	# first item is int, how many vertices
-	i = core.my_unpack("i", raw)
+	i = pack.my_unpack("i", raw)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of verts            =", i)
 	retme = []
 	bdef1_fmt = IDX_BONE
@@ -166,47 +172,47 @@ def parse_pmx_vertices(raw: bytearray) -> List[pmxstruct.PmxVertex]:
 	
 	for d in range(i):
 		# first, basic stuff
-		(posX, posY, posZ, normX, normY, normZ, u, v) = core.my_unpack("8f", raw)
+		(posX, posY, posZ, normX, normY, normZ, u, v) = pack.my_unpack("8f", raw)
 		# then, some number of vec4s (probably none)
 		addl_vec4s = []
 		for z in range(ADDL_VERTEX_VEC4):
-			this_vec4 = core.my_unpack("4f", raw) # already returns as a list of 4 floats, no need to unpack then repack
+			this_vec4 = pack.my_unpack("4f", raw) # already returns as a list of 4 floats, no need to unpack then repack
 			addl_vec4s.append(this_vec4)
-		weighttype_int = core.my_unpack("b", raw)
+		weighttype_int = pack.my_unpack("b", raw)
 		weighttype = pmxstruct.WeightMode(weighttype_int)
 		weights = []
 		weight_sdef = []
 		if weighttype == pmxstruct.WeightMode.BDEF1:
 			# BDEF1
-			b1 = core.my_unpack(bdef1_fmt, raw)
+			b1 = pack.my_unpack(bdef1_fmt, raw)
 			weights = [b1]
 		elif weighttype == pmxstruct.WeightMode.BDEF2:
 			# BDEF2
 			#(b1, b2, b1w) # already returns as a list of floats, no need to unpack then repack
-			weights = core.my_unpack(bdef2_fmt, raw)
+			weights = pack.my_unpack(bdef2_fmt, raw)
 		elif weighttype == pmxstruct.WeightMode.BDEF4:
 			# BDEF4
 			#(b1, b2, b3, b4, b1w, b2w, b3w, b4w) # already returns as a list of floats, no need to unpack then repack
-			weights = core.my_unpack(bdef4_fmt, raw)
+			weights = pack.my_unpack(bdef4_fmt, raw)
 		elif weighttype == pmxstruct.WeightMode.SDEF:
 			# SDEF
 			#(b1, b2, b1w, c1, c2, c3, r01, r02, r03, r11, r12, r13)
-			(b1, b2, b1w, c1, c2, c3, r01, r02, r03, r11, r12, r13) = core.my_unpack(sdef_fmt, raw)
+			(b1, b2, b1w, c1, c2, c3, r01, r02, r03, r11, r12, r13) = pack.my_unpack(sdef_fmt, raw)
 			weights = [b1, b2, b1w]
 			weight_sdef = [[c1, c2, c3], [r01, r02, r03], [r11, r12, r13]]
 		elif weighttype == pmxstruct.WeightMode.QDEF:
 			# it must be using QDEF, a type only for PMX v2.1 which I dont need to support so idgaf
 			# (b1, b2, b3, b4, b1w, b2w, b3w, b4w)
-			weights = core.my_unpack(qdef_fmt, raw)
+			weights = pack.my_unpack(qdef_fmt, raw)
 		# else:
 		# 	core.MY_PRINT_FUNC("invalid weight type for vertex", weighttype)
 		# then there is one final float after the weight crap
-		edgescale = core.my_unpack("f", raw)
+		edgescale = pack.my_unpack("f", raw)
 		
 		weight_pairs = weightbinary_to_weightpairs(weighttype, weights)
 
 		# display progress printouts
-		core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
+		core.print_progress_oneline(pack.UNPACKER_READFROM_BYTE / len(raw))
 		# assemble all the info into a struct for returning
 		thisvert = pmxstruct.PmxVertex(pos=[posX, posY, posZ], norm=[normX, normY, normZ], uv=[u, v],
 									   weighttype=weighttype, weight=weight_pairs, weight_sdef=weight_sdef,
@@ -219,46 +225,49 @@ def parse_pmx_surfaces(raw: bytearray) -> List[List[int]]:
 	# surfaces is just another name for faces
 	# first item is int, how many vertex indices there are, NOT the actual number of faces
 	# each face is 3 vertex indices, so "i" will always be a multiple of 3
-	i = core.my_unpack("i", raw)
+	i = pack.my_unpack("i", raw)
 	retme = []
 	i = int(i / 3)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of faces            =", i)
 	for d in range(i):
 		# each entry is a group of 3 vertex indeces that make a face
-		thisface = core.my_unpack("3" + IDX_VERT, raw)
+		thisface = pack.my_unpack("3" + IDX_VERT, raw)
 		# display progress printouts
-		core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
+		core.print_progress_oneline(pack.UNPACKER_READFROM_BYTE / len(raw))
 		retme.append(thisface)
 	return retme
 
 def parse_pmx_textures(raw: bytearray) -> List[str]:
 	# first item is int, how many textures
-	i = core.my_unpack("i", raw)
+	i = pack.my_unpack("i", raw)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of textures         =", i)
 	retme = []
 	for d in range(i):
-		filepath = core.my_unpack("t", raw)
+		filepath = pack.my_string_unpack(raw)
 		# print(filepath)
 		retme.append(filepath)
 	return retme
 
 def parse_pmx_materials(raw: bytearray, textures: List[str]) -> List[pmxstruct.PmxMaterial]:
 	# first item is int, how many materials
-	i = core.my_unpack("i", raw)
+	i = pack.my_unpack("i", raw)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of materials        =", i)
 	retme = []
 	for d in range(i):
-		(name_jp, name_en, diffR, diffG, diffB, diffA, specR, specG, specB, specpower) = core.my_unpack("t t 4f 4f", raw)
+		name_jp = pack.my_string_unpack(raw)
+		name_en = pack.my_string_unpack(raw)
 		# print(name_jp, name_en)
-		(ambR, ambG, ambB, flags, edgeR, edgeG, edgeB, edgeA, edgescale, tex_idx) = core.my_unpack("3f B 5f" + IDX_TEX, raw)
-		(sph_idx, sph_mode_int, builtin_toon) = core.my_unpack(IDX_TEX + "b b", raw)
+		(diffR, diffG, diffB, diffA, specR, specG, specB, specpower) = pack.my_unpack("4f 4f", raw)
+		(ambR, ambG, ambB, flags, edgeR, edgeG, edgeB, edgeA, edgescale, tex_idx) = pack.my_unpack("3f B 5f" + IDX_TEX, raw)
+		(sph_idx, sph_mode_int, builtin_toon) = pack.my_unpack(IDX_TEX + "b b", raw)
 		if builtin_toon == 0:
 			# toon is using a texture reference
-			toon_idx = core.my_unpack(IDX_TEX, raw)
+			toon_idx = pack.my_unpack(IDX_TEX, raw)
 		else:
 			# toon is using one of the builtin toons, toon01.bmp thru toon10.bmp (values 0-9)
-			toon_idx = core.my_unpack("b", raw)
-		(comment, surface_ct) = core.my_unpack("t i", raw)
+			toon_idx = pack.my_unpack("b", raw)
+		comment = pack.my_string_unpack(raw)
+		surface_ct = pack.my_unpack("i", raw)
 		# note: i structure the faces list into groups of 3 vertex indices, this is divided by 3 to match
 		faces_ct = int(surface_ct / 3)
 		sph_mode = pmxstruct.SphMode(sph_mode_int)
@@ -271,10 +280,11 @@ def parse_pmx_materials(raw: bytearray, textures: List[str]) -> List[pmxstruct.P
 			if sph_idx == -1:  sph_path = ""
 			else:              sph_path = textures[sph_idx]
 			if toon_idx == -1: toon_path = ""
-			elif builtin_toon:    toon_path = BUILTIN_TOON_DICT_REVERSE[toon_idx]  # using a builtin toon
+			elif builtin_toon: toon_path = BUILTIN_TOON_DICT_REVERSE[toon_idx]  # using a builtin toon
 			else:              toon_path = textures[toon_idx]  # using a nonstandard toon
 		except (IndexError, KeyError):
-			raise RuntimeError("ERROR: material texture references are busted yo")
+			core.MY_PRINT_FUNC("ERROR: material texture references are busted yo")
+			raise
 
 		# assemble all the data into a struct for returning
 		thismat = pmxstruct.PmxMaterial(name_jp=name_jp, name_en=name_en, diffRGB=[diffR, diffG, diffB],
@@ -288,11 +298,13 @@ def parse_pmx_materials(raw: bytearray, textures: List[str]) -> List[pmxstruct.P
 
 def parse_pmx_bones(raw: bytearray) -> List[pmxstruct.PmxBone]:
 	# first item is int, how many bones
-	i = core.my_unpack("i", raw)
+	i = pack.my_unpack("i", raw)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of bones            =", i)
 	retme = []
 	for d in range(i):
-		(name_jp, name_en, posX, posY, posZ, parent_idx, deform_layer, flags1, flags2) = core.my_unpack("t t 3f" + IDX_BONE + "i 2B", raw)
+		name_jp = pack.my_string_unpack(raw)
+		name_en = pack.my_string_unpack(raw)
+		(posX, posY, posZ, parent_idx, deform_layer, flags1, flags2) = pack.my_unpack("3f" + IDX_BONE + "i 2B", raw)
 		# print(name_jp, name_en)
 		tail_usebonelink =       bool(flags1 & (1<<0))
 		rotateable =             bool(flags1 & (1<<1))
@@ -313,29 +325,29 @@ def parse_pmx_bones(raw: bytearray) -> List[pmxstruct.PmxBone]:
 		local_axis_x_xyz = local_axis_z_xyz = None
 		ik_target = ik_loops = ik_anglelimit = ik_links = None
 		if tail_usebonelink:  # use index for bone its pointing at
-			tail = core.my_unpack(IDX_BONE, raw)
+			tail = pack.my_unpack(IDX_BONE, raw)
 		else:  # use offset
-			tail = core.my_unpack("3f", raw)
+			tail = pack.my_unpack("3f", raw)
 		if inherit_rot or inherit_trans:
-			(inherit_parent, inherit_influence) = core.my_unpack(IDX_BONE + "f", raw)
+			(inherit_parent, inherit_influence) = pack.my_unpack(IDX_BONE + "f", raw)
 		if has_fixedaxis:
 			# format is xyz obviously
-			fixedaxis = core.my_unpack("3f", raw)
+			fixedaxis = pack.my_unpack("3f", raw)
 		if has_localaxis:
-			(xx, xy, xz, zx, zy, zz) = core.my_unpack("3f 3f", raw)
+			(xx, xy, xz, zx, zy, zz) = pack.my_unpack("3f 3f", raw)
 			local_axis_x_xyz = [xx, xy, xz]
 			local_axis_z_xyz = [zx, zy, zz]
 		if has_external_parent:
-			external_parent = core.my_unpack("i", raw)
+			external_parent = pack.my_unpack("i", raw)
 		if ik:
-			(ik_target, ik_loops, ik_anglelimit, num_ik_links) = core.my_unpack(IDX_BONE + "i f i", raw)
+			(ik_target, ik_loops, ik_anglelimit, num_ik_links) = pack.my_unpack(IDX_BONE + "i f i", raw)
 			# note: ik angle comes in as radians, i want to represent it as degrees
 			ik_anglelimit = math.degrees(ik_anglelimit)
 			ik_links = []
 			for z in range(num_ik_links):
-				(ik_link_idx, use_link_limits) = core.my_unpack(IDX_BONE + "b", raw)
+				(ik_link_idx, use_link_limits) = pack.my_unpack(IDX_BONE + "b", raw)
 				if use_link_limits:
-					(minX, minY, minZ, maxX, maxY, maxZ) = core.my_unpack("3f 3f", raw)
+					(minX, minY, minZ, maxX, maxY, maxZ) = pack.my_unpack("3f 3f", raw)
 					# note: these vals come in as XYZXYZ radians! must convert to degrees
 					link = pmxstruct.PmxBoneIkLink(idx=ik_link_idx,
 												   limit_min=[math.degrees(minX), math.degrees(minY), math.degrees(minZ)],
@@ -367,11 +379,13 @@ def parse_pmx_bones(raw: bytearray) -> List[pmxstruct.PmxBone]:
 
 def parse_pmx_morphs(raw: bytearray) -> List[pmxstruct.PmxMorph]:
 	# first item is int, how many morphs
-	i = core.my_unpack("i", raw)
+	i = pack.my_unpack("i", raw)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of morphs           =", i)
 	retme = []
 	for d in range(i):
-		(name_jp, name_en, panel_int, morphtype_int, itemcount) = core.my_unpack("t t b b i", raw)
+		name_jp = pack.my_string_unpack(raw)
+		name_en = pack.my_string_unpack(raw)
+		(panel_int, morphtype_int, itemcount) = pack.my_unpack("b b i", raw)
 		morphtype = pmxstruct.MorphType(morphtype_int)
 		panel = pmxstruct.MorphPanel(panel_int)
 		# print(name_jp, name_en)
@@ -380,19 +394,19 @@ def parse_pmx_morphs(raw: bytearray) -> List[pmxstruct.PmxMorph]:
 		if morphtype == pmxstruct.MorphType.GROUP:
 			# group
 			for z in range(itemcount):
-				(morph_idx, influence) = core.my_unpack(IDX_MORPH + "f", raw)
+				(morph_idx, influence) = pack.my_unpack(IDX_MORPH + "f", raw)
 				item = pmxstruct.PmxMorphItemGroup(morph_idx=morph_idx, value=influence)
 				these_items.append(item)
 		elif morphtype == pmxstruct.MorphType.VERTEX:
 			# vertex
 			for z in range(itemcount):
-				(vert_idx, transX, transY, transZ) = core.my_unpack(IDX_VERT + "3f", raw)
+				(vert_idx, transX, transY, transZ) = pack.my_unpack(IDX_VERT + "3f", raw)
 				item = pmxstruct.PmxMorphItemVertex(vert_idx=vert_idx, move=[transX, transY, transZ])
 				these_items.append(item)
 		elif morphtype == pmxstruct.MorphType.BONE:
 			# bone
 			for z in range(itemcount):
-				(bone_idx, transX, transY, transZ, rotqX, rotqY, rotqZ, rotqW) = core.my_unpack(IDX_BONE + "3f 4f", raw)
+				(bone_idx, transX, transY, transZ, rotqX, rotqY, rotqZ, rotqW) = pack.my_unpack(IDX_BONE + "3f 4f", raw)
 				rotX, rotY, rotZ = core.quaternion_to_euler([rotqW, rotqX, rotqY, rotqZ])
 				item = pmxstruct.PmxMorphItemBone(bone_idx=bone_idx, move=[transX, transY, transZ], rot=[rotX, rotY, rotZ])
 				these_items.append(item)
@@ -405,16 +419,16 @@ def parse_pmx_morphs(raw: bytearray) -> List[pmxstruct.PmxMorph]:
 			# what these values do depends on the UV layer they are affecting, but the docs dont say what...
 			# oh well, i dont need to use them so i dont care :)
 			for z in range(itemcount):
-				(vert_idx, A, B, C, D) = core.my_unpack(IDX_VERT + "4f", raw)
+				(vert_idx, A, B, C, D) = pack.my_unpack(IDX_VERT + "4f", raw)
 				item = pmxstruct.PmxMorphItemUV(vert_idx=vert_idx, move=[A,B,C,D])
 				these_items.append(item)
 		elif morphtype == pmxstruct.MorphType.MATERIAL:
 			# material
 			# this_item = core.my_unpack(IDX_MAT + "b 4f 3f    f 3f 4f f    4f 4f 4f", raw)
 			for z in range(itemcount):
-				(mat_idx, is_add, diffR, diffG, diffB, diffA, specR, specG, specB) = core.my_unpack(IDX_MAT+"b 4f 3f", raw)
-				(specpower, ambR, ambG, ambB, edgeR, edgeG, edgeB, edgeA, edgesize) = core.my_unpack("f 3f 4f f", raw)
-				(texR, texG, texB, texA, sphR, sphG, sphB, sphA, toonR, toonG, toonB, toonA) = core.my_unpack("4f 4f 4f", raw)
+				(mat_idx, is_add, diffR, diffG, diffB, diffA, specR, specG, specB) = pack.my_unpack(IDX_MAT + "b 4f 3f", raw)
+				(specpower, ambR, ambG, ambB, edgeR, edgeG, edgeB, edgeA, edgesize) = pack.my_unpack("f 3f 4f f", raw)
+				(texR, texG, texB, texA, sphR, sphG, sphB, sphA, toonR, toonG, toonB, toonA) = pack.my_unpack("4f 4f 4f", raw)
 				item = pmxstruct.PmxMorphItemMaterial(
 					mat_idx=mat_idx, is_add=is_add, alpha=diffA, specpower=specpower,
 					diffRGB=[diffR, diffG, diffB], specRGB=[specR, specG, specB], ambRGB=[ambR, ambG, ambB],
@@ -425,13 +439,13 @@ def parse_pmx_morphs(raw: bytearray) -> List[pmxstruct.PmxMorph]:
 		elif morphtype == pmxstruct.MorphType.FLIP:
 			# (2.1 only) flip
 			for z in range(itemcount):
-				(morph_idx, influence) = core.my_unpack(IDX_MORPH + "f", raw)
+				(morph_idx, influence) = pack.my_unpack(IDX_MORPH + "f", raw)
 				item = pmxstruct.PmxMorphItemFlip(morph_idx=morph_idx, value=influence)
 				these_items.append(item)
 		elif morphtype == pmxstruct.MorphType.IMPULSE:
 			# (2.1 only) impulse
 			for z in range(itemcount):
-				(rb_idx, is_local, movX, movY, movZ, rotX, rotY, rotZ) = core.my_unpack(IDX_RB + "b 3f 3f", raw)
+				(rb_idx, is_local, movX, movY, movZ, rotX, rotY, rotZ) = pack.my_unpack(IDX_RB + "b 3f 3f", raw)
 				item = pmxstruct.PmxMorphItemImpulse(rb_idx=rb_idx, is_local=is_local,
 													 move=[movX, movY, movZ], rot=[rotX, rotY, rotZ])
 				these_items.append(item)
@@ -439,7 +453,7 @@ def parse_pmx_morphs(raw: bytearray) -> List[pmxstruct.PmxMorph]:
 			raise RuntimeError("unsupported morph type value", morphtype)
 		
 		# display progress printouts
-		core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
+		core.print_progress_oneline(pack.UNPACKER_READFROM_BYTE / len(raw))
 		# assemble the data into struct for returning
 		thismorph = pmxstruct.PmxMorph(name_jp=name_jp, name_en=name_en, panel=panel, morphtype=morphtype, items=these_items)
 		retme.append(thismorph)
@@ -447,17 +461,19 @@ def parse_pmx_morphs(raw: bytearray) -> List[pmxstruct.PmxMorph]:
 
 def parse_pmx_dispframes(raw: bytearray) -> List[pmxstruct.PmxFrame]:
 	# first item is int, how many dispframes
-	i = core.my_unpack("i", raw)
+	i = pack.my_unpack("i", raw)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of dispframes       =", i)
 	retme = []
 	for d in range(i):
-		(name_jp, name_en, is_special, itemcount) = core.my_unpack("t t b i", raw)
+		name_jp = pack.my_string_unpack(raw)
+		name_en = pack.my_string_unpack(raw)
+		(is_special, itemcount) = pack.my_unpack("b i", raw)
 		# print(name_jp, name_en)
 		these_items = []
 		for z in range(itemcount):
-			is_morph = core.my_unpack("b", raw)
-			if is_morph: idx = core.my_unpack(IDX_MORPH, raw)
-			else:        idx = core.my_unpack(IDX_BONE, raw)
+			is_morph = pack.my_unpack("b", raw)
+			if is_morph: idx = pack.my_unpack(IDX_MORPH, raw)
+			else:        idx = pack.my_unpack(IDX_BONE, raw)
 			this_item = pmxstruct.PmxFrameItem(is_morph=is_morph, idx=idx)
 			these_items.append(this_item)
 		# assemble the data into struct for returning
@@ -467,16 +483,18 @@ def parse_pmx_dispframes(raw: bytearray) -> List[pmxstruct.PmxFrame]:
 
 def parse_pmx_rigidbodies(raw: bytearray) -> List[pmxstruct.PmxRigidBody]:
 	# first item is int, how many rigidbodies
-	i = core.my_unpack("i", raw)
+	i = pack.my_unpack("i", raw)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of rigidbodies      =", i)
 	retme = []
 	for d in range(i):
-		(name_jp, name_en, bone_idx, group, collide_mask, shape_int) = core.my_unpack("t t" + IDX_BONE + "b H b", raw)
+		name_jp = pack.my_string_unpack(raw)
+		name_en = pack.my_string_unpack(raw)
+		(bone_idx, group, collide_mask, shape_int) = pack.my_unpack(IDX_BONE + "b H b", raw)
 		shape = pmxstruct.RigidBodyShape(shape_int)
 		# print(name_jp, name_en)
 		# shape: 0=sphere, 1=box, 2=capsule
-		(sizeX, sizeY, sizeZ, posX, posY, posZ, rotX, rotY, rotZ) = core.my_unpack("3f 3f 3f", raw)
-		(mass, move_damp, rot_damp, repel, friction, physmode_int) = core.my_unpack("5f b", raw)
+		(sizeX, sizeY, sizeZ, posX, posY, posZ, rotX, rotY, rotZ) = pack.my_unpack("3f 3f 3f", raw)
+		(mass, move_damp, rot_damp, repel, friction, physmode_int) = pack.my_unpack("5f b", raw)
 		physmode = pmxstruct.RigidBodyPhysMode(physmode_int)
 		# physmode: 0=follow bone, 1=physics, 2=physics rotate only (pivot on bone)
 		
@@ -494,7 +512,7 @@ def parse_pmx_rigidbodies(raw: bytearray) -> List[pmxstruct.PmxRigidBody]:
 				nocollide_set.add(a+1)
 		
 		# display progress printouts
-		core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
+		core.print_progress_oneline(pack.UNPACKER_READFROM_BYTE / len(raw))
 		# assemble the data into struct for returning
 		thisbody = pmxstruct.PmxRigidBody(name_jp=name_jp, name_en=name_en, bone_idx=bone_idx, pos=[posX, posY, posZ],
 										  rot=rot, size=[sizeX, sizeY, sizeZ], shape=shape, group=group,
@@ -506,17 +524,19 @@ def parse_pmx_rigidbodies(raw: bytearray) -> List[pmxstruct.PmxRigidBody]:
 
 def parse_pmx_joints(raw: bytearray) -> List[pmxstruct.PmxJoint]:
 	# first item is int, how many joints
-	i = core.my_unpack("i", raw)
+	i = pack.my_unpack("i", raw)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of joints           =", i)
 	retme = []
 	for d in range(i):
-		(name_jp, name_en, jointtype_int, rb1_idx, rb2_idx, posX, posY, posZ) = core.my_unpack("t t b 2" + IDX_RB + "3f", raw)
+		name_jp = pack.my_string_unpack(raw)
+		name_en = pack.my_string_unpack(raw)
+		(jointtype_int, rb1_idx, rb2_idx, posX, posY, posZ) = pack.my_unpack("b 2" + IDX_RB + "3f", raw)
 		# jointtype: 0=spring6DOF, all others are v2.1 only!!!! 1=6dof, 2=p2p, 3=conetwist, 4=slider, 5=hinge
 		jointtype = pmxstruct.JointType(jointtype_int)
 		# print(name_jp, name_en)
-		(rotX, rotY, rotZ, posminX, posminY, posminZ, posmaxX, posmaxY, posmaxZ) = core.my_unpack("3f 3f 3f", raw)
-		(rotminX, rotminY, rotminZ, rotmaxX, rotmaxY, rotmaxZ) = core.my_unpack("3f 3f", raw)
-		(springposX, springposY, springposZ, springrotX, springrotY, springrotZ) = core.my_unpack("3f 3f", raw)
+		(rotX, rotY, rotZ, posminX, posminY, posminZ, posmaxX, posmaxY, posmaxZ) = pack.my_unpack("3f 3f 3f", raw)
+		(rotminX, rotminY, rotminZ, rotmaxX, rotmaxY, rotmaxZ) = pack.my_unpack("3f 3f", raw)
+		(springposX, springposY, springposZ, springrotX, springrotY, springrotZ) = pack.my_unpack("3f 3f", raw)
 		
 		# note: rot/rotmin/rotmax all come in as XYZ radians, must convert to degrees for my struct
 		rot = [math.degrees(rotX), math.degrees(rotY), math.degrees(rotZ)]
@@ -524,7 +544,7 @@ def parse_pmx_joints(raw: bytearray) -> List[pmxstruct.PmxJoint]:
 		rotmax = [math.degrees(rotmaxX), math.degrees(rotmaxY), math.degrees(rotmaxZ)]
 		
 		# display progress printouts
-		core.print_progress_oneline(core.get_readfrom_byte() / len(raw))
+		core.print_progress_oneline(pack.UNPACKER_READFROM_BYTE / len(raw))
 		# assemble the data into list for returning
 		thisjoint = pmxstruct.PmxJoint(name_jp=name_jp, name_en=name_en, jointtype=jointtype,
 			rb1_idx=rb1_idx, rb2_idx=rb2_idx, pos=[posX, posY, posZ], rot=rot,
@@ -539,25 +559,27 @@ def parse_pmx_softbodies(raw: bytearray) -> List[pmxstruct.PmxSoftBody]:
 	# i don't plan to support v2.1 so I'm not gonna try to hard to understand the meaning of these data fields
 	# this is mostly to consume the data so there are no bytes left over when done parsing a file to trigger warnings
 	# note: this is also untested because i dont care about it lol
-	i = core.my_unpack("i", raw)
+	i = pack.my_unpack("i", raw)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of softbodies       =", i)
 	retme = []
 	for d in range(i):
-		(name_jp, name_en, shape, idx_mat, group, nocollide_mask, flags) = core.my_unpack("t t b" + IDX_MAT + "b H b", raw)
+		name_jp = pack.my_string_unpack(raw)
+		name_en = pack.my_string_unpack(raw)
+		(shape, idx_mat, group, nocollide_mask, flags) = pack.my_unpack("b" + IDX_MAT + "b H b", raw)
 		# i should upack the flags here but idgaf
-		(b_link_create_dist, num_clusters, total_mass, collision_marign, aerodynamics_model) = core.my_unpack("iiffi", raw)
-		(vcf, dp, dg, lf, pr, vc, df, mt, rch, kch, sch, ah) = core.my_unpack("12f", raw)
-		(srhr_cl, skhr_cl, sshr_cl, sr_splt_cl, sk_splt_cl, ss_splt_cl) = core.my_unpack("6f", raw)
-		(v_it, p_it, d_it, c_it, mat_lst, mat_ast, mat_vst, num_anchors) = core.my_unpack("8i", raw)
+		(b_link_create_dist, num_clusters, total_mass, collision_marign, aerodynamics_model) = pack.my_unpack("iiffi", raw)
+		(vcf, dp, dg, lf, pr, vc, df, mt, rch, kch, sch, ah) = pack.my_unpack("12f", raw)
+		(srhr_cl, skhr_cl, sshr_cl, sr_splt_cl, sk_splt_cl, ss_splt_cl) = pack.my_unpack("6f", raw)
+		(v_it, p_it, d_it, c_it, mat_lst, mat_ast, mat_vst, num_anchors) = pack.my_unpack("8i", raw)
 		anchors_list = []
 		for z in range(num_anchors):
 			# (idx_rb, idx_vert, near_mode)
-			this_anchor = core.my_unpack(IDX_RB + IDX_VERT + "b", raw)
+			this_anchor = pack.my_unpack(IDX_RB + IDX_VERT + "b", raw)
 			anchors_list.append(this_anchor)
-		num_vertex_pin = core.my_unpack("i", raw)
+		num_vertex_pin = pack.my_unpack("i", raw)
 		vertex_pin_list = []
 		for z in range(num_vertex_pin):
-			vertex_pin = core.my_unpack(IDX_VERT, raw)
+			vertex_pin = pack.my_unpack(IDX_VERT, raw)
 			vertex_pin_list.append(vertex_pin)
 
 		# assemble the data into struct for returning
@@ -582,18 +604,15 @@ def build_texture_list(thispmx: pmxstruct.Pmx) -> List[str]:
 	:return: list of filepath strings
 	"""
 	# built the ordered list of unique filepaths among all materials, excluding the builtin toons
+	# empty string means "does not reference a file"
 	tex_list = []
 	for mat in thispmx.materials:
-		if mat.tex_path not in tex_list:
+		if (mat.tex_path not in tex_list) and (mat.tex_path != ""):
 			tex_list.append(mat.tex_path)
-		if mat.sph_path not in tex_list:
+		if (mat.sph_path not in tex_list) and (mat.sph_path != ""):
 			tex_list.append(mat.sph_path)
-		if mat.toon_path not in BUILTIN_TOON_DICT:
-			if mat.toon_path not in tex_list:
+		if (mat.toon_path not in tex_list) and (mat.toon_path != "") and (mat.toon_path not in BUILTIN_TOON_DICT):
 				tex_list.append(mat.toon_path)
-	# remove the empty string from the list, if it's in there
-	if "" in tex_list:
-		tex_list.remove("")
 	return tex_list
 
 def encode_pmx_lookahead(thispmx: pmxstruct.Pmx) -> Tuple[List[int], List[str]]:
@@ -620,21 +639,21 @@ def encode_pmx_lookahead(thispmx: pmxstruct.Pmx) -> Tuple[List[int], List[str]]:
 
 def encode_pmx_header(nice: pmxstruct.PmxHeader, lookahead: List[int]) -> bytearray:
 	# in hindsight this is not the best code i've ever written, but it works
-	expectedmagic = bytearray([0x50, 0x4D, 0x58, 0x20])
+	expectedmagic = bytearray("PMX ", "utf-8")
 	fmt_magic = "4s f b"
 	# note: hardcoding number of globals as 8 when the format is technically flexible
 	numglobal = 8
-	out = core.my_pack(fmt_magic, (expectedmagic, nice.ver, numglobal))
+	out = pack.my_pack(fmt_magic, (expectedmagic, nice.ver, numglobal))
 	
 	# now build the list of 8 global flags
 	fmt_globals = str(numglobal) + "b"
 	globalflags = [-1] * 8
 	# byte 0: encoding, i get to simply choose this
 	if ENCODE_WITH_UTF8:
-		core.set_encoding("utf_8")
+		pack.set_encoding("utf_8")
 		globalflags[0] = 1
 	else:
-		core.set_encoding("utf_16_le")
+		pack.set_encoding("utf_16_le")
 		globalflags[0] = 0
 	# byte 1: additional vec4 per vertex
 	global ADDL_VERTEX_VEC4
@@ -655,60 +674,66 @@ def encode_pmx_header(nice: pmxstruct.PmxHeader, lookahead: List[int]) -> bytear
 	IDX_BONE =  conv[globalflags[5]]
 	IDX_MORPH = conv[globalflags[6]]
 	IDX_RB =    conv[globalflags[7]]
-	out += core.my_pack(fmt_globals, globalflags)
+	out += pack.my_pack(fmt_globals, globalflags)
 	# finally handle the model names & comments
 	# (name_jp, name_en, comment_jp, comment_en)
-	out += core.my_pack("t t t t", [nice.name_jp, nice.name_en, nice.comment_jp, nice.comment_en])
+	# out += pack.my_pack("t t t t", [nice.name_jp, nice.name_en, nice.comment_jp, nice.comment_en])
+	out += pack.my_string_pack(nice.name_jp)
+	out += pack.my_string_pack(nice.name_en)
+	out += pack.my_string_pack(nice.comment_jp)
+	out += pack.my_string_pack(nice.comment_en)
 	return out
 
 def encode_pmx_vertices(nice: List[pmxstruct.PmxVertex]) -> bytearray:
 	# first item is int, how many vertices
 	i = len(nice)
-	out = core.my_pack("i", i)
+	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of verts            =", i)
 	# [posX, posY, posZ, normX, normY, normZ, u, v, addl_vec4s, weighttype, weights, edgescale]
 	bdef1_fmt = IDX_BONE
 	bdef2_fmt = "2%s f" % IDX_BONE
 	bdef4_fmt = "4%s 4f" % IDX_BONE
-	sdef_fmt =  "2%s 10f" % IDX_BONE
+	sdef_fmt1 =  "2%s f" % IDX_BONE
+	sdef_fmt2 =  "9f"
 	qdef_fmt =  bdef4_fmt
+	
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["verts"]
 	
 	def weightpairs_to_weightbinary(wtype: pmxstruct.WeightMode, w: List[List[float]]) -> List[float]:
 		# convert the list of bone-weight pairs to the format/order used in the binary file
 		# # how many pairs have a real bone or a real weight?
 		# real_weight_count = sum([(a[0] > 0 or a[1]) != 0 for a in w])
-		wo = []
 		if wtype == pmxstruct.WeightMode.BDEF1:
 			while len(w) < 1: w.append([0, 0])  # pad with [0,0] till we have enough members
 			# 0 = BDEF1 = [b1]
-			wo = [w[0][0]]
+			return [w[0][0]]
 		elif wtype in (pmxstruct.WeightMode.BDEF2, pmxstruct.WeightMode.SDEF):
 			while len(w) < 2: w.append([0, 0])  # pad with [0,0] till we have enough members
 			# 1 = BDEF2 = [b1, b2, b1w]
 			# 3 = sdef =  [b1, b2, b1w] + weight_sdef = [[c1, c2, c3], [r01, r02, r03], [r11, r12, r13]]
-			wo = [w[0][0],
-				  w[1][0],
-				  w[0][1]]
+			return [w[0][0],
+					w[1][0],
+					w[0][1]]
 		elif wtype in (pmxstruct.WeightMode.BDEF4, pmxstruct.WeightMode.QDEF):
 			while len(w) < 4: w.append([0, 0])  # pad with [0,0] till we have enough members
 			# 2 = BDEF4 = [b1, b2, b3, b4, b1w, b2w, b3w, b4w]
 			# 4 = qdef =  [b1, b2, b3, b4, b1w, b2w, b3w, b4w]  (only in pmx v2.1)
-			wo = [w[0][0], w[1][0], w[2][0], w[3][0],
-				  w[0][1], w[1][1], w[2][1], w[3][1],
-				  ]
-		return wo
+			return [w[0][0], w[1][0], w[2][0], w[3][0],
+					w[0][1], w[1][1], w[2][1], w[3][1],]
+		raise ValueError("error: weighttype is not supported", wtype)
 	
 	for d, vert in enumerate(nice):
 		# first, basic stuff
 		packme = vert.pos + vert.norm + vert.uv  # concat these
-		out += core.my_pack("8f", packme)
+		out += pack.my_pack("8f", packme)
 		# then, some number of vec4s (probably none)
 		# structure it like this so even if a user modifies the vec4s incorrectly it will still write fine
 		for z in range(ADDL_VERTEX_VEC4):
-			try:				out += core.my_pack("4f", vert.addl_vec4s[z])
-			except IndexError:	out += core.my_pack("4f", [0, 0, 0, 0])
+			try:				out += pack.my_pack("4f", vert.addl_vec4s[z])
+			except IndexError:	out += pack.my_pack("4f", [0, 0, 0, 0])
 		
-		out += core.my_pack("b", vert.weighttype.value)
+		out += pack.my_pack("b", vert.weighttype.value)
 		# weights = vert[10]
 		# 0 = BDEF1 = [b1]
 		# 1 = BDEF2 = [b1, b2, b1w]
@@ -720,31 +745,32 @@ def encode_pmx_vertices(nice: List[pmxstruct.PmxVertex]) -> bytearray:
 
 		if vert.weighttype == pmxstruct.WeightMode.BDEF1:
 			# BDEF1
-			out += core.my_pack(bdef1_fmt, weightlist)
+			out += pack.my_pack(bdef1_fmt, weightlist)
 		elif vert.weighttype == pmxstruct.WeightMode.BDEF2:
 			# BDEF2
 			# (b1, b2, b1w)
-			out += core.my_pack(bdef2_fmt, weightlist)
+			out += pack.my_pack(bdef2_fmt, weightlist)
 		elif vert.weighttype == pmxstruct.WeightMode.BDEF4:
 			# BDEF4
 			# (b1, b2, b3, b4, b1w, b2w, b3w, b4w)
-			out += core.my_pack(bdef4_fmt, weightlist)
+			out += pack.my_pack(bdef4_fmt, weightlist)
 		elif vert.weighttype == pmxstruct.WeightMode.SDEF:
 			# SDEF
 			# ([b1, b2, b1w], [c1, c2, c3], [r01, r02, r03], [r11, r12, r13])
-			packme = weightlist + core.flatten(vert.weight_sdef)
-			out += core.my_pack(sdef_fmt, packme)
+			out += pack.my_pack(sdef_fmt1, weightlist)
+			out += pack.my_pack(sdef_fmt2, core.flatten(vert.weight_sdef))
 		elif vert.weighttype == pmxstruct.WeightMode.QDEF:
 			# it must be using QDEF, a type only for PMX v2.1 which I dont need to support so idgaf
 			# (b1, b2, b3, b4, b1w, b2w, b3w, b4w)
-			out += core.my_pack(qdef_fmt, weightlist)
+			out += pack.my_pack(qdef_fmt, weightlist)
 		# else:
 		# 	core.MY_PRINT_FUNC("invalid weight type for vertex", vert.weighttype)
 			
 		# then there is one final float after the weight crap
-		out += core.my_pack("f", vert.edgescale)
+		out += pack.my_pack("f", vert.edgescale)
 		# display progress printouts
-		core.print_progress_oneline(ENCODE_PERCENT_VERT * d / i)
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
 	return out
 
 def encode_pmx_surfaces(nice: List[List[int]]) -> bytearray:
@@ -752,37 +778,48 @@ def encode_pmx_surfaces(nice: List[List[int]]) -> bytearray:
 	# first item is int, how many !vertex indices! there are, NOT the actual number of faces
 	# each face is 3 vertex indices
 	i = len(nice)
-	out = core.my_pack("i", i * 3)
+	out = pack.my_pack("i", i * 3)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of faces            =", i)
+	
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["faces"]
+
 	for d, face in enumerate(nice):
 		# each entry is a group of 3 vertex indeces that make a face
-		out += core.my_pack("3" + IDX_VERT, face)
+		out += pack.my_pack("3" + IDX_VERT, face)
 		# display progress printouts
-		core.print_progress_oneline(ENCODE_PERCENT_VERT + (ENCODE_PERCENT_FACE * d / i))
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
 	return out
 
 def encode_pmx_textures(nice: List[str]) -> bytearray:
 	# first item is int, how many textures
+	# this section doesn't get any progress printouts cuz its relatively small i guess
 	i = len(nice)
-	out = core.my_pack("i", i)
+	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of textures         =", i)
 	for d, filepath in enumerate(nice):
-		out += core.my_pack("t", filepath)
+		out += pack.my_string_pack(filepath)
 	return out
 
 def encode_pmx_materials(nice: List[pmxstruct.PmxMaterial], tex_list: List[str]) -> bytearray:
 	# first item is int, how many materials
 	i = len(nice)
-	out = core.my_pack("i", i)
+	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of materials        =", i)
+	
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["materials"]
+
 	# this fmt is when the toon is using a texture reference
-	mat_fmtA = "t t 4f 4f 3f B 5f 2%s b b %s t i" % (IDX_TEX, IDX_TEX)
+	mat_fmtA = "4f 4f 3f B 5f 2%s b b %s" % (IDX_TEX, IDX_TEX)
 	# this fmt is when the toon is using a builtin toon, toon01.bmp thru toon10.bmp (values 0-9)
-	mat_fmtB = "t t 4f 4f 3f B 5f 2%s b b b  t i" % IDX_TEX
+	mat_fmtB = "4f 4f 3f B 5f 2%s b b b" % IDX_TEX
 	for d, mat in enumerate(nice):
+		out += pack.my_string_pack(mat.name_jp)
+		out += pack.my_string_pack(mat.name_en)
+		
 		flagsum = mat.matflags.value
-		# note: i structure the faces list into groups of 3 vertex indices, this is divided by 3 to match, so now i need to undivide
-		verts_ct = 3 * mat.faces_ct
 		# convert the texture strings back into int references, also get builtin_toon back
 		# i just built 'tex_list' from the materials so these lookups are guaranteed to succeed
 		if mat.tex_path == "": tex_idx = -1
@@ -799,32 +836,48 @@ def encode_pmx_materials(nice: List[pmxstruct.PmxMaterial], tex_list: List[str])
 			if mat.toon_path == "": toon_idx = -1
 			else:                   toon_idx = tex_list.index(mat.toon_path)
 		# now put 'em all together in the proper order
-		packme = [mat.name_jp, mat.name_en, *mat.diffRGB, mat.alpha, *mat.specRGB, mat.specpower, *mat.ambRGB,
+		packme = [*mat.diffRGB, mat.alpha, *mat.specRGB, mat.specpower, *mat.ambRGB,
 				  flagsum, *mat.edgeRGB, mat.edgealpha, mat.edgesize, tex_idx, sph_idx, mat.sph_mode.value,
-				  builtin_toon, toon_idx, mat.comment, verts_ct]
+				  builtin_toon, toon_idx]
 		# the size for packing of the "toon_idx" arg depends on the "builtin_toon" arg, but the number and order is the same
 		if builtin_toon:
 			# toon is using one of the builtin toons, toon01.bmp thru toon10.bmp (values 0-9)
-			out += core.my_pack(mat_fmtB, packme)
+			out += pack.my_pack(mat_fmtB, packme)
 		else:
 			# toon is using a texture reference
-			out += core.my_pack(mat_fmtA, packme)
-	
+			out += pack.my_pack(mat_fmtA, packme)
+		# pack the comment
+		out += pack.my_string_pack(mat.comment)
+		# pack the number of faces in the material, times 3
+		# note: i structure the faces list into groups of 3 vertex indices, this is divided by 3 to match, so now i need to undivide
+		verts_ct = 3 * mat.faces_ct
+		out += pack.my_pack("i", verts_ct)
+		# display progress printouts
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
+
 	return out
 
 def encode_pmx_bones(nice: List[pmxstruct.PmxBone]) -> bytearray:
 	# first item is int, how many bones
 	i = len(nice)
-	out = core.my_pack("i", i)
+	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of bones            =", i)
-	fmt_bone = "t t 3f %s i 2B" % IDX_BONE
+	
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["bones"]
+
+	fmt_bone = "3f %s i 2B" % IDX_BONE
 	fmt_bone_inherit = "%s f" % IDX_BONE
 	fmt_bone_ik = "%s i f i" % IDX_BONE
 	fmt_bone_ik_linkA = "%s b" % IDX_BONE
 	fmt_bone_ik_linkB = "%s b 6f" % IDX_BONE
 	for d, bone in enumerate(nice):
 		# (name_jp, name_en, posX, posY, posZ, parent_idx, deform_layer)
-		packme = [bone.name_jp, bone.name_en, *bone.pos, bone.parent_idx, bone.deform_layer]
+		out += pack.my_string_pack(bone.name_jp)
+		out += pack.my_string_pack(bone.name_en)
+		
+		packme = [*bone.pos, bone.parent_idx, bone.deform_layer]
 		# next are the two flag-bytes (flags1, flags2)
 		# reassemble the bits into a byte
 		flagsum1 = 0
@@ -842,28 +895,28 @@ def encode_pmx_bones(nice: List[pmxstruct.PmxBone]) -> bytearray:
 		flagsum2 += (1 << 4) if bool(bone.deform_after_phys) else 0
 		flagsum2 += (1 << 5) if bool(bone.has_externalparent) else 0
 		packme += [flagsum1, flagsum2]
-		out += core.my_pack(fmt_bone, packme)
+		out += pack.my_pack(fmt_bone, packme)
 		
 		# tail will always exist but type will vary
 		if bone.tail_usebonelink:  # use index for bone its pointing at
-			out += core.my_pack(IDX_BONE, bone.tail)
+			out += pack.my_pack(IDX_BONE, bone.tail)
 		else:  # use offset
-			out += core.my_pack("3f", bone.tail)
+			out += pack.my_pack("3f", bone.tail)
 
 		# then is all the "might or might not exist" stuff
 		if bone.inherit_rot or bone.inherit_trans:
-			out += core.my_pack(fmt_bone_inherit, [bone.inherit_parent_idx, bone.inherit_ratio])
+			out += pack.my_pack(fmt_bone_inherit, [bone.inherit_parent_idx, bone.inherit_ratio])
 		if bone.has_fixedaxis:
-			out += core.my_pack("3f", bone.fixedaxis)  # format is xyz obviously
+			out += pack.my_pack("3f", bone.fixedaxis)  # format is xyz obviously
 		if bone.has_localaxis:
-			out += core.my_pack("6f", [*bone.localaxis_x, *bone.localaxis_z])  # (xx, xy, xz, zx, zy, zz)
+			out += pack.my_pack("6f", [*bone.localaxis_x, *bone.localaxis_z])  # (xx, xy, xz, zx, zy, zz)
 		if bone.has_externalparent:
-			out += core.my_pack("i", bone.externalparent)
+			out += pack.my_pack("i", bone.externalparent)
 		
 		if bone.has_ik:  # ik:
 			# (ik_target, ik_loops, ik_anglelimit, ik_numlinks)
 			# note: my struct holds ik_angle as degrees, file spec holds it as radians
-			out += core.my_pack(fmt_bone_ik, [bone.ik_target_idx, bone.ik_numloops,
+			out += pack.my_pack(fmt_bone_ik, [bone.ik_target_idx, bone.ik_numloops,
 											  math.radians(bone.ik_angle), len(bone.ik_links)])
 			for iklink in bone.ik_links:
 				# bool(list) means "is the list non-empty and also not None"
@@ -874,17 +927,25 @@ def encode_pmx_bones(nice: List[pmxstruct.PmxBone]) -> bytearray:
 						limitminmax.append(math.radians(lim))
 					for lim in iklink.limit_max:
 						limitminmax.append(math.radians(lim))
-					out += core.my_pack(fmt_bone_ik_linkB, [iklink.idx, True, *limitminmax])
+					out += pack.my_pack(fmt_bone_ik_linkB, [iklink.idx, True, *limitminmax])
 				else:
-					out += core.my_pack(fmt_bone_ik_linkA, [iklink.idx, False])
+					out += pack.my_pack(fmt_bone_ik_linkA, [iklink.idx, False])
+		# display progress printouts
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
+
 	return out
 
 def encode_pmx_morphs(nice: List[pmxstruct.PmxMorph]) -> bytearray:
 	# first item is int, how many morphs
 	i = len(nice)
-	out = core.my_pack("i", i)
+	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of morphs           =", i)
-	fmt_morph = "t t b b i"
+
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["morphitems"]
+
+	fmt_morph = "b b i"
 	fmt_morph_group = "%s f" % IDX_MORPH
 	fmt_morph_flip = fmt_morph_group
 	fmt_morph_vert = "%s 3f" % IDX_VERT
@@ -894,25 +955,27 @@ def encode_pmx_morphs(nice: List[pmxstruct.PmxMorph]) -> bytearray:
 	fmt_morph_impulse = "%s b 3f 3f" % IDX_RB
 	for d, morph in enumerate(nice):
 		# (name_jp, name_en, panel, morphtype, itemcount)
-		out += core.my_pack(fmt_morph,
-							[morph.name_jp, morph.name_en, morph.panel.value, morph.morphtype.value, len(morph.items)])
+		out += pack.my_string_pack(morph.name_jp)
+		out += pack.my_string_pack(morph.name_en)
+		
+		out += pack.my_pack(fmt_morph,[morph.panel.value, morph.morphtype.value, len(morph.items)])
 		
 		# for each morph in the group morph, or vertex in the vertex morph, or bone in the bone morph....
 		# what to unpack varies on morph type, 9 possibilities + some for v2.1
 		if morph.morphtype == pmxstruct.MorphType.GROUP:  # group
 			for z in morph.items:
 				z: pmxstruct.PmxMorphItemGroup
-				out += core.my_pack(fmt_morph_group, [z.morph_idx, z.value])
+				out += pack.my_pack(fmt_morph_group, [z.morph_idx, z.value])
 		elif morph.morphtype == pmxstruct.MorphType.VERTEX:  # vertex
 			for z in morph.items:
 				z: pmxstruct.PmxMorphItemVertex
-				out += core.my_pack(fmt_morph_vert, [z.vert_idx, *z.move])
+				out += pack.my_pack(fmt_morph_vert, [z.vert_idx, *z.move])
 		elif morph.morphtype == pmxstruct.MorphType.BONE:  # bone
 			for z in morph.items:
 				z: pmxstruct.PmxMorphItemBone
 				(rotqW, rotqX, rotqY, rotqZ) = core.euler_to_quaternion(z.rot)
 				# (bone_idx, transX, transY, transZ, rotqX, rotqY, rotqZ, rotqW)
-				out += core.my_pack(fmt_morph_bone, [z.bone_idx, *z.move, rotqX, rotqY, rotqZ, rotqW])
+				out += pack.my_pack(fmt_morph_bone, [z.bone_idx, *z.move, rotqX, rotqY, rotqZ, rotqW])
 		elif morph.morphtype in (pmxstruct.MorphType.UV,
 								 pmxstruct.MorphType.UV_EXT1,
 								 pmxstruct.MorphType.UV_EXT2,
@@ -922,7 +985,7 @@ def encode_pmx_morphs(nice: List[pmxstruct.PmxMorph]) -> bytearray:
 				z: pmxstruct.PmxMorphItemUV
 				# what these values do depends on the UV layer they are affecting, but the docs dont say what...
 				# oh well, i dont need to use them so i dont care :)
-				out += core.my_pack(fmt_morph_uv, [z.vert_idx, *z.move])
+				out += pack.my_pack(fmt_morph_uv, [z.vert_idx, *z.move])
 		elif morph.morphtype == pmxstruct.MorphType.MATERIAL:  # material
 			for z in morph.items:
 				z: pmxstruct.PmxMorphItemMaterial
@@ -931,47 +994,66 @@ def encode_pmx_morphs(nice: List[pmxstruct.PmxMorph]) -> bytearray:
 				# (texR, texG, texB, texA, sphR, sphG, sphB, sphA, toonR, toonG, toonB, toonA) = core.unpack("4f 4f 4f", raw)
 				packme = [z.mat_idx, z.is_add, *z.diffRGB, z.alpha, *z.specRGB, z.specpower, *z.ambRGB, *z.edgeRGB,
 						  z.edgealpha, z.edgesize, *z.texRGBA, *z.sphRGBA, *z.toonRGBA]
-				out += core.my_pack(fmt_morph_mat, packme)
+				out += pack.my_pack(fmt_morph_mat, packme)
 		elif morph.morphtype == pmxstruct.MorphType.FLIP:  # (2.1 only) flip
 			for z in morph.items:
 				z: pmxstruct.PmxMorphItemFlip
-				out += core.my_pack(fmt_morph_flip, [z.morph_idx, z.value])
+				out += pack.my_pack(fmt_morph_flip, [z.morph_idx, z.value])
 		elif morph.morphtype == pmxstruct.MorphType.IMPULSE:  # (2.1 only) impulse
 			for z in morph.items:
 				z: pmxstruct.PmxMorphItemImpulse
 				# (rb_idx, is_local, movX, movY, movZ, rotX, rotY, rotZ)
-				out += core.my_pack(fmt_morph_impulse, [z.rb_idx, z.is_local, *z.move, *z.rot])
+				out += pack.my_pack(fmt_morph_impulse, [z.rb_idx, z.is_local, *z.move, *z.rot])
 		else:
 			core.MY_PRINT_FUNC("unsupported morph type value", morph.morphtype)
 		
 		# display progress printouts
-		core.print_progress_oneline(ENCODE_PERCENT_VERTFACE + (ENCODE_PERCENT_MORPH * d / i))
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment * len(morph.items)
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
+
 	return out
 
 def encode_pmx_dispframes(nice: List[pmxstruct.PmxFrame]) -> bytearray:
 	# first item is int, how many dispframes
 	i = len(nice)
-	out = core.my_pack("i", i)
+	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of dispframes       =", i)
-	fmt_frame = "t t b i"
+	
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["frameitems"]
+
+	fmt_frame = "b i"
 	fmt_frame_item_morph = "b %s" % IDX_MORPH
 	fmt_frame_item_bone =  "b %s" % IDX_BONE
 	for d, frame in enumerate(nice):
 		# (name_jp, name_en, is_special, itemcount)
-		out += core.my_pack(fmt_frame, [frame.name_jp, frame.name_en, frame.is_special, len(frame.items)])
+		out += pack.my_string_pack(frame.name_jp)
+		out += pack.my_string_pack(frame.name_en)
+		out += pack.my_pack(fmt_frame, [frame.is_special, len(frame.items)])
 		
 		for item in frame.items:
-			if item.is_morph: out += core.my_pack(fmt_frame_item_morph, [item.is_morph, item.idx])
-			else:             out += core.my_pack(fmt_frame_item_bone, [item.is_morph, item.idx])
+			if item.is_morph: out += pack.my_pack(fmt_frame_item_morph, [item.is_morph, item.idx])
+			else:             out += pack.my_pack(fmt_frame_item_bone, [item.is_morph, item.idx])
+		# display progress printouts
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment * len(frame.items)
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
+	
 	return out
 
 def encode_pmx_rigidbodies(nice: List[pmxstruct.PmxRigidBody]) -> bytearray:
 	# first item is int, how many rigidbodies
 	i = len(nice)
-	out = core.my_pack("i", i)
+	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of rigidbodies      =", i)
-	fmt_rbody = "t t %s b H b 3f 3f 3f 5f b" % IDX_BONE
+	
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["rigidbodies"]
+
+	fmt_rbody = "%s b H b 3f 3f 3f 5f b" % IDX_BONE
 	for d, b in enumerate(nice):
+		out += pack.my_string_pack(b.name_jp)
+		out += pack.my_string_pack(b.name_en)
+		
 		# note: my struct holds rotation as XYZ degrees, must convert to radians for file
 		rot = [math.radians(r) for r in b.rot]
 		
@@ -984,27 +1066,41 @@ def encode_pmx_rigidbodies(nice: List[pmxstruct.PmxRigidBody]) -> bytearray:
 		for a in b.nocollide_set:
 			collide_mask &= ~(1<<(a-1))
 			
-		packme = [b.name_jp, b.name_en, b.bone_idx, group, collide_mask, b.shape.value, *b.size, *b.pos, *rot,
+		packme = [b.bone_idx, group, collide_mask, b.shape.value, *b.size, *b.pos, *rot,
 				  b.phys_mass, b.phys_move_damp, b.phys_rot_damp, b.phys_repel, b.phys_friction, b.phys_mode.value]
-		out += core.my_pack(fmt_rbody, packme)
+		out += pack.my_pack(fmt_rbody, packme)
+		# display progress printouts
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
 	
 	return out
 
 def encode_pmx_joints(nice: List[pmxstruct.PmxJoint]) -> bytearray:
 	# first item is int, how many joints
 	i = len(nice)
-	out = core.my_pack("i", i)
+	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of joints           =", i)
-	fmt_joint = "t t b 2%s 3f 3f 3f 3f 3f 3f 3f 3f" % IDX_RB
+	
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["joints"]
+
+	fmt_joint = "b 2%s 3f 3f 3f 3f 3f 3f 3f 3f" % IDX_RB
 	for d, j in enumerate(nice):
+		out += pack.my_string_pack(j.name_jp)
+		out += pack.my_string_pack(j.name_en)
+		
 		# note: my struct holds rot/rotmin/rotmax as XYZ degrees, must convert to radians for file
 		rot = [math.radians(r) for r in j.rot]
 		rotmin = [math.radians(r) for r in j.rotmin]
 		rotmax = [math.radians(r) for r in j.rotmax]
 		
-		packme = [j.name_jp, j.name_en, j.jointtype.value, j.rb1_idx, j.rb2_idx, *j.pos, *rot, *j.movemin,
+		packme = [j.jointtype.value, j.rb1_idx, j.rb2_idx, *j.pos, *rot, *j.movemin,
 				  *j.movemax, *rotmin, *rotmax, *j.movespring, *j.rotspring]
-		out += core.my_pack(fmt_joint, packme)
+		out += pack.my_pack(fmt_joint, packme)
+		# display progress printouts
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
+
 	return out
 
 def encode_pmx_softbodies(nice: List[pmxstruct.PmxSoftBody]) -> bytearray:
@@ -1012,38 +1108,102 @@ def encode_pmx_softbodies(nice: List[pmxstruct.PmxSoftBody]) -> bytearray:
 	# this is mostly to consume the data so there are no bytes left over when done parsing a file to trigger warnings
 	# note: this is also untested because i dont care about it lol
 	i = len(nice)
-	out = core.my_pack("i", i)
+	out = pack.my_pack("i", i)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...# of softbodies       =", i)
-	fmt_sb = "t t b %s b H b iiffi 12f 6f 7i" % IDX_MAT
+	
+	global ENCODE_PERCENTPOINT_SOFAR
+	progress_increment = ENCODE_PERCENTPOINT_WEIGHTS["softbodies"]
+
+	fmt_sb = "b %s b H b iiffi 12f 6f 7i" % IDX_MAT
 	fmt_sb_anchor = "%s %s b" % (IDX_RB, IDX_VERT)
 	for d, s in enumerate(nice):
+		out += pack.my_string_pack(s.name_jp)
+		out += pack.my_string_pack(s.name_en)
 		# (name_jp, name_en, shape, idx_mat, group, nocollide_mask, flags) = core.my_unpack("t t b" + IDX_MAT + "b H b", raw)
 		# (b_link_create_dist, num_clusters, total_mass, collision_marign, aerodynamics_model) = core.my_unpack("iiffi", raw)
 		# (vcf, dp, dg, lf, pr, vc, df, mt, rch, kch, sch, ah) = core.my_unpack("12f", raw)
 		# (srhr_cl, skhr_cl, sshr_cl, sr_splt_cl, sk_splt_cl, ss_splt_cl) = core.my_unpack("6f", raw)
 		# (v_it, p_it, d_it, c_it, mat_lst, mat_ast, mat_vst) = core.my_unpack("7i", raw)
 		packme = [
-			s.name_jp, s.name_en, s.shape, s.idx_mat, s.group, s.nocollide_mask, s.flags,
+			s.shape, s.idx_mat, s.group, s.nocollide_mask, s.flags,
 			s.b_link_create_dist, s.num_clusters, s.total_mass, s.collision_margin, s.aerodynamics_model,
 			s.vcf, s.dp, s.dg, s.lf, s.pr, s.vc, s.df, s.mt, s.rch, s.kch, s.sch, s.ah,
 			s.srhr_cl, s.skhr_cl, s.sshr_cl, s.sr_splt_cl, s.sk_splt_cl, s.ss_splt_cl,
 			s.v_it, s.p_it, s.d_it, s.c_it, s.mat_lst, s.mat_ast, s.mat_vst, s.anchors_list, s.vertex_pin_list
 		]
-		out += core.my_pack(fmt_sb, packme)
+		out += pack.my_pack(fmt_sb, packme)
 		
 		# (num_anchors)
-		out += core.my_pack("i", len(s.anchors_list))
+		out += pack.my_pack("i", len(s.anchors_list))
 		for anchor in s.anchors_list:
 			# (idx_rb, idx_vert, near_mode)
-			out += core.my_pack(fmt_sb_anchor, anchor)
+			out += pack.my_pack(fmt_sb_anchor, anchor)
 			
 		# (num_pins)
-		out += core.my_pack("i", len(s.vertex_pin_list))
+		out += pack.my_pack("i", len(s.vertex_pin_list))
 		for pin in s.vertex_pin_list:
-			out += core.my_pack(IDX_VERT, pin)
+			out += pack.my_pack(IDX_VERT, pin)
+		# display progress printouts
+		ENCODE_PERCENTPOINT_SOFAR += progress_increment
+		core.print_progress_oneline(ENCODE_PERCENTPOINT_SOFAR)
 	
 	return out
 
+def _prepare_progress_printouts_for_write_pmx(pmx: pmxstruct.Pmx) -> None:
+	# since i know the total size of the VMD object, and how many of each thing is within it,
+	# if i measure how long it takes to encode some number of each thing then I should be able to estimate
+	# how long it takes to encode each section and/or the whole thing!
+	# this function is to set global variables and stuff to aid with that goal
+
+	# verts, faces, and morphs are the only significant time sinks
+	# verts/faces/morphitems number ~10,000 to ~300,000
+	# this totally dwarfs the other categories... ~100 mats, ~500 bones/rigidbodies/joints/dispframes
+	# buuuuuuuuuuut i guess there's no harm in assigning weights to the smaller categories anyway
+	
+	relative_weights = {
+		# "header":		0,
+		"verts":		50,		# major
+		"faces":		8,		# major
+		# "textures":	0,
+		"materials":	100,
+		"bones":		80,
+		"morphitems":	8,		# major
+		"frameitems":	10,
+		"rigidbodies":	80,
+		"joints":		80,
+		"softbodies":	900,
+	}
+	total_relative_size = 0
+	total_relative_size += relative_weights["verts"] * len(pmx.verts)
+	total_relative_size += relative_weights["faces"] * len(pmx.faces)
+	total_relative_size += relative_weights["materials"] * len(pmx.materials)
+	total_relative_size += relative_weights["bones"] * len(pmx.bones)
+	total_relative_size += relative_weights["morphitems"] * sum(len(m.items) for m in pmx.morphs)
+	total_relative_size += relative_weights["frameitems"] * sum(len(m.items) for m in pmx.frames)
+	total_relative_size += relative_weights["rigidbodies"] * len(pmx.rigidbodies)
+	total_relative_size += relative_weights["joints"] * len(pmx.joints)
+	total_relative_size += relative_weights["softbodies"] * len(pmx.softbodies)
+	# deliberately skip textures cuz it would be messy, and header cuz it's just one atomic indivisible item
+	
+	# now i have the total relative size... normalize to 100%=1 and all the relative weights get reduced by same amount
+	factor = 1 / total_relative_size
+	for category, relative_value in relative_weights.items():
+		ENCODE_PERCENTPOINT_WEIGHTS[category] = relative_value * factor
+	
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["verts"] * len(pmx.verts))
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["faces"] * len(pmx.faces))
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["materials"] * len(pmx.materials))
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["bones"] * len(pmx.bones))
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["morphitems"] * sum(len(m.items) for m in pmx.morphs))
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["frameitems"] * sum(len(m.items) for m in pmx.frames))
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["rigidbodies"] * len(pmx.rigidbodies))
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["joints"] * len(pmx.joints))
+	# print(ENCODE_PERCENTPOINT_WEIGHTS["softbodies"] * len(pmx.softbodies))
+
+	global ENCODE_PERCENTPOINT_SOFAR
+	ENCODE_PERCENTPOINT_SOFAR = 0
+	
+	return
 
 ########################################################################################################################
 
@@ -1056,7 +1216,7 @@ def read_pmx(pmx_filename: str, moreinfo=False) -> pmxstruct.Pmx:
 	pmx_bytes = io.read_binfile_to_bytes(pmx_filename)
 	core.MY_PRINT_FUNC("...total size   = %s" % core.prettyprint_file_size(len(pmx_bytes)))
 	core.MY_PRINT_FUNC("Begin parsing PMX file '%s'" % pmx_filename_clean)
-	core.reset_unpack()
+	pack.reset_unpack()
 	core.print_progress_oneline(0)
 	A = parse_pmx_header(pmx_bytes)
 	if PMX_MOREINFO: core.MY_PRINT_FUNC("...PMX version  = v%s" % str(A.ver))
@@ -1077,11 +1237,11 @@ def read_pmx(pmx_filename: str, moreinfo=False) -> pmxstruct.Pmx:
 		# otherwise, dont
 		K = []
 	
-	bytes_remain = len(pmx_bytes) - core.get_readfrom_byte()
+	bytes_remain = len(pmx_bytes) - pack.UNPACKER_READFROM_BYTE
 	if bytes_remain != 0:
 		core.MY_PRINT_FUNC("Warning: finished parsing but %d bytes are left over at the tail!" % bytes_remain)
 		core.MY_PRINT_FUNC("The file may be corrupt or maybe it contains unknown/unsupported data formats")
-		core.MY_PRINT_FUNC(pmx_bytes[core.get_readfrom_byte():])
+		core.MY_PRINT_FUNC(pmx_bytes[pack.UNPACKER_READFROM_BYTE:])
 	core.MY_PRINT_FUNC("Done parsing PMX file '%s'" % pmx_filename_clean)
 	retme = pmxstruct.Pmx(header=A,
 						  verts=B,
@@ -1114,21 +1274,19 @@ def write_pmx(pmx_filename: str, pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 	# arg "pmx" is the same structure created by "read_pmx()"
 	# assume the object is perfect, no sanity-checking needed
 	output_bytes = bytearray()
-	global ENCODE_PERCENT_VERT
-	global ENCODE_PERCENT_FACE
-	global ENCODE_PERCENT_VERTFACE
-	global ENCODE_PERCENT_MORPH
 	
-	# total progress = verts + faces/4 + sum of morphs/2
-	total_vert = len(pmx.verts) * ENCODE_FACTOR_VERT
-	total_face = len(pmx.faces) * ENCODE_FACTOR_FACE
-	total_morph = sum([len(m.items) for m in pmx.morphs]) * ENCODE_FACTOR_MORPH
-	ALLPROGRESSIZE = total_vert + total_face + total_morph
-	ENCODE_PERCENT_VERT = total_vert / ALLPROGRESSIZE
-	ENCODE_PERCENT_FACE = total_face / ALLPROGRESSIZE
-	ENCODE_PERCENT_VERTFACE = ENCODE_PERCENT_VERT + ENCODE_PERCENT_FACE
-	ENCODE_PERCENT_MORPH = total_morph / ALLPROGRESSIZE
+	# # stress-test code
+	# pmx.verts = pmx.verts * 10
+	# pmx.faces = pmx.faces * 10
+	# pmx.materials = pmx.materials * 1000
+	# pmx.bones = pmx.bones * 1000
+	# pmx.morphs = pmx.morphs * 10
+	# pmx.frames = pmx.frames * 10
+	# pmx.rigidbodies = pmx.rigidbodies * 1000
+	# pmx.joints = pmx.joints * 1000
 	
+	_prepare_progress_printouts_for_write_pmx(pmx)
+
 	core.print_progress_oneline(0)
 	lookahead, tex_list = encode_pmx_lookahead(pmx)
 	output_bytes += encode_pmx_header(pmx.header, lookahead)
@@ -1158,14 +1316,37 @@ def write_pmx(pmx_filename: str, pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 ########################################################################################################################
 def main():
 	core.MY_PRINT_FUNC("Specify a PMX file to attempt parsing and writeback")
-	input_filename = core.prompt_user_filename("PMX file", ".pmx")
+	input_filename = core.MY_FILEPROMPT_FUNC("PMX file", ".pmx")
 	# input_filename = "pmxtest.pmx"
+	
+	TEMPNAME = "____pmxparser_selftest_DELETEME.pmx"
 	Z = read_pmx(input_filename, moreinfo=True)
-	write_pmx("____pmxparser_selftest_DELETEME.pmx", Z, moreinfo=True)
-	ZZ = read_pmx("____pmxparser_selftest_DELETEME.pmx", moreinfo=True)
-	core.MY_PRINT_FUNC("")
+	write_pmx(TEMPNAME, Z, moreinfo=True)
+	ZZ = read_pmx(TEMPNAME, moreinfo=True)
 	bb = io.read_binfile_to_bytes(input_filename)
-	bb2 = io.read_binfile_to_bytes("____pmxparser_selftest_DELETEME.pmx")
+	bb2 = io.read_binfile_to_bytes(TEMPNAME)
+	core.MY_PRINT_FUNC("")
+	core.MY_PRINT_FUNC("TIMING TEST:")
+	readtime = []
+	writetime = []
+	for i in range(10):
+		core.MY_PRINT_FUNC(i)
+		start = time.time()
+		_ = read_pmx(input_filename)
+		end = time.time()
+		readtime.append(end - start)
+	for i in range(10):
+		core.MY_PRINT_FUNC(i)
+		start = time.time()
+		write_pmx(TEMPNAME, Z)
+		end = time.time()
+		writetime.append(end - start)
+	core.MY_PRINT_FUNC("TIMING TEST RESULTS:", input_filename)
+	core.MY_PRINT_FUNC("READ")
+	core.MY_PRINT_FUNC("Avg = %f, min = %f, max = %f" % (sum(readtime)/len(readtime), min(readtime), max(readtime)))
+	core.MY_PRINT_FUNC("WRITE")
+	core.MY_PRINT_FUNC("Avg = %f, min = %f, max = %f" % (sum(writetime)/len(writetime), min(writetime), max(writetime)))
+	core.MY_PRINT_FUNC("")
 	core.MY_PRINT_FUNC("Is the binary EXACTLY identical to original?", bb == bb2)
 	exact_result = Z == ZZ
 	core.MY_PRINT_FUNC("Is the readback EXACTLY identical to original?", exact_result)

@@ -1,6 +1,8 @@
 import mmd_scripting.core.nuthouse01_core as core
+import mmd_scripting.core.nuthouse01_packer as pack
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_vmd_parser as vmdlib
+import mmd_scripting.core.nuthouse01_vmd_utils as vmdutil
 import mmd_scripting.core.nuthouse01_vpd_parser as vpdlib
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.03 - 10/10/2020"
@@ -43,13 +45,13 @@ def main(moreinfo=True):
 		vmd = vmdlib.read_vmd(input_filename, moreinfo=moreinfo)
 	else:
 		vmd = vpdlib.read_vpd(input_filename, moreinfo=moreinfo)
-	bonedict = vmdlib.parse_vmd_used_dict(vmd.boneframes, frametype="bone", moreinfo=moreinfo)
-	morphdict = vmdlib.parse_vmd_used_dict(vmd.morphframes, frametype="morph", moreinfo=moreinfo)
+	bonedict = vmdutil.parse_vmd_used_dict(vmd.boneframes, moreinfo=moreinfo)
+	morphdict = vmdutil.parse_vmd_used_dict(vmd.morphframes, moreinfo=moreinfo)
 	
 	core.MY_PRINT_FUNC("")
 	
 	# must use same encoding as I used when the VMD was unpacked, since the hex bytes only have meaning in that encoding
-	core.set_encoding("shift_jis")
+	pack.set_encoding("shift_jis")
 	
 	##############################################
 	# check morph compatability
@@ -72,7 +74,7 @@ def main(moreinfo=True):
 		morphs_in_model_b = []
 		for a in morphs_in_model:
 			try:
-				b = core.encode_string_with_escape(a)
+				b = pack.encode_string_with_escape(a)
 			except UnicodeEncodeError as e:
 				newerrstr = "%s: '%s' codec cannot encode char '%s' within string '%s'" % (
 					e.__class__.__name__, e.encoding, e.reason[e.start:e.end], e.reason)
@@ -82,7 +84,7 @@ def main(moreinfo=True):
 		
 		# convert vmd-morph names to bytes
 		# these might be truncated but cannot fail because they were already decoded from the shift_jis vmd file
-		morphs_in_vmd_b = [core.encode_string_with_escape(a) for a in morphs_in_vmd]
+		morphs_in_vmd_b = [pack.encode_string_with_escape(a) for a in morphs_in_vmd]
 		
 		matching_morphs = {}
 		missing_morphs = {}
@@ -101,11 +103,11 @@ def main(moreinfo=True):
 				missing_morphs[vmdmorph] = morphdict[vmdmorph]
 			elif len(modelmorphmatch_b) == 1:
 				# MATCH! key is the PMX morph name it matched against, since it might be a longer version wtihout escape char
-				matching_morphs[core.decode_bytes_with_escape(modelmorphmatch_b[0])] = morphdict[vmdmorph]
+				matching_morphs[pack.decode_bytes_with_escape(modelmorphmatch_b[0])] = morphdict[vmdmorph]
 			else:
 				# more than 1 morph was a match!?
 				core.MY_PRINT_FUNC("Warning: VMDmorph '%s' matched multiple PMXmorphs, its behavior is uncertain." % vmdmorph)
-				modelmorphmatch = [core.decode_bytes_with_escape(a) for a in modelmorphmatch_b]
+				modelmorphmatch = [pack.decode_bytes_with_escape(a) for a in modelmorphmatch_b]
 				# core.MY_PRINT_FUNC(modelmorphmatch)
 				matching_morphs[modelmorphmatch[0]] = morphdict[vmdmorph]
 		
@@ -166,7 +168,7 @@ def main(moreinfo=True):
 		bones_in_model_b = []
 		for a in bones_in_model:
 			try:
-				b = core.encode_string_with_escape(a)
+				b = pack.encode_string_with_escape(a)
 			except UnicodeEncodeError as e:
 				newerrstr = "%s: '%s' codec cannot encode char '%s' within string '%s'" % (
 					e.__class__.__name__, e.encoding, e.reason[e.start:e.end], e.reason)
@@ -176,7 +178,7 @@ def main(moreinfo=True):
 		
 		# convert vmd-bone names to bytes
 		# these might be truncated but cannot fail because they were already decoded from the shift_jis vmd file
-		bones_in_vmd_b = [core.encode_string_with_escape(a) for a in bones_in_vmd]
+		bones_in_vmd_b = [pack.encode_string_with_escape(a) for a in bones_in_vmd]
 		
 		matching_bones = {}
 		missing_bones = {}
@@ -195,11 +197,11 @@ def main(moreinfo=True):
 				missing_bones[vmdbone] = bonedict[vmdbone]
 			elif len(modelbonematch_b) == 1:
 				# MATCH! key is the PMX bone name it matched against, since it might be a longer version wtihout escape char
-				matching_bones[core.decode_bytes_with_escape(modelbonematch_b[0])] = bonedict[vmdbone]
+				matching_bones[pack.decode_bytes_with_escape(modelbonematch_b[0])] = bonedict[vmdbone]
 			else:
 				# more than 1 bone was a match!?
 				core.MY_PRINT_FUNC("Warning: VMDbone '%s' matched multiple PMXbones, its behavior is uncertain." % vmdbone)
-				modelbonematch = [core.decode_bytes_with_escape(a) for a in modelbonematch_b]
+				modelbonematch = [pack.decode_bytes_with_escape(a) for a in modelbonematch_b]
 				# core.MY_PRINT_FUNC(modelbonematch)
 				matching_bones[modelbonematch[0]] = bonedict[vmdbone]
 		

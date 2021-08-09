@@ -1,11 +1,11 @@
 import math
-from typing import List, Dict, TypeVar, Tuple, Optional, Sequence
+from typing import Tuple, Optional, Sequence
 
 # import numpy as np
 # import matplotlib.pyplot as plt
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_vmd_parser as vmdlib
-import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
+from mmd_scripting.core.nuthouse01_vmd_utils import dictify_framelist
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.08 - 6/3/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -89,28 +89,6 @@ Output: VMD file '[vmdname]_smoothed.vmd'
 '''
 
 
-# todo: move this to somewhere more central and visible
-BONEFRAME_OR_MORPHFRAME = TypeVar("BONEFRAME_OR_MORPHFRAME", vmdstruct.VmdBoneFrame, vmdstruct.VmdMorphFrame)
-def dictify_framelist(frames: List[BONEFRAME_OR_MORPHFRAME]) -> Dict[str, List[BONEFRAME_OR_MORPHFRAME]]:
-	"""
-	Split a list of boneframes into sublists where they are grouped by bone name. The sublists are
-	sorted by frame number. Also supports morph frames.
-	
-	:param frames: list of all boneframes in the vmd
-	:return: dict with keys being bonenames and values being list of frames for that bone in sorted order
-	"""
-	# first, split into sublists
-	retdict = {}
-	for t in frames:
-		try:
-			retdict[t.name].append(t)
-		except KeyError:
-			retdict[t.name] = [t]
-	# then, guarantee each sublist is in sorted order, sorted by frame number
-	for sublist in retdict.values():
-		sublist.sort(key=lambda x: x.f)
-	# return it
-	return retdict
 
 # don't touch these
 MAX_CIRCLE_RADIUS = 1.4142135623730951 / 2

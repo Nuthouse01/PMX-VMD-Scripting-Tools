@@ -1,11 +1,12 @@
 import os
+import shutil
 
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_io as io
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 from mmd_scripting.scripts_for_gui import file_sort_textures
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.02 - 7/30/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 8/9/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -19,6 +20,7 @@ except ImportError:
 # print extra messages when certain things fail in certain ways
 DEBUG = False
 
+TEMPORARY_RECOMPRESS_LOCATION = "../TEMPORARY_RECOMPRESS_LOCATION/"
 
 # this is recommended true, for obvious reasons
 MAKE_BACKUP_ZIPFILE = True
@@ -45,8 +47,8 @@ This tool will try to re-compress all image files in the file tree.
 Generally this means converting BMP/TGA/other images to PNG format, for maximum lossless image compression.
 JPEG image compression is more aggressive than PNG, so JPEG images will stay as JPEG. GIFs are weird so they are also not modified.
 This requires a PMX file to use as a root so it knows where to start reading files from.
-It creates a zipfile backup of the entire folder, just in case.
-This script does NOT ask for permission beforehand, it just creates a backup and does its thing, then afterwards it reports what it did.
+Before actually changing anything, it will list all proposed file renames and ask for final confirmation.
+It also creates a zipfile backup of the entire folder, just in case.
 Bonus: this can process all "neighbor" pmx files in addition to the target, this highly recommended because neighbors usually reference similar sets of files.
 
 Note: this script requires the Python library 'Pillow' to be installed.
@@ -59,13 +61,6 @@ Note: unlike my other scripts, this overwrites the original input PMX file(s) in
 # bmp will be re-compressed to png if the original bmp is in 15-bit or 16-bit encoding (mocumocudance compatability)
 # other image types are re-compressed to png if doing so saves 100kb or more
 # also, all images are renamed so that the file extension matches the actual image data format
-
-# TODO: refactor this! re-writing the images onto themself is a Bad Idea!
-#  1. create temp folder
-#  2. recompress to png & save into that temp foldder
-#  3. keep track of before name & after name
-#  4. display summary and ask for user confirm
-#  5. if yes, then create backup zip & replace the images & rewrite the PMXs
 
 def main(moreinfo=False):
 	# step zero: verify that Pillow exists
@@ -143,21 +138,11 @@ def main(moreinfo=False):
 	# =========================================================================================================
 	# DETERMINE NEW NAMES FOR FILES
 	
-	# first, create a backup of the folder
-	# save the name, so that i can delete it if i didn't make any changes
-	zipfile_name = ""
-	if MAKE_BACKUP_ZIPFILE:
-		r = file_sort_textures.make_zipfile_backup(startpath, BACKUP_SUFFIX)
-		if not r:
-			# this happens if the backup failed somehow AND the user decided to quit
-			core.MY_PRINT_FUNC("Aborting: no files were changed")
-			return None
-		zipfile_name = r
-		
-	# name used for temporary location
-	tempfilename = os.path.join(startpath,"temp_image_file_just_delete_me.png")
+	# note: need to put this tempdire ONE LEVEL UP or else it will be included in the zip! lol
+	tempdir = os.path.join(startpath, TEMPORARY_RECOMPRESS_LOCATION)
+	tempdir = os.path.normpath(tempdir)
+	os.makedirs(tempdir, exist_ok=True)
 	
-	pil_cannot_inspect = 0
 	pil_cannot_inspect_list = []
 	pil_imgext_mismatch = 0
 	
@@ -167,77 +152,98 @@ def main(moreinfo=False):
 	mem_saved = []
 	mem_original = []
 	
-	# make image persistient, so I know it always exists and I can always call "close" before open
-	im = None
-	
 	# only iterate over images that exist, obviously
 	image_filerecords = [f for f in filerecord_list if f.exists]
+	
+	virtual_nameset = set([f.name for f in image_filerecords])
+	
 	# iterate over the images
 	for i, p in enumerate(image_filerecords):
 		abspath = os.path.join(startpath, p.name)
 		orig_size = os.path.getsize(abspath)
 		mem_original.append(orig_size)
+		mem_saved.append(0)  # if i succesfully recompress this image, I will overwrite this 0
 
 		# if not moreinfo, then each line overwrites the previous like a progress printout does
 		# if moreinfo, then each line is printed permanently
 		core.MY_PRINT_FUNC("...analyzing {:>3}/{:>3}, file='{}', size={}                          ".format(
 			i+1, len(image_filerecords), p.name, core.prettyprint_file_size(orig_size)), is_progress=(not moreinfo))
-		mem_saved.append(0)
 
-		# before opening, try to close it just in case
-		if im is not None:
-			im.close()
 		# open the image & catch all possible errors
 		try:
 			im = Image.open(abspath)
 		except FileNotFoundError as eeee:
 			core.MY_PRINT_FUNC("FILESYSTEM MALFUNCTION!!", eeee.__class__.__name__, eeee)
 			core.MY_PRINT_FUNC("os.walk created a list of all filenames on disk, but then this filename doesn't exist when i try to open it?")
-			im = None
+			pil_cannot_inspect_list.append(p.name)
+			continue
 		except OSError as eeee:
 			# this has 2 causes, "Unsupported BMP bitfields layout" or "cannot identify image file"
 			if DEBUG:
 				print("CANNOT INSPECT!1", eeee.__class__.__name__, eeee, p.name)
-			im = None
+			pil_cannot_inspect_list.append(p.name)
+			continue
 		except NotImplementedError as eeee:
 			# this is because there's some DDS format it can't make sense of
 			if DEBUG:
 				print("CANNOT INSPECT!2", eeee.__class__.__name__, eeee, p.name)
-			im = None
-		if im is None:
-			pil_cannot_inspect += 1
 			pil_cannot_inspect_list.append(p.name)
 			continue
 			
 		if im.format not in IMG_TYPE_TO_EXT:
 			core.MY_PRINT_FUNC("WARNING: file '%s' has unusual image format '%s', attempting to continue" % (p.name, im.format))
+			
+		##################################################
 		# now the image is successfully opened!
 
-		newname = p.name
-		base, currext = os.path.splitext(newname)
+		base, currext = os.path.splitext(p.name)
+		newname_as_png = base + ".png"
+		if p.name != newname_as_png:
+			# if the newname is going to be the same, it came from the disk so it's already guaranteed unique
+			# if the newname is going to be different, it might collide with something else getting renamed to png!
+			# i might not end up going thru with the rename, but I should get the unique name figured out now.
+			# since I am simulating a rename, remove the original from the list.
+			virtual_nameset.remove(p.name)
+			newname_as_png = core.filepath_get_unused_name(newname_as_png, checkdisk=False, namelist=virtual_nameset)
+		newname_as_png_full = os.path.join(tempdir, newname_as_png)
 
 		# 1, depending on image format, attempt to re-save as PNG
 		if im.format not in IM_FORMAT_ALWAYS_SKIP:
-			# delete temp file if it still exists
-			if os.path.exists(tempfilename):
-				try:
-					os.remove(tempfilename)
-				except OSError as e:
-					core.MY_PRINT_FUNC(e.__class__.__name__, e)
-					core.MY_PRINT_FUNC("ERROR1: failed to delete temp image file '%s' during processing" % tempfilename)
-					break
-			# save to tempfilename with png format, use optimize=true
 			try:
-				im.save(tempfilename, format="PNG", optimize=True)
+				# create all needed subfolders for the destination
+				os.makedirs(os.path.dirname(newname_as_png_full), exist_ok=True)
+			except OSError as e:
+				core.MY_PRINT_FUNC(e.__class__.__name__, e)
+				core.MY_PRINT_FUNC("ERROR1: failed to create intermediate folders for '%s'" % newname_as_png_full)
+				virtual_nameset.add(p.name)  # aborted the rename, so put the original name back!
+				continue
+				
+			try:
+				# save to tempfilename with png format, use optimize=true
+				im.save(newname_as_png_full, format="PNG", optimize=True)
 			except OSError as e:
 				core.MY_PRINT_FUNC(e.__class__.__name__, e)
 				core.MY_PRINT_FUNC("ERROR2: failed to re-compress image '%s', original not modified" % p.name)
+				virtual_nameset.add(p.name)  # aborted the rename, so put the original name back!
 				continue
+				
+			##################################################################
+			# now i have succesfully re-saved the image as a PNG!
+			# next question, do I want to keep this result or the original?
+			
+			# the new version is kept if:
+			# 1) the new version is sufficiently smaller,
+			# 2) the old version is a filetype I specifically hate (dds, tga, tiff)
+			# 3) the old version is a known-bad BMP type,
+			
 			# measure & compare file size
-			new_size = os.path.getsize(tempfilename)
+			new_size = os.path.getsize(newname_as_png_full)
 			diff = orig_size - new_size
 			
-			# if using a 16-bit BMP format, re-save back to bmp with same name
+			is_sufficiently_smaller = (diff > (REQUIRED_COMPRESSION_AMOUNT_KB * 1024))
+			is_alwaysconvert_format = (im.format in IM_FORMAT_ALWAYS_CONVERT)
+			
+			# if using a 16-bit BMP format, i want to re-compress it
 			is_bad_bmp = False
 			if im.format == "BMP":
 				try:
@@ -246,73 +252,31 @@ def main(moreinfo=False):
 						is_bad_bmp = True
 				except Exception as e:
 					if DEBUG:
-						print(e.__class__.__name__, e, "BMP THING", p.name, im.tile)
+						print(e.__class__.__name__, e, "BMP CHECK FAILED", p.name, im.tile)
 
-			if diff > (REQUIRED_COMPRESSION_AMOUNT_KB * 1024) \
-					or is_bad_bmp\
-					or im.format in IM_FORMAT_ALWAYS_CONVERT:
-				# if it frees up at least XXX kb, i will keep it!
-				# also keep it if it is a bmp encoded with 15-bit or 16-bit colors
-				# set p.newname = png, and delete original and move tempname to base.png
-				try:
-					# delete original
-					io.check_and_fix_readonly(os.path.join(startpath, p.name))
-					os.remove(os.path.join(startpath, p.name))
-				except OSError as e:
-					core.MY_PRINT_FUNC(e.__class__.__name__, e)
-					core.MY_PRINT_FUNC("ERROR3: failed to delete old image '%s' after recompressing" % p.name)
-					continue
-				
-				newname = base + ".png"
-				# resolve potential collisions by adding numbers suffix to file names
-				# first need to make path absolute so filepath_get_unused_name can check the disk.
-				newname = os.path.join(startpath, newname)
-				# then check uniqueness against files on disk
-				newname = core.filepath_get_unused_name(newname)
-				# now dest path is guaranteed unique against other existing files
-				# make the path no longer absolute: undo adding "startpath" above
-				newname = os.path.relpath(newname, startpath)
-				
-				try:
-					# move new into place
-					os.rename(tempfilename, os.path.join(startpath, newname))
-				except OSError as e:
-					core.MY_PRINT_FUNC(e.__class__.__name__, e)
-					core.MY_PRINT_FUNC("ERROR4: after deleting original '%s', failed to move recompressed version into place!" % p.name)
-					continue
+			if is_sufficiently_smaller or is_bad_bmp or is_alwaysconvert_format:
+				# if any of these 3 is true, then I am going to keep it!
 				num_recompressed += 1
-				p.newname = newname
-				mem_saved[-1] = diff
+				p.newname = newname_as_png
+				virtual_nameset.add(newname_as_png)  # i'm keeping this rename, so add the new name to the set
+				mem_saved[-1] = diff  # overwrite the 0 at the end of the list with the correct value
 				continue # if succesfully re-saved, do not do the extension-checking below
-			# if this is not sufficiently compressed, do not use "continue", DO hit the extension-checking below
+			# 	# if this is not sufficiently compressed, do not use "continue", DO hit the extension-checking below
 			
 		# 2, if the file extension doesn't match with the image type, then make it match
 		# this only happens if the image was not re-saved above
 		if im.format in IMG_TYPE_TO_EXT and currext not in IMG_TYPE_TO_EXT[im.format]:
 			newname = base + IMG_TYPE_TO_EXT[im.format][0]
 			# resolve potential collisions by adding numbers suffix to file names
-			# first need to make path absolute so filepath_get_unused_name can check the disk.
-			newname = os.path.join(startpath, newname)
-			# then check uniqueness against files on disk
-			newname = core.filepath_get_unused_name(newname)
-			# now dest path is guaranteed unique against other existing files
-			# make the path no longer absolute: undo adding "startpath" above
-			newname = os.path.relpath(newname, startpath)
+			newname = core.filepath_get_unused_name(newname, checkdisk=False, namelist=virtual_nameset)
 			
-			# do the actual rename here & now
-			try:
-				# os.renames creates all necessary intermediate folders needed for the destination
-				# it also deletes the source folders if they become empty after the rename operation
-				os.renames(os.path.join(startpath, p.name), os.path.join(startpath, newname))
-			except OSError as e:
-				core.MY_PRINT_FUNC(e.__class__.__name__, e)
-				core.MY_PRINT_FUNC("ERROR5: unable to rename file '%s' --> '%s', attempting to continue with other file rename operations"
-					% (p.name, newname))
-				continue
-				
 			pil_imgext_mismatch += 1
 			p.newname = newname
+			virtual_nameset.add(newname)  # i'm keeping this rename, so add the new name to the set
 			continue
+		# since i didn't commit to any of the rename ideas, put the original name back
+		virtual_nameset.add(p.name)
+		pass
 	
 	# these must be the same length after iterating
 	assert len(mem_saved) == len(image_filerecords)
@@ -320,13 +284,6 @@ def main(moreinfo=False):
 	if im is not None:
 		im.close()
 	
-	# delete temp file if it still exists
-	if os.path.exists(tempfilename):
-		try:
-			os.remove(tempfilename)
-		except OSError as e:
-			core.MY_PRINT_FUNC(e.__class__.__name__, e)
-			core.MY_PRINT_FUNC("WARNING: failed to delete temp image file '%s' after processing" % tempfilename)
 	
 	# =========================================================================================================
 	# =========================================================================================================
@@ -335,70 +292,145 @@ def main(moreinfo=False):
 	# are there any with proposed renaming?
 	if not any(u.newname is not None for u in image_filerecords):
 		core.MY_PRINT_FUNC("No proposed file changes")
-		# if nothing was changed, delete the backup zip!
-		core.MY_PRINT_FUNC("Deleting backup archive")
-		if os.path.exists(zipfile_name):
-			try:
-				os.remove(zipfile_name)
-			except OSError as e:
-				core.MY_PRINT_FUNC(e.__class__.__name__, e)
-				core.MY_PRINT_FUNC("WARNING: failed to delete pointless zip file '%s'" % zipfile_name)
 		core.MY_PRINT_FUNC("Aborting: no files were changed")
+		# also delete the tempspace!
+		try:
+			shutil.rmtree(tempdir)
+		except OSError as e:
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
+			core.MY_PRINT_FUNC("ERROR3: failed to delete temporary folder '%s'" % tempdir)
 		return None
 
 	# =========================================================================================================
 	# =========================================================================================================
 	# =========================================================================================================
 
-	# finally, do the actual renaming:
-	
-	# do all renaming in PMXes
-	file_sort_textures.apply_file_renaming(all_pmx_obj, image_filerecords, startpath, skipdiskrename=True)
-	
-	# write out
-	for this_pmx_name, this_pmx_obj in all_pmx_obj.items():
-		# NOTE: this is OVERWRITING THE PREVIOUS PMX FILE, NOT CREATING A NEW ONE
-		# because I make a zipfile backup I don't need to feel worried about preserving the old version
-		output_filename_pmx = os.path.join(startpath, this_pmx_name)
-		# output_filename_pmx = core.filepath_get_unused_name(output_filename_pmx)
-		pmxlib.write_pmx(output_filename_pmx, this_pmx_obj, moreinfo=moreinfo)
-	
-	# =========================================================================================================
-	# =========================================================================================================
-	# =========================================================================================================
-	# NOW PRINT MY RENAMINGS and other findings
-	
+	# now, display all the proposed changes...
 	mem_new = [original - saved for original, saved in zip(mem_original, mem_saved)]
 	
 	# attach the mem-savings to the name and stuff
 	filerecord_with_savings = list(zip(image_filerecords, mem_saved))
 	# sort descending by savings, most savings first
 	filerecord_with_savings.sort(key=core.get2nd, reverse=True)
+	# filter it
 	changed_files = [u for u in filerecord_with_savings if u[0].newname is not None]
 
 	core.MY_PRINT_FUNC("="*60)
-	if pil_cannot_inspect:
-		core.MY_PRINT_FUNC("WARNING: failed to inspect %d image files, these must be handled manually" % pil_cannot_inspect)
+	if pil_cannot_inspect_list:
+		core.MY_PRINT_FUNC("WARNING: failed to inspect %d image files, these must be handled manually" % len(pil_cannot_inspect_list))
 		core.MY_PRINT_FUNC(pil_cannot_inspect_list)
 	if num_recompressed:
 		core.MY_PRINT_FUNC("Recompressed %d images! %s of disk space has been freed" % (num_recompressed, core.prettyprint_file_size(sum(mem_saved))))
 		core.MY_PRINT_FUNC("Reduction = {:.1%}... initial size = {:s}, new size = {:s}".format(
 			sum(mem_saved)/sum(mem_original),
 			core.prettyprint_file_size(sum(mem_original)),
-			core.prettyprint_file_size(sum(mem_new)),
-			))
+			core.prettyprint_file_size(sum(mem_new)),))
 	if pil_imgext_mismatch:
 		core.MY_PRINT_FUNC("Renamed %d images that had incorrect extensions (included below)" % pil_imgext_mismatch)
-	oldname_list = [p[0].name for p in changed_files]
+	oldname_list = []
+	newname_list = []
+	savings_list = []
+	for C,saved in changed_files:
+		oldname_list.append(C.name)
+		if saved == 0:  savings_list.append("")
+		elif saved > 0: savings_list.append("reduced " + core.prettyprint_file_size(saved))
+		else:           savings_list.append("increased " + core.prettyprint_file_size(abs(saved)))
+		# if newname == oldname, then just display "SAME-NAME" instead
+		if C.newname == C.name: newname_list.append("SAME-NAME")
+		else:                   newname_list.append(C.newname)
+	# justify the first 2 columns
 	oldname_list_j = core.MY_JUSTIFY_STRINGLIST(oldname_list)
-	newname_list = [p[0].newname for p in changed_files]
 	newname_list_j = core.MY_JUSTIFY_STRINGLIST(newname_list)
-	savings_list = [("" if p[1]==0 else "saved " + core.prettyprint_file_size(p[1])) for p in changed_files]
-	zipped = list(zip(oldname_list_j, newname_list_j, savings_list))
+	# zip everything for easy iter
+	zipped = zip(oldname_list_j, newname_list_j, savings_list)
 	for o,n,s in zipped:
 		# print 'from' with the case/separator it uses in the PMX
 		core.MY_PRINT_FUNC("   {:s} --> {:s} | {:s}".format(o, n, s))
+	
+	info = ["Do you accept these new names/locations?",
+			"1 = Yes, 2 = No (abort)"]
+	r = core.MY_SIMPLECHOICE_FUNC((1, 2), info)
+	if r == 2:
+		core.MY_PRINT_FUNC("Aborting: no files were changed")
+		# also delete the tempspace!
+		try:
+			shutil.rmtree(tempdir)
+		except OSError as e:
+			core.MY_PRINT_FUNC(e.__class__.__name__, e)
+			core.MY_PRINT_FUNC("ERROR4: failed to delete temporary folder '%s'" % tempdir)
+		return None
+
+	# =========================================================================================================
+	# =========================================================================================================
+	# =========================================================================================================
+	# NOW do the actual renaming!
+	
+	# first, create a backup of the folder
+	if MAKE_BACKUP_ZIPFILE:
+		r = file_sort_textures.make_zipfile_backup(startpath, BACKUP_SUFFIX)
+		if not r:
+			# this happens if the backup failed somehow AND the user decided to quit
+			core.MY_PRINT_FUNC("Aborting: no files were changed")
+			# also delete the tempspace!
+			try:
+				shutil.rmtree(tempdir)
+			except OSError as e:
+				core.MY_PRINT_FUNC(e.__class__.__name__, e)
+				core.MY_PRINT_FUNC("ERROR6: failed to delete temporary folder '%s'" % tempdir)
+			return None
 		
+	# then, replace the original images with the new versions
+	core.MY_PRINT_FUNC("...renaming files on disk...")
+	for C,saved in changed_files:
+		# if this file exists on disk and there is a new name for this file,
+		if C.exists and C.newname is not None:
+			path_original = os.path.join(startpath, C.name)
+			path_newfrom = os.path.join(tempdir, C.newname)
+			path_newto = os.path.join(startpath, C.newname)
+			
+			# 1. delete C.name
+			try:
+				io.check_and_fix_readonly(path_original)
+				os.remove(path_original)
+			except OSError as e:
+				core.MY_PRINT_FUNC(e.__class__.__name__, e)
+				core.MY_PRINT_FUNC("ERROR: failed to delete original image file '%s'" % path_original)
+				core.MY_PRINT_FUNC("I will try to continue.")
+			
+			# 2. move C.newname from tempdir to proper dir
+			try:
+				# os.renames creates all necessary intermediate folders needed for the destination
+				# it also deletes the source folders if they become empty after the rename operation
+				os.renames(path_newfrom, path_newto)
+			except OSError as e:
+				# ending the operation halfway through is unacceptable! attempt to continue
+				core.MY_PRINT_FUNC(e.__class__.__name__, e)
+				core.MY_PRINT_FUNC("ERROR: failed to move newly-compressed file '%s' to location '%s'" % (path_newfrom, path_newto))
+				core.MY_PRINT_FUNC("I will try to continue.")
+				# change this to empty to signify that it didn't actually get moved, check this before changing PMX paths
+				C.newname = None
+	
+	# lastly, do all renaming in PMXes, but only if some of the names changed!
+	# if i renamed a few .pngs to the same names, no point in re-writing the PMXs
+	if any((u.newname != u.name and u.newname is not None)for u in image_filerecords):
+		file_sort_textures.apply_file_renaming(all_pmx_obj, image_filerecords, startpath, skipdiskrename=True)
+		# write out
+		for this_pmx_name, this_pmx_obj in all_pmx_obj.items():
+			# NOTE: this is OVERWRITING THE PREVIOUS PMX FILE, NOT CREATING A NEW ONE
+			# because I make a zipfile backup I don't need to feel worried about preserving the old version
+			output_filename_pmx = os.path.join(startpath, this_pmx_name)
+			# output_filename_pmx = core.filepath_get_unused_name(output_filename_pmx)
+			pmxlib.write_pmx(output_filename_pmx, this_pmx_obj, moreinfo=moreinfo)
+	else:
+		core.MY_PRINT_FUNC("No names were changed, no need to re-write the PMX.")
+	
+	# also delete the tempspace!
+	try:
+		shutil.rmtree(tempdir)
+	except OSError as e:
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		core.MY_PRINT_FUNC("ERROR5: failed to delete temporary folder '%s'" % tempdir)
+	
 	core.MY_PRINT_FUNC("Done!")
 	return None
 
