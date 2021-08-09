@@ -706,26 +706,24 @@ def encode_pmx_vertices(nice: List[pmxstruct.PmxVertex]) -> bytearray:
 		# convert the list of bone-weight pairs to the format/order used in the binary file
 		# # how many pairs have a real bone or a real weight?
 		# real_weight_count = sum([(a[0] > 0 or a[1]) != 0 for a in w])
-		wo = []
 		if wtype == pmxstruct.WeightMode.BDEF1:
 			while len(w) < 1: w.append([0, 0])  # pad with [0,0] till we have enough members
 			# 0 = BDEF1 = [b1]
-			wo = [w[0][0]]
+			return [w[0][0]]
 		elif wtype in (pmxstruct.WeightMode.BDEF2, pmxstruct.WeightMode.SDEF):
 			while len(w) < 2: w.append([0, 0])  # pad with [0,0] till we have enough members
 			# 1 = BDEF2 = [b1, b2, b1w]
 			# 3 = sdef =  [b1, b2, b1w] + weight_sdef = [[c1, c2, c3], [r01, r02, r03], [r11, r12, r13]]
-			wo = [w[0][0],
-				  w[1][0],
-				  w[0][1]]
+			return [w[0][0],
+					w[1][0],
+					w[0][1]]
 		elif wtype in (pmxstruct.WeightMode.BDEF4, pmxstruct.WeightMode.QDEF):
 			while len(w) < 4: w.append([0, 0])  # pad with [0,0] till we have enough members
 			# 2 = BDEF4 = [b1, b2, b3, b4, b1w, b2w, b3w, b4w]
 			# 4 = qdef =  [b1, b2, b3, b4, b1w, b2w, b3w, b4w]  (only in pmx v2.1)
-			wo = [w[0][0], w[1][0], w[2][0], w[3][0],
-				  w[0][1], w[1][1], w[2][1], w[3][1],
-				  ]
-		return wo
+			return [w[0][0], w[1][0], w[2][0], w[3][0],
+					w[0][1], w[1][1], w[2][1], w[3][1],]
+		raise ValueError("error: weighttype is not supported", wtype)
 	
 	for d, vert in enumerate(nice):
 		# first, basic stuff
