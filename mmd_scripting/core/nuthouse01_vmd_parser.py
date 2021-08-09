@@ -146,7 +146,7 @@ def parse_vmd_boneframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdBoneF
 	# get all the bone-frames, store in a list of lists
 	boneframe_list = []
 	# verify that there is enough file left to read a single number
-	if (len(raw) - pack.get_readfrom_byte()) < struct.calcsize(fmt_number):
+	if (len(raw) - pack.UNPACKER_READFROM_BYTE) < struct.calcsize(fmt_number):
 		core.MY_PRINT_FUNC("Warning: expected boneframe_ct field but file ended unexpectedly! Assuming 0 boneframes and continuing...")
 		return boneframe_list
 
@@ -187,7 +187,7 @@ def parse_vmd_boneframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdBoneF
 			)
 			boneframe_list.append(this_boneframe)
 			# display progress printouts
-			core.print_progress_oneline(pack.get_readfrom_byte() / len(raw))
+			core.print_progress_oneline(pack.UNPACKER_READFROM_BYTE / len(raw))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("frame=", z)
@@ -202,7 +202,7 @@ def parse_vmd_morphframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdMorp
 	# get all the morph-frames, store in a list of lists
 	morphframe_list = []
 	# is there enough file left to read a single number?
-	if (len(raw) - pack.get_readfrom_byte()) < struct.calcsize(fmt_number):
+	if (len(raw) - pack.UNPACKER_READFROM_BYTE) < struct.calcsize(fmt_number):
 		core.MY_PRINT_FUNC("Warning: expected morphframe_ct field but file ended unexpectedly! Assuming 0 morphframes and continuing...")
 		return morphframe_list
 	
@@ -218,7 +218,7 @@ def parse_vmd_morphframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdMorp
 			morphframe_list.append(vmdstruct.VmdMorphFrame(name=mname_str, f=f, val=v))
 			
 			# display progress printouts
-			core.print_progress_oneline(pack.get_readfrom_byte() / len(raw))
+			core.print_progress_oneline(pack.UNPACKER_READFROM_BYTE / len(raw))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("frame=", z)
@@ -232,7 +232,7 @@ def parse_vmd_morphframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdMorp
 def parse_vmd_camframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdCamFrame]:
 	camframe_list = []
 	# is there enough file left to read a single number?
-	if (len(raw) - pack.get_readfrom_byte()) < struct.calcsize(fmt_number):
+	if (len(raw) - pack.UNPACKER_READFROM_BYTE) < struct.calcsize(fmt_number):
 		core.MY_PRINT_FUNC("Warning: expected camframe_ct field but file ended unexpectedly! Assuming 0 camframes and continuing...")
 		return camframe_list
 	############################
@@ -258,7 +258,7 @@ def parse_vmd_camframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdCamFra
 										perspective=per)
 			camframe_list.append(this_camframe)
 			# display progress printouts
-			core.print_progress_oneline(pack.get_readfrom_byte() / len(raw))
+			core.print_progress_oneline(pack.UNPACKER_READFROM_BYTE / len(raw))
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("frame=", z)
@@ -272,7 +272,7 @@ def parse_vmd_camframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdCamFra
 def parse_vmd_lightframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdLightFrame]:
 	lightframe_list = []
 	# is there enough file left to read a single number?
-	if (len(raw) - pack.get_readfrom_byte()) < struct.calcsize(fmt_number):
+	if (len(raw) - pack.UNPACKER_READFROM_BYTE) < struct.calcsize(fmt_number):
 		core.MY_PRINT_FUNC("Warning: expected lightframe_ct field but file ended unexpectedly! Assuming 0 lightframes and continuing...")
 		return lightframe_list
 	############################
@@ -299,7 +299,7 @@ def parse_vmd_lightframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdLigh
 def parse_vmd_shadowframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdShadowFrame]:
 	shadowframe_list = []
 	# is there enough file left to read a single number?
-	if (len(raw) - pack.get_readfrom_byte()) < struct.calcsize(fmt_number):
+	if (len(raw) - pack.UNPACKER_READFROM_BYTE) < struct.calcsize(fmt_number):
 		core.MY_PRINT_FUNC("Warning: expected shadowframe_ct field but file ended unexpectedly! Assuming 0 shadowframes and continuing...")
 		return shadowframe_list
 
@@ -327,7 +327,7 @@ def parse_vmd_shadowframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdSha
 def parse_vmd_ikdispframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdIkdispFrame]:
 	ikdispframe_list = []
 	# is there enough file left to read a single number?
-	if (len(raw) - pack.get_readfrom_byte()) < struct.calcsize(fmt_number):
+	if (len(raw) - pack.UNPACKER_READFROM_BYTE) < struct.calcsize(fmt_number):
 		core.MY_PRINT_FUNC("Warning: expected ikdispframe_ct field but file ended unexpectedly! Assuming 0 ikdispframes and continuing...")
 		return ikdispframe_list
 
@@ -564,10 +564,10 @@ def read_vmd(vmd_filename: str, moreinfo=False) -> vmdstruct.Vmd:
 	G = parse_vmd_ikdispframe(vmd_bytes, moreinfo)
 	if moreinfo: pack.print_failed_decodes()
 	
-	bytes_remain = len(vmd_bytes) - pack.get_readfrom_byte()
+	bytes_remain = len(vmd_bytes) - pack.UNPACKER_READFROM_BYTE
 	if bytes_remain != 0:
 		# padding with my SIGNATURE is acceptable, anything else is strange
-		leftover = vmd_bytes[pack.get_readfrom_byte():]
+		leftover = vmd_bytes[pack.UNPACKER_READFROM_BYTE:]
 		if leftover == bytes(SIGNATURE, encoding="shift_jis"):
 			core.MY_PRINT_FUNC("...note: this VMD file was previously modified with this tool!")
 		else:

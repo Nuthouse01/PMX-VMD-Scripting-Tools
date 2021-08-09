@@ -218,7 +218,7 @@ def parse_pmx_vertices(raw: bytearray) -> List[pmxstruct.PmxVertex]:
 		weight_pairs = weightbinary_to_weightpairs(weighttype, weights)
 
 		# display progress printouts
-		core.print_progress_oneline(pack.get_readfrom_byte() / len(raw))
+		core.print_progress_oneline(pack.UNPACKER_READFROM_BYTE / len(raw))
 		# assemble all the info into a struct for returning
 		thisvert = pmxstruct.PmxVertex(pos=[posX, posY, posZ], norm=[normX, normY, normZ], uv=[u, v],
 									   weighttype=weighttype, weight=weight_pairs, weight_sdef=weight_sdef,
@@ -239,7 +239,7 @@ def parse_pmx_surfaces(raw: bytearray) -> List[List[int]]:
 		# each entry is a group of 3 vertex indeces that make a face
 		thisface = pack.my_unpack("3" + IDX_VERT, raw)
 		# display progress printouts
-		core.print_progress_oneline(pack.get_readfrom_byte() / len(raw))
+		core.print_progress_oneline(pack.UNPACKER_READFROM_BYTE / len(raw))
 		retme.append(thisface)
 	return retme
 
@@ -459,7 +459,7 @@ def parse_pmx_morphs(raw: bytearray) -> List[pmxstruct.PmxMorph]:
 			raise RuntimeError("unsupported morph type value", morphtype)
 		
 		# display progress printouts
-		core.print_progress_oneline(pack.get_readfrom_byte() / len(raw))
+		core.print_progress_oneline(pack.UNPACKER_READFROM_BYTE / len(raw))
 		# assemble the data into struct for returning
 		thismorph = pmxstruct.PmxMorph(name_jp=name_jp, name_en=name_en, panel=panel, morphtype=morphtype, items=these_items)
 		retme.append(thismorph)
@@ -518,7 +518,7 @@ def parse_pmx_rigidbodies(raw: bytearray) -> List[pmxstruct.PmxRigidBody]:
 				nocollide_set.add(a+1)
 		
 		# display progress printouts
-		core.print_progress_oneline(pack.get_readfrom_byte() / len(raw))
+		core.print_progress_oneline(pack.UNPACKER_READFROM_BYTE / len(raw))
 		# assemble the data into struct for returning
 		thisbody = pmxstruct.PmxRigidBody(name_jp=name_jp, name_en=name_en, bone_idx=bone_idx, pos=[posX, posY, posZ],
 										  rot=rot, size=[sizeX, sizeY, sizeZ], shape=shape, group=group,
@@ -550,7 +550,7 @@ def parse_pmx_joints(raw: bytearray) -> List[pmxstruct.PmxJoint]:
 		rotmax = [math.degrees(rotmaxX), math.degrees(rotmaxY), math.degrees(rotmaxZ)]
 		
 		# display progress printouts
-		core.print_progress_oneline(pack.get_readfrom_byte() / len(raw))
+		core.print_progress_oneline(pack.UNPACKER_READFROM_BYTE / len(raw))
 		# assemble the data into list for returning
 		thisjoint = pmxstruct.PmxJoint(name_jp=name_jp, name_en=name_en, jointtype=jointtype,
 			rb1_idx=rb1_idx, rb2_idx=rb2_idx, pos=[posX, posY, posZ], rot=rot,
@@ -1130,11 +1130,11 @@ def read_pmx(pmx_filename: str, moreinfo=False) -> pmxstruct.Pmx:
 		# otherwise, dont
 		K = []
 	
-	bytes_remain = len(pmx_bytes) - pack.get_readfrom_byte()
+	bytes_remain = len(pmx_bytes) - pack.UNPACKER_READFROM_BYTE
 	if bytes_remain != 0:
 		core.MY_PRINT_FUNC("Warning: finished parsing but %d bytes are left over at the tail!" % bytes_remain)
 		core.MY_PRINT_FUNC("The file may be corrupt or maybe it contains unknown/unsupported data formats")
-		core.MY_PRINT_FUNC(pmx_bytes[pack.get_readfrom_byte():])
+		core.MY_PRINT_FUNC(pmx_bytes[pack.UNPACKER_READFROM_BYTE:])
 	core.MY_PRINT_FUNC("Done parsing PMX file '%s'" % pmx_filename_clean)
 	retme = pmxstruct.Pmx(header=A,
 						  verts=B,
