@@ -31,27 +31,27 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 8/6/2021"
 # variable to keep track of where to start reading from next within the raw-file
 UNPACKER_READFROM_BYTE = 0
 # this should be hardcoded and never changed, something weird that nobody would ever use in a name
-UNPACKER_ESCAPE_CHAR = "‡"
+_UNPACKER_ESCAPE_CHAR = "‡"
 # encoding to use when packing/unpackign strings
-UNPACKER_ENCODING = "utf8"
+_UNPACKER_ENCODING = "utf8"
 # dict to store all strings that failed to translate, plus counts
-UNPACKER_FAILED_TRANSLATE_DICT = defaultdict(lambda: 0)
+_UNPACKER_FAILED_TRANSLATE_DICT = defaultdict(lambda: 0)
 # flag to indicate whether the last decoding needed escaping or not, cuz returning as a tuple is ugly
-UNPACKER_FAILED_TRANSLATE_FLAG = False
+_UNPACKER_FAILED_TRANSLATE_FLAG = False
 
 
 # why do things with accessor functions? ¯\_(ツ)_/¯ cuz i want to
 def reset_unpack():
 	global UNPACKER_READFROM_BYTE
 	UNPACKER_READFROM_BYTE = 0
-	UNPACKER_FAILED_TRANSLATE_DICT.clear()
+	_UNPACKER_FAILED_TRANSLATE_DICT.clear()
 def set_encoding(newencoding: str):
-	global UNPACKER_ENCODING
-	UNPACKER_ENCODING = newencoding
+	global _UNPACKER_ENCODING
+	_UNPACKER_ENCODING = newencoding
 def print_failed_decodes():
-	if len(UNPACKER_FAILED_TRANSLATE_DICT) != 0:
+	if len(_UNPACKER_FAILED_TRANSLATE_DICT) != 0:
 		core.MY_PRINT_FUNC("List of all strings that failed to decode, plus their occurance rate")
-		core.MY_PRINT_FUNC(UNPACKER_FAILED_TRANSLATE_DICT)
+		core.MY_PRINT_FUNC(_UNPACKER_FAILED_TRANSLATE_DICT)
 
 
 def decode_bytes_with_escape(r: bytearray) -> str:
@@ -67,18 +67,18 @@ def decode_bytes_with_escape(r: bytearray) -> str:
 	:param r: bytearray object which represents a string through encoding UNPACKER_ENCODING
 	:return: decoded string, possibly ending with escape char and hex digits
 	"""
-	global UNPACKER_FAILED_TRANSLATE_FLAG
+	global _UNPACKER_FAILED_TRANSLATE_FLAG
 	if len(r) == 0:
 		# this is needed to prevent infinite recursion if something goes really really wrong
 		return ""
 	try:
-		s = r.decode(UNPACKER_ENCODING)				# try to decode the whole string
+		s = r.decode(_UNPACKER_ENCODING)				# try to decode the whole string
 		return s
 	except UnicodeDecodeError:
-		UNPACKER_FAILED_TRANSLATE_FLAG = True
+		_UNPACKER_FAILED_TRANSLATE_FLAG = True
 		s = decode_bytes_with_escape(r[:-1])		# if it cant, decode everything but the last byte
 		extra = r[-1]  								# this is the last byte that couldn't be decoded
-		s = "%s%s%x" % (s, UNPACKER_ESCAPE_CHAR, extra)
+		s = "%s%s%x" % (s, _UNPACKER_ESCAPE_CHAR, extra)
 		return s
 
 
@@ -100,17 +100,17 @@ def encode_string_with_escape(a: str) -> bytearray:
 		return bytearray()
 	try:
 		if len(a) > 3:									# is it long enough to maybe contain an escape char?
-			if a[-3] == UNPACKER_ESCAPE_CHAR:			# check if 3rd from end is an escape char
+			if a[-3] == _UNPACKER_ESCAPE_CHAR:			# check if 3rd from end is an escape char
 				n = encode_string_with_escape(a[0:-3])	# convert str before escape from str to bytearray
 				n += bytearray.fromhex(a[-2:])			# convert hex after escape char to single byte and append
 				return n
-		return bytearray(a, UNPACKER_ENCODING)			# no escape char: convert from str to bytearray the standard way
+		return bytearray(a, _UNPACKER_ENCODING)			# no escape char: convert from str to bytearray the standard way
 	except UnicodeEncodeError:
 		# if the decode fails, I hope it is because the input string contains a fullwidth tilde, that's the only error i know how to handle
 		# NOTE: there are probably other things that can fail that I just dont know about yet
 		new_a = a.replace(u"\uFF5E", u"\u301c")			# replace "fullwidth tilde" with "wave dash", same as MMD does
 		try:
-			return bytearray(new_a, UNPACKER_ENCODING)	# no escape char: convert from str to bytearray the standard way
+			return bytearray(new_a, _UNPACKER_ENCODING)	# no escape char: convert from str to bytearray the standard way
 		except UnicodeEncodeError as e:
 			# overwrite the 'reason' field with the original string it was trying to encode
 			e.reason = a
@@ -240,7 +240,7 @@ def my_string_unpack(data: bytearray, L=None) -> str:
 	:param L: optional integer length, number of bytes in the resulting bytearray
 	:return: decoded string
 	"""
-	global UNPACKER_FAILED_TRANSLATE_FLAG
+	global _UNPACKER_FAILED_TRANSLATE_FLAG
 
 	try:
 		if L is None:
@@ -270,9 +270,9 @@ def my_string_unpack(data: bytearray, L=None) -> str:
 		raise
 	# translated string is now in s (maybe with the escape char tacked on)
 	# did it need escaping? add it to the dict for reporting later!
-	if UNPACKER_FAILED_TRANSLATE_FLAG:
-		UNPACKER_FAILED_TRANSLATE_FLAG = False
-		UNPACKER_FAILED_TRANSLATE_DICT[s] += 1
+	if _UNPACKER_FAILED_TRANSLATE_FLAG:
+		_UNPACKER_FAILED_TRANSLATE_FLAG = False
+		_UNPACKER_FAILED_TRANSLATE_DICT[s] += 1
 	return s
 
 
