@@ -610,18 +610,15 @@ def build_texture_list(thispmx: pmxstruct.Pmx) -> List[str]:
 	:return: list of filepath strings
 	"""
 	# built the ordered list of unique filepaths among all materials, excluding the builtin toons
+	# empty string means "does not reference a file"
 	tex_list = []
 	for mat in thispmx.materials:
-		if mat.tex_path not in tex_list:
+		if (mat.tex_path not in tex_list) and (mat.tex_path != ""):
 			tex_list.append(mat.tex_path)
-		if mat.sph_path not in tex_list:
+		if (mat.sph_path not in tex_list) and (mat.sph_path != ""):
 			tex_list.append(mat.sph_path)
-		if mat.toon_path not in BUILTIN_TOON_DICT:
-			if mat.toon_path not in tex_list:
+		if (mat.toon_path not in tex_list) and (mat.toon_path != "") and (mat.toon_path not in BUILTIN_TOON_DICT):
 				tex_list.append(mat.toon_path)
-	# remove the empty string from the list, if it's in there
-	if "" in tex_list:
-		tex_list.remove("")
 	return tex_list
 
 def encode_pmx_lookahead(thispmx: pmxstruct.Pmx) -> Tuple[List[int], List[str]]:
@@ -1099,6 +1096,9 @@ def encode_pmx_softbodies(nice: List[pmxstruct.PmxSoftBody]) -> bytearray:
 	
 	return out
 
+		PERCENTPOINT_WEIGHTS[category] = relative_value * factor
+	
+	return
 
 ########################################################################################################################
 
@@ -1170,7 +1170,6 @@ def write_pmx(pmx_filename: str, pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 	# assume the object is perfect, no sanity-checking needed
 	output_bytes = bytearray()
 	global ENCODE_PERCENT_VERT
-	global ENCODE_PERCENT_FACE
 	global ENCODE_PERCENT_VERTFACE
 	global ENCODE_PERCENT_MORPH
 	
@@ -1183,6 +1182,9 @@ def write_pmx(pmx_filename: str, pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 	ENCODE_PERCENT_FACE = total_face / ALLPROGRESSIZE
 	ENCODE_PERCENT_VERTFACE = ENCODE_PERCENT_VERT + ENCODE_PERCENT_FACE
 	ENCODE_PERCENT_MORPH = total_morph / ALLPROGRESSIZE
+	# ENCODE_PERCENT_FACE = total_face / ALLPROGRESSIZE
+	# ENCODE_PERCENT_VERTFACE = ENCODE_PERCENT_VERT + ENCODE_PERCENT_FACE
+	# ENCODE_PERCENT_MORPH = total_morph / ALLPROGRESSIZE
 	
 	core.print_progress_oneline(0)
 	lookahead, tex_list = encode_pmx_lookahead(pmx)
