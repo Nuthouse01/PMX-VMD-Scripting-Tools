@@ -8,7 +8,7 @@ import mmd_scripting.core.nuthouse01_io as io
 import mmd_scripting.core.nuthouse01_packer as pack
 import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 8/6/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 8/9/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 # massive thanks and credit to "Isometric" for helping me discover the quaternion transformation method used in mmd!!!!

@@ -5,7 +5,7 @@ from typing import Any
 
 import mmd_scripting.core.nuthouse01_core as core
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 8/6/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 8/9/2021"
 
 ########################################################################################################################
 # these functions for binary file structure packing & unpacking

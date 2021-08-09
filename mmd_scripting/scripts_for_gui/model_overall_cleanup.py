@@ -13,7 +13,7 @@ from mmd_scripting.overall_cleanup import translate_to_english
 from mmd_scripting.overall_cleanup import uniquify_names
 from mmd_scripting.overall_cleanup import weight_cleanup
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 7/31/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 8/9/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
