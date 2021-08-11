@@ -135,7 +135,8 @@ def read_vpd(vpd_filepath: str, moreinfo=False) -> vmdstruct.Vmd:
 				raise RuntimeError()
 			quat = m.group(1,2,3,4)  # get all 4 components
 			quat = [float(f) for f in quat]  # convert strings to floats
-			quat.insert(0,quat.pop(-1))  # WXYZW -> XYZW, AKA move tail (w) to head
+			X,Y,Z,W = quat  # expand the quat to its XYZW components
+			quat = W,X,Y,Z  # repack it in a different WXYZ order
 			temp_rot = core.quaternion_to_euler(quat)  # convert quaternion to euler angles
 			parse_state = 23  # next look for closing curly
 		
@@ -243,8 +244,9 @@ def write_vpd(vpd_filepath: str, vmd: vmdstruct.Vmd, moreinfo=False):
 	# bone-floats always have exactly 6 digits
 	if moreinfo: core.MY_PRINT_FUNC("...# of boneframes          = %d" % len(pose_bones))
 	for d, pb in enumerate(pose_bones):
-		quat = list(core.euler_to_quaternion(pb.rot))  # returns quat WXYZ
-		quat.append(quat.pop(0))  # WXYZ -> XYZW, AKA move head (w) to tail
+		quat = core.euler_to_quaternion(pb.rot)  # returns quat WXYZ
+		W,X,Y,Z = quat  # expand the quat to its WXYZ components
+		quat = X,Y,Z,W  # repack it in a different XYZW order
 		newitem = ["Bone{:d}{{{:s}".format(d, pb.name),
 				   "  {:.6f},{:.6f},{:.6f};".format(*pb.pos),
 				   "  {:.6f},{:.6f},{:.6f},{:.6f};".format(*quat),
