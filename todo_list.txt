@@ -1,6 +1,8 @@
 
 #####
 
+TODO: refactor the overall_cleanup "translate names in model to english" module to use a cleaner, cleverer, more configurable pipeline system
+
 TODO: remove material morph items that point at -2 or invalid numbers? need to find a way to replicate this bug, see how it is saved so i know what to delete... also same in group morphs
 TODO: split "core" files into multiple?
 
