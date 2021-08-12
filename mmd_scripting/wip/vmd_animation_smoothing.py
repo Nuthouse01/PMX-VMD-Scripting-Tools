@@ -7,7 +7,7 @@ import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_vmd_parser as vmdlib
 from mmd_scripting.core.nuthouse01_vmd_utils import dictify_framelist
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.08 - 6/3/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/12/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -806,28 +806,33 @@ def main(moreinfo=True):
 			# this is a list of camframes!
 			# for each frame & associated points,
 			for camframe, b in zip(boneframe_list, bezier_points_list):
-				# print(b)
-				# interp = [x_ax, x_bx, x_ay, x_by, 	y_ax, y_bx, y_ay, y_by, 				z_ax, z_bx, z_ay, z_by,
-				# 			r_ax, r_bx, r_ay, r_by,		dist_ax, dist_bx, dist_ay, dist_by, 	fov_ax, fov_bx, fov_ay, fov_by]
-				interp = [b[0][0][0], b[1][0][0], b[0][0][1], b[1][0][1],
-						  b[0][1][0], b[1][1][0], b[0][1][1], b[1][1][1],
-						  b[0][2][0], b[1][2][0], b[0][2][1], b[1][2][1],
-						  b[0][3][0], b[1][3][0], b[0][3][1], b[1][3][1],
-						  b[0][4][0], b[1][4][0], b[0][4][1], b[1][4][1],
-						  b[0][5][0], b[1][5][0], b[0][5][1], b[1][5][1],]
-				camframe.interp = interp
+				# unpack this "b" thing into named values
+				# top level: [a,b]
+				# next level: [x,y,z,r,dist,fov]
+				# innermost level: [x,y]
+				((x_ax, x_ay), (y_ax,y_ay),(z_ax,z_ay),(r_ax,r_ay),(dist_ax,dist_ay),(fov_ax,fov_ay)), \
+				((x_bx, x_by), (y_bx,y_by),(z_bx,z_by),(r_bx,r_by),(dist_bx,dist_by),(fov_bx,fov_by)) = b
+				
+				# overwrite the interp_? members of this camframe with the newly-calculated control points
+				camframe.interp_x = [x_ax, x_ay, x_bx, x_by]
+				camframe.interp_y = [y_ax, y_ay, y_bx, y_by]
+				camframe.interp_z = [z_ax, z_ay, z_bx, z_by]
+				camframe.interp_r = [r_ax, r_ay, r_bx, r_by]
+				camframe.interp_dist = [dist_ax, dist_ay, dist_bx, dist_by]
+				camframe.interp_fov = [fov_ax, fov_ay, fov_bx, fov_by]
+				
 		else:
 			# for each frame & associated points,
 			for boneframe, b in zip(boneframe_list, bezier_points_list):
-				# print(b)
-				# interp = [x_ax, y_ax, z_ax, r_ax, 	x_ay, y_ay, z_ay, r_ay,
-				# 			x_bx, y_bx, z_bx, r_bx, 	x_by, y_by, z_by, r_by]
-				interp = [b[0][0][0], b[0][1][0], b[0][2][0], b[0][3][0],
-						  b[0][0][1], b[0][1][1], b[0][2][1], b[0][3][1],
-						  b[1][0][0], b[1][1][0], b[1][2][0], b[1][3][0],
-						  b[1][0][1], b[1][1][1], b[1][2][1], b[1][3][1],]
+				# unpack this "b" thing into named values
+				((x_ax, x_ay), (y_ax,y_ay),(z_ax,z_ay),(r_ax,r_ay)), \
+				((x_bx, x_by), (y_bx,y_by),(z_bx,z_by),(r_bx,r_by)) = b
+				# overwrite the interp_? members of this camframe with the newly-calculated control points
 				# this goes into the actual boneframe object still in the lists in boneframe_dict
-				boneframe.interp = interp
+				boneframe.interp_x = [x_ax, x_ay, x_bx, x_by]
+				boneframe.interp_y = [y_ax, y_ay, y_bx, y_by]
+				boneframe.interp_z = [z_ax, z_ay, z_bx, z_by]
+				boneframe.interp_r = [r_ax, r_ay, r_bx, r_by]
 	
 	# un-dictify it!
 	# first, extract the camframes

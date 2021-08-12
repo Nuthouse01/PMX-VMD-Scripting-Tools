@@ -7,7 +7,7 @@ from typing import List, Union
 
 import mmd_scripting.core.nuthouse01_core as core
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.02 - 7/30/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/12/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -131,25 +131,33 @@ class VmdBoneFrame(_BaseVmd):
 				 pos: List[float],
 				 rot: List[float],
 				 phys_off: bool,
-				 interp: List[int]=None,
+				 interp_x: List[int]=None,
+				 interp_y: List[int]=None,
+				 interp_z: List[int]=None,
+				 interp_r: List[int]=None,
 				 ):
 		self.name = name
 		self.f = f
 		self.pos = pos  # X Y Z
 		self.rot = rot  # X Y Z euler angles in degrees
 		self.phys_off = phys_off
-		# interp = [x_ax, y_ax, z_ax, r_ax, 	x_ay, y_ay, z_ay, r_ay,
-		# 			x_bx, y_bx, z_bx, r_bx, 	x_by, y_by, z_by, r_by]
+		
+		# all interpolation parameters are stored as (Ax, Ay, Bx, By)
+		# point A is the bottom-left control point and point B is the top-right control point
+		# Ax represents the x-location of A on a scale of 0 to 127, Ay represents the y-location, etc
 		# if omitted, set to default linear interpolation values
-		# NOTE: interpolation data for this frame is used when moving from teh PREVIOUS frame to THIS frame
-		# TODO: overhaul the system to store the interpolation data in a more sensible, intuitive arrangement
-		if interp is None:
-			# self.interp = core.bone_interpolation_default_linear.copy()
-			self.interp = ([20] * 8) + ([107] * 8)
-		else:
-			self.interp = interp
+		# the x-channel, y-channel, z-channel, and rotation channel are all stored independently
+		# NOTE: interpolation data for is used when moving from teh PREVIOUS frame to THIS frame
+		if interp_x is None: self.interp_x = core.interpolation_default_linear.copy()
+		else:                self.interp_x = interp_x  # interpolation parameters for the X motion
+		if interp_y is None: self.interp_y = core.interpolation_default_linear.copy()
+		else:                self.interp_y = interp_y  # interpolation parameters for the Y motion
+		if interp_z is None: self.interp_z = core.interpolation_default_linear.copy()
+		else:                self.interp_z = interp_z  # interpolation parameters for the Z motion
+		if interp_r is None: self.interp_r = core.interpolation_default_linear.copy()
+		else:                self.interp_r = interp_r  # interpolation parameters for the rotation
 	def list(self) -> list:
-		return [self.name, self.f, *self.pos, *self.rot, self.phys_off, *self.interp]
+		return [self.name, self.f, *self.pos, *self.rot, self.phys_off, *self.interp_x, *self.interp_y, *self.interp_z, *self.interp_r]
 	def _validate(self, parentlist=None):
 		# name: str, at this level i don't care about the 15 byte limit
 		assert isinstance(self.name, str)
@@ -162,10 +170,28 @@ class VmdBoneFrame(_BaseVmd):
 		assert is_good_vector(3, self.rot)
 		# phys_off: bool flag
 		assert is_good_flag(self.phys_off)
-		# interp: list of 16 ints, each limited to range [0 - 127]
-		assert isinstance(self.interp, (list,tuple))
-		assert len(self.interp) == 16
-		for a in self.interp:
+		# interp_x: list of 4 ints, each limited to range [0 - 127]
+		assert isinstance(self.interp_x, (list,tuple))
+		assert len(self.interp_x) == 4
+		for a in self.interp_x:
+			assert isinstance(a, int)
+			assert 0 <= a <= 127
+		# interp_y: list of 4 ints, each limited to range [0 - 127]
+		assert isinstance(self.interp_y, (list,tuple))
+		assert len(self.interp_y) == 4
+		for a in self.interp_y:
+			assert isinstance(a, int)
+			assert 0 <= a <= 127
+		# interp_z: list of 4 ints, each limited to range [0 - 127]
+		assert isinstance(self.interp_z, (list,tuple))
+		assert len(self.interp_z) == 4
+		for a in self.interp_z:
+			assert isinstance(a, int)
+			assert 0 <= a <= 127
+		# interp_r: list of 4 ints, each limited to range [0 - 127]
+		assert isinstance(self.interp_r, (list,tuple))
+		assert len(self.interp_r) == 4
+		for a in self.interp_r:
 			assert isinstance(a, int)
 			assert 0 <= a <= 127
 
@@ -198,7 +224,12 @@ class VmdCamFrame(_BaseVmd):
 				 rot: List[float],
 				 fov: int,
 				 perspective: bool,
-				 interp: List[int]=None,
+				 interp_x: List[int]=None,
+				 interp_y: List[int]=None,
+				 interp_z: List[int]=None,
+				 interp_r: List[int]=None,
+				 interp_dist: List[int]=None,
+				 interp_fov: List[int]=None,
 				 ):
 		self.f = f
 		self.pos = pos  # X Y Z float
@@ -211,17 +242,29 @@ class VmdCamFrame(_BaseVmd):
 		self.fov = fov  # int
 		# perspective: if true, use perspective (normal), if false use orthagonal viewport?
 		self.perspective = perspective
-		# interp = [x_ax, x_bx, x_ay, x_by, 	y_ax, y_bx, y_ay, y_by, 				z_ax, z_bx, z_ay, z_by,
-		# 			r_ax, r_bx, r_ay, r_by,		dist_ax, dist_bx, dist_ay, dist_by, 	fov_ax, fov_bx, fov_ay, fov_by]
+		
+		# all interpolation parameters are stored as (Ax, Ay, Bx, By)
+		# point A is the bottom-left control point and point B is the top-right control point
+		# Ax represents the x-location of A on a scale of 0 to 127, Ay represents the y-location, etc
 		# if omitted, set to default linear interpolation values
-		# NOTE: interpolation data for this frame is used when moving from teh PREVIOUS frame to THIS frame
-		# TODO: overhaul the system to store the interpolation data in a more sensible, intuitive arrangement
-		if interp is None:
-			self.interp = [20,107,20,107] * 6
-		else:
-			self.interp = interp
+		# the x-channel, y-channel, z-channel, rotation channel, distance channel, and FOV channel are all stored independently
+		# NOTE: interpolation data for is used when moving from teh PREVIOUS frame to THIS frame
+		if interp_x is None: self.interp_x = core.interpolation_default_linear.copy()
+		else:                self.interp_x = interp_x  # interpolation parameters for the X motion
+		if interp_y is None: self.interp_y = core.interpolation_default_linear.copy()
+		else:                self.interp_y = interp_y  # interpolation parameters for the Y motion
+		if interp_z is None: self.interp_z = core.interpolation_default_linear.copy()
+		else:                self.interp_z = interp_z  # interpolation parameters for the Z motion
+		if interp_r is None: self.interp_r = core.interpolation_default_linear.copy()
+		else:                self.interp_r = interp_r  # interpolation parameters for the rotation
+		if interp_dist is None: self.interp_dist = core.interpolation_default_linear.copy()
+		else:                self.interp_dist = interp_dist  # interpolation parameters for the distance to focal point
+		if interp_fov is None: self.interp_fov = core.interpolation_default_linear.copy()
+		else:                self.interp_fov = interp_fov  # interpolation parameters for the FOV slider
+
 	def list(self) -> list:
-		return [self.f, self.dist, *self.pos, *self.rot, *self.interp, self.fov, self.perspective]
+		return [self.f, self.dist, *self.pos, *self.rot, self.fov, self.perspective,
+				*self.interp_x, *self.interp_y, *self.interp_z, *self.interp_r, *self.interp_dist, *self.interp_fov]
 	def _validate(self, parentlist=None):
 		# f: int, frame number, cannot be negative
 		assert isinstance(self.f, int)
@@ -236,10 +279,40 @@ class VmdCamFrame(_BaseVmd):
 		assert isinstance(self.fov, int)
 		# perspective: bool flag
 		assert is_good_flag(self.perspective)
-		# interp: list of 24 ints, each limited to range [0 - 127]
-		assert isinstance(self.interp, (list,tuple))
-		assert len(self.interp) == 24
-		for a in self.interp:
+		# interp_x: list of 4 ints, each limited to range [0 - 127]
+		assert isinstance(self.interp_x, (list,tuple))
+		assert len(self.interp_x) == 4
+		for a in self.interp_x:
+			assert isinstance(a, int)
+			assert 0 <= a <= 127
+		# interp_y: list of 4 ints, each limited to range [0 - 127]
+		assert isinstance(self.interp_y, (list,tuple))
+		assert len(self.interp_y) == 4
+		for a in self.interp_y:
+			assert isinstance(a, int)
+			assert 0 <= a <= 127
+		# interp_z: list of 4 ints, each limited to range [0 - 127]
+		assert isinstance(self.interp_z, (list,tuple))
+		assert len(self.interp_z) == 4
+		for a in self.interp_z:
+			assert isinstance(a, int)
+			assert 0 <= a <= 127
+		# interp_r: list of 4 ints, each limited to range [0 - 127]
+		assert isinstance(self.interp_r, (list,tuple))
+		assert len(self.interp_r) == 4
+		for a in self.interp_r:
+			assert isinstance(a, int)
+			assert 0 <= a <= 127
+		# interp_dist: list of 4 ints, each limited to range [0 - 127]
+		assert isinstance(self.interp_dist, (list,tuple))
+		assert len(self.interp_dist) == 4
+		for a in self.interp_dist:
+			assert isinstance(a, int)
+			assert 0 <= a <= 127
+		# interp_fov: list of 4 ints, each limited to range [0 - 127]
+		assert isinstance(self.interp_fov, (list,tuple))
+		assert len(self.interp_fov) == 4
+		for a in self.interp_fov:
 			assert isinstance(a, int)
 			assert 0 <= a <= 127
 

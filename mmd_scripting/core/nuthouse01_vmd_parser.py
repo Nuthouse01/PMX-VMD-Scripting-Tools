@@ -8,7 +8,7 @@ import mmd_scripting.core.nuthouse01_io as io
 import mmd_scripting.core.nuthouse01_packer as pack
 import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 8/9/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/12/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 # massive thanks and credit to "Isometric" for helping me discover the quaternion transformation method used in mmd!!!!
@@ -179,11 +179,13 @@ def parse_vmd_boneframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdBoneF
 				core.MY_PRINT_FUNC("Warning: found unusual values where I expected to find physics enable/disable! Assuming this means physics off")
 				core.MY_PRINT_FUNC(bname_str, "f=", str(f), "(phys1,phys2)=", str((phys1, phys2)))
 				phys_off = True
-			# store them all on the list
-			# create a list to hold all the boneframe data, then append it onto the return-list
-			interp_list = [x_ax, y_ax, z_ax, r_ax, x_ay, y_ay, z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by]
+			# create the boneframe object
 			this_boneframe = vmdstruct.VmdBoneFrame(
-				name=bname_str, f=f, pos=[xp,yp,zp], rot=[xrot,yrot,zrot], phys_off=phys_off, interp=interp_list
+				name=bname_str, f=f, pos=[xp,yp,zp], rot=[xrot,yrot,zrot], phys_off=phys_off, 
+				interp_x=[x_ax, x_ay, x_bx, x_by],
+				interp_y=[y_ax, y_ay, y_bx, y_by],
+				interp_z=[z_ax, z_ay, z_bx, z_by],
+				interp_r=[r_ax, r_ay, r_bx, r_by],
 			)
 			boneframe_list.append(this_boneframe)
 			# display progress printouts
@@ -247,15 +249,20 @@ def parse_vmd_camframe(raw:bytearray, moreinfo:bool) -> List[vmdstruct.VmdCamFra
 			 dist_ax, dist_bx, dist_ay, dist_by, ang_ax, ang_bx, ang_ay, ang_by,
 			 fov, per) = pack.my_unpack(fmt_camframe, raw)
 			
-			interp_list = [x_ax, x_bx, x_ay, x_by, y_ax, y_bx, y_ay, y_by, z_ax, z_bx, z_ay, z_by,
-						   r_ax, r_bx, r_ay, r_by, dist_ax, dist_bx, dist_ay, dist_by, ang_ax, ang_bx, ang_ay, ang_by]
+			rot_degrees = [math.degrees(j) for j in (xr,yr,zr)]  # angle comes in as radians, convert radians to degrees
 			this_camframe = vmdstruct.VmdCamFrame(f=f,
-										dist=d,
-										pos=[xp,yp,zp],
-										rot=[math.degrees(j) for j in (xr,yr,zr)],  # angle comes in as radians, convert radians to degrees
-										interp=interp_list,
-										fov=fov,
-										perspective=per)
+												  dist=d,
+												  pos=[xp,yp,zp],
+												  rot=rot_degrees,
+												  fov=fov,
+												  perspective=per,
+												  interp_x=[x_ax, x_ay, x_bx, x_by],
+												  interp_y=[y_ax, y_ay, y_bx, y_by],
+												  interp_z=[z_ax, z_ay, z_bx, z_by],
+												  interp_r=[r_ax, r_ay, r_bx, r_by],
+												  interp_dist=[dist_ax, dist_ay, dist_bx, dist_by],
+												  interp_fov=[ang_ax, ang_ay, ang_bx, ang_by],
+												  )
 			camframe_list.append(this_camframe)
 			# display progress printouts
 			core.print_progress_oneline(pack.UNPACKER_READFROM_BYTE / len(raw))
@@ -384,17 +391,24 @@ def encode_vmd_boneframe(nice:List[vmdstruct.VmdBoneFrame], moreinfo:bool) -> by
 	# then, all the actual frames
 	for i, frame in enumerate(nice):
 		# assemble the boneframe
-		# first, gotta convert from euler to quaternion!
-		euler = frame.rot  # x y z
-		(w, x, y, z) = core.euler_to_quaternion(euler)  # w x y z
-		quat = [x, y, z, w]  # x y z w
-		# then, do the part that isn't the interpolation curve (first 9 values in binary, 8 things in frame), save as frame
+		# gotta convert from euler to quaternion!
+		quat = core.euler_to_quaternion(frame.rot)  # w x y z
+		W, X, Y, Z = quat  # expand the quat to its WXYZ components
+		quat = X, Y, Z, W  # repack it in a different XYZW order
+		
+		# then, organize the interpolation curve data into one line
+		x_ax, x_ay, x_bx, x_by = frame.interp_x
+		y_ax, y_ay, y_bx, y_by = frame.interp_y
+		z_ax, z_ay, z_bx, z_by = frame.interp_z
+		r_ax, r_ay, r_bx, r_by = frame.interp_r
+		interp_list = x_ax, y_ax, z_ax, r_ax, x_ay, y_ay, z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by
+		
 		try:
 			output += pack.my_string_pack(frame.name, L=15)
 			# now encode/pack/append the non-interp, non-phys portion
 			output += pack.my_pack(fmt_boneframe_no_interpcurve, [frame.f, *frame.pos, *quat])
-			# then, create one line of the interpolation curve (last 16 values of frame obj)
-			interp = pack.my_pack(fmt_boneframe_interpcurve_oneline, frame.interp)
+			# pack this one line of interpolation data, DO NOT APPEND ONTO OUTPUT YET!
+			interp = pack.my_pack(fmt_boneframe_interpcurve_oneline, interp_list)
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)
 			core.MY_PRINT_FUNC("line=", i)
@@ -402,7 +416,9 @@ def encode_vmd_boneframe(nice:List[vmdstruct.VmdBoneFrame], moreinfo:bool) -> by
 			core.MY_PRINT_FUNC("Err: something went wrong while synthesizing binary output, probably the wrong type/order of values on a line")
 			raise
 		# do the dumb copy-and-shift thing to rebuild the original 4-line structure of redundant bytes
-		interp += interp[1:] + bytes(1) + interp[2:] + bytes(2) + interp[3:] + bytes(3)
+		interp += interp[1:] + bytes(1) + \
+				  interp[2:] + bytes(2) + \
+				  interp[3:] + bytes(3)
 		# now overwrite the odd missing bytes with physics enable/disable data
 		if frame.phys_off is True:
 			interp[2] = 99
@@ -450,8 +466,22 @@ def encode_vmd_camframe(nice:List[vmdstruct.VmdCamFrame], moreinfo:bool) -> byte
 	# then, all the actual frames
 	for i, frame in enumerate(nice):
 		xyz_rads = [math.radians(j) for j in frame.rot]  # degrees to radians
+		# unpack all the interp lists to named fields
+		x_ax, x_ay, x_bx, x_by = frame.interp_x
+		y_ax, y_ay, y_bx, y_by = frame.interp_y
+		z_ax, z_ay, z_bx, z_by = frame.interp_z
+		r_ax, r_ay, r_bx, r_by = frame.interp_r
+		dist_ax, dist_ay, dist_bx, dist_by = frame.interp_dist
+		fov_ax, fov_ay, fov_bx, fov_by = frame.interp_fov
+		# reassemble them in a very specific order
+		interp_list = [x_ax, x_bx, x_ay, x_by,
+					   y_ax, y_bx, y_ay, y_by,
+					   z_ax, z_bx, z_ay, z_by,
+					   r_ax, r_bx, r_ay, r_by,
+					   dist_ax, dist_bx, dist_ay, dist_by,
+					   fov_ax, fov_bx, fov_ay, fov_by]
 		try:
-			packme = [frame.f, frame.dist, *frame.pos, *xyz_rads, *frame.interp, frame.fov, frame.perspective]
+			packme = [frame.f, frame.dist, *frame.pos, *xyz_rads, *interp_list, frame.fov, frame.perspective]
 			output += pack.my_pack(fmt_camframe, packme)
 		except Exception as e:
 			core.MY_PRINT_FUNC(e.__class__.__name__, e)

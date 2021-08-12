@@ -3,7 +3,7 @@ import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_vmd_parser as vmdlib
 import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.08 - 6/3/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/12/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -197,8 +197,9 @@ def main(moreinfo=True):
 				# if they are far enough apart that i need to do something,
 				thisframequat = core.euler_to_quaternion(this.rot)
 				prevframequat = core.euler_to_quaternion(prev.rot)
-				# 3, 7, 11, 15 = r_ax, r_ay, r_bx, r_by
-				bez = core.MyBezier((this.interp[3], this.interp[7]), (this.interp[11], this.interp[15]), resolution=50)
+				# create a bezier object from the rotation interpolation parameters, for creating intermediate frames
+				r_ax, r_ay, r_bx, r_by = this.interp_r
+				bez = core.MyBezier((r_ax, r_ay), (r_bx, r_by))
 				# create new frames at these frame numbers, spacing is OVERKEY_FRAME_SPACING
 				for interp_framenum in range(prevframenum + OVERKEY_FRAME_SPACING, thisframenum, OVERKEY_FRAME_SPACING):
 					# calculate the x time percentage from prev frame to this frame
@@ -214,11 +215,14 @@ def main(moreinfo=True):
 						pos=list(this.pos),  # same pos (but make a copy)
 						rot=list(core.quaternion_to_euler(interp_quat)),  # overwrite euler angles
 						phys_off=this.phys_off,  # same phys_off
-						interp=list(core.bone_interpolation_default_linear)  # overwrite interpolation
+						# default linear interpolation
 					)
 					newframelist.append(newframe)
 				# overwrite thisframe interp curve with default too
-				this.interp = list(core.bone_interpolation_default_linear) # overwrite custom interpolation
+				this.interp_x = core.interpolation_default_linear.copy()
+				this.interp_y = core.interpolation_default_linear.copy()
+				this.interp_z = core.interpolation_default_linear.copy()
+				this.interp_r = core.interpolation_default_linear.copy()
 			# concat the new frames onto the existing frames for this sublist
 			sublist += newframelist
 			
@@ -255,20 +259,16 @@ def main(moreinfo=True):
 			
 			# modify "frame" in-place
 			# only modify the XYZrot to use new values
-			new_sourcebone_euler = core.quaternion_to_euler(swing)
-			frame.rot = list(new_sourcebone_euler)
+			new_sourcebone_euler = list(core.quaternion_to_euler(swing))
+			frame.rot = new_sourcebone_euler
 			
 			# create & store new twistbone frame
-			# name=twistbone, framenum=copy, XYZpos=copy, XYZrot=new, phys=copy, interp16=copy
-			new_twistbone_euler = core.quaternion_to_euler(twist)
-			newframe = vmdstruct.VmdBoneFrame(
-				name=twistbone,
-				f=frame.f,
-				pos=list(frame.pos),
-				rot=list(new_twistbone_euler),
-				phys_off=frame.phys_off,
-				interp=list(frame.interp)
-			)
+			# it's a copy of the sourcebone frame, except for name and rotation amount
+			new_twistbone_euler = list(core.quaternion_to_euler(twist))
+			newframe = frame.copy()
+			newframe.name = twistbone
+			newframe.rot = new_twistbone_euler
+			
 			new_twistbone_frames.append(newframe)
 			# print progress updates
 			curr_progress += 1
