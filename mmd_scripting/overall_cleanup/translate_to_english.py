@@ -1,5 +1,5 @@
 from time import time
-from typing import List, Tuple, TypeVar
+from typing import List, TypeVar
 
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_io as io
@@ -7,15 +7,11 @@ import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.overall_cleanup import translation_tools
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.01 - 7/12/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/12/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-
-
-# by default, respect existing english names if they exist and are latin-only
-# if this is set False then local translate will supercede the existing en name result
-PREFER_EXISTING_ENGLISH_NAME = True
+DEBUG = False
 
 
 # by default, do not display copyJP/exactmatch modifications
@@ -24,14 +20,8 @@ SHOW_ALL_CHANGED_FIELDS = False
 
 
 # these english names will be treated as tho they do not exist and overwritten no matter what:
-FORBIDDEN_ENGLISH_NAMES = ["en", "d"]
+FORBIDDEN_ENGLISH_NAMES = ["en", "d", "mat", "morph", "new morph", "bone", "new bone", "material", "new material"]
 
-
-# MikuMikuDance can display JP characters just fine in the "model info" popup when you load a model
-# also I've seen one or two models that have the JP model info blank and all important info in the EN model info
-# so I decided to default to not translating the model info section, only copy JP->EN if EN is blank
-# if this is true it will try to translate the model info with exactly the same logic as all other fields
-TRANSLATE_MODEL_COMMENT = False
 
 
 # sometimes chinese translation gives better results than japanese translation
@@ -73,20 +63,14 @@ except ImportError as eee:
 	DISABLE_INTERNET_TRANSLATE = True
 
 
-category_dict = {0: "header", 4: "mat", 5: "bone", 6: "morph", 7: "frame"}
-type_dict = {-1: "FAIL", 0: "good", 1: "copyJP", 2: "exact", 3: "piece", 4: "google"}
-specificdict_dict = {0:None, 4:None,
-					 5:translation_tools.bone_dict,
-					 6:translation_tools.morph_dict,
-					 7:translation_tools.frame_dict}
 
-# all possible sources:
-# existing EN,
-# copy JP,
-# exact-match in dict,
-# piecewise assemble from dict,
-# google,
-# failure
+# this is used when the results are ultimately printed
+membername_to_shortname_dict = {"header":"header", "materials":"mat", "bones":"bone", "morphs":"morph", "frames":"frame"}
+membername_to_specificdict_dict = {
+	"bones": translation_tools.bone_dict,
+	"morphs": translation_tools.morph_dict,
+	"frames": translation_tools.frame_dict,
+}
 
 
 """
@@ -98,6 +82,21 @@ want to efficiently minimize # of Google Translate API calls, to avoid hitting t
 0 input already good > 1 copy JP > 2 category-specific exact match > 3 local picewise trans > 4 google piecewise trans > -1 fail
 """
 
+
+# class with named fields is a bit better than just a list of lists with prescribed order
+class StringTranslateRecord:
+	def __init__(self, jp_old: str, en_old: str, cat_name: str, idx: int):
+		self.jp_old = jp_old
+		self.en_old = en_old
+		self.cat = cat_name  # aka category aka type
+		self.idx = idx  # aka which bone
+		self.en_new = None  # if en_new is empty string, then i haven't settled on a source yet
+		self.trans_type = None
+	
+	def __str__(self):
+		s = "jp_old:%s en_old:%s cat:%s idx:%d en_new:%s trans_type:%s" % \
+			(self.jp_old, self.en_old, self.cat, self.idx, self.en_new, self.trans_type)
+		return s
 
 
 def init_googletrans():
@@ -116,7 +115,7 @@ def init_googletrans():
 
 ################################################################################################################
 
-def check_translate_budget(num_proposed: int) -> bool:
+def _check_translate_budget(num_proposed: int) -> bool:
 	"""
 	Goal: block translations that would trigger the lockout.
 	Create & maintain a persistent file that contains timestamps and # of requests, to know if my proposed number will
@@ -177,8 +176,6 @@ def check_translate_budget(num_proposed: int) -> bool:
 		
 		return False
 	
-################################################################################################################
-
 def _packetize_translate_requests(jp_list: List[str]) -> List[str]:
 	"""
 	Group/join a massive list of items to translate into fewer requests which each contain many separated by newlines.
@@ -241,7 +238,6 @@ def _single_google_translate(jp_str: str) -> str:
 		core.MY_PRINT_FUNC("Strangely, this lockout does NOT prevent you from using Google Translate thru your web browser. So go use that instead.")
 		core.MY_PRINT_FUNC("Get a VPN or try again in about 1 day (TODO: CONFIRM LOCKOUT TIME)")
 		raise RuntimeError()
-
 
 STR_OR_STRLIST = TypeVar("STR_OR_STRLIST", str, List[str])
 def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
@@ -313,7 +309,7 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 		num_calls = len(jp_bodies_packets)
 	
 	global _DISABLE_INTERNET_TRANSLATE
-	if check_translate_budget(num_calls) and not _DISABLE_INTERNET_TRANSLATE:
+	if _check_translate_budget(num_calls) and not _DISABLE_INTERNET_TRANSLATE:
 		core.MY_PRINT_FUNC("... making %d requests to Google Translate web API..." % num_calls)
 	else:
 		# no need to print failing statement, the function already does
@@ -368,39 +364,198 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 
 ################################################################################################################
 
-def easy_translate(jp:str, en:str, specific_dict=None) -> Tuple[str, int]:
+def build_StringTranslateRecord_list_from_pmx(pmx: pmxstruct.Pmx) -> List[StringTranslateRecord]:
 	"""
-	Attempt to translate a string using the 'easy' sources.
-	0: input already good.
-	1: copied from JP.
-	2: exact match in specific dict.
-	Return new name + the type of translation that succeeded, or empty str and -1.
-	options: PREFER_EXISTING_ENGLISH_NAME will cause mode 0 to be checked here.
-	
-	:param jp: str from JP name field
-	:param en: str from EN name field
-	:param specific_dict: optional dict for use in exact-matching
-	:return: tuple(newENname, translate_type)
+	Iterate over a PMX object and build a list of StringTranslateRecord objects from it, that other functions can
+	operate on in bulk. This does not attempt to translate them.
+
+	:param pmx: entire PMX object
+	:return: list of StringTranslateRecord objects.
 	"""
-	# first, if en name is already good (not blank and not JP and not a known exception), just keep it
-	if PREFER_EXISTING_ENGLISH_NAME and en and not en.isspace() and en.lower() not in FORBIDDEN_ENGLISH_NAMES \
-			and not translation_tools.needs_translate(en):
-		return en, 0
+	record_list = []
 	
-	# do pretranslate here: better for exact matching against morphs that have sad/sad_L/sad_R etc
-	# TODO: save the pretranslate results so I don't need to do it twice more? meh, it runs just fine
-	indent, body, suffix = translation_tools.pre_translate(jp)
+	categories = ["materials", "bones", "morphs", "frames"]
+	for catname in categories:
+		# use the string version of the member to access the actual member
+		biglist = getattr(pmx, catname)
+		# walk along that list, everything has the name_jp and name_en member so it's all good
+		for d, item in enumerate(biglist):
+			# skip "special" display frames, no translation for them!
+			if isinstance(item, pmxstruct.PmxFrame) and item.is_special: continue
+			# strip away newline and return just in case, i saw a few examples where they showed up
+			item.name_jp = item.name_jp.replace('\r', '').replace('\n', '')
+			item.name_en = item.name_en.replace('\r', '').replace('\n', '')
+			# build the StringTranslateRecord object
+			record = StringTranslateRecord(jp_old=item.name_jp, en_old=item.name_en, cat_name=catname, idx=d)
+			record_list.append(record)
 	
-	# second, jp name is already good english, copy jp name -> en name
-	if body and not body.isspace() and not translation_tools.needs_translate(body):
-		return (indent + body + suffix), 1
+	# also do the modelname basically the same way
+	# strip away newline and return just in case, i saw a few examples where they showed up
+	pmx.header.name_jp = pmx.header.name_jp.replace('\r', '').replace('\n', '')
+	pmx.header.name_en = pmx.header.name_en.replace('\r', '').replace('\n', '')
+	# build the StringTranslateRecord object, idx=0 for name
+	record = StringTranslateRecord(jp_old=pmx.header.name_jp, en_old=pmx.header.name_en, cat_name="header", idx=0)
+	record_list.append(record)
 	
-	# third, see if this name is an exact match in the specific dict for this specific type
-	if specific_dict is not None and body in specific_dict:
-		return (indent + specific_dict[body] + suffix), 2
+	return record_list
+
+def stage1_EN_already_good(recordlist: List[StringTranslateRecord]) -> None:
+	"""
+	Check whether the english name that's already there is good!
+	Modify in-place, no return.
 	
-	# if none of these pass, return nothing & type -1 to signfiy it is still in progress
-	return "", -1
+	:param recordlist: list of all StringTranslateRecord objects
+	"""
+	# if it has succesfully translated from some other source, don't overwrite that result!
+	remainlist = [R for R in recordlist if R.trans_type is None]
+	if DEBUG: core.MY_PRINT_FUNC("stage1 useEN: remaining", len(remainlist))
+	
+	for item in remainlist:
+		# these are all conditions that mean the current name is not good enough
+		if item.en_old == "": continue
+		if item.en_old.isspace(): continue
+		if item.en_old.lower() in FORBIDDEN_ENGLISH_NAMES: continue
+		# if not translation_tools.is_latin(item.en_old): continue
+		if translation_tools.needs_translate(item.en_old): continue
+		
+		# if it passes all these checks, then it's a keeper!
+		item.en_new = item.en_old
+		item.trans_type = "good"
+	return
+		
+def stage2_copy_JP(recordlist: List[StringTranslateRecord]) -> None:
+	"""
+	Check whether the JP name is already a valid EN name.
+	Modify in-place, no return.
+	:param recordlist: list of all StringTranslateRecord objects
+	"""
+	# if it has succesfully translated from some other source, don't overwrite that result!
+	remainlist = [R for R in recordlist if R.trans_type is None]
+	if DEBUG: core.MY_PRINT_FUNC("stage2 copyJP: remaining", len(remainlist))
+	
+	for item in remainlist:
+		# return EN indent, JP(?) body, EN suffix
+		# todo: run pretranslate on the whole list? fewer function calls = more efficient
+		indent, body, suffix = translation_tools.pre_translate(item.jp_old)
+		
+		# check if it is bad
+		if body == "": continue
+		if body.isspace(): continue
+		if body.lower() in FORBIDDEN_ENGLISH_NAMES: continue
+		# if not translation_tools.is_latin(body): continue
+		if translation_tools.needs_translate(body): continue
+	
+		# if it's good, then it's a keeper!
+		item.en_new = indent + body + suffix
+		item.trans_type = "copyJP"
+	return
+
+def stage3_exact_match(recordlist: List[StringTranslateRecord]) -> None:
+	"""
+	Check whether the JP name exactly matches in the dict of common names for that type, and if there is a hit then I
+	can use the standard translation.
+	Modify in-place, no return.
+	:param recordlist: list of all StringTranslateRecord objects
+	"""
+	# if it has succesfully translated from some other source, don't overwrite that result!
+	remainlist = [R for R in recordlist if R.trans_type is None]
+	if DEBUG: core.MY_PRINT_FUNC("stage3 exact: remaining", len(remainlist))
+	
+	for item in remainlist:
+		# return EN indent, JP(?) body, EN suffix
+		# todo: run pretranslate on the whole list? fewer function calls = more efficient
+		indent, body, suffix = translation_tools.pre_translate(item.jp_old)
+		
+		# does it have a dict associated with it?
+		if item.cat in membername_to_specificdict_dict:
+			specific = membername_to_specificdict_dict[item.cat]
+			# is this body exactly in the dict?
+			if body in specific:
+				# then it's an exact match and that's good enough for me!
+				item.en_new = indent + specific[body] + suffix
+				item.trans_type = "exact"
+	return
+
+def stage4_piecewise_translate(recordlist: List[StringTranslateRecord]) -> None:
+	"""
+	Attempt piecewise translation using the translation_tools.words_dict.
+	Modify in-place, no return.
+	:param recordlist: list of all StringTranslateRecord objects
+	"""
+	# if it has succesfully translated from some other source, don't overwrite that result!
+	remainlist = [R for R in recordlist if R.trans_type is None]
+	if DEBUG: core.MY_PRINT_FUNC("stage4 piece: remaining", len(remainlist))
+	
+	########
+	
+	# actually do local translate
+	remainlist_strings = [R.jp_old for R in remainlist]
+	local_results = translation_tools.local_translate(remainlist_strings)
+	# determine if each item passed or not, update the en_new and trans_type fields
+	for item, result in zip(remainlist, local_results):
+		# did it pass?
+		if not translation_tools.needs_translate(result):
+			# yes! hooray!
+			item.en_new = result
+			item.trans_type = "piece"
+	return
+
+def stage5_google_translate(recordlist: List[StringTranslateRecord]) -> None:
+	"""
+	Attempt Google translation. Usually guaranteed to succeed.
+	Modify in-place, no return.
+	:param recordlist: list of all StringTranslateRecord objects
+	"""
+	# if it has succesfully translated from some other source, don't overwrite that result!
+	remainlist = [R for R in recordlist if R.trans_type is None]
+	if DEBUG: core.MY_PRINT_FUNC("stage5 google: remaining", len(remainlist))
+	
+	if not remainlist: return
+	########
+	# actually do google translate
+	core.MY_PRINT_FUNC("... identified %d items that need Internet translation..." % len(remainlist))
+	try:
+		remainlist_strings = [R.jp_old for R in remainlist]
+		google_results = google_translate(remainlist_strings)
+	except Exception as e:
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		core.MY_PRINT_FUNC("ERROR: Internet translate unexpectedly failed, attempting to recover...")
+		# for each in translate-notdone, set status to fail, set newname to oldname (so it won't change)
+		for item in remainlist:
+			# item.trans_type = "FAIL"
+			item.en_new = item.en_old
+			# fail-state is when a new name has been assigned but type has not been set, this way it is easily overridden
+		return
+
+	# determine if each item passed or not, update the en_new and trans_type fields
+	for item, result in zip(remainlist, google_results):
+		# always (tentatively) accept the google result, pass or fail it's the best i've got
+		item.en_new = result
+		# determine whether it passed or failed for display purposes
+		# failure is usually due to unusual geometric symbols, not due to japanese text, but sometimes it just fucks up
+		# if it fails, leave the type as NONE so it might be overridden by other stages I guess
+		if not translation_tools.needs_translate(result):
+			item.trans_type = "google"
+	return
+
+def stage6_catchall_fail(recordlist: List[StringTranslateRecord]) -> None:
+	"""
+	Set the trans_type field for anything that didn't get caught.
+	Modify in-place, no return.
+	:param recordlist: list of all StringTranslateRecord objects
+	"""
+	# if it has succesfully translated from some other source, don't overwrite that result!
+	remainlist = [R for R in recordlist if R.trans_type is None]
+	if DEBUG: core.MY_PRINT_FUNC("stage6 fail: remaining", len(remainlist))
+	
+	for item in remainlist:
+		# unconditionally replace any remaining "none" with "FAIL"
+		item.trans_type = "FAIL"
+		# if there is no tentatively-assigned translation, then keep the previous english name (no change)
+		if item.en_new is None:
+			item.en_new = item.en_old
+	return
+	
 
 ################################################################################################################
 
@@ -410,7 +565,7 @@ translate_to_english:
 This tool fills out empty EN names in a PMX model with translated versions of the JP names.
 It tries to do some intelligent piecewise translation using a local dictionary but goes to Google Translate if that fails.
 Machine translation is never 100% reliable, so this is only a stopgap measure to eliminate all the 'Null_##'s and wrongly-encoded garbage and make it easier to use in MMD. A bad translation is better than none at all!
-Also, Google Translate only permits ~100 requests per hour, if you exceed this rate you will be locked out for 24 hours (TODO: CONFIRM LOCKOUT TIME)
+Also, Google Translate only permits ~100 requests per hour, if you exceed this rate you will be locked out for 24(?) hours.
 But my script has a built in limiter that will prevent you from translating if you would exceed the 100-per-hr limit.
 '''
 
@@ -432,176 +587,63 @@ def showprompt():
 	return pmx, input_filename_pmx
 
 
-# class with named fields is a bit better than just a list of lists with prescribed order
-class translate_entry:
-	def __init__(self, jp_old, en_old, cat_id, idx, en_new, trans_type):
-		self.jp_old = jp_old
-		self.en_old = en_old
-		self.cat_id = cat_id		# aka category aka type
-		self.idx = idx				# aka which bone
-		self.en_new = en_new
-		self.trans_type = trans_type
-	def __str__(self):
-		s = "jp_old:%s en_old:%s cat_id:%d idx:%d en_new:%s trans_type:%d" % \
-			(self.jp_old, self.en_old, self.cat_id, self.idx, self.en_new, self.trans_type)
-		return s
-
 
 def translate_to_english(pmx: pmxstruct.Pmx, moreinfo=False):
-	# for each category,
-	# 	for each name,
-	# 		check for type 0/1/2 (already good, copy JP, exact match in special dict)
-	# 		create translate_entry regardless what happens
-	# do same thing for model name
-	# then for all that didn't get successfully translated,
-	# do bulk local piecewise translate: list(str) -> list(str)
-	# then for all that didn't get successfully translated,
-	# do bulk google piecewise translate: list(str) -> list(str)
-	# then sort the results
-	# then format & print the results
-
 	
 	# step zero: set up the translator thingy
 	init_googletrans()
 	
-	# if JP model name is empty, give it something. same for comment
+	# if JP model name is empty, give it something. same for comment.
+	# if EN model name is empty, copy JP. same for comment.
 	if pmx.header.name_jp == "":
 		pmx.header.name_jp = "model"
 	if pmx.header.comment_jp == "":
 		pmx.header.comment_jp = "comment"
-	
-	translate_maps = []
-	
-	
-	# repeat the following for each category of visible names:
-	# materials=4, bones=5, morphs=6, dispframe=7
-	cat_id_list = list(range(4,8))
-	category_list = [pmx.materials, pmx.bones, pmx.morphs, pmx.frames]
-	for cat_id, category in zip(cat_id_list, category_list):
-		# for each entry:
-		for d, item in enumerate(category):
-			# skip "special" display frames
-			if isinstance(item, pmxstruct.PmxFrame) and item.is_special: continue
-			# strip away newline and return just in case, i saw a few examples where they showed up
-			item.name_jp = item.name_jp.replace('\r','').replace('\n','')
-			item.name_en = item.name_en.replace('\r','').replace('\n','')
-			# try to apply "easy" translate methods
-			newname, source = easy_translate(item.name_jp, item.name_en, specificdict_dict[cat_id])
-			# build the "trans_entry" item from this result, regardless of pass/fail
-			newentry = translate_entry(item.name_jp, item.name_en, cat_id, d, newname, source)
-			# store it
-			translate_maps.append(newentry)
-			
-	# model name is special cuz there's only one & its indexing is different
-	# but i'm doing the same stuff
-	pmx.header.name_jp = pmx.header.name_jp.replace('\r', '').replace('\n', '')
-	pmx.header.name_en = pmx.header.name_en.replace('\r', '').replace('\n', '')
-	# try to apply "easy" translate methods
-	newname, source = easy_translate(pmx.header.name_jp, pmx.header.name_en, None)
-	# build the "trans_entry" item from this result, regardless of pass/fail
-	newentry = translate_entry(pmx.header.name_jp, pmx.header.name_en, 0, 2, newname, source)
-	# store it
-	translate_maps.append(newentry)
-	
-	if TRANSLATE_MODEL_COMMENT:
-		# here, attempt to match model comment with type0 (already good) or type1 (copy JP)
-		newcomment, newcommentsource = easy_translate(pmx.header.comment_jp, pmx.header.comment_en, None)
-	else:
-		newcomment = pmx.header.comment_en
-		newcommentsource = 0  # 0 means kept good aka nochange
+	if pmx.header.name_en == "":
+		pmx.header.name_en = pmx.header.name_jp
+	if pmx.header.comment_en == "":
+		pmx.header.comment_en = pmx.header.comment_jp
 		
-	# now I have all the translateable items (except for model comment) collected in one list
-	# partition the list into done and notdone
-	translate_maps, translate_notdone = core.my_list_partition(translate_maps, lambda x: x.trans_type != -1)
-	########
-	# actually do local translate
-	local_results = translation_tools.local_translate([item.jp_old for item in translate_notdone])
-	# determine if each item passed or not, update the en_new and trans_type fields
-	for item, result in zip(translate_notdone, local_results):
-		if not translation_tools.needs_translate(result):
-			item.en_new = result
-			item.trans_type = 3
-	# grab the newly-done items and move them to the done list
-	translate_done2, translate_notdone = core.my_list_partition(translate_notdone, lambda x: x.trans_type != -1)
-	translate_maps.extend(translate_done2)
-	########
-	if not PREFER_EXISTING_ENGLISH_NAME:
-		# if i chose to anti-prefer the existing EN name, then it is still preferred over google and should be checked here
-		for item in translate_notdone:
-			# first, if en name is already good (not blank and not JP), just keep it
-			if item.en_old and not item.en_old.isspace() and item.en_old.lower() not in FORBIDDEN_ENGLISH_NAMES \
-					and not translation_tools.needs_translate(item.en_old):
-				item.en_new = item.en_old
-				item.trans_type = 0
-		# transfer the newly-done things over to the translate_maps list
-		translate_done2, translate_notdone = core.my_list_partition(translate_notdone, lambda x: x.trans_type != -1)
-		translate_maps.extend(translate_done2)
+	# step 1: create the list of translate records
+	translate_record_list = build_StringTranslateRecord_list_from_pmx(pmx)
 	
-	########
-	# actually do google translate
-	num_items = len(translate_notdone) + (newcommentsource != 0)
-	if num_items:
-		core.MY_PRINT_FUNC("... identified %d items that need Internet translation..." % num_items)
-		try:
-			google_results = google_translate([item.jp_old for item in translate_notdone])
-			# determine if each item passed or not, update the en_new and trans_type fields
-			for item, result in zip(translate_notdone, google_results):
-				# always accept the google result, pass or fail it's the best i've got
-				item.en_new = result
-				# determine whether it passed or failed for display purposes
-				# failure probably due to unusual geometric symbols, not due to japanese text
-				if translation_tools.needs_translate(result):
-					item.trans_type = -1
-				else:
-					item.trans_type = 4
-			# grab the newly-done items and move them to the done list
-			translate_maps.extend(translate_notdone)
-			# comment!
-			if TRANSLATE_MODEL_COMMENT and newcommentsource == -1:  # -1 = pending, 0 = did nothing, 4 = did something
-				# if i am going to translate the comment, but was unable to do it earlier, then do it now
-				core.MY_PRINT_FUNC("Now translating model comment")
-				comment_clean = pmx.header.comment_jp.replace("\r", "")  # delete these \r chars, google doesnt want them
-				comment_clean = comment_clean.strip()  # trim leading/trailing whitespace too
-				########
-				# actually do google translate
-				if check_translate_budget(1):
-					newcomment = _single_google_translate(comment_clean)
-					newcomment = newcomment.replace('\n', '\r\n')  # put back the /r/n, MMD needs them
-					newcommentsource = 4
-				else:
-					# no budget for just one more? oh well, no change
-					newcomment = pmx.header.comment_en
-					newcommentsource = 0
-		except Exception as e:
-			core.MY_PRINT_FUNC(e.__class__.__name__, e)
-			core.MY_PRINT_FUNC("Internet translate unexpectedly failed, attempting to recover...")
-			# for each in translate-notdone, set status to fail, set newname to oldname (so it won't change)
-			for item in translate_notdone:
-				item.trans_type = -1
-				item.en_new = item.en_old
-			# append to translate_maps
-			translate_maps.extend(translate_notdone)
+	#####################################################
+	
+	# step 2: the pipeline
+	# the stages of this pipeline can be reorded to prioritize translations from different sources
+	stage1_EN_already_good(translate_record_list)
+	stage2_copy_JP(translate_record_list)
+	stage3_exact_match(translate_record_list)
+	stage4_piecewise_translate(translate_record_list)
+	# stage1_EN_already_good(translate_record_list)
+	stage5_google_translate(translate_record_list)
+	# stage1_EN_already_good(translate_record_list)
+
+	# catchall should always be last tho
+	stage6_catchall_fail(translate_record_list)
+	
 	
 	###########################################
 	# done translating!!!!!
 	###########################################
 	
 	# sanity check: if old result matches new result, then force type to be nochange
-	# only relevant if PREFER_EXISTING_ENGLISH_NAME = False
-	for m in translate_maps:
-		if m.en_old == m.en_new and m.trans_type not in (-1, 0):
-			m.trans_type = 0
+	for m in translate_record_list:
+		if m.en_old == m.en_new and m.trans_type != "FAIL":
+			m.trans_type = "good"
+	
 	# now, determine if i actually changed anything at all before bothering to try applying stuff
-	type_fail, temp = 		core.my_list_partition(translate_maps, lambda x: x.trans_type == -1)
-	type_good, temp = 		core.my_list_partition(temp, lambda x: x.trans_type == 0)
-	type_copy, temp = 		core.my_list_partition(temp, lambda x: x.trans_type == 1)
-	type_exact, temp = 		core.my_list_partition(temp, lambda x: x.trans_type == 2)
-	type_local, temp = 		core.my_list_partition(temp, lambda x: x.trans_type == 3)
-	type_google = 			temp
+	type_fail = [R for R in translate_record_list if R.trans_type == "FAIL"]
+	type_good = [R for R in translate_record_list if R.trans_type == "good"]
+	type_copy = [R for R in translate_record_list if R.trans_type == "copyJP"]
+	type_exact = [R for R in translate_record_list if R.trans_type == "exact"]
+	type_local = [R for R in translate_record_list if R.trans_type == "piece"]
+	type_google = [R for R in translate_record_list if R.trans_type == "google"]
+	
 	# number of things I could have translated
-	total_fields = len(translate_maps) + int(TRANSLATE_MODEL_COMMENT)
+	total_fields = len(translate_record_list)
 	# number of things that weren't already good (includes changed and fail)
-	total_changed = total_fields - len(type_good) - int(newcommentsource != 0)
+	total_changed = total_fields - len(type_good)
 	if type_fail:
 		# warn about any strings that failed translation
 		core.MY_PRINT_FUNC("WARNING: %d items were unable to be translated, try running the script again or doing translation manually." % len(type_fail))
@@ -610,32 +652,23 @@ def translate_to_english(pmx: pmxstruct.Pmx, moreinfo=False):
 		return pmx, False
 		
 	###########################################
-	# next, apply!
-	# comment
-	if TRANSLATE_MODEL_COMMENT and newcommentsource != 0:
-		pmx.header.comment_en = newcomment
-	# everything else: iterate over all entries, write when anything has type != 0
-	for item in translate_maps:
+	# step 3, apply!
+	for item in translate_record_list:
 		# writeback any source except "nochange"
 		# even writeback fail type, because fail will be my best-effort translation
 		# if its being translated thats cuz old_en is bad, so im not making it any worse
 		# failure probably due to unusual geometric symbols, not due to japanese text
-		if item.trans_type != 0:
-			if item.cat_id == 0:  # this is header-type, meaning this is model name
+		if item.trans_type != "good":
+			if item.cat == "header":  # this is header-type, meaning this is model name
 				pmx.header.name_en = item.en_new
-			elif item.cat_id == 4:
-				pmx.materials[item.idx].name_en = item.en_new
-			elif item.cat_id == 5:
-				pmx.bones[item.idx].name_en = item.en_new
-			elif item.cat_id == 6:
-				pmx.morphs[item.idx].name_en = item.en_new
-			elif item.cat_id == 7:
-				pmx.frames[item.idx].name_en = item.en_new
 			else:
-				core.MY_PRINT_FUNC("ERROR: translate_map has invalid cat_id=%s, how the hell did that happen?" % str(item.cat_id))
+				# access the source list by the stored name (kinda dangerous)
+				sourcelist = getattr(pmx, item.cat)
+				# write into it by the stored index
+				sourcelist[item.idx].name_en = item.en_new
 	
 	###########################################
-	# next, print info!
+	# step 4, print info!
 	core.MY_PRINT_FUNC("Translated {} / {} = {:.1%} english fields in the model".format(
 		total_changed, total_fields, total_changed / total_fields))
 	if moreinfo or type_fail:
@@ -644,27 +677,26 @@ def translate_to_english(pmx: pmxstruct.Pmx, moreinfo=False):
 			total_fields, len(type_good), len(type_copy), len(type_exact), len(type_local), len(type_google), len(type_fail)))
 		#########
 		# now print the table of before/after/etc
-		if moreinfo:
-			if SHOW_ALL_CHANGED_FIELDS:
-				# show everything that isn't nochange
-				maps_printme = [item for item in translate_maps if item.trans_type != 0]
-			else:
-				# hide good/copyJP/exactmatch cuz those are uninteresting and guaranteed to be safe
-				# only show piecewise and google translations and fails
-				maps_printme = [item for item in translate_maps if item.trans_type > 2 or item.trans_type == -1]
-		else:
+		if not moreinfo:
 			# if moreinfo not enabled, only show fails
-			maps_printme = type_fail
+			maps_printme = [R for R in translate_record_list if R.trans_type == "FAIL"]
+		elif SHOW_ALL_CHANGED_FIELDS:
+			# if moreinfo is enabled and SHOW_ALL_CHANGED_FIELDS is set,
+			# show everything that isn't nochange
+			maps_printme = [R for R in translate_record_list if R.trans_type != "good"]
+		else:
+			# hide good/copyJP/exactmatch cuz those are uninteresting and guaranteed to be safe
+			# only show piecewise and google translations and fails
+			maps_printme = [R for R in translate_record_list if R.trans_type not in ("exact", "copyJP", "good")]
+			
+		# if there is anything to be printed,
 		if maps_printme:
-			# first, SORT THE LIST! print items in PMXE order
-			maps_printme.sort(key=lambda x: x.idx)
-			maps_printme.sort(key=lambda x: x.cat_id)
-			# then, justify each column
+			# assemble & justify each column
 			# columns: category, idx, trans_type, en_old, en_new, jp_old = 6 types
 			# bone  15  google || EN: 'asdf' --> 'foobar' || JP: 'fffFFFff'
-			just_cat =    core.MY_JUSTIFY_STRINGLIST([category_dict[vv.cat_id] for vv in maps_printme])
+			just_cat =    core.MY_JUSTIFY_STRINGLIST([vv.cat for vv in maps_printme])
 			just_idx =    core.MY_JUSTIFY_STRINGLIST([str(vv.idx) for vv in maps_printme], right=True)  # this is right-justify, all others are left
-			just_source = core.MY_JUSTIFY_STRINGLIST([type_dict[vv.trans_type] for vv in maps_printme])
+			just_source = core.MY_JUSTIFY_STRINGLIST([vv.trans_type for vv in maps_printme])
 			just_enold =  core.MY_JUSTIFY_STRINGLIST(["'%s'" % vv.en_old for vv in maps_printme])
 			just_ennew =  core.MY_JUSTIFY_STRINGLIST(["'%s'" % vv.en_new for vv in maps_printme])
 			just_jpold =  ["'%s'" % vv.jp_old for vv in maps_printme]  # no justify needed for final item
@@ -674,7 +706,7 @@ def translate_to_english(pmx: pmxstruct.Pmx, moreinfo=False):
 				core.MY_PRINT_FUNC("{} {} {} || EN: {} --> {} || JP: {}".format(*args))
 				
 	###########################################
-	# next, return!
+	# done! return!
 	return pmx, True
 	
 	
