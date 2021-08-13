@@ -1008,6 +1008,7 @@ def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLI
 		# to handle them, use nifty str.translate() method, dict must have keys be ordinal unicode values tho
 		out = s.translate(odd_punctuation_dict_ord)
 		out = out.translate(fullwidth_dict_ord)
+		out = piecewise_translate(out, katakana_half_to_full_dict, join_with_space=False)
 		
 		# 2. check for indent
 		indent_prefix = ""

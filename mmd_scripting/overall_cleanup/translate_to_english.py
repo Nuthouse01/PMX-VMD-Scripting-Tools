@@ -347,14 +347,14 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 		# can words_dict + google_dict (excluding this specific chunk's exact match) piecewise translate this chunk?
 		google_plus_words = {}
 		# combine words_dict + google_dict into one
-		google_plus_words.update(translation_tools.words_dict)
 		google_plus_words.update(google_dict)
+		google_plus_words.update(translation_tools.words_dict)
 		google_plus_words.update(localtrans_dict)  # add dict entries from things that succeeded localtrans
 		# ensure it's sorted big-to-small
 		google_plus_words = translation_tools.sort_dict_with_longest_keys_first(google_plus_words)
 
-		# sanity-check: i'm pretty sure that the keys of the 3 dicts should be guaranteed to be mutually exclusive?
-		assert len(google_plus_words) == len(translation_tools.words_dict) + len(google_dict) + len(localtrans_dict)
+		# # sanity-check: i'm pretty sure that the keys of the 3 dicts should be guaranteed to be mutually exclusive?
+		# assert len(google_plus_words) == len(translation_tools.words_dict) + len(google_dict) + len(localtrans_dict)
 
 		if USE_SUBASSEMBLE_IDEA:
 			# example: a model might contain chunks of:
@@ -678,6 +678,7 @@ def translate_to_english(pmx: pmxstruct.Pmx, moreinfo=False):
 	
 	# _trans_source_EN_already_good(translate_record_list)
 
+	#
 	# catchall should always be last tho
 	_trans_source_catchall_fail(translate_record_list)
 	
