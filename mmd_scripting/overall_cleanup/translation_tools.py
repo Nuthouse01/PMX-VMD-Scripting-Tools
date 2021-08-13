@@ -376,7 +376,8 @@ words_dict = {
 "ﾄﾞﾚｽ": "dress",
 "ドレス": "dress",
 "リボン": "ribbon",
-"ワンピース": "one-piece", # as in a one-piece dress
+"ワンピース": "one-piece",  # as in a one-piece dress
+"ニーソ": "knee socks",  # phonetically "niso", close enough i guess
 "ピン": "pin",
 "シャツ": "shirt",
 "パンティー" : "panties",
@@ -497,9 +498,10 @@ words_dict = {
 "ダミー": "dummy",
 "ﾀﾞﾐ": "dummy",
 "半": "half",
-"身": "body",
-"体": "body",
-"ボディ": "body",
+"身": "body",  # phonetically "mi"??? but it shows up in semistandard "upper body" name so w/e
+"体": "body",  # phonetically "karada" lit. means body as in skin
+"ボディ": "body",  # phonetically "bo di i" so it's pretty exact
+"ボテ": "body",  # phonetically "bo tey" so its kinda loose but w/e
 "肌": "skin",
 "裙": "skirt",  # chinese for "skirt"
 "輪": "ring",  # was "round", better translation is ring/loop/circle maybe?
