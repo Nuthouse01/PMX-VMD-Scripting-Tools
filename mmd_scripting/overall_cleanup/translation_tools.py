@@ -25,114 +25,124 @@ def sort_dict_with_longest_keys_first(D:dict) -> dict:
 	D_L_D = dict(L_D)
 	return D_L_D
 
+def invert_dict(D:dict) -> dict:
+	inv = {v: k for k, v in D.items()}
+	return inv
+
 # dictionary for translating halfwitdth katakana to fullwidth katakana
 # i have no plans to actually use this but now it exists
-katakana_half_to_full_dict = {
-# dot
-'\uff65':	'\u30fb',
-# prolong
-'\uff70':	'\u30fc',
 # halfwidth "
 # "		\uff9e
 # halfwidth deg *
 # *		\uff9f
+katakana_half_to_full_dict = {
+# dot
+'･': '・',
+# prolong
+'ｰ': 'ー',
 # aeiou big+small
-'\uff67':	'\u30a1',
-'\uff68':	'\u30a3',
-'\uff69':	'\u30a5',
-'\uff6a':	'\u30a7',
-'\uff6b':	'\u30a9',
-'\uff71':	'\u30a2',
-'\uff72':	'\u30a4',
-'\uff73':	'\u30a6',
-'\uff74':	'\u30a8',
-'\uff75':	'\u30aa',
+'ｧ': 'ァ',
+'ｨ': 'ィ',
+'ｩ': 'ゥ',
+'ｪ': 'ェ',
+'ｫ': 'ォ',
+'ｱ': 'ア',
+'ｲ': 'イ',
+'ｳ': 'ウ',
+'ｴ': 'エ',
+'ｵ': 'オ',
 # ya yu yo tu small
-'\uff6c':	'\u30e3',
-'\uff6d':	'\u30e5',
-'\uff6e':	'\u30e7',
-'\uff6f':	'\u30c3',
+'ｬ': 'ャ',
+'ｭ': 'ュ',
+'ｮ': 'ョ',
+'ｯ': 'ッ',
 # ya yu yo big
-'\uff94':	'\u30e4',
-'\uff95':	'\u30e6',
-'\uff96':	'\u30e8',
-# pattern: x, x+"
-'\uff76':		'\u30ab',
-'\uff76\uff9e':	'\u30ac',
-'\uff77':		'\u30ad',
-'\uff77\uff9e':	'\u30ae',
-'\uff78':		'\u30af',
-'\uff78\uff9e':	'\u30b0',
-'\uff79':		'\u30b1',
-'\uff79\uff9e':	'\u30b2',
-'\uff7a':		'\u30b3',
-'\uff7a\uff9e':	'\u30b4',
-'\uff7b':		'\u30b5',
-'\uff7b\uff9e':	'\u30b6',
-'\uff7c':		'\u30b7',
-'\uff7c\uff9e':	'\u30b8',
-'\uff7d':		'\u30b9',
-'\uff7d\uff9e':	'\u30ba',
-'\uff7e':		'\u30bb',
-'\uff7e\uff9e':	'\u30bc',
-'\uff7f':		'\u30bd',
-'\uff7f\uff9e':	'\u30be',
-'\uff80':		'\u30bf',
-'\uff80\uff9e':	'\u30b0',
-'\uff81':		'\u30c1',
-'\uff81\uff9e':	'\u30c2',
-'\uff82':		'\u30c4',
-'\uff82\uff9e':	'\u30c5',
-'\uff83':		'\u30c6',
-'\uff83\uff9e':	'\u30c7',
-'\uff84':		'\u30c8',
-'\uff84\uff9e':	'\u30c9',
+'ﾔ': 'ヤ',
+'ﾕ': 'ユ',
+'ﾖ': 'ヨ',
+# pattern: x, x"
+'ｶ': 'カ',
+'ｶﾞ': 'ガ',
+'ｷ': 'キ',
+'ｷﾞ': 'ギ',
+'ｸ': 'ク',
+'ｸﾞ': 'グ',
+'ｹ': 'ケ',
+'ｹﾞ': 'ゲ',
+'ｺ': 'コ',
+'ｺﾞ': 'ゴ',
+'ｻ': 'サ',
+'ｻﾞ': 'ザ',
+'ｼ': 'シ',
+'ｼﾞ': 'ジ',
+'ｽ': 'ス',
+'ｽﾞ': 'ズ',
+'ｾ': 'セ',
+'ｾﾞ': 'ゼ',
+'ｿ': 'ソ',
+'ｿﾞ': 'ゾ',
+'ﾀ': 'タ',
+'ﾀﾞ': 'グ',
+'ﾁ': 'チ',
+'ﾁﾞ': 'ヂ',
+'ﾂ': 'ツ',
+'ﾂﾞ': 'ヅ',
+'ﾃ': 'テ',
+'ﾃﾞ': 'デ',
+'ﾄ': 'ト',
+'ﾄﾞ': 'ド',
 # x, x", x*
-'\uff8a':		'\u30cf',
-'\uff8a\uff9e':	'\u30d0',
-'\uff8a\uff9f':	'\u30d1',
-'\uff8b':		'\u30d2',
-'\uff8b\uff9e':	'\u30d3',
-'\uff8b\uff9f':	'\u30d4',
-'\uff8c':		'\u30d5',
-'\uff8c\uff9e':	'\u30d6',
-'\uff8c\uff9f':	'\u30d7',
-'\uff8d':		'\u30d8',
-'\uff8d\uff9e':	'\u30d9',
-'\uff8d\uff9f':	'\u30da',
-'\uff8e':		'\u30db',
-'\uff8e\uff9e':	'\u30dc',
-'\uff8e\uff9f':	'\u30dd',
+'ﾊ': 'ハ',
+'ﾊﾞ': 'バ',
+'ﾊﾟ': 'パ',
+'ﾋ': 'ヒ',
+'ﾋﾞ': 'ビ',
+'ﾋﾟ': 'ピ',
+'ﾌ': 'フ',
+'ﾌﾞ': 'ブ',
+'ﾌﾟ': 'プ',
+'ﾍ': 'ヘ',
+'ﾍﾞ': 'ベ',
+'ﾍﾟ': 'ペ',
+'ﾎ': 'ホ',
+'ﾎﾞ': 'ボ',
+'ﾎﾟ': 'ポ',
 # n sounds
-'\uff85':	'\u30ca',
-'\uff86':	'\u30cb',
-'\uff87':	'\u30cc',
-'\uff88':	'\u30cd',
-'\uff89':	'\u30ce',
+'ﾅ': 'ナ',
+'ﾆ': 'ニ',
+'ﾇ': 'ヌ',
+'ﾈ': 'ネ',
+'ﾉ': 'ノ',
 # m sounds
-'\uff8f':	'\u30de',
-'\uff90':	'\u30df',
-'\uff91':	'\u30e0',
-'\uff92':	'\u30e1',
-'\uff93':	'\u30e2',
+'ﾏ': 'マ',
+'ﾐ': 'ミ',
+'ﾑ': 'ム',
+'ﾒ': 'メ',
+'ﾓ': 'モ',
 # r sounds
-'\uff97':	'\u30e9',
-'\uff98':	'\u30ea',
-'\uff99':	'\u30eb',
-'\uff9a':	'\u30ec',
-'\uff9b':	'\u30ed',
+'ﾗ': 'ラ',
+'ﾘ': 'リ',
+'ﾙ': 'ル',
+'ﾚ': 'レ',
+'ﾛ': 'ロ',
 # wa,wo,n,vu
-'\uff9c':		'\u30ef',
-'\uff9c\uff9e':	'\u30f7',
-'\uff66':		'\u30f2',
-'\uff66\uff9e':	'\u30fa',
-'\uff9d':		'\u30f3',
-'\uff73\uff9e':	'\u30f4',
+'ﾜ': 'ワ',
+'ﾜﾞ': 'ヷ',
+'ｦ': 'ヲ',
+'ｦﾞ': 'ヺ',
+'ﾝ': 'ン',
+'ｳﾞ': 'ヴ',
 #### fullwidth wi,we have no halfwidth counterpart at all
 # 30f0	30f0
 # 30f1	30f1
-'\u30f0\uff9e':	'\u30f8',
-'\u30f1\uff9e':	'\u30f9',
+'ヰﾞ': 'ヸ',
+'ヱﾞ': 'ヹ',
+# hiragana_small_to_big_dict
+'ぁ': 'あ',  # a
+'ぃ': 'い',  # i
+'ぅ': 'う',  # u
+'ぇ': 'え',  # e
+'ぉ': 'お',  # o
 }
 
 #### wa, ka, ke have fullwidth small ver but only halfwidth counterpart is big ver
@@ -141,14 +151,11 @@ katakana_half_to_full_dict = {
 # ?ff76	30f5
 # ?ff79	30f6
 
-hiragana_small_to_big_dict = {
-'\u3041':	'\u3042',  # a
-'\u3043':	'\u3044',  # i
-'\u3045':	'\u3046',  # u
-'\u3047':	'\u3048',  # e
-'\u3049':	'\u304a',  # o
-}
+katakana_half_to_full_dict = sort_dict_with_longest_keys_first(katakana_half_to_full_dict)
 
+
+########################################################################################################################
+########################################################################################################################
 
 
 # this dict is added to both "words" and "morphs"... just in one place so I can keep thing straight
