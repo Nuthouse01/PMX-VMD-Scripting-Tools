@@ -913,13 +913,16 @@ fullwidth_dict_ord = dict((ord(k), v) for k,v in fullwidth_dict.items())
 # regular expression stuff
 # indent: whitespace or _ or boxstuff
 indent_pattern = "^[\\s_\u2500-\u257f]+"
+indent_pattern_re = re.compile(indent_pattern)
 # strip: whitespace _ . -
 padding_pattern = r"[\s_.-]*"
 # prefix: match 右|左|中 but not 中指 (middle finger), one or more times
 prefix_pattern = "^(([右左]|中(?!指))+)"
 # suffix: match 右|左|中 and parent (but not motherbone) and end (but not toe), one or more times
 suffix_pattern = "(([右左中]|(?<!全ての)親|(?<!つま)先)+)$"
-# TODO: pre-compile these regular expressions
+
+prefix_pattern_re = re.compile(prefix_pattern + padding_pattern)
+suffix_pattern_re = re.compile(padding_pattern + suffix_pattern)
 
 # TODO: maybe implement the half-to-full idea now? try to map everything to fullwidth chars before doing translate?
 #  would need to scan & modify the current dicts tho
@@ -1005,7 +1008,7 @@ def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLI
 		# 2. check for indent
 		indent_prefix = ""
 		# get the entire indent: whitespace or _ or box
-		indent_match = re.search(indent_pattern, out)
+		indent_match = indent_pattern_re.search(out)
 		if indent_match is not None:
 			# found a matching indent!
 			if indent_match.end() == len(out):
@@ -1021,7 +1024,7 @@ def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLI
 		# 3: remove known JP prefix/suffix, assemble EN suffix to be reattached later
 		en_suffix = ""
 		# get the prefix
-		prefix_match = re.search(prefix_pattern + padding_pattern, out)
+		prefix_match = prefix_pattern_re.search(out)
 		if prefix_match is not None:
 			if prefix_match.end() == len(out):
 				# if the prefix consumed the entire string, skip this stage
@@ -1032,7 +1035,7 @@ def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLI
 				# generate a new EN suffix from the prefix I removed
 				en_suffix += prefix_match.group(1).translate(prefix_dict_ord)
 		# get the suffix
-		suffix_match = re.search(padding_pattern + suffix_pattern, out)
+		suffix_match = suffix_pattern_re.search(out)
 		if suffix_match is not None:
 			if suffix_match.start() == 0:
 				# if the suffix consumed the entire string, skip this stage
