@@ -41,8 +41,8 @@ DISABLE_INTERNET_TRANSLATE = False
 # more lines per request = riskier, but uses less of your transaction budget
 TRANSLATE_MAX_LINES_PER_REQUEST = 15
 # how many requests are permitted per timeframe, to avoid the lockout
-# true limit is ~100 so enforce limit of 80 just to be safe
-TRANSLATE_BUDGET_MAX_REQUESTS = 80
+# true limit is ~100 so enforce limit of 90 just to be safe
+TRANSLATE_BUDGET_MAX_REQUESTS = 90
 # how long (hours) is the timeframe to protect
 # true timeframe is ~1 hr so enforce limit of ~1.2hr just to be safe
 TRANSLATE_BUDGET_TIMEFRAME = 1.0
@@ -66,6 +66,7 @@ except ImportError as eee:
 
 # this is used when the results are ultimately printed
 membername_to_shortname_dict = {"header":"header", "materials":"mat", "bones":"bone", "morphs":"morph", "frames":"frame"}
+# this will associate the dicts that are optimized for each category, with that category
 membername_to_specificdict_dict = {
 	"bones": translation_tools.bone_dict,
 	"morphs": translation_tools.morph_dict,
@@ -91,11 +92,11 @@ class StringTranslateRecord:
 		self.cat = cat_name  # aka category aka type
 		self.idx = idx  # aka which bone
 		self.en_new = None  # if en_new is empty string, then i haven't settled on a source yet
-		self.trans_type = None
+		self.trans_source = None
 	
 	def __str__(self):
 		s = "jp_old:%s en_old:%s cat:%s idx:%d en_new:%s trans_type:%s" % \
-			(self.jp_old, self.en_old, self.cat, self.idx, self.en_new, self.trans_type)
+			(self.jp_old, self.en_old, self.cat, self.idx, self.en_new, self.trans_source)
 		return s
 
 
@@ -268,7 +269,8 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 		prev_islatin = True
 		is_latin = True
 		for i in range(len(s)):  # walk along its length one char at a time,
-			# use "is_jp" here and not "is_latin" so chunks are defined to be only actual JP stuff and not unicode whatevers
+			# IMPORTANT: use "is_jp" here and not "is_latin" so chunks are defined to be only actual JP stuff and not unicode whatevers
+			# this means unicode whatevers will be breakpoints between chunks, and also will not be sent to googletrans
 			is_latin = not translation_tools.is_jp(s[i])
 			# if char WAS latin but now is NOT latin, then this is the start of a range.
 			if prev_islatin and not is_latin:
@@ -399,7 +401,7 @@ def build_StringTranslateRecord_list_from_pmx(pmx: pmxstruct.Pmx) -> List[String
 	
 	return record_list
 
-def stage1_EN_already_good(recordlist: List[StringTranslateRecord]) -> None:
+def _trans_source_EN_already_good(recordlist: List[StringTranslateRecord]) -> None:
 	"""
 	Check whether the english name that's already there is good!
 	Modify in-place, no return.
@@ -407,7 +409,7 @@ def stage1_EN_already_good(recordlist: List[StringTranslateRecord]) -> None:
 	:param recordlist: list of all StringTranslateRecord objects
 	"""
 	# if it has succesfully translated from some other source, don't overwrite that result!
-	remainlist = [R for R in recordlist if R.trans_type is None]
+	remainlist = [R for R in recordlist if R.trans_source is None]
 	if DEBUG: core.MY_PRINT_FUNC("stage1 useEN: remaining", len(remainlist))
 	
 	for item in remainlist:
@@ -420,17 +422,17 @@ def stage1_EN_already_good(recordlist: List[StringTranslateRecord]) -> None:
 		
 		# if it passes all these checks, then it's a keeper!
 		item.en_new = item.en_old
-		item.trans_type = "good"
+		item.trans_source = "good"
 	return
 		
-def stage2_copy_JP(recordlist: List[StringTranslateRecord]) -> None:
+def _trans_source_copy_JP(recordlist: List[StringTranslateRecord]) -> None:
 	"""
 	Check whether the JP name is already a valid EN name.
 	Modify in-place, no return.
 	:param recordlist: list of all StringTranslateRecord objects
 	"""
 	# if it has succesfully translated from some other source, don't overwrite that result!
-	remainlist = [R for R in recordlist if R.trans_type is None]
+	remainlist = [R for R in recordlist if R.trans_source is None]
 	if DEBUG: core.MY_PRINT_FUNC("stage2 copyJP: remaining", len(remainlist))
 	
 	for item in remainlist:
@@ -447,10 +449,10 @@ def stage2_copy_JP(recordlist: List[StringTranslateRecord]) -> None:
 	
 		# if it's good, then it's a keeper!
 		item.en_new = indent + body + suffix
-		item.trans_type = "copyJP"
+		item.trans_source = "copyJP"
 	return
 
-def stage3_exact_match(recordlist: List[StringTranslateRecord]) -> None:
+def _trans_source_exact_match(recordlist: List[StringTranslateRecord]) -> None:
 	"""
 	Check whether the JP name exactly matches in the dict of common names for that type, and if there is a hit then I
 	can use the standard translation.
@@ -458,7 +460,7 @@ def stage3_exact_match(recordlist: List[StringTranslateRecord]) -> None:
 	:param recordlist: list of all StringTranslateRecord objects
 	"""
 	# if it has succesfully translated from some other source, don't overwrite that result!
-	remainlist = [R for R in recordlist if R.trans_type is None]
+	remainlist = [R for R in recordlist if R.trans_source is None]
 	if DEBUG: core.MY_PRINT_FUNC("stage3 exact: remaining", len(remainlist))
 	
 	for item in remainlist:
@@ -473,17 +475,17 @@ def stage3_exact_match(recordlist: List[StringTranslateRecord]) -> None:
 			if body in specific:
 				# then it's an exact match and that's good enough for me!
 				item.en_new = indent + specific[body] + suffix
-				item.trans_type = "exact"
+				item.trans_source = "exact"
 	return
 
-def stage4_piecewise_translate(recordlist: List[StringTranslateRecord]) -> None:
+def _trans_source_piecewise_translate(recordlist: List[StringTranslateRecord]) -> None:
 	"""
 	Attempt piecewise translation using the translation_tools.words_dict.
 	Modify in-place, no return.
 	:param recordlist: list of all StringTranslateRecord objects
 	"""
 	# if it has succesfully translated from some other source, don't overwrite that result!
-	remainlist = [R for R in recordlist if R.trans_type is None]
+	remainlist = [R for R in recordlist if R.trans_source is None]
 	if DEBUG: core.MY_PRINT_FUNC("stage4 piece: remaining", len(remainlist))
 	
 	########
@@ -497,17 +499,17 @@ def stage4_piecewise_translate(recordlist: List[StringTranslateRecord]) -> None:
 		if not translation_tools.needs_translate(result):
 			# yes! hooray!
 			item.en_new = result
-			item.trans_type = "piece"
+			item.trans_source = "piece"
 	return
 
-def stage5_google_translate(recordlist: List[StringTranslateRecord]) -> None:
+def _trans_source_google_translate(recordlist: List[StringTranslateRecord]) -> None:
 	"""
 	Attempt Google translation. Usually guaranteed to succeed.
 	Modify in-place, no return.
 	:param recordlist: list of all StringTranslateRecord objects
 	"""
 	# if it has succesfully translated from some other source, don't overwrite that result!
-	remainlist = [R for R in recordlist if R.trans_type is None]
+	remainlist = [R for R in recordlist if R.trans_source is None]
 	if DEBUG: core.MY_PRINT_FUNC("stage5 google: remaining", len(remainlist))
 	
 	if not remainlist: return
@@ -535,22 +537,22 @@ def stage5_google_translate(recordlist: List[StringTranslateRecord]) -> None:
 		# failure is usually due to unusual geometric symbols, not due to japanese text, but sometimes it just fucks up
 		# if it fails, leave the type as NONE so it might be overridden by other stages I guess
 		if not translation_tools.needs_translate(result):
-			item.trans_type = "google"
+			item.trans_source = "google"
 	return
 
-def stage6_catchall_fail(recordlist: List[StringTranslateRecord]) -> None:
+def _trans_source_catchall_fail(recordlist: List[StringTranslateRecord]) -> None:
 	"""
 	Set the trans_type field for anything that didn't get caught.
 	Modify in-place, no return.
 	:param recordlist: list of all StringTranslateRecord objects
 	"""
 	# if it has succesfully translated from some other source, don't overwrite that result!
-	remainlist = [R for R in recordlist if R.trans_type is None]
+	remainlist = [R for R in recordlist if R.trans_source is None]
 	if DEBUG: core.MY_PRINT_FUNC("stage6 fail: remaining", len(remainlist))
 	
 	for item in remainlist:
 		# unconditionally replace any remaining "none" with "FAIL"
-		item.trans_type = "FAIL"
+		item.trans_source = "FAIL"
 		# if there is no tentatively-assigned translation, then keep the previous english name (no change)
 		if item.en_new is None:
 			item.en_new = item.en_old
@@ -611,16 +613,23 @@ def translate_to_english(pmx: pmxstruct.Pmx, moreinfo=False):
 	
 	# step 2: the pipeline
 	# the stages of this pipeline can be reorded to prioritize translations from different sources
-	stage1_EN_already_good(translate_record_list)
-	stage2_copy_JP(translate_record_list)
-	stage3_exact_match(translate_record_list)
-	stage4_piecewise_translate(translate_record_list)
-	# stage1_EN_already_good(translate_record_list)
-	stage5_google_translate(translate_record_list)
-	# stage1_EN_already_good(translate_record_list)
+	
+	_trans_source_EN_already_good(translate_record_list)
+	
+	_trans_source_copy_JP(translate_record_list)
+	
+	_trans_source_exact_match(translate_record_list)
+	
+	_trans_source_piecewise_translate(translate_record_list)
+	
+	# _trans_source_EN_already_good(translate_record_list)
+	
+	_trans_source_google_translate(translate_record_list)
+	
+	# _trans_source_EN_already_good(translate_record_list)
 
 	# catchall should always be last tho
-	stage6_catchall_fail(translate_record_list)
+	_trans_source_catchall_fail(translate_record_list)
 	
 	
 	###########################################
@@ -629,16 +638,16 @@ def translate_to_english(pmx: pmxstruct.Pmx, moreinfo=False):
 	
 	# sanity check: if old result matches new result, then force type to be nochange
 	for m in translate_record_list:
-		if m.en_old == m.en_new and m.trans_type != "FAIL":
-			m.trans_type = "good"
+		if m.en_old == m.en_new and m.trans_source != "FAIL":
+			m.trans_source = "good"
 	
 	# now, determine if i actually changed anything at all before bothering to try applying stuff
-	type_fail = [R for R in translate_record_list if R.trans_type == "FAIL"]
-	type_good = [R for R in translate_record_list if R.trans_type == "good"]
-	type_copy = [R for R in translate_record_list if R.trans_type == "copyJP"]
-	type_exact = [R for R in translate_record_list if R.trans_type == "exact"]
-	type_local = [R for R in translate_record_list if R.trans_type == "piece"]
-	type_google = [R for R in translate_record_list if R.trans_type == "google"]
+	type_fail = [R for R in translate_record_list if R.trans_source == "FAIL"]
+	type_good = [R for R in translate_record_list if R.trans_source == "good"]
+	type_copy = [R for R in translate_record_list if R.trans_source == "copyJP"]
+	type_exact = [R for R in translate_record_list if R.trans_source == "exact"]
+	type_local = [R for R in translate_record_list if R.trans_source == "piece"]
+	type_google = [R for R in translate_record_list if R.trans_source == "google"]
 	
 	# number of things I could have translated
 	total_fields = len(translate_record_list)
@@ -658,7 +667,7 @@ def translate_to_english(pmx: pmxstruct.Pmx, moreinfo=False):
 		# even writeback fail type, because fail will be my best-effort translation
 		# if its being translated thats cuz old_en is bad, so im not making it any worse
 		# failure probably due to unusual geometric symbols, not due to japanese text
-		if item.trans_type != "good":
+		if item.trans_source != "good":
 			if item.cat == "header":  # this is header-type, meaning this is model name
 				pmx.header.name_en = item.en_new
 			else:
@@ -679,30 +688,36 @@ def translate_to_english(pmx: pmxstruct.Pmx, moreinfo=False):
 		# now print the table of before/after/etc
 		if not moreinfo:
 			# if moreinfo not enabled, only show fails
-			maps_printme = [R for R in translate_record_list if R.trans_type == "FAIL"]
+			maps_printme = [R for R in translate_record_list if R.trans_source == "FAIL"]
 		elif SHOW_ALL_CHANGED_FIELDS:
 			# if moreinfo is enabled and SHOW_ALL_CHANGED_FIELDS is set,
 			# show everything that isn't nochange
-			maps_printme = [R for R in translate_record_list if R.trans_type != "good"]
+			maps_printme = [R for R in translate_record_list if R.trans_source != "good"]
 		else:
 			# hide good/copyJP/exactmatch cuz those are uninteresting and guaranteed to be safe
 			# only show piecewise and google translations and fails
-			maps_printme = [R for R in translate_record_list if R.trans_type not in ("exact", "copyJP", "good")]
+			maps_printme = [R for R in translate_record_list if R.trans_source not in ("exact", "copyJP", "good")]
 			
 		# if there is anything to be printed,
 		if maps_printme:
 			# assemble & justify each column
 			# columns: category, idx, trans_type, en_old, en_new, jp_old = 6 types
 			# bone  15  google || EN: 'asdf' --> 'foobar' || JP: 'fffFFFff'
-			just_cat =    core.MY_JUSTIFY_STRINGLIST([vv.cat for vv in maps_printme])
-			just_idx =    core.MY_JUSTIFY_STRINGLIST([str(vv.idx) for vv in maps_printme], right=True)  # this is right-justify, all others are left
-			just_source = core.MY_JUSTIFY_STRINGLIST([vv.trans_type for vv in maps_printme])
-			just_enold =  core.MY_JUSTIFY_STRINGLIST(["'%s'" % vv.en_old for vv in maps_printme])
-			just_ennew =  core.MY_JUSTIFY_STRINGLIST(["'%s'" % vv.en_new for vv in maps_printme])
-			just_jpold =  ["'%s'" % vv.jp_old for vv in maps_printme]  # no justify needed for final item
+			cat = [membername_to_shortname_dict[vv.cat] for vv in maps_printme]
+			idx = [str(vv.idx) for vv in maps_printme]
+			source = [vv.trans_source for vv in maps_printme]
+			enold = ["'%s'" % vv.en_old for vv in maps_printme]
+			ennew = ["'%s'" % vv.en_new for vv in maps_printme]
+			jpold =  ["'%s'" % vv.jp_old for vv in maps_printme]
+			just_cat =    core.MY_JUSTIFY_STRINGLIST(cat)
+			just_idx =    core.MY_JUSTIFY_STRINGLIST(idx, right=True)  # this is right-justify, all others are left
+			just_source = core.MY_JUSTIFY_STRINGLIST(source)
+			just_enold =  core.MY_JUSTIFY_STRINGLIST(enold)
+			just_ennew =  core.MY_JUSTIFY_STRINGLIST(ennew)
+			# jpold is final item, nothing to the right of it, so it doesn't need justified
 			
 			# now pretty-print the list of translations:
-			for args in zip(just_cat, just_idx, just_source, just_enold, just_ennew, just_jpold):
+			for args in zip(just_cat, just_idx, just_source, just_enold, just_ennew, jpold):
 				core.MY_PRINT_FUNC("{} {} {} || EN: {} --> {} || JP: {}".format(*args))
 				
 	###########################################
