@@ -992,6 +992,15 @@ def needs_translate(text:str) -> bool:
 	m = not is_latin(text)
 	return bool(m)
 
+def is_alphanumeric(text:str) -> bool:
+	""" whole string is a-z,A-Z,0-9 """
+	# ord values [48-57, 65-90, 97-122, ]
+	# return all((48 <= ord(c) <= 57 or 65 <= ord(c) <= 90 or 97 <= ord(c) <= 122) for c in text)
+	for c in text:
+		o = ord(c)
+		if not (48 <= o <= 57 or 65 <= o <= 90 or 97 <= o <= 122): return False
+	return True
+
 STR_OR_STRLIST = TypeVar("STR_OR_STRLIST", str, List[str])
 def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLIST, STR_OR_STRLIST]:
 	"""
@@ -1109,9 +1118,9 @@ def piecewise_translate(in_list: STR_OR_STRLIST, in_dict: dict) -> STR_OR_STRLIS
 					# i am going to replace it key->val, but first maybe insert space before or after or both.
 					# note: letter/number are the ONLY things that use joinchar. all punctuation and all JP stuff do not use joinchar.
 					# if 'begin-1' is a valid index and the char at that index is letter/number, then PREPEND a space
-					before_space = " " if i != 0 and out[i-1].isalnum() else ""
+					before_space = " " if i != 0 and is_alphanumeric(out[i-1]) else ""
 					# if "begin+len(key)" is a valid index and the char at that index is letter/number, then APPEND a space
-					after_space = " " if i+len(key) < len(out) and out[i+len(key)].isalnum() else ""
+					after_space = " " if i+len(key) < len(out) and is_alphanumeric(out[i+len(key)]) else ""
 					# now JOINCHAR is added, so now i substitute it
 					out = out[0:i] + before_space + val + after_space + out[i+len(key):]
 					# i don't need to examine or try to replace on any of these chars, so skip ahead a bit
