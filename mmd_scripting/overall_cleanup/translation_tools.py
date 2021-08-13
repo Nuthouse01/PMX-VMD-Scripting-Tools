@@ -225,7 +225,7 @@ morph_dict = {
 "照れ": "blush",  # "little blush", literally "shy"
 "照れ2": "blush2",  # "big blush", literally "shy"
 "照れ屋": "blush",  # another blush, literally "shy"
-"赤面": "blush",  # literally "red face" but its just another blush
+"赤面": "red face",  # literally "red face" but its just another blush
 "青ざめる": "shock", # literally "aozomeru", translates to "pale", but the expression it represents is shock/horror
 "青ざめ": "shock", # literally "aozame" translates to "pale", but the expression it represents is shock/horror
 "丸目": "O.O",
@@ -620,6 +620,7 @@ words_dict = {
 
 "穏やか": "calm",
 "螺旋": "spiral",
+"レイプ": "rape",  # "rape eyes" often mean "blank eyes"
 "回転": "rotate",
 "移動": "move",
 "動": "motion",
@@ -691,7 +692,7 @@ words_dict = {
 "キッス": "kiss",
 "ムッ": "upset",
 "照れ": "blush",
-"赤面": "blush",
+"赤面": "red face",
 "黒": "black",
 "白": "white",
 "緑": "green",
@@ -751,6 +752,9 @@ words_dict.update(symbols_dict)
 words_dict = dict(sorted(list(words_dict.items()), reverse=True, key=lambda x: len(x[0])))
 
 
+#######################################################################################################################
+
+
 # these get appended to the end instead of being replaced in order
 prefix_dict = {
 "中": "_M",  # this one isn't truly standard but i like the left/right/middle symmetry
@@ -759,8 +763,6 @@ prefix_dict = {
 "親": " parent",
 "先": " end",
 }
-prefix_dict_ord = dict({(ord(k), v) for k, v in prefix_dict.items()})
-
 
 
 odd_punctuation_dict = {
@@ -802,19 +804,114 @@ odd_punctuation_dict = {
 }
 # note: "ー" = "katakana/hiragana prolonged sound mark" = 0x30fc should !!!NOT!!! be treated as punctuation cuz it shows up in several "words"
 
-# for use with 'translate' function, convert the keys to the unicode values instead of strings:
-fullwidth_dict_ord = dict({(ord(k), v) for k, v in odd_punctuation_dict.items()})
-# then add the fullwidth latin symbols:
 # https://en.wikipedia.org/wiki/Halfwidth_and_Fullwidth_Forms_(Unicode_block)
 # fullwidth chars like ０１２３ＩＫ are in range FF01–FF5E  and correspond to  21-7E, difference=(FEE0)
-for uni in range(0xff01, 0xff5f):
-	fullwidth_dict_ord[uni] = uni - 0xfee0
+fullwidth_dict = {
+'！': '!',
+'＂': '"',
+'＃': '#',
+'＄': '$',
+'％': '%',
+'＆': '&',
+'＇': "'",
+'（': '(',
+'）': ')',
+'＊': '*',
+'＋': '+',
+'，': ',',
+'－': '-',
+'．': '.',
+'／': '/',
+'０': '0',
+'１': '1',
+'２': '2',
+'３': '3',
+'４': '4',
+'５': '5',
+'６': '6',
+'７': '7',
+'８': '8',
+'９': '9',
+'：': ':',
+'；': ';',
+'＜': '<',
+'＝': '=',
+'＞': '>',
+'？': '?',
+'＠': '@',
+'Ａ': 'A',
+'Ｂ': 'B',
+'Ｃ': 'C',
+'Ｄ': 'D',
+'Ｅ': 'E',
+'Ｆ': 'F',
+'Ｇ': 'G',
+'Ｈ': 'H',
+'Ｉ': 'I',
+'Ｊ': 'J',
+'Ｋ': 'K',
+'Ｌ': 'L',
+'Ｍ': 'M',
+'Ｎ': 'N',
+'Ｏ': 'O',
+'Ｐ': 'P',
+'Ｑ': 'Q',
+'Ｒ': 'R',
+'Ｓ': 'S',
+'Ｔ': 'T',
+'Ｕ': 'U',
+'Ｖ': 'V',
+'Ｗ': 'W',
+'Ｘ': 'X',
+'Ｙ': 'Y',
+'Ｚ': 'Z',
+'［': '[',
+'＼': '\\',
+'］': ']',
+'＾': '^',
+'＿': '_',
+'｀': '`',
+'ａ': 'a',
+'ｂ': 'b',
+'ｃ': 'c',
+'ｄ': 'd',
+'ｅ': 'e',
+'ｆ': 'f',
+'ｇ': 'g',
+'ｈ': 'h',
+'ｉ': 'i',
+'ｊ': 'j',
+'ｋ': 'k',
+'ｌ': 'l',
+'ｍ': 'm',
+'ｎ': 'n',
+'ｏ': 'o',
+'ｐ': 'p',
+'ｑ': 'q',
+'ｒ': 'r',
+'ｓ': 's',
+'ｔ': 't',
+'ｕ': 'u',
+'ｖ': 'v',
+'ｗ': 'w',
+'ｘ': 'x',
+'ｙ': 'y',
+'ｚ': 'z',
+'｛': '{',
+'｜': '|',
+'｝': '}',
+'～': '~',
+}
 
+# to use builtin "string translate function", must assemble a dict where key is UNICODE NUMBER and value is string
+prefix_dict_ord = dict((ord(k), v) for k, v in prefix_dict.items())
+odd_punctuation_dict_ord = dict({(ord(k), v) for k, v in odd_punctuation_dict.items()})
+fullwidth_dict_ord = dict((ord(k), v) for k,v in fullwidth_dict.items())
 
 ########################################################################################################################
 ########################################################################################################################
 # regular expression stuff
-# indent: whitespace _ boxstuff
+# indent: whitespace or _ or boxstuff
 indent_pattern = "^[\\s_\u2500-\u257f]+"
 # strip: whitespace _ . -
 padding_pattern = r"[\s_.-]*"
@@ -822,6 +919,12 @@ padding_pattern = r"[\s_.-]*"
 prefix_pattern = "^(([右左]|中(?!指))+)"
 # suffix: match 右|左|中 and parent (but not motherbone) and end (but not toe), one or more times
 suffix_pattern = "(([右左中]|(?<!全ての)親|(?<!つま)先)+)$"
+# TODO: pre-compile these regular expressions
+
+# TODO: maybe implement the half-to-full idea now? try to map everything to fullwidth chars before doing translate?
+#  would need to scan & modify the current dicts tho
+
+# TODO: better divide the translate stuff into files... separate "translate dicts" from "translate functions" from "translate all names in the model script"
 
 # TODO: maybe instead of finding unusal jap chars, i should just find anything not basic ASCII alphanumeric characters?
 # https://www.compart.com/en/unicode/block
@@ -896,7 +999,8 @@ def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLI
 		# fullwidth chars like ０１２３ＩＫ are in range FF01–FF5E  and correspond to  21-7E
 		# this also handles all the "odd_punctuation_dict" stuff
 		# to handle them, use nifty str.translate() method, dict must have keys be ordinal unicode values tho
-		out = s.translate(fullwidth_dict_ord)
+		out = s.translate(odd_punctuation_dict_ord)
+		out = out.translate(fullwidth_dict_ord)
 		
 		# 2. check for indent
 		indent_prefix = ""
