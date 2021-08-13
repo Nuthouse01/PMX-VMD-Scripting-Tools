@@ -751,6 +751,9 @@ words_dict.update(symbols_dict)
 ########################################################################################################################
 
 
+#######################################################################################################################
+
+
 # these get appended to the end instead of being replaced in order
 prefix_dict = {
 "中": "_M",  # this one isn't truly standard but i like the left/right/middle symmetry
@@ -916,6 +919,12 @@ padding_pattern = r"[\s_.-]*"
 prefix_pattern = "^(([右左]|中(?!指))+)"
 # suffix: match 右|左|中 and parent (but not motherbone) and end (but not toe), one or more times
 suffix_pattern = "(([右左中]|(?<!全ての)親|(?<!つま)先)+)$"
+# TODO: pre-compile these regular expressions
+
+# TODO: maybe implement the half-to-full idea now? try to map everything to fullwidth chars before doing translate?
+#  would need to scan & modify the current dicts tho
+
+# TODO: better divide the translate stuff into files... separate "translate dicts" from "translate functions" from "translate all names in the model script"
 
 prefix_pattern_re = re.compile(prefix_pattern + padding_pattern)
 suffix_pattern_re = re.compile(padding_pattern + suffix_pattern)
