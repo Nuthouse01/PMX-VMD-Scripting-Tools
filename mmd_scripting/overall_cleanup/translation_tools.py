@@ -692,7 +692,7 @@ words_dict = {
 "キッス": "kiss",
 "ムッ": "upset",
 "照れ": "blush",
-"赤面": "blush",
+"赤面": "red face",
 "黒": "black",
 "白": "white",
 "緑": "green",
