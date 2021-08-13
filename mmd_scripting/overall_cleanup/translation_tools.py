@@ -1,7 +1,7 @@
 import re
 from typing import List, Tuple, TypeVar
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/13/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -19,18 +19,7 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 ########################################################################################################################
 ########################################################################################################################
 
-def sort_dict_with_longest_keys_first(D:dict) -> dict:
-	L_D = list(D.items())
-	L_D.sort(reverse=True, key=lambda x: len(x[0]))
-	D_L_D = dict(L_D)
-	return D_L_D
-
-def invert_dict(D:dict) -> dict:
-	inv = {v: k for k, v in D.items()}
-	return inv
-
 # dictionary for translating halfwitdth katakana to fullwidth katakana
-# i have no plans to actually use this but now it exists
 # halfwidth "
 # "		\uff9e
 # halfwidth deg *
@@ -151,12 +140,13 @@ katakana_half_to_full_dict = {
 # ?ff76	30f5
 # ?ff79	30f6
 
-katakana_half_to_full_dict = sort_dict_with_longest_keys_first(katakana_half_to_full_dict)
-
 
 ########################################################################################################################
 ########################################################################################################################
-
+########################################################################################################################
+########################################################################################################################
+# symbols_dict, morph_dict, frame_dict, bone_dict
+# exact-match dicts, plus also symbols_dict cuz it goes into morph_dict too
 
 # this dict is added to both "words" and "morphs"... just in one place so I can keep thing straight
 symbols_dict = {
@@ -371,7 +361,7 @@ frame_dict = {
 ########################################################################################################################
 ########################################################################################################################
 ########################################################################################################################
-# partial-match dicts for piecewise translation
+# partial-match dict for piecewise translation
 
 words_dict = {
 # words
@@ -760,11 +750,10 @@ words_dict = {
 
 # add the special symbols
 words_dict.update(symbols_dict)
-# after defining its contents, ensure that it is sorted with longest keys first. for tying items relative order is unchanged.
-# fixes the "undershadowing" problem
-words_dict = sort_dict_with_longest_keys_first(words_dict)
-
-#######################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
 
 
 # these get appended to the end instead of being replaced in order
@@ -1169,6 +1158,75 @@ def local_translate(in_list: STR_OR_STRLIST) -> STR_OR_STRLIST:
 	
 	if input_is_str:	return outlist[0]	# if original input was a single string, then de-listify
 	else:				return outlist		# otherwise return as a list
+
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+
+# this is hte bit where i operate on all the dicts I defined above
+
+def sort_dict_with_longest_keys_first(D:dict) -> dict:
+	L_D = list(D.items())
+	L_D.sort(reverse=True, key=lambda x: len(x[0]))
+	D_L_D = dict(L_D)
+	return D_L_D
+
+def invert_dict(D:dict) -> dict:
+	inv = {v: k for k, v in D.items()}
+	return inv
+
+def convert_dict_keys_half_to_full(D: dict, consolidate: dict) -> dict:
+	newdict = {}
+	keys = list(D.keys())
+	values = list(D.values())
+	# translate all the halfwidth chars to their fullwidth forms
+	keys_full = piecewise_translate(keys, consolidate, join_with_space=False)
+	for K, KF, V in zip(keys, keys_full, values):
+		if K == KF:
+			# K did not contain any halfwitdth stuff, no change
+			newdict[K] = V
+		else:
+			# K did contain halfwidth stuff and did change
+			newdict[KF] = V
+			# if KF was already in the dict, and KF has a different value than K, then we've got a problem
+			# if KF was already in the dict but it had the same value as K, then there's no problem
+			# print("'%s' -> '%s'" % (K, KF))
+			if KF in keys and D[K] != D[KF]:
+				print("key consolidation conflict! key='%s' value**='%s', key_new='%s' value_new='%s'" % (K, D[K], KF, D[KF]))
+	return newdict
+
+
+# 1. each dict should be sorted with longest keys first, to fix the "undershadowing" problem
+# this way the longest & best match for the exact thing i'm trying to replace gets used
+
+# TODO 2. convert the keys of each dict from using fullwidth ALPHANUMERIC characters to using the basic ASCII versions
+# fullwidth chars like ０１２３ＩＫ are in range FF01–FF5E  and correspond to  21-7E, difference=(FEE0)
+# this is to match pretranslate and increase the hit rate
+
+# 3. convert the keys of each dict from halfwidth kanji to fullwidth kanji
+# this is just for consistency and standardization
+# this is to match pretranslate and increase the hit rate
+
+katakana_half_to_full_dict = sort_dict_with_longest_keys_first(katakana_half_to_full_dict)
+fullwidth_dict = sort_dict_with_longest_keys_first(fullwidth_dict)
+
+words_dict = sort_dict_with_longest_keys_first(words_dict)
+words_dict = convert_dict_keys_half_to_full(words_dict, fullwidth_dict)
+words_dict = convert_dict_keys_half_to_full(words_dict, katakana_half_to_full_dict)
+
+morph_dict = sort_dict_with_longest_keys_first(morph_dict)
+morph_dict = convert_dict_keys_half_to_full(morph_dict, fullwidth_dict)
+morph_dict = convert_dict_keys_half_to_full(morph_dict, katakana_half_to_full_dict)
+
+bone_dict = sort_dict_with_longest_keys_first(bone_dict)
+bone_dict = convert_dict_keys_half_to_full(bone_dict, fullwidth_dict)
+bone_dict = convert_dict_keys_half_to_full(bone_dict, katakana_half_to_full_dict)
+
+frame_dict = sort_dict_with_longest_keys_first(frame_dict)
+frame_dict = convert_dict_keys_half_to_full(frame_dict, fullwidth_dict)
+frame_dict = convert_dict_keys_half_to_full(frame_dict, katakana_half_to_full_dict)
 
 
 # import nuthouse01_core as core
