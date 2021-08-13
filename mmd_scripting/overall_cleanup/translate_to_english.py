@@ -34,6 +34,8 @@ GOOGLE_AUTODETECT_LANGUAGE = True
 DISABLE_INTERNET_TRANSLATE = False
 
 
+USE_SUBASSEMBLE_IDEA = True
+
 # to reduce the number of translation requests, a list of strings is joined into one string broken by newlines
 # that counts as "fewer requests" for google's API
 # tho in testing, sometimes translations produce different results if on their own vs in a newline list... oh well
@@ -324,6 +326,7 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 	# 6. send chunks to Google
 	results_packets = []
 	if use_chunk_strat:
+		print("#items=", len(in_list), "#chunks=", len(jp_chunks), "#requests=", len(jp_chunks_packets))
 		for d, packet in enumerate(jp_chunks_packets):
 			core.print_progress_oneline(d / len(jp_chunks_packets))
 			r = _single_google_translate(packet)
@@ -332,37 +335,62 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 		# 7. assemble Google responses & re-associate with the chunks
 		# order of inputs "jp_chunks" matches order of outputs "results"
 		results = _unpacketize_translate_requests(results_packets)  # unpack
-		google_dict = dict(zip(jp_chunks, results))  # build dict
-		
-		print("#items=", len(in_list), "#chunks=", len(jp_chunks), "#requests=", len(jp_chunks_packets))
-		print(google_dict)
-		
-		google_dict.update(localtrans_dict)  # add dict entries from things that succeeded localtrans
-		google_dict.update(translation_tools.words_dict)  # add the full-blown words dict to the chunk-translate results
-		# dict->list->sort->dict: sort the longest chunks first, VERY CRITICAL so things don't get undershadowed!!!
-		google_dict = dict(sorted(list(google_dict.items()), reverse=True, key=lambda x: len(x[0])))
-		
-		# TODO: THE ETERNAL PROBLEM
-		#  i'm not convinced there is a good solution to this problem...
-		#  example: a model might contain chunks of:
-		#  "ニーソ" = knee sock, "ニーソ脱ぎ" = knee sock remove, "ニーソ上" = knee sock upper, and "ニーソヒール足首" = knee sock heel ankle
-		#  trying to apply all chunks from longest-length to shortest length would mean only the google translate for that specific
-		#  chunk gets used. but often, the longer chunks are translated worse... if I could pick the right order to try
-		#  substituting the chunks, I think I would prefer to translate ニーソ上 via ニーソ + 上 instead of the entire chunk.
-		#  maybe i could see if I can succesfully translate a chunk using all information except the exact-match for that chunk?
-		#  in that case i can test longest strings first, as before.
-		#  but... so that things can additively build up, i try this on the smallest chunks first?
-		#  RECAP:
-		#  find all chunks
-		#  get googletranslate result for all chunks
-		#  starting from smallest chunk to biggest:
-		#    can words_dict + google_dict - this specific chunk piecewise translate this chunk?
-		#    checking biggest words to smallest
-		#    if yes, that piecewise translation is added to the dict for later uses
-		#    if no, the google translate is added to the dict for later uses
+		map_jp_to_google = list(zip(jp_chunks, results))
+		google_dict = dict(map_jp_to_google)  # build dict
+
+		#########################
+		# BEGIN NEW IDEA: what do i call this? "Google Results Sub-Assembly"? idk
+		# first, sort so that when i iterate I am operating on the SHORTEST chunk first
+		map_jp_to_google.sort(key=lambda x: len(x[0]))
+		print(map_jp_to_google)
+		# second, for each chunk:
+		# can words_dict + google_dict (excluding this specific chunk's exact match) piecewise translate this chunk?
+		google_plus_words = {}
+		# combine words_dict + google_dict into one
+		google_plus_words.update(translation_tools.words_dict)
+		google_plus_words.update(google_dict)
+		google_plus_words.update(localtrans_dict)  # add dict entries from things that succeeded localtrans
+		# ensure it's sorted big-to-small
+		google_plus_words = translation_tools.sort_dict_with_longest_keys_first(google_plus_words)
+
+		# sanity-check: i'm pretty sure that the keys of the 3 dicts should be guaranteed to be mutually exclusive?
+		assert len(google_plus_words) == len(translation_tools.words_dict) + len(google_dict) + len(localtrans_dict)
+
+		if USE_SUBASSEMBLE_IDEA:
+			# example: a model might contain chunks of:
+			# "ニーソ" = knee sock, "ニーソ脱ぎ" = knee sock remove, "ニーソ上" = knee sock upper, and "ニーソヒール足首" = knee sock heel ankle
+			# trying to apply all chunks from longest-length to shortest length would mean only the google translate for that specific
+			# chunk gets used. but often, the longer chunks are translated worse... if I could pick the right order to try
+			# substituting the chunks, I think I would prefer to translate ニーソ上 via ニーソ + 上 instead of the entire chunk.
+			# maybe i could see if I can succesfully translate a chunk using all information except the exact-match for that chunk?
+			num_google = 0
+			num_subassemble = 0
+			for this_jp_chunk, this_google_result in map_jp_to_google:
+				# remove this specific chunk + its translation from the dict
+				google_plus_words.pop(this_jp_chunk)
+				# attempt piecewise translate for this chunk
+				chunk_piecewise_subassemble = translation_tools.piecewise_translate(this_jp_chunk, google_plus_words)
+				# IS THIS SUCCESSFUL?
+				if translation_tools.is_jp(chunk_piecewise_subassemble):
+					# no, this is not successful... I do not have all the individual pieces that make up this word
+					# so just use the exact-match from google (that i removed a few lines above)
+					google_plus_words[this_jp_chunk] = this_google_result
+					num_google += 1
+				else:
+					# yes, this is successful... I would rather use the sub-assembled answer rather than the Google answer!
+					google_plus_words[this_jp_chunk] = chunk_piecewise_subassemble
+					num_subassemble += 1
+					print("jp_chunk = '%s', google = '%s', subassemble = '%s'" %
+						  (this_jp_chunk, this_google_result, chunk_piecewise_subassemble))
+				# sort it again
+				google_plus_words = translation_tools.sort_dict_with_longest_keys_first(google_plus_words)
+	
+			print("stats: num_google = %d, num_subassemble = %d" % (num_google, num_subassemble))
 		
 		# 8. piecewise translate using newly created dict
-		outlist = translation_tools.piecewise_translate(bodies, google_dict)
+		# it has been fine-tuned and is now guaranteed to fully match against everything that it failed to match before
+		outlist = translation_tools.piecewise_translate(bodies, google_plus_words)
+		
 	else:
 		# old style: just translate the strings directly and return their results
 		for d, packet in enumerate(jp_bodies_packets):
