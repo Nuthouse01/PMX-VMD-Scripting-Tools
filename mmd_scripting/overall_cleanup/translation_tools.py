@@ -1084,7 +1084,7 @@ def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLI
 	else:			return indent_list, body_list, suffix_list	# otherwise return as a list
 
 
-def piecewise_translate(in_list: STR_OR_STRLIST, in_dict: dict) -> STR_OR_STRLIST:
+def piecewise_translate(in_list: STR_OR_STRLIST, in_dict: dict, join_with_space=True) -> STR_OR_STRLIST:
 	"""
 	Apply piecewise translation to inputs when given a mapping dict.
 	Mapping dict will usually be the builtin comprehensive 'words_dict' or some results found from Google Translate.
@@ -1095,6 +1095,7 @@ def piecewise_translate(in_list: STR_OR_STRLIST, in_dict: dict) -> STR_OR_STRLIS
 	
 	:param in_list: list of JP strings, or a single JP string
 	:param in_dict: dict of mappings from JP substrings to EN substrings
+	:param join_with_space: optional, default true. if true, when substituting substrings, put spaces before/after.
 	:return: list of resulting strings, or a single resulting string
 	"""
 	input_is_str = isinstance(in_list, str)
@@ -1102,6 +1103,8 @@ def piecewise_translate(in_list: STR_OR_STRLIST, in_dict: dict) -> STR_OR_STRLIS
 	outlist = []  # list to build & return
 	
 	dictitems = list(in_dict.items())
+	
+	joinchar = " " if join_with_space else ""
 	
 	for out in in_list:
 		if (not out) or out.isspace():  # support bad/missing data
@@ -1118,9 +1121,9 @@ def piecewise_translate(in_list: STR_OR_STRLIST, in_dict: dict) -> STR_OR_STRLIS
 					# i am going to replace it key->val, but first maybe insert space before or after or both.
 					# note: letter/number are the ONLY things that use joinchar. all punctuation and all JP stuff do not use joinchar.
 					# if 'begin-1' is a valid index and the char at that index is letter/number, then PREPEND a space
-					before_space = " " if i != 0 and is_alphanumeric(out[i-1]) else ""
+					before_space = joinchar if i != 0 and is_alphanumeric(out[i-1]) else ""
 					# if "begin+len(key)" is a valid index and the char at that index is letter/number, then APPEND a space
-					after_space = " " if i+len(key) < len(out) and is_alphanumeric(out[i+len(key)]) else ""
+					after_space = joinchar if i+len(key) < len(out) and is_alphanumeric(out[i+len(key)]) else ""
 					# now JOINCHAR is added, so now i substitute it
 					out = out[0:i] + before_space + val + after_space + out[i+len(key):]
 					# i don't need to examine or try to replace on any of these chars, so skip ahead a bit
