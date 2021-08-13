@@ -80,6 +80,14 @@ specificdict_dict = {0:None, 4:None,
 					 6:translation_tools.morph_dict,
 					 7:translation_tools.frame_dict}
 
+# all possible sources:
+# existing EN,
+# copy JP,
+# exact-match in dict,
+# piecewise assemble from dict,
+# google,
+# failure
+
 
 """
 translation plan
@@ -171,7 +179,7 @@ def check_translate_budget(num_proposed: int) -> bool:
 	
 ################################################################################################################
 
-def packetize_translate_requests(jp_list: List[str]) -> List[str]:
+def _packetize_translate_requests(jp_list: List[str]) -> List[str]:
 	"""
 	Group/join a massive list of items to translate into fewer requests which each contain many separated by newlines.
 	options: TRANSLATE_MAX_LINES_PER_REQUEST.
@@ -188,9 +196,9 @@ def packetize_translate_requests(jp_list: List[str]) -> List[str]:
 		start_idx += TRANSLATE_MAX_LINES_PER_REQUEST
 	return retme
 
-def unpacketize_translate_requests(list_after: List[str]) -> List[str]:
+def _unpacketize_translate_requests(list_after: List[str]) -> List[str]:
 	"""
-	Opposite of packetize_translate_requests(). Breaks each string at newlines and flattens result into one long list.
+	Opposite of _packetize_translate_requests(). Breaks each string at newlines and flattens result into one long list.
 	
 	:param list_after: list of newline-joined strings
 	:return: list of strings not containing newlines
@@ -234,47 +242,12 @@ def _single_google_translate(jp_str: str) -> str:
 		core.MY_PRINT_FUNC("Get a VPN or try again in about 1 day (TODO: CONFIRM LOCKOUT TIME)")
 		raise RuntimeError()
 
-################################################################################################################
-
-def easy_translate(jp:str, en:str, specific_dict=None) -> Tuple[str, int]:
-	"""
-	Attempt to translate a string using the 'easy' sources.
-	0: input already good.
-	1: copied from JP.
-	2: exact match in specific dict.
-	Return new name + the type of translation that succeeded, or empty str and -1.
-	options: PREFER_EXISTING_ENGLISH_NAME will cause mode 0 to be checked here.
-	
-	:param jp: str from JP name field
-	:param en: str from EN name field
-	:param specific_dict: optional dict for use in exact-matching
-	:return: tuple(newENname, translate_type)
-	"""
-	# first, if en name is already good (not blank and not JP and not a known exception), just keep it
-	if PREFER_EXISTING_ENGLISH_NAME and en and not en.isspace() and en.lower() not in FORBIDDEN_ENGLISH_NAMES \
-			and not translation_tools.needs_translate(en):
-		return en, 0
-	
-	# do pretranslate here: better for exact matching against morphs that have sad/sad_L/sad_R etc
-	# TODO: save the pretranslate results so I don't need to do it twice more? meh, it runs just fine
-	indent, body, suffix = translation_tools.pre_translate(jp)
-	
-	# second, jp name is already good english, copy jp name -> en name
-	if body and not body.isspace() and not translation_tools.needs_translate(body):
-		return (indent + body + suffix), 1
-	
-	# third, see if this name is an exact match in the specific dict for this specific type
-	if specific_dict is not None and body in specific_dict:
-		return (indent + specific_dict[body] + suffix), 2
-	
-	# if none of these pass, return nothing & type -1 to signfiy it is still in progress
-	return "", -1
 
 STR_OR_STRLIST = TypeVar("STR_OR_STRLIST", str, List[str])
 def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 	"""
 	Take a list of strings & get them all translated by asking Google. Can use per-line strategy or new 'chunkwise' strategy.
-	
+
 	:param in_list: list of JP or partially JP strings
 	:param strategy: 0=old per-line strategy, 1=new chunkwise strategy, 2=auto choose whichever needs less Google traffic
 	:return: list of strings probably pure EN, but sometimes odd unicode symbols show up
@@ -327,15 +300,17 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 			# if it passed, no need to ask google what they mean cuz I already have a good translation for this chunk
 			# this will be added to the dict way later
 			localtrans_dict[chunk] = trans
-		
+	
 	# 4. packetize them into fewer requests (and if auto, choose whether to use chunks or not)
-	jp_chunks_packets = packetize_translate_requests(jp_chunks)
-	jp_bodies_packets = packetize_translate_requests(bodies)
+	jp_chunks_packets = _packetize_translate_requests(jp_chunks)
+	jp_bodies_packets = _packetize_translate_requests(bodies)
 	if strategy == 2:    use_chunk_strat = (len(jp_chunks_packets) < len(jp_bodies_packets))
 	
 	# 5. check the translate budget to see if I can afford this
-	if use_chunk_strat: num_calls = len(jp_chunks_packets)
-	else:               num_calls = len(jp_bodies_packets)
+	if use_chunk_strat:
+		num_calls = len(jp_chunks_packets)
+	else:
+		num_calls = len(jp_bodies_packets)
 	
 	global _DISABLE_INTERNET_TRANSLATE
 	if check_translate_budget(num_calls) and not _DISABLE_INTERNET_TRANSLATE:
@@ -356,7 +331,7 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 		
 		# 7. assemble Google responses & re-associate with the chunks
 		# order of inputs "jp_chunks" matches order of outputs "results"
-		results = unpacketize_translate_requests(results_packets)  # unpack
+		results = _unpacketize_translate_requests(results_packets)  # unpack
 		google_dict = dict(zip(jp_chunks, results))  # build dict
 		
 		print("#items=", len(in_list), "#chunks=", len(jp_chunks), "#requests=", len(jp_chunks_packets))
@@ -375,7 +350,7 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 			core.print_progress_oneline(d / len(jp_bodies_packets))
 			r = _single_google_translate(packet)
 			results_packets.append(r)
-		outlist = unpacketize_translate_requests(results_packets)
+		outlist = _unpacketize_translate_requests(results_packets)
 	
 	# last, reattach the indents and suffixes
 	outlist_final = [i + b + s for i, b, s in zip(indents, outlist, suffixes)]
@@ -385,8 +360,47 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 		core.MY_PRINT_FUNC("... done!")
 	
 	# return
-	if input_is_str: return outlist_final[0]  # if original input was a single string, then de-listify
-	else:            return outlist_final  # otherwise return as a list
+	if input_is_str:
+		return outlist_final[0]  # if original input was a single string, then de-listify
+	else:
+		return outlist_final  # otherwise return as a list
+
+
+################################################################################################################
+
+def easy_translate(jp:str, en:str, specific_dict=None) -> Tuple[str, int]:
+	"""
+	Attempt to translate a string using the 'easy' sources.
+	0: input already good.
+	1: copied from JP.
+	2: exact match in specific dict.
+	Return new name + the type of translation that succeeded, or empty str and -1.
+	options: PREFER_EXISTING_ENGLISH_NAME will cause mode 0 to be checked here.
+	
+	:param jp: str from JP name field
+	:param en: str from EN name field
+	:param specific_dict: optional dict for use in exact-matching
+	:return: tuple(newENname, translate_type)
+	"""
+	# first, if en name is already good (not blank and not JP and not a known exception), just keep it
+	if PREFER_EXISTING_ENGLISH_NAME and en and not en.isspace() and en.lower() not in FORBIDDEN_ENGLISH_NAMES \
+			and not translation_tools.needs_translate(en):
+		return en, 0
+	
+	# do pretranslate here: better for exact matching against morphs that have sad/sad_L/sad_R etc
+	# TODO: save the pretranslate results so I don't need to do it twice more? meh, it runs just fine
+	indent, body, suffix = translation_tools.pre_translate(jp)
+	
+	# second, jp name is already good english, copy jp name -> en name
+	if body and not body.isspace() and not translation_tools.needs_translate(body):
+		return (indent + body + suffix), 1
+	
+	# third, see if this name is an exact match in the specific dict for this specific type
+	if specific_dict is not None and body in specific_dict:
+		return (indent + specific_dict[body] + suffix), 2
+	
+	# if none of these pass, return nothing & type -1 to signfiy it is still in progress
+	return "", -1
 
 ################################################################################################################
 
