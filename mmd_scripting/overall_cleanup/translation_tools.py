@@ -19,6 +19,12 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 ########################################################################################################################
 ########################################################################################################################
 
+def sort_dict_with_longest_keys_first(D:dict) -> dict:
+	L_D = list(D.items())
+	L_D.sort(reverse=True, key=lambda x: len(x[0]))
+	D_L_D = dict(L_D)
+	return D_L_D
+
 # dictionary for translating halfwitdth katakana to fullwidth katakana
 # i have no plans to actually use this but now it exists
 katakana_half_to_full_dict = {
@@ -749,8 +755,7 @@ words_dict = {
 words_dict.update(symbols_dict)
 # after defining its contents, ensure that it is sorted with longest keys first. for tying items relative order is unchanged.
 # fixes the "undershadowing" problem
-words_dict = dict(sorted(list(words_dict.items()), reverse=True, key=lambda x: len(x[0])))
-
+words_dict = sort_dict_with_longest_keys_first(words_dict)
 
 #######################################################################################################################
 
