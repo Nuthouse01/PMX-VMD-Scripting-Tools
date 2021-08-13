@@ -168,7 +168,7 @@ symbols_dict = {
 "★": "*",  #x2605
 "☆": "*",  #x2606
 "〜": "~",  # x301C wave dash, not a "fullwidth tilde"
-"～": "~",  # xff5e "fullwidth tilde" causes some issues
+# "～": "~",  # xff5e "fullwidth tilde" causes some issues
 "○": "O",  #x25cb
 "◯": "O",  #x25ef
 "〇": "O",  # x3007
@@ -725,16 +725,11 @@ words_dict = {
 "消": "erase",
 "裸": "bare", # or "naked" like bare legs
 "あ": "a",  # hiragana a
-"ぁ": "a",  # hiragana small a
 "ア": "a",  # not one of the primary phonetic morphs, but shows up such as in "ワアアア" = "wa a a a"
 "い": "i",  # hiragana i
-"ぃ": "i",  # hiragana small i
 "う": "u",  # hiragana u
-"ぅ": "u",  # hiragana small u
 "え": "e",  # hiragana e
-"ぇ": "e",  # hiragana small e
 "お": "o",  # hiragana o
-"ぉ": "o",  # hiragana small o
 "ワ": "wa",
 "わ": "wa",  # not one of the primary phonetic morphs
 "ん": "n",
