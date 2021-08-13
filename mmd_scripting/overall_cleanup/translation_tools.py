@@ -21,7 +21,7 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 
 # dictionary for translating halfwitdth katakana to fullwidth katakana
 # i have no plans to actually use this but now it exists
-half_to_full_dict = {
+katakana_half_to_full_dict = {
 # dot
 '\uff65':	'\u30fb',
 # prolong
@@ -135,6 +135,13 @@ half_to_full_dict = {
 # ?ff76	30f5
 # ?ff79	30f6
 
+hiragana_small_to_big_dict = {
+'\u3041':	'\u3042',  # a
+'\u3043':	'\u3044',  # i
+'\u3045':	'\u3046',  # u
+'\u3047':	'\u3048',  # e
+'\u3049':	'\u304a',  # o
+}
 
 
 
@@ -421,6 +428,7 @@ words_dict = {
 "瞳": "pupil",
 "瞳孔": "pupil",
 "着地": "landing",
+"くぱ": "kupa",
 "水着": "swimsuit",
 "服": "clothes",
 "着": "clothes",
@@ -617,6 +625,7 @@ words_dict = {
 "動": "motion",
 "食込無": "none",
 "無し": "none",
+"無": "none",
 "なし": "none",  # phonetically "nashi"
 "ナシ": "none",  # phonetically "nashi"
 "无": "none",
@@ -711,12 +720,17 @@ words_dict = {
 "けし": "erase",
 "消": "erase",
 "裸": "bare", # or "naked" like bare legs
-"あ": "a",
+"あ": "a",  # hiragana a
+"ぁ": "a",  # hiragana small a
 "ア": "a",  # not one of the primary phonetic morphs, but shows up such as in "ワアアア" = "wa a a a"
-"い": "i",
-"う": "u",
-"え": "e",
-"お": "o",
+"い": "i",  # hiragana i
+"ぃ": "i",  # hiragana small i
+"う": "u",  # hiragana u
+"ぅ": "u",  # hiragana small u
+"え": "e",  # hiragana e
+"ぇ": "e",  # hiragana small e
+"お": "o",  # hiragana o
+"ぉ": "o",  # hiragana small o
 "ワ": "wa",
 "わ": "wa",  # not one of the primary phonetic morphs
 "ん": "n",
