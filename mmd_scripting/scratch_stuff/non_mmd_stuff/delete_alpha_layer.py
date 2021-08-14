@@ -30,7 +30,7 @@ def main():
 	
 	A,B = os.path.splitext(filepath)
 	output_path = A + "_noalpha" + B
-	im_new.save(output_path)
+	im_new.save(output_path, optimize=True)
 	
 	print("done!")
 	return None
