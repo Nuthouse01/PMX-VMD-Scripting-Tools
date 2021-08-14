@@ -655,6 +655,7 @@ words_dict = {
 "大": "big",
 "巨": "big",
 "暗い": "dark",
+"暗": "dark",
 "青ざめる": "shock", # literally "aozomeru", translates to "pale", but the expression it represents is shock/horror
 "青ざめ": "shock", # literally "aozame" translates to "pale", but the expression it represents is shock/horror
 "を隠す": "hide",
