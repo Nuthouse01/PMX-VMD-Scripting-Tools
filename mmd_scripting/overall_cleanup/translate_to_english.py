@@ -380,12 +380,12 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 					# yes, this is successful... I would rather use the sub-assembled answer rather than the Google answer!
 					google_plus_words[this_jp_chunk] = chunk_piecewise_subassemble
 					num_subassemble += 1
-					print("jp_chunk = '%s', google = '%s', subassemble = '%s'" %
-						  (this_jp_chunk, this_google_result, chunk_piecewise_subassemble))
+					# print("jp_chunk = '%s', google = '%s', subassemble = '%s'" %
+					# 	  (this_jp_chunk, this_google_result, chunk_piecewise_subassemble))
 				# sort it again
 				google_plus_words = translation_tools.sort_dict_with_longest_keys_first(google_plus_words)
 	
-			print("stats: num_google = %d, num_subassemble = %d" % (num_google, num_subassemble))
+			# print("stats: num_google = %d, num_subassemble = %d" % (num_google, num_subassemble))
 		
 		# 8. piecewise translate using newly created dict
 		# it has been fine-tuned and is now guaranteed to fully match against everything that it failed to match before
