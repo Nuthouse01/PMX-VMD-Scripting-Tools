@@ -467,7 +467,8 @@ words_dict = {
 "足": "leg",
 "脚部": "leg",
 "脚": "leg",
-"腿": "thigh",
+"腿": "thigh",  # phonetically "momo"
+"もも": "thigh",  # phonetically "momo" but google thinks it means "peaches" lol
 "手袋": "glove",
 "グローブ": "glove",
 "ベルト": "belt",
