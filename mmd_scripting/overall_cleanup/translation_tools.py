@@ -502,7 +502,6 @@ words_dict = {
 "身": "body",  # phonetically "mi"??? but it shows up in semistandard "upper body" name so w/e
 "体": "body",  # phonetically "karada" lit. means body as in skin
 "ボディ": "body",  # phonetically "bo di i" so it's pretty exact
-"ボテ": "body",  # phonetically "bo tey" so its kinda loose but w/e
 "肌": "skin",
 "裙": "skirt",  # chinese for "skirt"
 "輪": "ring",  # was "round", better translation is ring/loop/circle maybe?
