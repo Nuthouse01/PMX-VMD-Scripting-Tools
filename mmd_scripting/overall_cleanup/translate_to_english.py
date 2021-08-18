@@ -28,7 +28,7 @@ DISABLE_INTERNET_TRANSLATE = False
 
 # sometimes chinese translation gives better results than japanese translation
 # when false, force input to be interpreted as Japanese. When true, autodetect input language.
-GOOGLE_AUTODETECT_LANGUAGE = True
+GOOGLE_AUTODETECT_LANGUAGE = False
 
 
 # by default, do not display copyJP/exactmatch modifications
