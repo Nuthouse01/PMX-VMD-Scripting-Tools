@@ -21,9 +21,8 @@ MAKE_BACKUP_BEFORE_RENAMES = True
 BACKUP_SUFFIX = "beforetranslate"
 
 # build a dict that will fix windows-forbidden characters in file names
-invalid_windows_chars_ord = dict()
-for c in ':*?"<>|':  # specific invalid characters
-	invalid_windows_chars_ord[ord(c)] = "_"
+invalid_windows_chars = ':*?"<>|'  # specific invalid characters
+invalid_windows_chars_ord = dict((ord(c), "_") for c in invalid_windows_chars)
 for cc in range(32):  # non-printing control characters
 	invalid_windows_chars_ord[cc] = ""
 
@@ -135,7 +134,8 @@ def main(moreinfo=False):
 	# force it to use chunk-wise translate
 	newname_list = translation_functions.google_translate([p.name for p in filerecord_list],
 														  strategy=1,
-														  autodetect_language=GOOGLE_AUTODETECT_LANGUAGE)
+														  autodetect_language=GOOGLE_AUTODETECT_LANGUAGE,
+														  chunks_only_kanji=False)
 	
 	# now repair any windows-forbidden symbols that might have shown up after translation
 	newname_list = [n.translate(invalid_windows_chars_ord) for n in newname_list]

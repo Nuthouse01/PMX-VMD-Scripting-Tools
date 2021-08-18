@@ -235,7 +235,9 @@ def _trans_source_google_translate(recordlist: List[StringTranslateRecord]) -> N
 	try:
 		remainlist_strings = [R.jp_old for R in remainlist]
 		google_results = translation_functions.google_translate(remainlist_strings,
-																autodetect_language=GOOGLE_AUTODETECT_LANGUAGE)
+																strategy=1,
+																autodetect_language=GOOGLE_AUTODETECT_LANGUAGE,
+																chunks_only_kanji=True)
 	except Exception as e:
 		core.MY_PRINT_FUNC(e.__class__.__name__, e)
 		core.MY_PRINT_FUNC("ERROR: Internet translate unexpectedly failed, attempting to recover...")

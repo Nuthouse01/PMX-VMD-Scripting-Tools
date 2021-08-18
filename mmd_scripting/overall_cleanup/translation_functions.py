@@ -439,13 +439,17 @@ def _single_google_translate(jp_str: str, autodetect_language=True) -> str:
 		raise
 
 
-def google_translate(in_list: STR_OR_STRLIST, strategy=1, autodetect_language=True) -> STR_OR_STRLIST:
+def google_translate(in_list: STR_OR_STRLIST, strategy=1, autodetect_language=True, chunks_only_kanji=True) -> STR_OR_STRLIST:
 	"""
 	Take a list of strings & get them all translated by asking Google. Can use per-line strategy or new 'chunkwise' strategy.
+	If chunks_only_kanji=True, only attempt to translate actual katakana or w/e, prevent non-ASCII non-JP stuff
+	like ▲ ★ 〇 from going to google. If chunks_only_kanji=False, attempt to translate everything that isn't ASCII
+	(might cause language autodetect to malfunction tho!)
 
 	:param in_list: list of JP or partially JP strings
 	:param strategy: 0=old per-line strategy, 1=new chunkwise strategy, 2=auto choose whichever needs less Google traffic
 	:param autodetect_language: if true, let Google decide the input language. if False, assert that the input is JP
+	:param chunks_only_kanji: True=chunks are "is_jp", False=chunks are "not is_latin"
 	:return: list of strings probably pure EN, but sometimes odd unicode symbols show up
 	"""
 	input_is_str = isinstance(in_list, str)
@@ -471,7 +475,8 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1, autodetect_language=Tr
 		for I, C in enumerate(S):
 			# IMPORTANT: use "is_jp" here and not "is_latin" so chunks are defined to be only actual JP stuff and not unicode whatevers
 			# this means unicode whatevers will be breakpoints between chunks, and also will not be sent to googletrans
-			curr_is_chunk = is_jp(C)
+			if chunks_only_kanji: curr_is_chunk = is_jp(C)
+			else:                 curr_is_chunk = not is_latin(C)
 			# if this is the point where C transitions from "not chunk" to "chunk", then this is the START of a chunk
 			if not prev_is_chunk and curr_is_chunk:
 				chunkstart = I
