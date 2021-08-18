@@ -6,6 +6,7 @@ import mmd_scripting.core.nuthouse01_io as io
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.overall_cleanup import translation_tools
+from mmd_scripting.overall_cleanup import translation_functions
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/12/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -270,7 +271,7 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 	# pretrans + google_dict -> outlist
 	
 	# 1. pre-translate to take care of common tasks
-	indents, bodies, suffixes = translation_tools.pre_translate(in_list)
+	indents, bodies, suffixes = translation_functions.pre_translate(in_list)
 	
 	# 2. identify chunks
 	jp_chunks_set = set()
@@ -283,7 +284,7 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 		for I, C in enumerate(S):
 			# IMPORTANT: use "is_jp" here and not "is_latin" so chunks are defined to be only actual JP stuff and not unicode whatevers
 			# this means unicode whatevers will be breakpoints between chunks, and also will not be sent to googletrans
-			curr_is_chunk = translation_tools.is_jp(C)
+			curr_is_chunk = translation_functions.is_jp(C)
 			# if this is the point where C transitions from "not chunk" to "chunk", then this is the START of a chunk
 			if not prev_is_chunk and curr_is_chunk:
 				chunkstart = I
@@ -303,8 +304,8 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 	localtrans_dict = dict()
 	jp_chunks = []
 	for chunk in list(jp_chunks_set):
-		trans = translation_tools.piecewise_translate(chunk, translation_tools.words_dict)
-		if translation_tools.is_jp(trans):
+		trans = translation_functions.piecewise_translate(chunk, translation_tools.words_dict)
+		if translation_functions.is_jp(trans):
 			# if the localtrans failed, then the chunk needs to be sent to google later
 			jp_chunks.append(chunk)
 		else:
@@ -378,9 +379,9 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 				# remove this specific chunk + its translation from the dict
 				google_plus_words.pop(this_jp_chunk)
 				# attempt piecewise translate for this chunk
-				chunk_piecewise_subassemble = translation_tools.piecewise_translate(this_jp_chunk, google_plus_words)
+				chunk_piecewise_subassemble = translation_functions.piecewise_translate(this_jp_chunk, google_plus_words)
 				# IS THIS SUCCESSFUL?
-				if translation_tools.is_jp(chunk_piecewise_subassemble):
+				if translation_functions.is_jp(chunk_piecewise_subassemble):
 					# no, this is not successful... I do not have all the individual pieces that make up this word
 					# so just use the exact-match from google (that i removed a few lines above)
 					google_plus_words[this_jp_chunk] = this_google_result
@@ -400,7 +401,7 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 		
 		# 8. piecewise translate using newly created dict
 		# it has been fine-tuned and is now guaranteed to fully match against everything that it failed to match before
-		outlist = translation_tools.piecewise_translate(bodies, google_plus_words)
+		outlist = translation_functions.piecewise_translate(bodies, google_plus_words)
 		
 	else:
 		# old style: just translate the strings directly and return their results
@@ -481,7 +482,7 @@ def _trans_source_EN_already_good(recordlist: List[StringTranslateRecord]) -> No
 		if item.en_old.isspace(): continue
 		if item.en_old.lower() in FORBIDDEN_ENGLISH_NAMES: continue
 		# if not translation_tools.is_latin(item.en_old): continue
-		if translation_tools.needs_translate(item.en_old): continue
+		if translation_functions.needs_translate(item.en_old): continue
 		
 		# if it passes all these checks, then it's a keeper!
 		item.en_new = item.en_old
@@ -500,14 +501,14 @@ def _trans_source_copy_JP(recordlist: List[StringTranslateRecord]) -> None:
 	
 	for item in remainlist:
 		# return EN indent, JP(?) body, EN suffix
-		indent, body, suffix = translation_tools.pre_translate(item.jp_old)
+		indent, body, suffix = translation_functions.pre_translate(item.jp_old)
 		
 		# check if it is bad
 		if body == "": continue
 		if body.isspace(): continue
 		if body.lower() in FORBIDDEN_ENGLISH_NAMES: continue
 		# if not translation_tools.is_latin(body): continue
-		if translation_tools.needs_translate(body): continue
+		if translation_functions.needs_translate(body): continue
 	
 		# if it's good, then it's a keeper!
 		item.en_new = indent + body + suffix
@@ -527,7 +528,7 @@ def _trans_source_exact_match(recordlist: List[StringTranslateRecord]) -> None:
 	
 	for item in remainlist:
 		# return EN indent, JP(?) body, EN suffix
-		indent, body, suffix = translation_tools.pre_translate(item.jp_old)
+		indent, body, suffix = translation_functions.pre_translate(item.jp_old)
 		
 		# does it have a dict associated with it?
 		if item.cat in membername_to_specificdict_dict:
@@ -553,11 +554,11 @@ def _trans_source_piecewise_translate(recordlist: List[StringTranslateRecord]) -
 	
 	# actually do local translate
 	remainlist_strings = [R.jp_old for R in remainlist]
-	local_results = translation_tools.local_translate(remainlist_strings)
+	local_results = translation_functions.local_translate(remainlist_strings)
 	# determine if each item passed or not, update the en_new and trans_type fields
 	for item, result in zip(remainlist, local_results):
 		# did it pass?
-		if not translation_tools.needs_translate(result):
+		if not translation_functions.needs_translate(result):
 			# yes! hooray!
 			item.en_new = result
 			item.trans_source = "piece"
@@ -597,7 +598,7 @@ def _trans_source_google_translate(recordlist: List[StringTranslateRecord]) -> N
 		# determine whether it passed or failed for display purposes
 		# failure is usually due to unusual geometric symbols, not due to japanese text, but sometimes it just fucks up
 		# if it fails, leave the type as NONE so it might be overridden by other stages I guess
-		if not translation_tools.needs_translate(result):
+		if not translation_functions.needs_translate(result):
 			item.trans_source = "google"
 	return
 
