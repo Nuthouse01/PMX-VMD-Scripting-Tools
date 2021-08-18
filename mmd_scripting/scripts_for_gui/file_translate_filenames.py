@@ -133,7 +133,6 @@ def main(moreinfo=False):
 	# get new names via google
 	# force it to use chunk-wise translate
 	newname_list = translation_functions.google_translate([p.name for p in filerecord_list],
-														  strategy=1,
 														  autodetect_language=GOOGLE_AUTODETECT_LANGUAGE,
 														  chunks_only_kanji=False)
 	
