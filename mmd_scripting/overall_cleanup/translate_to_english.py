@@ -11,7 +11,16 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/12/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
+# this switch will enable extra printouts throughout the script
 DEBUG = False
+
+
+# how much do i trust the existing english names? (if any exist)
+# 1: max trust, i.e. check this first
+# 2: after exact-match but before piecewise
+# 3: after piecewise but before google
+# 4: only if google fails
+TRUST_EXISTING_ENGLISH_NAME = 2
 
 
 # by default, do not display copyJP/exactmatch modifications
@@ -380,12 +389,14 @@ def google_translate(in_list: STR_OR_STRLIST, strategy=1) -> STR_OR_STRLIST:
 					# yes, this is successful... I would rather use the sub-assembled answer rather than the Google answer!
 					google_plus_words[this_jp_chunk] = chunk_piecewise_subassemble
 					num_subassemble += 1
-					# print("jp_chunk = '%s', google = '%s', subassemble = '%s'" %
-					# 	  (this_jp_chunk, this_google_result, chunk_piecewise_subassemble))
+					if DEBUG:
+						print("jp_chunk = '%s', google = '%s', subassemble = '%s'" %
+							  (this_jp_chunk, this_google_result, chunk_piecewise_subassemble))
 				# sort it again
 				google_plus_words = translation_tools.sort_dict_with_longest_keys_first(google_plus_words)
-	
-			# print("stats: num_google = %d, num_subassemble = %d" % (num_google, num_subassemble))
+			
+			if DEBUG:
+				print("stats: num_google = %d, num_subassemble = %d" % (num_google, num_subassemble))
 		
 		# 8. piecewise translate using newly created dict
 		# it has been fine-tuned and is now guaranteed to fully match against everything that it failed to match before
@@ -462,7 +473,7 @@ def _trans_source_EN_already_good(recordlist: List[StringTranslateRecord]) -> No
 	"""
 	# if it has succesfully translated from some other source, don't overwrite that result!
 	remainlist = [R for R in recordlist if R.trans_source is None]
-	if DEBUG: core.MY_PRINT_FUNC("stage1 useEN: remaining", len(remainlist))
+	if DEBUG: print("stage1 useEN: remaining", len(remainlist))
 	
 	for item in remainlist:
 		# these are all conditions that mean the current name is not good enough
@@ -485,7 +496,7 @@ def _trans_source_copy_JP(recordlist: List[StringTranslateRecord]) -> None:
 	"""
 	# if it has succesfully translated from some other source, don't overwrite that result!
 	remainlist = [R for R in recordlist if R.trans_source is None]
-	if DEBUG: core.MY_PRINT_FUNC("stage2 copyJP: remaining", len(remainlist))
+	if DEBUG: print("stage2 copyJP: remaining", len(remainlist))
 	
 	for item in remainlist:
 		# return EN indent, JP(?) body, EN suffix
@@ -512,7 +523,7 @@ def _trans_source_exact_match(recordlist: List[StringTranslateRecord]) -> None:
 	"""
 	# if it has succesfully translated from some other source, don't overwrite that result!
 	remainlist = [R for R in recordlist if R.trans_source is None]
-	if DEBUG: core.MY_PRINT_FUNC("stage3 exact: remaining", len(remainlist))
+	if DEBUG: print("stage3 exact: remaining", len(remainlist))
 	
 	for item in remainlist:
 		# return EN indent, JP(?) body, EN suffix
@@ -536,7 +547,7 @@ def _trans_source_piecewise_translate(recordlist: List[StringTranslateRecord]) -
 	"""
 	# if it has succesfully translated from some other source, don't overwrite that result!
 	remainlist = [R for R in recordlist if R.trans_source is None]
-	if DEBUG: core.MY_PRINT_FUNC("stage4 piece: remaining", len(remainlist))
+	if DEBUG: print("stage4 piece: remaining", len(remainlist))
 	
 	########
 	
@@ -560,7 +571,7 @@ def _trans_source_google_translate(recordlist: List[StringTranslateRecord]) -> N
 	"""
 	# if it has succesfully translated from some other source, don't overwrite that result!
 	remainlist = [R for R in recordlist if R.trans_source is None]
-	if DEBUG: core.MY_PRINT_FUNC("stage5 google: remaining", len(remainlist))
+	if DEBUG: print("stage5 google: remaining", len(remainlist))
 	
 	if not remainlist: return
 	########
@@ -598,7 +609,7 @@ def _trans_source_catchall_fail(recordlist: List[StringTranslateRecord]) -> None
 	"""
 	# if it has succesfully translated from some other source, don't overwrite that result!
 	remainlist = [R for R in recordlist if R.trans_source is None]
-	if DEBUG: core.MY_PRINT_FUNC("stage6 fail: remaining", len(remainlist))
+	if DEBUG: print("stage6 fail: remaining", len(remainlist))
 	
 	for item in remainlist:
 		# unconditionally replace any remaining "none" with "FAIL"
@@ -660,27 +671,21 @@ def translate_to_english(pmx: pmxstruct.Pmx, moreinfo=False):
 	translate_record_list = build_StringTranslateRecord_list_from_pmx(pmx)
 	
 	#####################################################
-	
 	# step 2: the pipeline
 	# the stages of this pipeline can be reorded to prioritize translations from different sources
+	# the variable TRUST_EXISTING_ENGLISH_NAME controls the order of operations to some extent
 	
-	_trans_source_EN_already_good(translate_record_list)
-	
-	_trans_source_copy_JP(translate_record_list)
-	
-	_trans_source_exact_match(translate_record_list)
-	
-	_trans_source_piecewise_translate(translate_record_list)
-	
-	# _trans_source_EN_already_good(translate_record_list)
-	
-	_trans_source_google_translate(translate_record_list)
-	
-	# _trans_source_EN_already_good(translate_record_list)
+	if TRUST_EXISTING_ENGLISH_NAME == 1: _trans_source_EN_already_good(translate_record_list)  #1
+	_trans_source_copy_JP(translate_record_list)  #2
+	_trans_source_exact_match(translate_record_list)  #3
+	if TRUST_EXISTING_ENGLISH_NAME == 2: _trans_source_EN_already_good(translate_record_list)  #1
+	_trans_source_piecewise_translate(translate_record_list)  #4
+	if TRUST_EXISTING_ENGLISH_NAME == 3: _trans_source_EN_already_good(translate_record_list)  #1
+	_trans_source_google_translate(translate_record_list)  #5
+	if TRUST_EXISTING_ENGLISH_NAME == 4: _trans_source_EN_already_good(translate_record_list)  #1
 
-	#
 	# catchall should always be last tho
-	_trans_source_catchall_fail(translate_record_list)
+	_trans_source_catchall_fail(translate_record_list)  #6
 	
 	
 	###########################################
