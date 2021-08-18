@@ -5,12 +5,12 @@ from typing import TypeVar, List, Tuple, Dict
 import googletrans
 
 from mmd_scripting.core import nuthouse01_core as core, nuthouse01_io as io
-from mmd_scripting.overall_cleanup import translation_tools
+from mmd_scripting.overall_cleanup import translation_dictionaries
 
 # to use builtin "string.translate() function", must assemble a dict where key is UNICODE NUMBER and value is string
-prefix_dict_ord =          dict((ord(k), v) for k, v in translation_tools.prefix_dict.items())
-odd_punctuation_dict_ord = dict((ord(k), v) for k, v in translation_tools.odd_punctuation_dict.items())
-fullwidth_dict_ord =       dict((ord(k), v) for k, v in translation_tools.ascii_full_to_basic_dict.items())
+prefix_dict_ord =          dict((ord(k), v) for k, v in translation_dictionaries.prefix_dict.items())
+odd_punctuation_dict_ord = dict((ord(k), v) for k, v in translation_dictionaries.odd_punctuation_dict.items())
+fullwidth_dict_ord =       dict((ord(k), v) for k, v in translation_dictionaries.ascii_full_to_basic_dict.items())
 
 
 # all english names have consistent-sized indent when any amount of indent is present (doesn't come up very often)
@@ -86,7 +86,7 @@ needstranslate_pattern += "\u2500-\u257f"  # "box drawing" block, used as indent
 needstranslate_pattern += "\u25a0-\u25ff"  # "geometric shapes", common morphs ▲ △ □ ■ come from here
 needstranslate_pattern += "\u2600-\u26ff"  # "misc symbols", ★ and ☆ come from here but everything else is irrelevant
 needstranslate_pattern += "\uff01-\uff65"  # "halfwidth and fullwidth forms" fullwidth latin and punctuation aka ０１２３ＩＫ
-needstranslate_pattern += "".join(translation_tools.symbols_dict.keys())  # add "symbol dict" just in case there are some outlyers... some overlap with ranges but w/e
+needstranslate_pattern += "".join(translation_dictionaries.symbols_dict.keys())  # add "symbol dict" just in case there are some outlyers... some overlap with ranges but w/e
 needstranslate_re = re.compile("[" + needstranslate_pattern + "]")
 
 
@@ -145,7 +145,7 @@ def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLI
 		out = s.translate(odd_punctuation_dict_ord)
 		out = out.translate(fullwidth_dict_ord)
 		# cannot use string.translate() for katakana_half_to_full_dict because several keys are 2-char strings
-		out = piecewise_translate(out, translation_tools.katakana_half_to_full_dict, join_with_space=False)
+		out = piecewise_translate(out, translation_dictionaries.katakana_half_to_full_dict, join_with_space=False)
 		
 		# 2. check for indent
 		indent_prefix = ""
@@ -277,7 +277,7 @@ def local_translate(in_list: STR_OR_STRLIST) -> STR_OR_STRLIST:
 	indents, bodies, suffixes = pre_translate(in_list)
 	
 	# second, run piecewise translation with the hardcoded "words dict"
-	outbodies = piecewise_translate(bodies, translation_tools.words_dict)
+	outbodies = piecewise_translate(bodies, translation_dictionaries.words_dict)
 	
 	# third, reattach the indents and suffixes
 	outlist = [i + b + s for i,b,s in zip(indents, outbodies, suffixes)]
@@ -493,7 +493,7 @@ def google_translate(in_list: STR_OR_STRLIST, autodetect_language=True, chunks_o
 	localtrans_dict = dict()
 	jp_chunks = []
 	for chunk in list(jp_chunks_set):
-		trans = piecewise_translate(chunk, translation_tools.words_dict)
+		trans = piecewise_translate(chunk, translation_dictionaries.words_dict)
 		if is_jp(trans):
 			# if the localtrans failed, then the chunk needs to be sent to google later
 			jp_chunks.append(chunk)
@@ -537,10 +537,10 @@ def google_translate(in_list: STR_OR_STRLIST, autodetect_language=True, chunks_o
 		google_plus_words = {}
 		# combine words_dict + google_dict into one
 		google_plus_words.update(google_dict)
-		google_plus_words.update(translation_tools.words_dict)
+		google_plus_words.update(translation_dictionaries.words_dict)
 		google_plus_words.update(localtrans_dict)  # add dict entries from things that succeeded localtrans
 		# ensure it's sorted big-to-small
-		google_plus_words = translation_tools.sort_dict_with_longest_keys_first(google_plus_words)
+		google_plus_words = translation_dictionaries.sort_dict_with_longest_keys_first(google_plus_words)
 
 		# # sanity-check: i'm pretty sure that the keys of the 3 dicts should be guaranteed to be mutually exclusive?
 		# assert len(google_plus_words) == len(translation_tools.words_dict) + len(google_dict) + len(localtrans_dict)
@@ -573,7 +573,7 @@ def google_translate(in_list: STR_OR_STRLIST, autodetect_language=True, chunks_o
 						print("jp_chunk = '%s', google = '%s', subassemble = '%s'" %
 							  (this_jp_chunk, this_google_result, chunk_piecewise_subassemble))
 				# sort it again
-				google_plus_words = translation_tools.sort_dict_with_longest_keys_first(google_plus_words)
+				google_plus_words = translation_dictionaries.sort_dict_with_longest_keys_first(google_plus_words)
 			
 			if DEBUG:
 				print("stats: num_google = %d, num_subassemble = %d" % (num_google, num_subassemble))
@@ -598,7 +598,7 @@ def google_translate(in_list: STR_OR_STRLIST, autodetect_language=True, chunks_o
 		# no need to print failing statement, the "check translate budget" function already does
 		# don't quit early, run thru the same full structure & eventually return a copy of the JP names
 		core.MY_PRINT_FUNC("While Google Translate is disabled, just using best-effort (incomplete) local translate")
-		bodies_best_effort = piecewise_translate(bodies, translation_tools.words_dict)
+		bodies_best_effort = piecewise_translate(bodies, translation_dictionaries.words_dict)
 		outlist_final = [i + b + s for i, b, s in zip(indents, bodies_best_effort, suffixes)]
 	
 	# return

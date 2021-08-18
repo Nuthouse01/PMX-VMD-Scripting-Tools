@@ -4,7 +4,7 @@ import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.overall_cleanup import translation_functions
-from mmd_scripting.overall_cleanup import translation_tools
+from mmd_scripting.overall_cleanup import translation_dictionaries
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/12/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -46,9 +46,9 @@ FORBIDDEN_ENGLISH_NAMES = ["en", "d", "mat", "morph", "new morph", "bone", "new 
 membername_to_shortname_dict = {"header":"header", "materials":"mat", "bones":"bone", "morphs":"morph", "frames":"frame"}
 # this will associate the dicts that are optimized for each category, with that category
 membername_to_specificdict_dict = {
-	"bones": translation_tools.bone_dict,
-	"morphs": translation_tools.morph_dict,
-	"frames": translation_tools.frame_dict,
+	"bones": translation_dictionaries.bone_dict,
+	"morphs": translation_dictionaries.morph_dict,
+	"frames": translation_dictionaries.frame_dict,
 }
 
 
