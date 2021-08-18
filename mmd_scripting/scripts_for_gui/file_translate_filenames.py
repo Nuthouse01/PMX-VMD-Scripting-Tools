@@ -2,7 +2,7 @@ import os
 
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
-from mmd_scripting.overall_cleanup import translate_to_english as translate_to_english
+from mmd_scripting.overall_cleanup import translate_to_english
 from mmd_scripting.scripts_for_gui import file_sort_textures
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
