@@ -1,5 +1,5 @@
 import re
-from typing import List, Tuple, TypeVar
+from typing import List, Tuple, TypeVar, Dict
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/13/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -793,7 +793,6 @@ odd_punctuation_dict = {
 "〛": "]",  # x301b
 "・": "-",  # x30fb, could map to 00B7 but i don't think MMD would display that either
 "〜": "~",  # x301C wave dash, not a "fullwidth tilde"
-"～": "~",  # xff5e "fullwidth tilde" causes some issues
 "｟": "(",  # xff5f
 "｠": ")",  # xff60
 "｡": ".",  #xff61
@@ -806,104 +805,21 @@ odd_punctuation_dict = {
 
 # https://en.wikipedia.org/wiki/Halfwidth_and_Fullwidth_Forms_(Unicode_block)
 # fullwidth chars like ０１２３ＩＫ are in range FF01–FF5E  and correspond to  21-7E, difference=(FEE0)
+# these are separate because they all have a definite, guaranteed, one-to-one match in the ASCII block
 fullwidth_dict = {
-'！': '!',
-'＂': '"',
-'＃': '#',
-'＄': '$',
-'％': '%',
-'＆': '&',
-'＇': "'",
-'（': '(',
-'）': ')',
-'＊': '*',
-'＋': '+',
-'，': ',',
-'－': '-',
-'．': '.',
-'／': '/',
-'０': '0',
-'１': '1',
-'２': '2',
-'３': '3',
-'４': '4',
-'５': '5',
-'６': '6',
-'７': '7',
-'８': '8',
-'９': '9',
-'：': ':',
-'；': ';',
-'＜': '<',
-'＝': '=',
-'＞': '>',
-'？': '?',
-'＠': '@',
-'Ａ': 'A',
-'Ｂ': 'B',
-'Ｃ': 'C',
-'Ｄ': 'D',
-'Ｅ': 'E',
-'Ｆ': 'F',
-'Ｇ': 'G',
-'Ｈ': 'H',
-'Ｉ': 'I',
-'Ｊ': 'J',
-'Ｋ': 'K',
-'Ｌ': 'L',
-'Ｍ': 'M',
-'Ｎ': 'N',
-'Ｏ': 'O',
-'Ｐ': 'P',
-'Ｑ': 'Q',
-'Ｒ': 'R',
-'Ｓ': 'S',
-'Ｔ': 'T',
-'Ｕ': 'U',
-'Ｖ': 'V',
-'Ｗ': 'W',
-'Ｘ': 'X',
-'Ｙ': 'Y',
-'Ｚ': 'Z',
-'［': '[',
-'＼': '\\',
-'］': ']',
-'＾': '^',
-'＿': '_',
-'｀': '`',
-'ａ': 'a',
-'ｂ': 'b',
-'ｃ': 'c',
-'ｄ': 'd',
-'ｅ': 'e',
-'ｆ': 'f',
-'ｇ': 'g',
-'ｈ': 'h',
-'ｉ': 'i',
-'ｊ': 'j',
-'ｋ': 'k',
-'ｌ': 'l',
-'ｍ': 'm',
-'ｎ': 'n',
-'ｏ': 'o',
-'ｐ': 'p',
-'ｑ': 'q',
-'ｒ': 'r',
-'ｓ': 's',
-'ｔ': 't',
-'ｕ': 'u',
-'ｖ': 'v',
-'ｗ': 'w',
-'ｘ': 'x',
-'ｙ': 'y',
-'ｚ': 'z',
-'｛': '{',
-'｜': '|',
-'｝': '}',
-'～': '~',
+	'！': '!', '＂': '"', '＃': '#', '＄': '$', '％': '%', '＆': '&', '＇': "'", '（': '(', '）': ')', '＊': '*',
+	'＋': '+', '，': ',', '－': '-', '．': '.', '／': '/', '０': '0', '１': '1', '２': '2', '３': '3', '４': '4',
+	'５': '5', '６': '6', '７': '7', '８': '8', '９': '9', '：': ':', '；': ';', '＜': '<', '＝': '=', '＞': '>',
+	'？': '?', '＠': '@', 'Ａ': 'A', 'Ｂ': 'B', 'Ｃ': 'C', 'Ｄ': 'D', 'Ｅ': 'E', 'Ｆ': 'F', 'Ｇ': 'G', 'Ｈ': 'H',
+	'Ｉ': 'I', 'Ｊ': 'J', 'Ｋ': 'K', 'Ｌ': 'L', 'Ｍ': 'M', 'Ｎ': 'N', 'Ｏ': 'O', 'Ｐ': 'P', 'Ｑ': 'Q', 'Ｒ': 'R',
+	'Ｓ': 'S', 'Ｔ': 'T', 'Ｕ': 'U', 'Ｖ': 'V', 'Ｗ': 'W', 'Ｘ': 'X', 'Ｙ': 'Y', 'Ｚ': 'Z', '［': '[', '＼': '\\',
+	'］': ']', '＾': '^', '＿': '_', '｀': '`', 'ａ': 'a', 'ｂ': 'b', 'ｃ': 'c', 'ｄ': 'd', 'ｅ': 'e', 'ｆ': 'f',
+	'ｇ': 'g', 'ｈ': 'h', 'ｉ': 'i', 'ｊ': 'j', 'ｋ': 'k', 'ｌ': 'l', 'ｍ': 'm', 'ｎ': 'n', 'ｏ': 'o', 'ｐ': 'p',
+	'ｑ': 'q', 'ｒ': 'r', 'ｓ': 's', 'ｔ': 't', 'ｕ': 'u', 'ｖ': 'v', 'ｗ': 'w', 'ｘ': 'x', 'ｙ': 'y', 'ｚ': 'z',
+	'｛': '{', '｜': '|', '｝': '}', '～': '~',
 }
 
-# to use builtin "string translate function", must assemble a dict where key is UNICODE NUMBER and value is string
+# to use builtin "string.translate() function", must assemble a dict where key is UNICODE NUMBER and value is string
 prefix_dict_ord = dict((ord(k), v) for k, v in prefix_dict.items())
 odd_punctuation_dict_ord = dict({(ord(k), v) for k, v in odd_punctuation_dict.items()})
 fullwidth_dict_ord = dict((ord(k), v) for k,v in fullwidth_dict.items())
@@ -922,9 +838,6 @@ prefix_pattern = "^(([右左]|中(?!指))+)"
 suffix_pattern = "(([右左中]|(?<!全ての)親|(?<!つま)先)+)$"
 prefix_pattern_re = re.compile(prefix_pattern + padding_pattern)
 suffix_pattern_re = re.compile(padding_pattern + suffix_pattern)
-
-# TODO: maybe implement the half-to-full idea now? try to map everything to fullwidth chars before doing translate?
-#  would need to scan & modify the current dicts tho
 
 # TODO: better divide the translate stuff into files... separate "translate dicts" from "translate functions" from "translate all names in the model script"
 
@@ -1072,7 +985,7 @@ def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLI
 	else:			return indent_list, body_list, suffix_list	# otherwise return as a list
 
 
-def piecewise_translate(in_list: STR_OR_STRLIST, in_dict: dict, join_with_space=True) -> STR_OR_STRLIST:
+def piecewise_translate(in_list: STR_OR_STRLIST, in_dict: Dict[str,str], join_with_space=True) -> STR_OR_STRLIST:
 	"""
 	Apply piecewise translation to inputs when given a mapping dict.
 	Mapping dict will usually be the builtin comprehensive 'words_dict' or some results found from Google Translate.
@@ -1166,17 +1079,17 @@ def local_translate(in_list: STR_OR_STRLIST) -> STR_OR_STRLIST:
 
 # this is hte bit where i operate on all the dicts I defined above
 
-def sort_dict_with_longest_keys_first(D:dict) -> dict:
-	L_D = list(D.items())
+def sort_dict_with_longest_keys_first(D:Dict[str,str]) -> Dict[str,str]:
+	L_D = [tuple(x) for x in D.items()]
 	L_D.sort(reverse=True, key=lambda x: len(x[0]))
 	D_L_D = dict(L_D)
 	return D_L_D
 
-def invert_dict(D:dict) -> dict:
+def invert_dict(D:Dict[str,str]) -> Dict[str,str]:
 	inv = {v: k for k, v in D.items()}
 	return inv
 
-def convert_dict_keys_half_to_full(D: dict, consolidate: dict) -> dict:
+def convert_dict_keys_half_to_full(D: Dict[str,str], consolidate: Dict[str,str]) -> Dict[str,str]:
 	newdict = {}
 	keys = list(D.keys())
 	values = list(D.values())
