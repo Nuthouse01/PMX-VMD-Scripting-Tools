@@ -1,6 +1,10 @@
 import re
+from time import time
 from typing import TypeVar, List, Tuple, Dict
 
+import googletrans
+
+from mmd_scripting.core import nuthouse01_core as core, nuthouse01_io as io
 from mmd_scripting.overall_cleanup import translation_tools
 
 # to use builtin "string.translate() function", must assemble a dict where key is UNICODE NUMBER and value is string
@@ -8,9 +12,47 @@ prefix_dict_ord =          dict((ord(k), v) for k, v in translation_tools.prefix
 odd_punctuation_dict_ord = dict((ord(k), v) for k, v in translation_tools.odd_punctuation_dict.items())
 fullwidth_dict_ord =       dict((ord(k), v) for k, v in translation_tools.ascii_full_to_basic_dict.items())
 
+
+# all english names have consistent-sized indent when any amount of indent is present (doesn't come up very often)
 STANDARD_INDENT = "  "
 
+
+# enables a boatload of basic print statements pertaining to how translation works under the hood
 DEBUG = False
+
+
+
+# if you just wanna force it to not use google?
+DISABLE_INTERNET_TRANSLATE = False
+
+
+# new idea to make google translation more consistent (in some cases consistent = better but not always)
+# only helps on very complex models that contain enough compound words that I can isolate each component word
+USE_SUBASSEMBLE_IDEA = True
+
+
+# to reduce the number of translation requests, a list of strings is joined into one string broken by newlines
+# that counts as "fewer requests" for google's API
+# tho in testing, sometimes translations produce different results if on their own vs in a newline list... oh well
+# or sometimes they lose newlines during translation
+# more lines per request = riskier, but uses less of your transaction budget
+TRANSLATE_MAX_LINES_PER_REQUEST = 15
+# how many requests are permitted per timeframe, to avoid the lockout
+# true limit is ~100 so enforce limit of 90 just to be safe
+TRANSLATE_BUDGET_MAX_REQUESTS = 90
+# how long (hours) is the timeframe to protect
+# true timeframe is ~1 hr so enforce limit of ~1.2hr just to be safe
+TRANSLATE_BUDGET_TIMEFRAME = 1.0
+
+
+# everything is fine, just set up the normal way
+# i used to have a bunch of try-except to catch import errors and support if googletrans is not installed,
+# but now it's part of my provided "RUN THIS TO INSTALL.bat" so it should always be present
+jp_to_en_google = googletrans.Translator()
+
+
+# type hint for functions that accept string-or-listofstring and return whatever they got in
+STR_OR_STRLIST = TypeVar("STR_OR_STRLIST", str, List[str])
 
 ########################################################################################################################
 ########################################################################################################################
@@ -79,7 +121,6 @@ def is_alphanumeric(text:str) -> bool:
 	return True
 
 
-STR_OR_STRLIST = TypeVar("STR_OR_STRLIST", str, List[str])
 def pre_translate(in_list: STR_OR_STRLIST) -> Tuple[STR_OR_STRLIST, STR_OR_STRLIST, STR_OR_STRLIST]:
 	"""
 	Handle common translation things like prefixes, suffixes, fullwidth alphanumeric characters, indents,
@@ -243,9 +284,330 @@ def local_translate(in_list: STR_OR_STRLIST) -> STR_OR_STRLIST:
 	
 	# pretty much done! check whether it passed/failed outside this func
 	if DEBUG:
+		print("Localtranslate Results:")
 		for s,o in zip(in_list, outlist):
 			# did i translate the whole thing? check whether results are all "normal" characters
 			print("%d :: %s :: %s" % (is_latin(o), s, o))
 	
 	if input_is_str:	return outlist[0]	# if original input was a single string, then de-listify
 	else:				return outlist		# otherwise return as a list
+
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+# Google Translate related functions
+
+
+# def init_googletrans():
+# 	# this should be a function called in main so if it fails, then it gets printed in console
+# 	global jp_to_en_google
+# 	global _DISABLE_INTERNET_TRANSLATE
+# 	_DISABLE_INTERNET_TRANSLATE = DISABLE_INTERNET_TRANSLATE  # create a second global var so I can reset this one to default each time it runs
+# 	if googletrans is None:
+# 		core.MY_PRINT_FUNC("ERROR: Python library 'googletrans' not installed, translation will be very limited!!")
+# 		core.MY_PRINT_FUNC("Please install this library with 'pip install googletrans' in Windows Command Prompt")
+# 		jp_to_en_google = None
+# 	else:
+# 		# everything is fine, just set up the normal way
+# 		jp_to_en_google = googletrans.Translator()
+
+
+def _check_translate_budget(num_proposed: int) -> bool:
+	"""
+	Goal: block translations that would trigger the lockout.
+	Create & maintain a persistent file that contains timestamps and # of requests, to know if my proposed number will
+	exceed the budget. If it would still be under budget, then update the log assuming that the proposed requests will
+	happen. options: TRANSLATE_BUDGET_MAX_REQUESTS, TRANSLATE_BUDGET_TIMEFRAME
+	
+	:param num_proposed: number of times I want to contact the google API
+	:return: bool True = go ahead, False = stop
+	"""
+	# get the log of past translation requests
+	# formatted as list of (timestamp, numrequests) sub-lists
+	record = io.get_persistent_storage_json('googletrans-request-history')
+	# if it doesn't exist in the json, then init it as empty list
+	if record is None:
+		record = []
+	
+	# get teh timestamp for now
+	now = time()
+	# walk backward so i can pop things safely, discard all request records that are older than <timeframe>
+	for i in reversed(range(len(record))):
+		entry = record[i]
+		if (now - entry[0]) > (TRANSLATE_BUDGET_TIMEFRAME * 60 * 60):
+			# print("debug: discard", record[i])
+			record.pop(i)
+	
+	# then interpret the file: how many requests happened in the past <timeframe> ?
+	requests_in_timeframe = sum([entry[1] for entry in record])
+	core.MY_PRINT_FUNC("... you have used {} / {} translation requests within the last {:.4} hrs...".format(
+		int(requests_in_timeframe), int(TRANSLATE_BUDGET_MAX_REQUESTS), TRANSLATE_BUDGET_TIMEFRAME))
+	# make the decision
+	if (requests_in_timeframe + num_proposed) <= TRANSLATE_BUDGET_MAX_REQUESTS:
+		# this many translations is OK! go ahead!
+		# write this transaction into the record
+		newentry = [now, num_proposed]
+		record.append(newentry)
+		# write the record to file
+		io.write_persistent_storage_json('googletrans-request-history', record)
+		return True
+	else:
+		# cannot do the translate, this would exceed the budget
+		# bonus value: how long until enough records expire that i can do this?
+		if num_proposed >= TRANSLATE_BUDGET_MAX_REQUESTS:
+			core.MY_PRINT_FUNC("BUDGET: you cannot make this many requests all at once")
+		else:
+			to_be_popped = 0
+			idx = 0
+			for idx in range(len(record)):
+				to_be_popped += record[idx][1]
+				# how many entries do i need to hypothetically pop before it would free enough space for the
+				# proposed amount to be accepted?
+				if (requests_in_timeframe + num_proposed - to_be_popped) <= TRANSLATE_BUDGET_MAX_REQUESTS:
+					break
+			# when idx'th item becomes too old, then the current proposed number will be okay
+			waittime = record[idx][0] + (TRANSLATE_BUDGET_TIMEFRAME * 60 * 60) - now
+			# convert seconds to minutes
+			waittime = round(waittime / 60)
+			core.MY_PRINT_FUNC("BUDGET: you must wait %d minutes before you can do %d more translation requests with Google" % (waittime, num_proposed))
+		
+		return False
+
+
+def _packetize_translate_requests(jp_list: List[str]) -> List[str]:
+	"""
+	Group/join a massive list of items to translate into fewer requests which each contain many separated by newlines.
+	options: TRANSLATE_MAX_LINES_PER_REQUEST.
+	
+	:param jp_list: list of each JP name, names must not include newlines
+	:return: list of combined names, which are many JP names joined by newlines
+	"""
+	retme = []
+	start_idx = 0
+	while start_idx < len(jp_list):
+		sub_list = jp_list[start_idx : start_idx+TRANSLATE_MAX_LINES_PER_REQUEST]
+		bigstr = "\n".join(sub_list)
+		retme.append(bigstr)
+		start_idx += TRANSLATE_MAX_LINES_PER_REQUEST
+	return retme
+
+
+def _unpacketize_translate_requests(list_after: List[str]) -> List[str]:
+	"""
+	Opposite of _packetize_translate_requests(). Breaks each string at newlines and flattens result into one long list.
+	
+	:param list_after: list of newline-joined strings
+	:return: list of strings not containing newlines
+	"""
+	retme = []
+	for after in list_after:
+		results = after.split("\n")
+		retme.extend(results)
+	return retme
+
+
+def _single_google_translate(jp_str: str, autodetect_language=True) -> str:
+	"""
+	Actually send a single string to Google API for translation, unless internet trans is disabled.
+	
+	:param jp_str: JP string to be translated
+	:param autodetect_language: if true, let Google decide the input language. if False, assert that the input is JP
+	:return: usually english-translated result
+	"""
+	try:
+		# acutally send a single string to Google for translation
+		if autodetect_language:
+			r = jp_to_en_google.translate(jp_str, dest="en")  # auto
+		else:
+			r = jp_to_en_google.translate(jp_str, dest="en", src="ja")  # jap
+		return r.text
+	except ConnectionError as e:
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		core.MY_PRINT_FUNC("Check your internet connection?")
+		raise
+	except Exception as e:
+		core.MY_PRINT_FUNC(e.__class__.__name__, e)
+		if hasattr(e, "doc"):
+			core.MY_PRINT_FUNC("Response from Google:")
+			core.MY_PRINT_FUNC(e.doc.split("\n")[7])
+			core.MY_PRINT_FUNC(e.doc.split("\n")[9])
+		core.MY_PRINT_FUNC("Google API has rejected the translate request")
+		core.MY_PRINT_FUNC("This is probably due to too many translate requests too quickly")
+		core.MY_PRINT_FUNC("Strangely, this lockout does NOT prevent you from using Google Translate thru your web browser. So go use that instead.")
+		core.MY_PRINT_FUNC("Get a VPN or try again in about 1 day (TODO: CONFIRM LOCKOUT TIME)")
+		raise
+
+
+def google_translate(in_list: STR_OR_STRLIST, strategy=1, autodetect_language=True) -> STR_OR_STRLIST:
+	"""
+	Take a list of strings & get them all translated by asking Google. Can use per-line strategy or new 'chunkwise' strategy.
+
+	:param in_list: list of JP or partially JP strings
+	:param strategy: 0=old per-line strategy, 1=new chunkwise strategy, 2=auto choose whichever needs less Google traffic
+	:param autodetect_language: if true, let Google decide the input language. if False, assert that the input is JP
+	:return: list of strings probably pure EN, but sometimes odd unicode symbols show up
+	"""
+	input_is_str = isinstance(in_list, str)
+	if input_is_str: in_list = [in_list]  # force it to be a list anyway so I don't have to change my structure
+	
+	use_chunk_strat = True if strategy == 1 else False
+	
+	# in_list -> pretrans -> jp_chunks_set -> jp_chunks -> jp_chunks_packets -> results_packets -> results
+	# jp_chunks + results -> google_dict
+	# pretrans + google_dict -> outlist
+	
+	# 1. pre-translate to take care of common tasks
+	indents, bodies, suffixes = pre_translate(in_list)
+	
+	# 2. identify chunks
+	jp_chunks_set = set()
+	# idea: walk & look for transition from en to jp
+	for S in bodies:  # for every string to translate,
+		prev_is_chunk = False
+		curr_is_chunk = False
+		chunkstart = -1
+		# virtually add a "not chunk" char before & after the input string...
+		for I, C in enumerate(S):
+			# IMPORTANT: use "is_jp" here and not "is_latin" so chunks are defined to be only actual JP stuff and not unicode whatevers
+			# this means unicode whatevers will be breakpoints between chunks, and also will not be sent to googletrans
+			curr_is_chunk = is_jp(C)
+			# if this is the point where C transitions from "not chunk" to "chunk", then this is the START of a chunk
+			if not prev_is_chunk and curr_is_chunk:
+				chunkstart = I
+			# if this is the point where C transitions from "chunk" to "not chunk", then this is the end of a chunk
+			elif prev_is_chunk and not curr_is_chunk:
+				jp_chunks_set.add(S[chunkstart:I])
+			# current gets passed to previous for next loop, duh
+			prev_is_chunk = curr_is_chunk
+		# when done with looping, if the final character was "chunk" then we have a chunk that includes the final char
+		if curr_is_chunk:
+			jp_chunks_set.add(S[chunkstart:len(S)])
+	
+	# 3. remove chunks I can already solve
+	# maybe localtrans can solve one chunk but not the whole string?
+	# chunks are guaranteed to not be PART OF compound words. but they are probably compound words themselves.
+	# run local trans on each chunk individually, and if it succeeds, then DON'T send it to google.
+	localtrans_dict = dict()
+	jp_chunks = []
+	for chunk in list(jp_chunks_set):
+		trans = piecewise_translate(chunk, translation_tools.words_dict)
+		if is_jp(trans):
+			# if the localtrans failed, then the chunk needs to be sent to google later
+			jp_chunks.append(chunk)
+		else:
+			# if it passed, no need to ask google what they mean cuz I already have a good translation for this chunk
+			# this will be added to the dict way later
+			localtrans_dict[chunk] = trans
+	
+	# 4. packetize them into fewer requests (and if auto, choose whether to use chunks or not)
+	jp_chunks_packets = _packetize_translate_requests(jp_chunks)
+	jp_bodies_packets = _packetize_translate_requests(bodies)
+	if strategy == 2:    use_chunk_strat = (len(jp_chunks_packets) < len(jp_bodies_packets))
+	
+	# 5. check the translate budget to see if I can afford this
+	if use_chunk_strat:
+		num_calls = len(jp_chunks_packets)
+	else:
+		num_calls = len(jp_bodies_packets)
+	
+	if not DISABLE_INTERNET_TRANSLATE and _check_translate_budget(num_calls):
+		core.MY_PRINT_FUNC("... making %d requests to Google Translate web API..." % num_calls)
+		
+		# 6. send chunks to Google
+		results_packets = []
+		if use_chunk_strat:
+			print("#items=", len(in_list), "#chunks=", len(jp_chunks), "#requests=", len(jp_chunks_packets))
+			for d, packet in enumerate(jp_chunks_packets):
+				core.print_progress_oneline(d / len(jp_chunks_packets))
+				r = _single_google_translate(packet, autodetect_language)
+				results_packets.append(r)
+			
+			# 7. assemble Google responses & re-associate with the chunks
+			# order of inputs "jp_chunks" matches order of outputs "results"
+			results = _unpacketize_translate_requests(results_packets)  # unpack
+			map_jp_to_google = list(zip(jp_chunks, results))
+			google_dict = dict(map_jp_to_google)  # build dict
+	
+			#########################
+			# BEGIN NEW IDEA: what do i call this? "Google Results Sub-Assembly"? idk
+			# first, sort so that when i iterate I am operating on the SHORTEST chunk first
+			map_jp_to_google.sort(key=lambda x: len(x[0]))
+			print(map_jp_to_google)
+			# second, for each chunk:
+			# can words_dict + google_dict (excluding this specific chunk's exact match) piecewise translate this chunk?
+			google_plus_words = {}
+			# combine words_dict + google_dict into one
+			google_plus_words.update(google_dict)
+			google_plus_words.update(translation_tools.words_dict)
+			google_plus_words.update(localtrans_dict)  # add dict entries from things that succeeded localtrans
+			# ensure it's sorted big-to-small
+			google_plus_words = translation_tools.sort_dict_with_longest_keys_first(google_plus_words)
+	
+			# # sanity-check: i'm pretty sure that the keys of the 3 dicts should be guaranteed to be mutually exclusive?
+			# assert len(google_plus_words) == len(translation_tools.words_dict) + len(google_dict) + len(localtrans_dict)
+	
+			if USE_SUBASSEMBLE_IDEA:
+				# example: a model might contain chunks of:
+				# "ニーソ" = knee sock, "ニーソ脱ぎ" = knee sock remove, "ニーソ上" = knee sock upper, and "ニーソヒール足首" = knee sock heel ankle
+				# trying to apply all chunks from longest-length to shortest length would mean only the google translate for that specific
+				# chunk gets used. but often, the longer chunks are translated worse... if I could pick the right order to try
+				# substituting the chunks, I think I would prefer to translate ニーソ上 via ニーソ + 上 instead of the entire chunk.
+				# maybe i could see if I can succesfully translate a chunk using all information except the exact-match for that chunk?
+				num_google = 0
+				num_subassemble = 0
+				for this_jp_chunk, this_google_result in map_jp_to_google:
+					# remove this specific chunk + its translation from the dict
+					google_plus_words.pop(this_jp_chunk)
+					# attempt piecewise translate for this chunk
+					chunk_piecewise_subassemble = piecewise_translate(this_jp_chunk, google_plus_words)
+					# IS THIS SUCCESSFUL?
+					if is_jp(chunk_piecewise_subassemble):
+						# no, this is not successful... I do not have all the individual pieces that make up this word
+						# so just use the exact-match from google (that i removed a few lines above)
+						google_plus_words[this_jp_chunk] = this_google_result
+						num_google += 1
+					else:
+						# yes, this is successful... I would rather use the sub-assembled answer rather than the Google answer!
+						google_plus_words[this_jp_chunk] = chunk_piecewise_subassemble
+						num_subassemble += 1
+						if DEBUG:
+							print("jp_chunk = '%s', google = '%s', subassemble = '%s'" %
+								  (this_jp_chunk, this_google_result, chunk_piecewise_subassemble))
+					# sort it again
+					google_plus_words = translation_tools.sort_dict_with_longest_keys_first(google_plus_words)
+				
+				if DEBUG:
+					print("stats: num_google = %d, num_subassemble = %d" % (num_google, num_subassemble))
+			
+			# 8. piecewise translate using newly created dict
+			# it has been fine-tuned and is now guaranteed to fully match against everything that it failed to match before
+			outlist = piecewise_translate(bodies, google_plus_words)
+			
+		else:
+			# old style: just translate the strings directly and return their results
+			for d, packet in enumerate(jp_bodies_packets):
+				core.print_progress_oneline(d / len(jp_bodies_packets))
+				r = _single_google_translate(packet, autodetect_language)
+				results_packets.append(r)
+			outlist = _unpacketize_translate_requests(results_packets)
+		
+		# last, reattach the indents and suffixes
+		outlist_final = [i + b + s for i, b, s in zip(indents, outlist, suffixes)]
+	
+		core.MY_PRINT_FUNC("... done!")
+		
+	else:
+		# no need to print failing statement, the "check translate budget" function already does
+		# don't quit early, run thru the same full structure & eventually return a copy of the JP names
+		core.MY_PRINT_FUNC("While Google Translate is disabled, just using best-effort (incomplete) local translate")
+		bodies_best_effort = piecewise_translate(bodies, translation_tools.words_dict)
+		outlist_final = [i + b + s for i, b, s in zip(indents, bodies_best_effort, suffixes)]
+	
+	# return
+	if input_is_str:
+		return outlist_final[0]  # if original input was a single string, then de-listify
+	else:
+		return outlist_final  # otherwise return as a list
+	
+	
