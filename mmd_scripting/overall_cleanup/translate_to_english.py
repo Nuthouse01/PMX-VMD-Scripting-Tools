@@ -19,7 +19,7 @@ DEBUG = False
 # 2: after exact-match but before piecewise
 # 3: after piecewise but before google
 # 4: only if google fails
-TRUST_EXISTING_ENGLISH_NAME = 2
+TRUST_EXISTING_ENGLISH_NAME = 1
 
 
 # if your internet went out or something? idk why you would want to disable this, but you can
