@@ -648,6 +648,7 @@ words_dict = {
 "幅": "width",
 "細い": "thin",
 "細": "thin",  # literally "fine"
+"平行": "parallel",  # phonetically "hey ko"
 "太": "thick",
 "粗": "coarse",
 "逆": "reverse",
