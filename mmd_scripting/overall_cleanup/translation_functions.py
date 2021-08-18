@@ -7,6 +7,10 @@ import googletrans
 from mmd_scripting.core import nuthouse01_core as core, nuthouse01_io as io
 from mmd_scripting.overall_cleanup import translation_dictionaries
 
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/13/2021"
+# This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
+#####################
+
 # to use builtin "string.translate() function", must assemble a dict where key is UNICODE NUMBER and value is string
 prefix_dict_ord =          dict((ord(k), v) for k, v in translation_dictionaries.prefix_dict.items())
 odd_punctuation_dict_ord = dict((ord(k), v) for k, v in translation_dictionaries.odd_punctuation_dict.items())
