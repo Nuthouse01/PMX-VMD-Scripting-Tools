@@ -66,7 +66,7 @@ def parse_vmd_used_dict(frames: List[BONEFRAME_OR_MORPHFRAME], moreinfo=False) -
 	# use this dict to count the times things are used
 	usedframes_count_dict = {}
 
-	for name, framelist in allframes_dict:
+	for name, framelist in allframes_dict.items():
 		# 2. for each frame target, count all the leading zeros!
 		num_leading_zeros = 0
 		for frame in framelist:
