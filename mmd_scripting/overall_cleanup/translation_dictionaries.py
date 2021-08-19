@@ -392,7 +392,8 @@ words_dict = {
 "もみあげ": "sideburn",
 "ｺｯﾁﾐﾝﾅ": "camera eyes",  # phonetically "Kotchiminna", might informally translate to "this guy" or "everyone" i guess? functionally same as "camera eyes" tho
 "こっちみんな": "camera eyes",  # phonetically "Kotchiminna", google translates to "don't look at me" maybe like "not my fault"?
-"尻尾": "tail",
+"尻尾": "tail",  # "shippo"
+"しっぽ": "tail",  # "shippo"
 "おっぱい": "boobs",  # literally "oppai"
 "ヘッドセット": "headset",
 "ヘッドホン": "headphone",  # phonetically "heddoHon"
@@ -530,6 +531,9 @@ words_dict = {
 "猫": "cat",  # phonetically "neko"
 "ねこ": "cat",  # phonetically "neko"
 "ネコ": "cat",  # phonetically "neko"
+"バニー": "bunny",  # phonetically "ban ni"
+"うさ耳": "rabbit ears",  # "usamimi"
+"ウサギ": "rabbit",  # usagi
 "獣": "animal",
 "くち": "mouth",  # phonetically "kuchi"
 "口": "mouth",  # phonetically "kuchi"
