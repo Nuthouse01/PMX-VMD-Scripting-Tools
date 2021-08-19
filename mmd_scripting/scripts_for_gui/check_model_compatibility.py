@@ -206,10 +206,14 @@ def main(moreinfo=True):
 				matching_bones[modelbonematch[0]] = bonedict[vmdbone]
 		
 		# display results!
-		r = "PASS" if len(matching_bones) == len(bones_in_vmd) else "FAIL"
-		core.MY_PRINT_FUNC("BONE {}: {} / {} = {:.1%} of the bones are supported".format(
-			r, len(matching_bones), len(bones_in_vmd), len(matching_bones) / len(bones_in_vmd)))
-
+		if len(matching_bones) == len(bones_in_vmd):
+			core.MY_PRINT_FUNC("BONE PASS: {} / {} = {:.1%} of the bones are supported".format(
+				len(matching_bones), len(bones_in_vmd), len(matching_bones) / len(bones_in_vmd)))
+		else:
+			core.MY_PRINT_FUNC("BONE FAIL: {} / {} = {:.1%} of the bones are supported".format(
+				len(matching_bones), len(bones_in_vmd), len(matching_bones) / len(bones_in_vmd)))
+			core.MY_PRINT_FUNC("(Note: it is common for a motion to be saved with a frame at t=0 for EVERY bone, including the physics bones. These physics bones don't obey those keyframes, however. So if you see many many unsupported bones with exactly one keyframe each, then it's probably a false positive, and your model doesn't actually need to support those bones.)")
+		
 		# if there are no missing bones (all match), don't print anything at all
 		if missing_bones:
 			if not moreinfo:
