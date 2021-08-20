@@ -2,13 +2,17 @@ import os
 
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
-from mmd_scripting.overall_cleanup import translate_to_english as translate_to_english
+from mmd_scripting.overall_cleanup import translation_functions
 from mmd_scripting.scripts_for_gui import file_sort_textures
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
+
+# sometimes chinese translation gives better results than japanese translation
+# when false, force input to be interpreted as Japanese. When true, autodetect input language.
+GOOGLE_AUTODETECT_LANGUAGE = True
 
 
 # this is recommended true, for obvious reasons
@@ -17,9 +21,8 @@ MAKE_BACKUP_BEFORE_RENAMES = True
 BACKUP_SUFFIX = "beforetranslate"
 
 # build a dict that will fix windows-forbidden characters in file names
-invalid_windows_chars_ord = dict()
-for c in ':*?"<>|':  # specific invalid characters
-	invalid_windows_chars_ord[ord(c)] = "_"
+invalid_windows_chars = ':*?"<>|'  # specific invalid characters
+invalid_windows_chars_ord = dict((ord(c), "_") for c in invalid_windows_chars)
 for cc in range(32):  # non-printing control characters
 	invalid_windows_chars_ord[cc] = ""
 
@@ -40,8 +43,8 @@ def main(moreinfo=False):
 	core.MY_PRINT_FUNC("Please enter name of PMX model file:")
 	input_filename_pmx = core.MY_FILEPROMPT_FUNC("PMX file", ".pmx")
 	
-	# step zero: set up the translator thingy
-	translate_to_english.init_googletrans()
+	# # step zero: set up the translator thingy
+	# translation_functions.init_googletrans()
 	
 	# texture sorting plan:
 	# 1. get startpath = basepath of input PMX
@@ -129,7 +132,9 @@ def main(moreinfo=False):
 	
 	# get new names via google
 	# force it to use chunk-wise translate
-	newname_list = translate_to_english.google_translate([p.name for p in filerecord_list], strategy=1)
+	newname_list = translation_functions.google_translate([p.name for p in filerecord_list],
+														  autodetect_language=GOOGLE_AUTODETECT_LANGUAGE,
+														  chunks_only_kanji=False)
 	
 	# now repair any windows-forbidden symbols that might have shown up after translation
 	newname_list = [n.translate(invalid_windows_chars_ord) for n in newname_list]

@@ -50,8 +50,11 @@ def set_encoding(newencoding: str):
 	_UNPACKER_ENCODING = newencoding
 def print_failed_decodes():
 	if len(_UNPACKER_FAILED_TRANSLATE_DICT) != 0:
-		core.MY_PRINT_FUNC("List of all strings that failed to decode, plus their occurance rate")
-		core.MY_PRINT_FUNC(_UNPACKER_FAILED_TRANSLATE_DICT)
+		core.MY_PRINT_FUNC("List of all strings that failed to decode, plus their occurance rate:")
+		keys = ["'" + k + "':" for k in _UNPACKER_FAILED_TRANSLATE_DICT.keys()]
+		keys_justified = core.MY_JUSTIFY_STRINGLIST(keys)
+		for k,v in zip(keys_justified, _UNPACKER_FAILED_TRANSLATE_DICT.values()):
+			core.MY_PRINT_FUNC("    %s  %d" % (k,v))
 
 
 def decode_bytes_with_escape(r: bytearray) -> str:

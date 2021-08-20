@@ -3,7 +3,7 @@ from typing import List, TypeVar, Dict
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.03 - 8/9/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/19/2021"
 
 ################################################################################
 # this file defines some handy functions that help when manipulating VMDs
@@ -254,7 +254,10 @@ def fill_missing_boneframes(boneframe_dict: Dict[str, List[vmdstruct.VmdBoneFram
 				# calcualte teh [0.0 - 1.0] value of where between before & after the desired framenum lands
 				percentage = (framenum - beforeframe.f) / (afterframe.f - beforeframe.f)
 				# extract the bezier interpolation params
-				[x_ax, y_ax, z_ax, r_ax, x_ay, y_ay, z_ay, r_ay, x_bx, y_bx, z_bx, r_bx, x_by, y_by, z_by, r_by] = afterframe.interp
+				x_ax, x_ay, x_bx, x_by = afterframe.interp_x
+				y_ax, y_ay, y_bx, y_by = afterframe.interp_y
+				z_ax, z_ay, z_bx, z_by = afterframe.interp_z
+				r_ax, r_ay, r_bx, r_by = afterframe.interp_r
 				# build bezier curves from them
 				xyz_bez = [core.MyBezier((x_ax, x_ay), (x_bx, x_by)),
 						   core.MyBezier((y_ax, y_ay), (y_bx, y_by)),

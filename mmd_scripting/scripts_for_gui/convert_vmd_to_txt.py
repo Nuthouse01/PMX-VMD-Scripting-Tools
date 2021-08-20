@@ -5,7 +5,7 @@ import mmd_scripting.core.nuthouse01_io as io
 import mmd_scripting.core.nuthouse01_vmd_parser as vmdlib
 import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.03 - 10/10/2020"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/19/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 # massive thanks and credit to "Isometric" for helping me discover the quaternion transformation method used in mmd!!!!
@@ -94,18 +94,20 @@ keystr_version = "version:"
 keystr_modelname = "modelname:"
 keystr_boneframect = "boneframe_ct:"
 keystr_boneframekey = ["bone_name", "frame_num", "Xpos", "Ypos", "Zpos", "Xrot", "Yrot", "Zrot", "phys_disable",
-					   "interp_x_ax", "interp_y_ax", "interp_z_ax", "interp_r_ax", "interp_x_ay", "interp_y_ay",
-					   "interp_z_ay", "interp_r_ay", "interp_x_bx", "interp_y_bx", "interp_z_bx", "interp_r_bx",
-					   "interp_x_by", "interp_y_by", "interp_z_by", "interp_r_by"]
+					   "interp_x_ax", "interp_x_ay", "interp_x_bx", "interp_x_by", 
+					   "interp_y_ax", "interp_y_ay", "interp_y_bx", "interp_y_by", 
+					   "interp_z_ax", "interp_z_ay", "interp_z_bx", "interp_z_by", 
+					   "interp_r_ax", "interp_r_ay", "interp_r_bx", "interp_r_by"]
 keystr_morphframect = "morphframe_ct:"
 keystr_morphframekey = ["morph_name", "frame_num", "value"]
 keystr_camframect = "camframe_ct:"
-keystr_camframekey = ["frame_num", "target_dist", "Xpos", "Ypos", "Zpos", "Xrot", "Yrot", "Zrot", "interp_x_ax",
-					  "interp_x_bx", "interp_x_ay", "interp_x_by", "interp_y_ax", "interp_y_bx", "interp_y_ay",
-					  "interp_y_by", "interp_z_ax", "interp_z_bx", "interp_z_ay", "interp_z_by", "interp_r_ax",
-					  "interp_r_bx", "interp_r_ay", "interp_r_by", "interp_dist_ax", "interp_dist_bx",
-					  "interp_dist_ay", "interp_dist_by", "interp_ang_ax", "interp_ang_bx", "interp_ang_ay",
-					  "interp_ang_by", "FOV", "perspective"]
+keystr_camframekey = ["frame_num", "target_dist", "Xpos", "Ypos", "Zpos", "Xrot", "Yrot", "Zrot", "FOV", "perspective",
+					  "interp_x_ax", "interp_x_ay", "interp_x_bx", "interp_x_by",
+					  "interp_y_ax", "interp_y_ay", "interp_y_bx", "interp_y_by",
+					  "interp_z_ax", "interp_z_ay", "interp_z_bx", "interp_z_by",
+					  "interp_r_ax", "interp_r_ay", "interp_r_bx", "interp_r_by",
+					  "interp_dist_ax", "interp_dist_ay", "interp_dist_bx", "interp_dist_by",
+					  "interp_fov_ax", "interp_fov_ay", "interp_fov_bx", "interp_fov_by"]
 keystr_lightframect = "lightframe_ct:"
 keystr_lightframekey = ["frame_num", "red", "green", "blue", "x_dir", "y_dir", "z_dir"]
 keystr_shadowframect = "shadowframe_ct:"
@@ -193,9 +195,18 @@ def read_vmdtext_boneframe(rawlist_text: List[list]) -> List[vmdstruct.VmdBoneFr
 		for i in range(boneframe_ct):
 			# ensure it has the right # of items on the line
 			check1_match_len(rawlist_text, len(keystr_boneframekey))
-			# the nicelist has angles in euler format, don't convert the values here
+			# the nicelist has angles in euler format, no conversion is needed
 			r = rawlist_text[readfrom_line]
-			newframe = vmdstruct.VmdBoneFrame(name=r[0], f=r[1], pos=r[2:5], rot=r[5:8], phys_off=r[8], interp=r[9:])
+			# create the boneframe object, distribute the listified data to the proper named members
+			newframe = vmdstruct.VmdBoneFrame(name=r[0],
+											  f=r[1],
+											  pos=r[2:5],
+											  rot=r[5:8],
+											  phys_off=r[8],
+											  interp_x=r[9:13],
+											  interp_y=r[13:17],
+											  interp_z=r[17:21],
+											  interp_r=r[21:25],)
 			bone_list.append(newframe)
 			# increment the readfrom_line pointer
 			readfrom_line += 1
@@ -254,7 +265,20 @@ def read_vmdtext_camframe(rawlist_text: List[list]) -> List[vmdstruct.VmdCamFram
 			# ensure it has the right # of items on the line
 			check1_match_len(rawlist_text, len(keystr_camframekey))
 			r = rawlist_text[readfrom_line]
-			newframe = vmdstruct.VmdCamFrame(f=r[0], dist=r[1], pos=r[2:5], rot=r[5:8], interp=r[8:32], fov=r[32], perspective=r[33])
+			# create the camframe object, distribute the listified data to the proper named members
+			newframe = vmdstruct.VmdCamFrame(f=r[0],
+											 dist=r[1],
+											 pos=r[2:5],
+											 rot=r[5:8],
+											 fov=r[8],
+											 perspective=r[9],
+											 interp_x=r[10:14],
+											 interp_y=r[14:18],
+											 interp_z=r[18:22],
+											 interp_r=r[22:26],
+											 interp_dist=r[26:30],
+											 interp_fov=r[30:34],
+											 )
 			cam_list.append(newframe)
 			# increment the readfrom_line pointer
 			readfrom_line += 1

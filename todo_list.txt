@@ -13,8 +13,6 @@ TODO: simple flag in core that indicates 'running from gui' or not, wouldn't hel
 
 TODO: func 'normalize_texture_paths' in 'file_sort_textures' is pretty good, probably wanna add that to 'model_overall_cleanup'
 
-TODO: overhaul the how VMD interpolation data is stored, restructure to a more sensible, intuitive arrangement
-
 TODO: can i create one base class that is the parent of both VMD and PMX? they have almost identical features
     i'm worried that it would be confusing if i did that tho? hm...
 

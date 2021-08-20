@@ -52,8 +52,7 @@ pmxe_rigidbody_csv_tag = "Body"
 pmxe_face_csv_header = [";Face", "親材質名", "面Index", "頂点Index1", "頂点Index2", "頂点Index3"]
 pmxe_face_csv_tag = "Face"
 
-bone_interpolation_default_linear = [20, 20, 20, 20, 20, 20, 20, 20, 107, 107, 107, 107, 107, 107, 107, 107]
-
+interpolation_default_linear = [20, 20, 107, 107]
 
 ########################################################################################################################
 # misc functions and user-input functions

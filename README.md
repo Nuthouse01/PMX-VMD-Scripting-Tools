@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README  
-Created by Nuthouse01 - v1.07.03 - 8/9/2021
+Created by Nuthouse01 - v1.07.04 - 8/19/2021
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!  
 If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)  
@@ -280,6 +280,19 @@ The following files should be included with this README:
   <summary>Click to expand!</summary>
 
 ```
+v1.07.04:
+fix crashing bug in "nuthouse01_vmd_utils", oops
+change how VMD interpolation data is stored
+new tool "delete_alpha_layer" that deltes the transparency from an image
+refactor basically all JP-to-EN translation code:
+   split "translation functions" from "translation dictionaries"
+   move Google Translate code from "translate to english" to "translation functions"
+   refactor "translate to english" to have better function encapsulation, for cleanliness
+   implement new "sub-assembly idea" for more consistent results from Google Translate
+   implement "half-to-full-katakana" filtering for more consistent local local translate results
+   remove option to use "chunkwise translate" vs "oldstyle translate", no more old style
+new tool (toy) "just_fuck_my_shit_up_fam" for turning models into abominations
+
 v1.07.03:
 "model overall cleanup" do not check the length/encoding of bones/morphs that wont go into VMDs
 "model overall cleanup" add check for materials that are never visible
