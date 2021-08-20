@@ -291,6 +291,7 @@ refactor basically all JP-to-EN translation code:
    implement new "sub-assembly idea" for more consistent results from Google Translate
    implement "half-to-full-katakana" filtering for more consistent local local translate results
    remove option to use "chunkwise translate" vs "oldstyle translate", no more old style
+new tool (toy) "just_fuck_my_shit_up_fam" for turning models into abominations
 
 v1.07.03:
 "model overall cleanup" do not check the length/encoding of bones/morphs that wont go into VMDs
