@@ -3,7 +3,7 @@ import tkinter.filedialog as fdg
 
 from PIL import Image
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/12/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/19/2021"
 """
 Delete the transparency information of an image. i.e. make all parts of the image be opaque.
 """

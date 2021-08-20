@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README  
-Created by Nuthouse01 - v1.07.04 - 8/9/2021
+Created by Nuthouse01 - v1.07.04 - 8/19/2021
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!  
 If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)  

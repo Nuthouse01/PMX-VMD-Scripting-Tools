@@ -3,7 +3,7 @@ from typing import List, TypeVar, Dict
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/12/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/19/2021"
 
 ################################################################################
 # this file defines some handy functions that help when manipulating VMDs
