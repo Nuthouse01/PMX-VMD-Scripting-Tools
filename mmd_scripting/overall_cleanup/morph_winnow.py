@@ -3,7 +3,7 @@ import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.overall_cleanup.prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.05 - 8/22/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -20,6 +20,21 @@ DELETE_NEWLY_EMPTIED_MORPHS = True
 # a vertex is removed from a morph if its total deformation is below this value
 # after testing several models, on models which have a grouping near 0, the grouping stops around 0.0003
 WINNOW_THRESHOLD = 0.0003
+
+
+# these are morphs used for controlling AutoLuminous stuff, they generally are vertex morphs that contain 1-3
+# vertices with offsets of 0,0,0, but they shouldn't be deleted like normal morphs
+IGNORE_THESE_MORPHS = [
+	"LightUp",
+	"LightOff",
+	"LightBlink",
+	"LightBS",
+	"LightUpE",
+	"LightDuty",
+	"LightMin",
+	"LClockUp",
+	"LClockDown",
+]
 
 
 helptext = '''====================
@@ -94,6 +109,8 @@ def morph_winnow(pmx: pmxstruct.Pmx, moreinfo=False):
 	for d,morph in enumerate(pmx.morphs):
 		# if not a vertex morph, skip it
 		if morph.morphtype != pmxstruct.MorphType.VERTEX: continue
+		# if it has one of the special AutoLuminous morph names, then skip it
+		if morph.name_jp in IGNORE_THESE_MORPHS: continue
 		# for each vert in this vertex morph:
 		i = 0
 		this_vert_dropped = 0  # lines dropped from this morph
