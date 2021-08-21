@@ -6,7 +6,7 @@ TODO: split "core" files into multiple?
 
 TODO: WIP-sdef-armtwist should invoke bone-sdeftwist-hand-adapter
 
-TODO: examine professional SDEF armtwist examples (miku, bb, tamo, check SPS?, ab8/10, pojio) and create a graph that profiles the weight balance with respect to the length along the segment
+TODO: examine professional SDEF armtwist examples (miku, bb, tamo, check SPS?, ab8/10, pojio, emu kawahara,) and create a graph that profiles the weight balance with respect to the length along the segment
 
 TODO: simple flag in core that indicates 'running from gui' or not, wouldn't help with imports but might be useful
     in other contexts?
@@ -19,8 +19,19 @@ TODO: can i create one base class that is the parent of both VMD and PMX? they h
 TODO: remove the pmx.faces member and instead break the faces into one sublist for each material object? is this easier
     or harder to understand? it lets me hide the "number of faces per material" field, which makes things simpler... and
     it makes it much easier to duplicate or delete materials... hm...
+	
+TODO: modify the auto armtwist script to insert the bones at the bottom of bone list? since I abuse the "deform layer" stuff it is functionally the same
+
 
 =======================================================================
+IDEA: "create leg D-bones" script
+because the semistandard bones plugin doesn't catch all possibilities
+creating the D-bones is not hard, copy the position, insert at proper location (after the toe bone)
+transfer all vertex weight from leg-bone to legD-bone
+transfer all rigidbodies from leg-bone to legD-bone
+within all bones that aren't the the Primary Leg Chain, change all parent and partial-parent references from the Primary Leg Chain to the d-bones
+
+
 IDEA: "pose deducer" script, if given a natural T/A-pose version of a model + that same model that has been baked into a different pose,
     i should be able to calculate exactly what pose was applied before it was baked! probably. it requires somehow being able to build
     correspondance between vertices across the two models... vertex order, face order, UV coordinates? probably no one-size-fits-all
