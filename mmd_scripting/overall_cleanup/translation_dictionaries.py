@@ -449,6 +449,8 @@ words_dict = {
 "切る": "cut",
 "飾り": "decoration", # either decoration or ornament
 "補助": "helper",
+"補正": "correction",
+
 "ブロック": "block", # literally burroku, not sure why he picked this name
 "花": "flower",
 "鳥": "bird",
