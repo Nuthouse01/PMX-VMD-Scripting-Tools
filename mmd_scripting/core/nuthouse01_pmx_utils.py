@@ -281,28 +281,37 @@ def apply_morph_remapping(pmx: pmxstruct.Pmx, morph_dellist, morph_shiftmap):
 	return pmx
 
 
-def delete_faces(pmx: pmxstruct.Pmx, faces_to_remove):
-	# each material has some number of faces associated with it, those values must be changed when faces are deleted!
+def delete_faces(pmx: pmxstruct.Pmx, faces_to_remove: List[int]):
+	"""
+	Delete faces from the model, and correspondingly update the material objects.
+	This does not check if it would cause a material to have 0 faces afterward.
+	
+	:param pmx: PMX object
+	:param faces_to_remove: list of ints to delete, MUST be in sorted order!
+	"""
 	# the question simply becomes, "how many faces within range [start, end] are being deleted"
-	# the list of faces being deleted is in known-sorted order
-	end_del_face_idx = 0
-	start_del_face_idx = 0
-	face_id_end = 0
+	delface_idx = 0
+	prev_delface_idx = 0
+	mat_end_idx = 0
 	for mat in pmx.materials:
-		face_id_end += mat.faces_ct  # this tracks the id of the final face in this material
-		# walk thru the list of faces to remove until i find one that isn't part of the current material,
-		# or until i reach the end of the list
-		while end_del_face_idx < len(faces_to_remove) and faces_to_remove[end_del_face_idx] < face_id_end:
-			end_del_face_idx += 1
+		mat_end_idx += mat.faces_ct  # this tracks the id of the final face in this material
+		try:
+			# inc until delface_idx points at a face that doesn't fall into this material's range
+			while faces_to_remove[delface_idx] < mat_end_idx:
+				delface_idx += 1
+		except IndexError:
+			# indexerror means i hit the end of the list, no biggie
+			pass
 		# within the list of faces to be deleted,
-		# start_del_face_idx is the idx of the first face that falls within this material's scope,
-		# end_del_face_idx is the idx of the first face that falls within THE NEXT material's scope
+		# prev_delface_idx is the idx of the first face that falls within this material's scope,
+		# delface_idx is the idx of the first face that falls within THE NEXT material's scope
 		# therefore their difference is the number of faces to remove from the current material
-		num_remove_from_this_material = end_del_face_idx - start_del_face_idx
+		num_remove_from_this_material = delface_idx - prev_delface_idx
 		mat.faces_ct -= num_remove_from_this_material
 		# update the start idx for next material
-		start_del_face_idx = end_del_face_idx
+		prev_delface_idx = delface_idx
 	
 	# now, delete the acutal faces
 	for f in reversed(faces_to_remove):
 		pmx.faces.pop(f)
+	return
