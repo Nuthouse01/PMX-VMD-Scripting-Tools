@@ -82,10 +82,10 @@ def newval_from_range_map(v: INT_OR_INTLIST, range_map: Tuple[List[int], List[in
 		return retme
 
 
-def recursive_find_all_ancestors(bones: List[pmxstruct.PmxBone], idx: int) -> Set[int]:
+def bone_get_ancestors(bones: List[pmxstruct.PmxBone], idx: int) -> Set[int]:
 	"""
 	Walk parent to parent to parent, return the set of all ancestors of the initial bone.
-	It's actually iterative, not recursive, but whatever.
+	Does not care about "partial inherit" stuff.
 	:param bones: list of PmxBone objects, taken from Pmx.bones.
 	:param idx: index within "bones" to start from. NOT INCLUDED within return value.
 	:return: set of int indicies of all ancestors.

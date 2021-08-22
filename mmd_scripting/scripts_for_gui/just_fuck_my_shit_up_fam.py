@@ -93,8 +93,8 @@ def main(moreinfo=True):
 	# 	lower_idx = core.my_list_search(pmx.bones, lambda x: x.name_jp == "下半身")
 	# 	upper_idx = core.my_list_search(pmx.bones, lambda x: x.name_jp == "上半身")
 	# 	make_bonetype = [lower_idx, upper_idx]
-	# 	make_bonetype.extend(recursive_find_all_ancestors(pmx.bones, lower_idx))
-	# 	make_bonetype.extend(recursive_find_all_ancestors(pmx.bones, upper_idx))
+	# 	make_bonetype.extend(bone_get_ancestors(pmx.bones, lower_idx))
+	# 	make_bonetype.extend(bone_get_ancestors(pmx.bones, upper_idx))
 	# 	for i in make_bonetype:
 	# 		pmx.rigidbodies[i].phys_mode = pmxstruct.RigidBodyPhysMode.BONE
 	
