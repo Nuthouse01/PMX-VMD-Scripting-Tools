@@ -4,8 +4,7 @@ from typing import TypeVar, List, Tuple, Dict
 
 import googletrans
 
-from mmd_scripting.core import nuthouse01_core as core, nuthouse01_io as io
-from mmd_scripting.overall_cleanup import translation_dictionaries
+from mmd_scripting.core import nuthouse01_core as core, nuthouse01_io as io, translation_dictionaries
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/19/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
