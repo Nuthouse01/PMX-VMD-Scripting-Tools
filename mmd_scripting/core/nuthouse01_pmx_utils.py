@@ -1,4 +1,4 @@
-from typing import List, TypeVar, Dict, Set, Tuple
+from typing import List, TypeVar, Set, Tuple
 
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
@@ -122,7 +122,7 @@ def insert_single_bone(pmx: pmxstruct.Pmx, newbone: pmxstruct.PmxBone, newindex:
 		bone_shiftmap = ([newindex], [-1])
 		# apply the shiftmap
 		# this also changes any references inside newbone to refer to the correct indices after the insertion
-		apply_bone_remapping(pmx, [], bone_shiftmap)
+		bone_delete_and_remap(pmx, [], bone_shiftmap)
 	return
 
 
@@ -137,15 +137,11 @@ def delete_multiple_bones(pmx: pmxstruct.Pmx, bone_dellist: List[int]):
 	bone_dellist2 = sorted(bone_dellist)
 	# build the rangemap to determine how index references will be modified from this deletion
 	bone_shiftmap = delme_list_to_rangemap(bone_dellist2)
-	# acutally delete the bones
-	for f in reversed(bone_dellist):
-		pmx.bones.pop(f)
 	# apply remapping scheme to all remaining bones
-	apply_bone_remapping(pmx, bone_dellist2, bone_shiftmap)
+	bone_delete_and_remap(pmx, bone_dellist2, bone_shiftmap)
 	return
 
-
-def apply_bone_remapping(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shiftmap: Tuple[List[int],List[int]]):
+def bone_delete_and_remap(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shiftmap: Tuple[List[int], List[int]]):
 	"""
 	Given a list of bones to delete, delete them, and update the indices for all references to all remaining bones.
 	PMX is modified in-place. Behavior is undefined if the dellist bones are still in use somewhere!
@@ -153,7 +149,7 @@ def apply_bone_remapping(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shift
 	bone IK target, bone IK link.
 	
 	:param pmx: PMX object
-	:param bone_dellist: list of bone indices to delete
+	:param bone_dellist: list of ints to delete, MUST be in sorted order!
 	:param bone_shiftmap: created by delme_list_to_rangemap() before calling
 	"""
 	
@@ -205,8 +201,11 @@ def apply_bone_remapping(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shift
 	core.print_progress_oneline(3 / 5)
 	# RIGIDBODY
 	for d, body in enumerate(pmx.rigidbodies):
-		# only remap, no possibility of one of these bones being deleted
-		body.bone_idx = newval_from_range_map(body.bone_idx, bone_shiftmap)
+		# if bone is being used by a rigidbody, set that reference to -1. otherwise, remap.
+		if core.binary_search_isin(body.bone_idx, bone_dellist):
+			body.bone_idx = -1
+		else:
+			body.bone_idx = newval_from_range_map(body.bone_idx, bone_shiftmap)
 	# done with bodies
 	
 	core.print_progress_oneline(4 / 5)
@@ -240,10 +239,22 @@ def apply_bone_remapping(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shift
 			for link in bone.ik_links:
 				link.idx = newval_from_range_map(link.idx, bone_shiftmap)
 	# done with bones
+	
+	# acutally delete the bones
+	for f in reversed(bone_dellist):
+		pmx.bones.pop(f)
+
 	return
 
+def morph_delete_and_remap(pmx: pmxstruct.Pmx, morph_dellist: List[int], morph_shiftmap: Tuple[List[int], List[int]]) -> None:
+	"""
+	Delete morphs from the model, and correspondingly update dispframes and group-morphs.
+	No return, updates the PMX in-place.
 
-def apply_morph_remapping(pmx: pmxstruct.Pmx, morph_dellist, morph_shiftmap):
+	:param pmx: PMX object
+	:param morph_dellist: list of ints to delete, MUST be in sorted order!
+	:param morph_shiftmap: created by delme_list_to_rangemap() before calling
+	"""
 	# actually delete the morphs from the list
 	for f in reversed(morph_dellist):
 		pmx.morphs.pop(f)
@@ -278,13 +289,13 @@ def apply_morph_remapping(pmx: pmxstruct.Pmx, morph_dellist, morph_shiftmap):
 			else:
 				it.morph_idx = newval_from_range_map(it.morph_idx, morph_shiftmap)
 				i += 1
-	return pmx
+	return
 
-
-def delete_faces(pmx: pmxstruct.Pmx, faces_to_remove: List[int]):
+def delete_faces(pmx: pmxstruct.Pmx, faces_to_remove: List[int]) -> None:
 	"""
 	Delete faces from the model, and correspondingly update the material objects.
 	This does not check if it would cause a material to have 0 faces afterward.
+	No return, updates the PMX in-place.
 	
 	:param pmx: PMX object
 	:param faces_to_remove: list of ints to delete, MUST be in sorted order!

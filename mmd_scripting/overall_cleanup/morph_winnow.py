@@ -1,7 +1,7 @@
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
-from mmd_scripting.core.nuthouse01_pmx_utils import delme_list_to_rangemap, apply_morph_remapping
+from mmd_scripting.core.nuthouse01_pmx_utils import delme_list_to_rangemap, morph_delete_and_remap
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.05 - 8/22/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -111,7 +111,7 @@ def morph_winnow(pmx: pmxstruct.Pmx, moreinfo=False):
 		core.MY_PRINT_FUNC("Deleted %d morphs that had all of their vertices below the threshold" % len(morphs_now_empty))
 		rangemap = delme_list_to_rangemap(morphs_now_empty)
 		
-		pmx = apply_morph_remapping(pmx, morphs_now_empty, rangemap)
+		morph_delete_and_remap(pmx, morphs_now_empty, rangemap)
 		
 	return pmx, True
 	
