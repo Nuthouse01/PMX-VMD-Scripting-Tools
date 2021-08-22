@@ -1,7 +1,7 @@
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
-from mmd_scripting.overall_cleanup.prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
+from mmd_scripting.core.nuthouse01_pmx_utils import delme_list_to_rangemap, apply_morph_remapping
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.05 - 8/22/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -46,43 +46,6 @@ The default threshold is 0.0003 units. Trust me it really is imperceptible.
 
 iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_winnow.pmx"
 '''
-
-def apply_morph_remapping(pmx: pmxstruct.Pmx, morph_dellist, morph_shiftmap):
-	# actually delete the morphs from the list
-	for f in reversed(morph_dellist):
-		pmx.morphs.pop(f)
-	
-	# frames:
-	for d, frame in enumerate(pmx.frames):
-		i = 0
-		while i < len(frame.items):
-			item = frame.items[i]
-			# if this item is a bone, skip it
-			if not item.is_morph:
-				i += 1
-			else:
-				# if this is one of the morphs being deleted, delete it here too. otherwise remap.
-				if core.binary_search_isin(item.idx, morph_dellist):
-					frame.items.pop(i)
-				else:
-					item.idx = newval_from_range_map(item.idx, morph_shiftmap)
-					i += 1
-	
-	# group/flip morphs:
-	for d, morph in enumerate(pmx.morphs):
-		# group/flip = 0/9
-		if morph.morphtype not in (pmxstruct.MorphType.GROUP, pmxstruct.MorphType.FLIP): continue
-		i = 0
-		while i < len(morph.items):
-			it = morph.items[i]
-			it : pmxstruct.PmxMorphItemGroup
-			# if this is one of the morphs being deleted, delete it here too. otherwise remap.
-			if core.binary_search_isin(it.morph_idx, morph_dellist):
-				morph.items.pop(i)
-			else:
-				it.morph_idx = newval_from_range_map(it.morph_idx, morph_shiftmap)
-				i += 1
-	return pmx
 
 
 def showhelp():

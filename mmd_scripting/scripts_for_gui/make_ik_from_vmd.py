@@ -1,10 +1,11 @@
-from typing import List, Dict, Set
+from typing import List, Dict
 
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 import mmd_scripting.core.nuthouse01_vmd_parser as vmdlib
 import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
+from mmd_scripting.core.nuthouse01_pmx_utils import recursive_find_all_ancestors
 from mmd_scripting.core.nuthouse01_vmd_utils import remove_redundant_frames, fill_missing_boneframes, dictify_framelist
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.01 - 7/12/2021"
@@ -133,23 +134,6 @@ def run_forward_kinematics_for_one_timestep(frames: Dict[str, vmdstruct.VmdBoneF
 	# but the pos/rot members have been changed
 	return boneorder
 
-# todo: move this... somewhere... idk
-def recursive_find_all_ancestors(bones: List[pmxstruct.PmxBone], idx: int) -> Set[int]:
-	"""
-	Walk parent to parent to parent, return the set of all ancestors of the initial bone.
-	It's actually iterative, not recursive, but whatever.
-	:param bones: list of PmxBone objects, taken from Pmx.bones.
-	:param idx: index within "bones" to start from. NOT INCLUDED within return value.
-	:return: set of int indicies of all ancestors.
-	"""
-	retme = set()
-	# if the parent index is not already marked, and not invalid,
-	while (bones[idx].parent_idx not in retme) and (bones[idx].parent_idx >= 0):
-		# then add the parent index,
-		retme.add(bones[idx].parent_idx)
-		# and repeat from the parent index
-		idx = bones[idx].parent_idx
-	return retme
 
 def predetermine_bone_deform_order(bones: List[pmxstruct.PmxBone]) -> List[ForwardKinematicsBone]:
 	"""

@@ -1,8 +1,7 @@
-from typing import List, Tuple, TypeVar
-
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
+from mmd_scripting.core.nuthouse01_pmx_utils import newval_from_range_map, delme_list_to_rangemap
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -18,78 +17,6 @@ An unused vertex is one which is not used to define any faces.
 
 iotext = '''Inputs:  PMX file "[model].pmx"\nOutputs: PMX file "[model]_vertprune.pmx"
 '''
-
-
-INT_OR_INTLIST = TypeVar("INT_OR_INTLIST", int, List[int])
-def newval_from_range_map(v: INT_OR_INTLIST, range_map: Tuple[List[int], List[int]]) -> INT_OR_INTLIST:
-	"""
-	Given a rangemap from delme_list_to_rangemap(), determine the resulting index for an input or set of inputs.
-	If v is a list, it must be in ascending sorted order. Returns same type as v type.
-	
-	:param v: int or list of ints in ascending sorted order
-	:param range_map: result from delme_list_to_rangemap()
-	:return: int if v is int, list[int] if v is list[int]
-	"""
-	# support both int and list-of-int inputs... do basically the same thing, just looped
-	# if input is list, IT MUST BE IN ASCENDING SORTED ORDER
-	# core idea: walk BACKWARDS along the range_map until i find the start that is CLOSEST BELOW the input v
-	if isinstance(v, int):
-		# # bisect_right: same as bisect_left but when matching something already in it it goes one to the right
-		pos = core.bisect_right(range_map[0], v)
-		if pos == 0:
-			# if it doesnt find a block starting below v, then the offset is 0
-			return v
-		else:
-			# return the input value minus the applicable offset
-			return v - range_map[1][pos-1]
-	else:
-		# if given a list, the list is ordered so take advantage of that to pick up where the previous item left off
-		# walk backwards along both lists side-by-side
-		retme = []
-		input_idx = len(v) - 1
-		idx = len(range_map[0]) - 1
-		while idx >= 0 and input_idx >= 0:
-			if range_map[0][idx] <= v[input_idx]:
-				# return the input value minus the applicable offset
-				retme.append(v[input_idx] - range_map[1][idx])
-				input_idx -= 1
-			else:
-				idx -= 1
-		if input_idx != -1:
-			# if it finished walking down the range-list before it finished the input-list, all remaining inputs are unchanged
-			retme += reversed(v[0:input_idx+1])
-		retme.reverse()
-		return retme
-	
-def delme_list_to_rangemap(delme_verts: List[int]) -> Tuple[List[int],List[int]]:
-	"""
-	Given an ascending sorted list of ints, build a pair of lists that let me know what indices OTHER things will map
-	to when THESE indices are deleted. list1 is the index each cluster starts at, list2 is where that index will map
-	to after the deletion happens.
-	Exclusively used with newval_from_range_map().
-	
-	:param delme_verts: ascending sorted list of ints
-	:return: tuple(list-of-starts, list-of-cumulativelength)
-	"""
-	
-	if delme_verts and not all(delme_verts[i] <= delme_verts[i + 1] for i in range(len(delme_verts) - 1)):
-		core.MY_PRINT_FUNC("BUG DETECTED: delme_list_to_rangemap() received argument not in sorted order!!")
-		raise ValueError("BUG DETECTED: delme_list_to_rangemap() received argument not in sorted order!!")
-	delme_range = []
-	start_idx = 0
-	for end_idx in range(1, len(delme_verts)+1):
-		if (end_idx == len(delme_verts)) or (delme_verts[end_idx] != (delme_verts[end_idx-1] + 1)):
-			# if the next vert ID is non-contiguous, or is the end of the list, that defines a breakpoint between ranges
-			# that means that everything from start to end IS contiguous
-			# so save the VALUE of the start, and the LENGTH of the range (which equals the length of the block)
-			delme_range.append([delme_verts[start_idx], end_idx - start_idx])
-			start_idx = end_idx
-	# convert from [start-length] to [start-cumulativelength]
-	for i in range(1, len(delme_range)):
-		delme_range[i][1] += delme_range[i-1][1]
-	# convert from [[start,len],[start,len],[start,len]] to [[start,start,start],[len,len,len]]
-	a,b = zip(*delme_range)
-	return a,b
 
 
 def showhelp():

@@ -3,7 +3,7 @@ from typing import List
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
-from mmd_scripting.overall_cleanup.prune_unused_bones import insert_single_bone
+from mmd_scripting.core.nuthouse01_pmx_utils import insert_single_bone
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.01 - 7/12/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.

@@ -3,6 +3,7 @@ import copy
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
+from mmd_scripting.core.nuthouse01_pmx_utils import delete_faces
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.5.08 - 6/3/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -32,32 +33,6 @@ def showprompt():
 	input_filename_pmx = core.prompt_user_filename("PMX file", ".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=True)
 	return pmx, input_filename_pmx
-
-def delete_faces(pmx: pmxstruct.Pmx, faces_to_remove):
-	# each material has some number of faces associated with it, those values must be changed when faces are deleted!
-	# the question simply becomes, "how many faces within range [start, end] are being deleted"
-	# the list of faces being deleted is in known-sorted order
-	end_del_face_idx = 0
-	start_del_face_idx = 0
-	face_id_end = 0
-	for mat in pmx.materials:
-		face_id_end += mat.faces_ct  # this tracks the id of the final face in this material
-		# walk thru the list of faces to remove until i find one that isn't part of the current material,
-		# or until i reach the end of the list
-		while end_del_face_idx < len(faces_to_remove) and faces_to_remove[end_del_face_idx] < face_id_end:
-			end_del_face_idx += 1
-		# within the list of faces to be deleted,
-		# start_del_face_idx is the idx of the first face that falls within this material's scope,
-		# end_del_face_idx is the idx of the first face that falls within THE NEXT material's scope
-		# therefore their difference is the number of faces to remove from the current material
-		num_remove_from_this_material = end_del_face_idx - start_del_face_idx
-		mat.faces_ct -= num_remove_from_this_material
-		# update the start idx for next material
-		start_del_face_idx = end_del_face_idx
-	
-	# now, delete the acutal faces
-	for f in reversed(faces_to_remove):
-		pmx.faces.pop(f)
 
 
 def prune_invalid_faces(pmx: pmxstruct.Pmx, moreinfo=False):
