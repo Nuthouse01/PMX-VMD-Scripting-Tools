@@ -14,7 +14,7 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.01 - 7/12/2021"
 
 
 helptext = '''=================================================
-bone_make_semistandard_auto_armtwist:
+bone_add_semistandard_auto_armtwist:
 This will generate "automatic armtwist rigging" that will fix pinching at shoulders/elbows/wrists.
 This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.
 It creates a clever IK bone setup that hijacks the semistandard bones and moves them as needed to reach whatever pose you make with the arm/腕 or elbow/ひじ bones. You do not need to manually move the armtwist bones at all, you can animate all 3 axes of rotation on the arm bone and the twisting axis will be automatically extracted and transferred to the armtwist bone as needed!

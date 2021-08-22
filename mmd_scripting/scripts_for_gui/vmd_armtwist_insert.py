@@ -7,7 +7,7 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/19/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
-# NOTE: DON'T BOTHER USING THIS SCRIPT! Just use "bone_make_semistandard_auto_armtwist" or "bone_make_sdef_auto_armtwist" instead.
+# NOTE: DON'T BOTHER USING THIS SCRIPT! Just use "bone_add_semistandard_auto_armtwist" or "bone_make_sdef_auto_armtwist" instead.
 # This script still works, but... why bother customizing every motion you want to use with a model, when you can just modify the model only once?
 # The bonerig scripts also fix the wrist pinching problem, which this script does not.
 
@@ -90,7 +90,7 @@ def swing_twist_decompose(quat_in, axis):
 
 helptext = '''=================================================
 vmd_armtwist_insert:
-NOTE: DON'T BOTHER USING THIS SCRIPT! Just use "bone_make_semistandard_auto_armtwist" or "bone_make_sdef_auto_armtwist" instead.
+NOTE: DON'T BOTHER USING THIS SCRIPT! Just use "bone_add_semistandard_auto_armtwist" or "bone_make_sdef_auto_armtwist" instead.
 This script still works, but... why bother customizing every motion you want to use with a model, when you can just modify the model only once?
 The bonerig scripts also fix the wrist pinching problem, which this script does not.
 

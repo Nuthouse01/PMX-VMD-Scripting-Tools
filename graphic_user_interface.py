@@ -13,14 +13,14 @@ from typing import Sequence, Union
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_io as io
 from mmd_scripting import __pkg_welcome__
-from mmd_scripting.scripts_for_gui import bone_make_semistandard_auto_armtwist, bone_set_arm_localaxis, \
+from mmd_scripting.scripts_for_gui import bone_add_semistandard_auto_armtwist, bone_set_arm_localaxis, \
 	bone_armik_addremove, bone_endpoint_addremove, bone_add_sdef_autotwist_handtwist_adapter, check_model_compatibility, \
 	convert_vmd_to_txt, convert_vpd_to_vmd, file_sort_textures, file_translate_filenames, file_recompress_images, \
 	make_ik_from_vmd, model_overall_cleanup, model_scale, model_shift, morph_scale, morph_hide, morph_invert, \
 	translate_source_bone, vmd_armtwist_insert, vmd_rename_bones_morphs
 
 SCRIPTS_WHEN_FROZEN = [
-	bone_make_semistandard_auto_armtwist,
+	bone_add_semistandard_auto_armtwist,
 	bone_set_arm_localaxis,
 	bone_armik_addremove,
 	bone_endpoint_addremove,

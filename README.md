@@ -69,7 +69,7 @@ If you are loading a motion designed for some different model (usually the case)
 
 This script will reveal what exactly is mismatched; but to fix the issue, you must either change the PMX to match the VMD/VPD (using PMXEditor or a similar tool) or you must change the VMD/VPD to match the PMX (use script "vmd_rename_bones_morphs" to do find-and-replace within the VMD!).
 
-##### bone_make_semistandard_auto_armtwist.py
+##### bone_add_semistandard_auto_armtwist.py
 This will generate "automatic armtwist rigging" that will fix pinching at shoulders/elbows.
 
 **This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.**
