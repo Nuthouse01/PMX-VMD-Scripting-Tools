@@ -62,7 +62,7 @@ def newval_from_range_map(v: INT_OR_INTLIST, range_map: Tuple[List[int], List[in
 		else:
 			# return the input value minus the applicable offset
 			return v - range_map[1][pos - 1]
-	else:
+	elif isinstance(v, (list,tuple)):
 		# if given a list, the list is ordered so take advantage of that to pick up where the previous item left off
 		# walk backwards along both lists side-by-side
 		retme = []
@@ -80,6 +80,8 @@ def newval_from_range_map(v: INT_OR_INTLIST, range_map: Tuple[List[int], List[in
 			retme += reversed(v[0:input_idx + 1])
 		retme.reverse()
 		return retme
+	else:
+		raise ValueError("error: newval_from_range_map() called with '%s' arg, must be int or list/tuple" % v.__class__.__name__)
 
 
 def bone_get_ancestors(bones: List[pmxstruct.PmxBone], idx: int) -> Set[int]:
