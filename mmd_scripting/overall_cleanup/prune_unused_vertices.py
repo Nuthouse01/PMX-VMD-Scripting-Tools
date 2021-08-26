@@ -3,7 +3,7 @@ import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
 from mmd_scripting.core.nuthouse01_pmx_utils import delme_list_to_rangemap, vert_delete_and_remap
 
-_SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
+_SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.05 - 6/10/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 
@@ -51,12 +51,10 @@ def prune_unused_vertices(pmx: pmxstruct.Pmx, moreinfo=False):
 	# build set of USED vertices
 	used_verts = set()
 	for face in pmx.faces:
-		used_verts.add(face[0])
-		used_verts.add(face[1])
-		used_verts.add(face[2])
+		used_verts.update(face)
 	# build set of ALL vertices
 	all_verts = set(list(range(len(pmx.verts))))
-	# derive set of UNUSED vertices
+	# derive set of UNUSED vertices by subtracting
 	unused_verts = all_verts.difference(used_verts)
 	# convert to ordered list
 	delme_verts = sorted(list(unused_verts))
