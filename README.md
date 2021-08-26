@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README  
-Created by Nuthouse01 - v1.07.04 - 8/19/2021
+Created by Nuthouse01 - v1.07.05 - 8/19/2021
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!  
 If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)  
@@ -280,6 +280,13 @@ The following files should be included with this README:
   <summary>Click to expand!</summary>
 
 ```
+v1.07.05:
+prevent "morph winnow" from deleting AutoLuminous morphs
+rename "bone_make_semistandard_auto_armtwist" -> "bone_add_semistandard_auto_armtwist"
+move "translation_functions", "translation_dicts" to CORE
+move some fundamental PMX functions into new separate file "core.nuthouse01_pmx_utils"
+new script "bone_add_leg_Dbones"
+
 v1.07.04:
 fix crashing bug in "nuthouse01_vmd_utils", oops
 change how VMD interpolation data is stored
