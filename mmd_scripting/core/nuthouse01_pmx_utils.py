@@ -9,34 +9,48 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.05 - 8/22/2021"
 # this file defines some handy functions that help when manipulating PMXs
 
 
-def delme_list_to_rangemap(delme_verts: List[int]) -> Tuple[List[int], List[int]]:
+def delme_list_to_rangemap(delme: List[int]) -> Tuple[List[int], List[int]]:
 	"""
 	Given an ascending sorted list of ints, build a pair of lists that let me know what indices OTHER things will map
-	to when THESE indices are deleted. list1 is the index each cluster starts at, list2 is where that index will map
-	to after the deletion happens.
+	to when THESE indices are deleted. list1 is the index each cluster starts at, list2 is how much to offset indices
+	by if greater than that cluster-start.
 	Exclusively used with newval_from_range_map().
 
-	:param delme_verts: ascending sorted list of ints
+	:param delme: ascending sorted list of ints
 	:return: tuple(list-of-starts, list-of-cumulativelength)
 	"""
+	# if given an empty list, return an empty list
+	if len(delme) == 0: return [],[]
 	
-	if delme_verts and not all(delme_verts[i] <= delme_verts[i + 1] for i in range(len(delme_verts) - 1)):
-		core.MY_PRINT_FUNC("BUG DETECTED: delme_list_to_rangemap() received argument not in sorted order!!")
+	# assert that the input is ascending sorted
+	if not all(delme[i] < delme[i + 1] for i in range(len(delme) - 1)):
 		raise ValueError("BUG DETECTED: delme_list_to_rangemap() received argument not in sorted order!!")
-	delme_range = []
-	start_idx = 0
-	for end_idx in range(1, len(delme_verts) + 1):
-		if (end_idx == len(delme_verts)) or (delme_verts[end_idx] != (delme_verts[end_idx - 1] + 1)):
-			# if the next vert ID is non-contiguous, or is the end of the list, that defines a breakpoint between ranges
-			# that means that everything from start to end IS contiguous
-			# so save the VALUE of the start, and the LENGTH of the range (which equals the length of the block)
-			delme_range.append([delme_verts[start_idx], end_idx - start_idx])
-			start_idx = end_idx
-	# convert from [start-length] to [start-cumulativelength]
-	for i in range(1, len(delme_range)):
-		delme_range[i][1] += delme_range[i - 1][1]
+	
+	# from stackoverflow: create pairs of (startitem, enditem)
+	delme_start_end = []
+	start = delme[0]
+	prev = delme[0]
+	for N in delme[1:]:
+		if prev + 1 != N:  # if they are not contiguous,
+			delme_start_end.append((start, prev))  # then the previous value is the end of a cluster,
+			start = N  # and the current value is the beginning of a new cluster
+		prev = N
+	delme_start_end.append((start, prev))  # also need to add the final cluster
+	
+	# convert to (startitem, length)
+	delme_length = []
+	for start,end in delme_start_end:
+		delme_length.append((start, end-start+1))
+	
+	# convert to (startitem, cumulative offset)
+	delme_offset = []
+	cumlen = 0
+	for start, length in delme_length:
+		cumlen += length
+		delme_offset.append((start, -cumlen))
+	
 	# convert from [[start,len],[start,len],[start,len]] to [[start,start,start],[len,len,len]]
-	a, b = zip(*delme_range)
+	a, b = zip(*delme_offset)
 	return a, b
 
 
@@ -50,35 +64,39 @@ def newval_from_range_map(v: INT_OR_INTLIST, range_map: Tuple[List[int], List[in
 	:param range_map: result from delme_list_to_rangemap()
 	:return: int if v is int, list[int] if v is list[int]
 	"""
+	list_of_starts, list_of_offsets = range_map
 	# support both int and list-of-int inputs... do basically the same thing, just looped
 	# if input is list, IT MUST BE IN ASCENDING SORTED ORDER
-	# core idea: walk BACKWARDS along the range_map until i find the start that is CLOSEST BELOW the input v
 	if isinstance(v, int):
-		# # bisect_right: same as bisect_left but when matching something already in it it goes one to the right
-		pos = core.bisect_right(range_map[0], v)
+		# bisect_right: binary search for appropriate insert location, if exact match is found return exact index + 1
+		pos = core.bisect_right(list_of_starts, v)
 		if pos == 0:
 			# if it doesnt find a block starting below v, then the offset is 0
 			return v
 		else:
-			# return the input value minus the applicable offset
-			return v - range_map[1][pos - 1]
+			# return the input value plus the applicable offset (offset will be negative)
+			return v + list_of_offsets[pos - 1]
 	elif isinstance(v, (list,tuple)):
+		# if given an empty list, return an empty list
+		if len(v) == 0: return []
 		# if given a list, the list is ordered so take advantage of that to pick up where the previous item left off
-		# walk backwards along both lists side-by-side
+		# core idea: walk BACKWARDS along the range_map until i find the start that is CLOSEST BELOW the input v
+		# go backwards so I can use the tail end unchanged in some circumstances
 		retme = []
 		input_idx = len(v) - 1
-		idx = len(range_map[0]) - 1
-		while idx >= 0 and input_idx >= 0:
-			if range_map[0][idx] <= v[input_idx]:
-				# return the input value minus the applicable offset
-				retme.append(v[input_idx] - range_map[1][idx])
+		# start_idx = len(list_of_starts) - 1
+		start_idx = core.bisect_right(list_of_starts, v[-1]) - 1
+		while start_idx >= 0 and input_idx >= 0:
+			if list_of_starts[start_idx] <= v[input_idx]:
+				# if this start idx is below the value idx, then it is applicable! so, apply the corresponding offset
+				retme.append(v[input_idx] + list_of_offsets[start_idx])
 				input_idx -= 1
 			else:
-				idx -= 1
+				start_idx -= 1
+		retme.reverse()
 		if input_idx != -1:
 			# if it finished walking down the range-list before it finished the input-list, all remaining inputs are unchanged
-			retme += reversed(v[0:input_idx + 1])
-		retme.reverse()
+			retme = v[0:input_idx + 1] + retme
 		return retme
 	else:
 		raise ValueError("error: newval_from_range_map() called with '%s' arg, must be int or list/tuple" % v.__class__.__name__)
@@ -121,7 +139,7 @@ def insert_single_bone(pmx: pmxstruct.Pmx, newbone: pmxstruct.PmxBone, newindex:
 		# insert the bone at the new location
 		pmx.bones.insert(newindex, newbone)
 		# create the shiftmap for inserting things
-		bone_shiftmap = ([newindex], [-1])
+		bone_shiftmap = ([newindex], [1])
 		# apply the shiftmap
 		# this also changes any references inside newbone to refer to the correct indices after the insertion
 		bone_delete_and_remap(pmx, [], bone_shiftmap)
