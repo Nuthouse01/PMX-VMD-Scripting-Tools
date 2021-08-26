@@ -1,7 +1,7 @@
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
-from mmd_scripting.core.nuthouse01_pmx_utils import newval_from_range_map, delme_list_to_rangemap
+from mmd_scripting.core.nuthouse01_pmx_utils import newval_from_rangemap, delme_list_to_rangemap
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -85,9 +85,9 @@ def prune_unused_vertices(pmx: pmxstruct.Pmx, moreinfo=False):
 	for d,face in enumerate(pmx.faces):
 		# vertices in a face are not guaranteed sorted, and sorting them is a Very Bad Idea
 		# therefore they must be remapped individually
-		face[0] = newval_from_range_map(face[0], delme_range)
-		face[1] = newval_from_range_map(face[1], delme_range)
-		face[2] = newval_from_range_map(face[2], delme_range)
+		face[0] = newval_from_rangemap(face[0], delme_range)
+		face[1] = newval_from_rangemap(face[1], delme_range)
+		face[2] = newval_from_rangemap(face[2], delme_range)
 		# display progress printouts
 		core.print_progress_oneline(d / totalwork)
 		
@@ -123,7 +123,7 @@ def prune_unused_vertices(pmx: pmxstruct.Pmx, moreinfo=False):
 		# separate the vertices from the morph entries into a list of their own, for more efficient remapping
 		vertlist = [x.vert_idx for x in morph.items]
 		# remap
-		remappedlist = newval_from_range_map(vertlist, delme_range)
+		remappedlist = newval_from_rangemap(vertlist, delme_range)
 		# write the remapped values back into where they came from
 		for x, newval in zip(morph.items, remappedlist):
 			x.vert_idx = newval
@@ -153,7 +153,7 @@ def prune_unused_vertices(pmx: pmxstruct.Pmx, moreinfo=False):
 		# extract the vert indices into a list of their town
 		anchorlist = [x[1] for x in soft.anchors_list]
 		# remap
-		newanchorlist = newval_from_range_map(anchorlist, delme_range)
+		newanchorlist = newval_from_rangemap(anchorlist, delme_range)
 		# write the remapped values back into where they came from
 		for x, newval in zip(soft.anchors_list, newanchorlist):
 			x[1] = newval
@@ -173,7 +173,7 @@ def prune_unused_vertices(pmx: pmxstruct.Pmx, moreinfo=False):
 		#  MAKE it sorted, nobody will mind
 		soft.anchors_list.sort()
 		# remap
-		soft.vertex_pin_list = newval_from_range_map(soft.vertex_pin_list, delme_range)
+		soft.vertex_pin_list = newval_from_rangemap(soft.vertex_pin_list, delme_range)
 		# done with softbodies!
 		
 	# now, finally, actually delete the vertices from the vertex list

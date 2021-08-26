@@ -14,7 +14,7 @@ def delme_list_to_rangemap(delme: List[int]) -> Tuple[List[int], List[int]]:
 	Given an ascending sorted list of ints, build a pair of lists that let me know what indices OTHER things will map
 	to when THESE indices are deleted. list1 is the index each cluster starts at, list2 is how much to offset indices
 	by if greater than that cluster-start.
-	Exclusively used with newval_from_range_map().
+	Exclusively used with newval_from_rangemap().
 
 	:param delme: ascending sorted list of ints
 	:return: tuple(list-of-starts, list-of-cumulativelength)
@@ -55,7 +55,7 @@ def delme_list_to_rangemap(delme: List[int]) -> Tuple[List[int], List[int]]:
 
 
 INT_OR_INTLIST = TypeVar("INT_OR_INTLIST", int, List[int])
-def newval_from_range_map(v: INT_OR_INTLIST, range_map: Tuple[List[int], List[int]]) -> INT_OR_INTLIST:
+def newval_from_rangemap(v: INT_OR_INTLIST, range_map: Tuple[List[int], List[int]]) -> INT_OR_INTLIST:
 	"""
 	Given a rangemap from delme_list_to_rangemap(), determine the resulting index for an input or set of inputs.
 	If v is a list, it must be in ascending sorted order. Returns same type as v type.
@@ -99,7 +99,7 @@ def newval_from_range_map(v: INT_OR_INTLIST, range_map: Tuple[List[int], List[in
 			retme = v[0:input_idx + 1] + retme
 		return retme
 	else:
-		raise ValueError("error: newval_from_range_map() called with '%s' arg, must be int or list/tuple" % v.__class__.__name__)
+		raise ValueError("error: newval_from_rangemap() called with '%s' arg, must be int or list/tuple" % v.__class__.__name__)
 
 
 def bone_get_ancestors(bones: List[pmxstruct.PmxBone], idx: int) -> Set[int]:
@@ -179,7 +179,7 @@ def bone_delete_and_remap(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shif
 	# any references to bones being deleted will definitely have 0 weight, and therefore it doesn't matter what they reference afterwards
 	for d, vert in enumerate(pmx.verts):
 		for pair in vert.weight:
-			pair[0] = newval_from_range_map(int(pair[0]), bone_shiftmap)
+			pair[0] = newval_from_rangemap(int(pair[0]), bone_shiftmap)
 	# done with verts
 	
 	core.print_progress_oneline(1 / 5)
@@ -196,7 +196,7 @@ def bone_delete_and_remap(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shif
 			if core.binary_search_isin(it.bone_idx, bone_dellist):
 				morph.items.pop(i)
 			else:
-				it.bone_idx = newval_from_range_map(it.bone_idx, bone_shiftmap)
+				it.bone_idx = newval_from_rangemap(it.bone_idx, bone_shiftmap)
 				i += 1
 	# done with morphs
 	
@@ -214,7 +214,7 @@ def bone_delete_and_remap(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shif
 				if core.binary_search_isin(item.idx, bone_dellist):
 					frame.items.pop(i)
 				else:
-					item.idx = newval_from_range_map(item.idx, bone_shiftmap)
+					item.idx = newval_from_rangemap(item.idx, bone_shiftmap)
 					i += 1
 	# done with frames
 	
@@ -225,7 +225,7 @@ def bone_delete_and_remap(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shif
 		if core.binary_search_isin(body.bone_idx, bone_dellist):
 			body.bone_idx = -1
 		else:
-			body.bone_idx = newval_from_range_map(body.bone_idx, bone_shiftmap)
+			body.bone_idx = newval_from_rangemap(body.bone_idx, bone_shiftmap)
 	# done with bodies
 	
 	core.print_progress_oneline(4 / 5)
@@ -239,10 +239,10 @@ def bone_delete_and_remap(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shif
 				bone.tail = [0, 0, 0]
 			else:
 				# otherwise, remap
-				bone.tail = newval_from_range_map(bone.tail, bone_shiftmap)
+				bone.tail = newval_from_rangemap(bone.tail, bone_shiftmap)
 		# other 4 categories only need remapping
 		# true parent:
-		bone.parent_idx = newval_from_range_map(bone.parent_idx, bone_shiftmap)
+		bone.parent_idx = newval_from_rangemap(bone.parent_idx, bone_shiftmap)
 		# partial append:
 		if (bone.inherit_rot or bone.inherit_trans) and bone.inherit_parent_idx != -1:
 			if core.binary_search_isin(bone.inherit_parent_idx, bone_dellist):
@@ -252,12 +252,12 @@ def bone_delete_and_remap(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shif
 				bone.inherit_trans = False
 				bone.inherit_parent_idx = -1
 			else:
-				bone.inherit_parent_idx = newval_from_range_map(bone.inherit_parent_idx, bone_shiftmap)
+				bone.inherit_parent_idx = newval_from_rangemap(bone.inherit_parent_idx, bone_shiftmap)
 		# ik stuff:
 		if bone.has_ik:
-			bone.ik_target_idx = newval_from_range_map(bone.ik_target_idx, bone_shiftmap)
+			bone.ik_target_idx = newval_from_rangemap(bone.ik_target_idx, bone_shiftmap)
 			for link in bone.ik_links:
-				link.idx = newval_from_range_map(link.idx, bone_shiftmap)
+				link.idx = newval_from_rangemap(link.idx, bone_shiftmap)
 	# done with bones
 	
 	# acutally delete the bones
@@ -292,7 +292,7 @@ def morph_delete_and_remap(pmx: pmxstruct.Pmx, morph_dellist: List[int], morph_s
 				if core.binary_search_isin(item.idx, morph_dellist):
 					frame.items.pop(i)
 				else:
-					item.idx = newval_from_range_map(item.idx, morph_shiftmap)
+					item.idx = newval_from_rangemap(item.idx, morph_shiftmap)
 					i += 1
 	
 	# group/flip morphs:
@@ -307,7 +307,7 @@ def morph_delete_and_remap(pmx: pmxstruct.Pmx, morph_dellist: List[int], morph_s
 			if core.binary_search_isin(it.morph_idx, morph_dellist):
 				morph.items.pop(i)
 			else:
-				it.morph_idx = newval_from_range_map(it.morph_idx, morph_shiftmap)
+				it.morph_idx = newval_from_rangemap(it.morph_idx, morph_shiftmap)
 				i += 1
 	return
 
