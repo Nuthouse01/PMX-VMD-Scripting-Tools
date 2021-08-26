@@ -337,25 +337,26 @@ def create_twist_separator_rig(pmx: pmxstruct.Pmx,
 	shoulderC
 	arm
 	armtwist
-	* armD  (after greater of arm,armtwist)
-	* armDend
-	* armD_IK
-	* armT
-	* armTend
-	* armT_IK
 	* armtwist0
 	armtwist1
 	armtwist2
 	armtwist3
 	* armtwist4  (before elbow)
 	elbow
+	...
+	* armD  (after greater of arm,armtwist)
+	* armDend
+	* armD_IK
+	* armT
+	* armTend
+	* armT_IK
 	'''
-	armD_idx =    elbow_parent_idx + 1
-	armDend_idx = elbow_parent_idx + 2
-	armDik_idx =  elbow_parent_idx + 3
-	armT_idx =    elbow_parent_idx + 4
-	armTend_idx = elbow_parent_idx + 5
-	armTik_idx =  elbow_parent_idx + 6
+	armD_idx =    len(pmx.bones)
+	armDend_idx = len(pmx.bones) + 1
+	armDik_idx =  len(pmx.bones) + 2
+	armT_idx =    len(pmx.bones) + 3
+	armTend_idx = len(pmx.bones) + 4
+	armTik_idx =  len(pmx.bones) + 5
 	# TODO: create more efficient function for multi-insert? nah, this is fine
 	insert_single_bone(pmx, armD, armD_idx)
 	insert_single_bone(pmx, armDend, armDend_idx)
@@ -456,11 +457,7 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 		b.deform_layer += extra_deform
 	# turn the objects into their indexes
 	armD_idx = armD.idx_within(pmx.bones)
-	# armDend_idx = armDend.idx_within(pmx.bones)
-	armDik_idx = armDik.idx_within(pmx.bones)
 	armT_idx = armT.idx_within(pmx.bones)
-	# armTend_idx = armTend.idx_within(pmx.bones)
-	armTik_idx = armTik.idx_within(pmx.bones)
 	
 	# 5, modify the existing armtwist-sub bones
 	# first go back from obj to indices, since the bones moved
@@ -496,8 +493,8 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 		armtwistX_idx = max(armtwist_sub_idx)+1
 		insert_single_bone(pmx, armtwistX, armtwistX_idx)
 		# fix references to other bones
-		armtwistX.parent_idx = armD_idx
-		armtwistX.inherit_parent_idx = armT_idx
+		armtwistX.parent_idx = armD.idx_within(pmx.bones)
+		armtwistX.inherit_parent_idx = armT.idx_within(pmx.bones)
 		
 		# transfer all weight and rigidbody references from armtwist to armtwistX
 		# this time the return val is not needed
@@ -520,8 +517,8 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 		armtwist0_idx = min(armtwist_sub_idx)
 		insert_single_bone(pmx, armtwist0, armtwist0_idx)
 		# fix references to other bones
-		armtwist0.parent_idx = armD_idx
-		armtwist0.inherit_parent_idx = armT_idx
+		armtwist0.parent_idx = armD.idx_within(pmx.bones)
+		armtwist0.inherit_parent_idx = armT.idx_within(pmx.bones)
 		
 		# transfer all weight and rigidbody references from arm to armtwist0
 		# this time the return val is not needed
@@ -536,6 +533,10 @@ def make_autotwist_segment(pmx: pmxstruct.Pmx, side:str, arm_s:str, armtwist_s:s
 	# goto:         parent=armT,       inherit=elbowD
 	
 	# need to refresh elbow idx cuz it moved
+	armD_idx = armD.idx_within(pmx.bones)
+	armDik_idx = armDik.idx_within(pmx.bones)
+	armT_idx = armT.idx_within(pmx.bones)
+	armTik_idx = armTik.idx_within(pmx.bones)
 	elbow_idx = elbow.idx_within(pmx.bones)
 	for d, bone in enumerate(pmx.bones):
 		# transfer "inherit arm" to "inherit armD"
@@ -627,8 +628,9 @@ def make_handtwist_addon(pmx: pmxstruct.Pmx, side:str) -> None:
 		has_fixedaxis=False, has_localaxis=False, has_externalparent=False,
 	)
 	
-	# insert at the current position of elbowDik
-	newbone_idx = elbowDik.parent_idx + 1
+	# insert at the current position of elbowD
+	elbowD_idx = core.my_list_search(pmx.bones, lambda x: x.name_jp == f_armNoTwist.format(side, jp_elbow))
+	newbone_idx = elbowD_idx
 	insert_single_bone(pmx, newbone, newbone_idx)
 	
 	# 5, then, elbowDik and elbowTik are set to use "combiner" as parent
