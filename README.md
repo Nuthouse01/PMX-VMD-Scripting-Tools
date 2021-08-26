@@ -283,6 +283,7 @@ The following files should be included with this README:
 v1.07.05:
 prevent "morph winnow" from deleting AutoLuminous morphs
 rename "bone_make_semistandard_auto_armtwist" -> "bone_add_semistandard_auto_armtwist"
+in "bone_add_semistandard_auto_armtwist", make all the crazy IK bones added at the BOTTOM of the bone list
 move "translation_functions", "translation_dicts" to CORE
 move some fundamental PMX functions into new separate file "core.nuthouse01_pmx_utils"
 new script "bone_add_leg_Dbones"

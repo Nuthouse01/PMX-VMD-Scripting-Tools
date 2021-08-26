@@ -19,8 +19,6 @@ TODO: can i create one base class that is the parent of both VMD and PMX? they h
 TODO: remove the pmx.faces member and instead break the faces into one sublist for each material object? is this easier
     or harder to understand? it lets me hide the "number of faces per material" field, which makes things simpler... and
     it makes it much easier to duplicate or delete materials... hm...
-	
-TODO: modify the auto armtwist script to insert the bones at the bottom of bone list? since I abuse the "deform layer" stuff it is functionally the same
 
 TODO: modify "create arm IK" script to use better structure/parameters
 
