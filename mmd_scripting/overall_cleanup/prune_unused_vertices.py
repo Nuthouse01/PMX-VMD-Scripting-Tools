@@ -1,3 +1,5 @@
+from typing import Tuple, List
+
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
@@ -31,6 +33,120 @@ def showprompt():
 	input_filename_pmx = core.prompt_user_filename("PMX file", ".pmx")
 	pmx = pmxlib.read_pmx(input_filename_pmx, moreinfo=True)
 	return pmx, input_filename_pmx
+
+def vert_delete_and_remap(pmx: pmxstruct.Pmx, vert_dellist: List[int], vert_shiftmap: Tuple[List[int], List[int]]) -> None:
+	# need to update places that reference vertices: faces, morphs, softbody
+	# first get the total # of iterations I need to do, for progress purposes: #faces + sum of len of all UV and vert morphs
+	totalwork = len(pmx.faces) + sum([len(m.items) for m in pmx.morphs if (m.morphtype in (pmxstruct.MorphType.VERTEX,
+																						   pmxstruct.MorphType.UV,
+																						   pmxstruct.MorphType.UV_EXT1,
+																						   pmxstruct.MorphType.UV_EXT2,
+																						   pmxstruct.MorphType.UV_EXT3,
+																						   pmxstruct.MorphType.UV_EXT4))])
+	
+	# faces:
+	d = 0
+	for d, face in enumerate(pmx.faces):
+		# vertices in a face are not guaranteed sorted, and sorting them is a Very Bad Idea
+		# therefore they must be remapped individually
+		face[0] = newval_from_rangemap(face[0], vert_shiftmap)
+		face[1] = newval_from_rangemap(face[1], vert_shiftmap)
+		face[2] = newval_from_rangemap(face[2], vert_shiftmap)
+		# display progress printouts
+		core.print_progress_oneline(d / totalwork)
+	
+	# core.MY_PRINT_FUNC("Done updating vertex references in faces")
+	
+	# morphs:
+	orphan_vertex_references = 0
+	for morph in pmx.morphs:
+		# if not a vertex morph or UV morph, skip it
+		if not morph.morphtype in (pmxstruct.MorphType.VERTEX,
+								   pmxstruct.MorphType.UV,
+								   pmxstruct.MorphType.UV_EXT1,
+								   pmxstruct.MorphType.UV_EXT2,
+								   pmxstruct.MorphType.UV_EXT3,
+								   pmxstruct.MorphType.UV_EXT4): continue
+		lenbefore = len(morph.items)
+		# it is plausible that vertex/uv morphs could reference orphan vertices, so I should check for and delete those
+		i = 0
+		while i < len(morph.items):
+			# if the vertex being manipulated is in the list of verts being deleted,
+			if core.binary_search_isin(morph.items[i].vert_idx, vert_dellist):
+				# delete it here too
+				morph.items.pop(i)
+				orphan_vertex_references += 1
+			else:
+				# otherwise, remap it
+				# but don't remap it here, wait until I'm done deleting vertices and then tackle them all at once
+				i += 1
+		
+		# morphs usually contain vertexes in sorted order, but not guaranteed!!! MAKE it sorted, nobody will mind
+		morph.items.sort(key=lambda x: x.vert_idx)
+		
+		# separate the vertices from the morph entries into a list of their own, for more efficient remapping
+		vertlist = [x.vert_idx for x in morph.items]
+		# remap
+		remappedlist = newval_from_rangemap(vertlist, vert_shiftmap)
+		# write the remapped values back into where they came from
+		for x, newval in zip(morph.items, remappedlist):
+			x.vert_idx = newval
+		# display progress printouts
+		d += lenbefore
+		core.print_progress_oneline(d / totalwork)
+	
+	# core.MY_PRINT_FUNC("Done updating vertex references in morphs")
+	
+	# softbody: probably not relevant but eh
+	for soft in pmx.softbodies:
+		# anchors
+		# first, delete any references to delme verts in the anchors
+		i = 0
+		while i < len(soft.anchors_list):
+			# if the vertex referenced is in the list of verts being deleted,
+			if core.binary_search_isin(soft.anchors_list[i][1], vert_dellist):
+				# delete it here too
+				soft.anchors_list.pop(i)
+			else:
+				# otherwise, remap it
+				# but don't remap it here, wait until I'm done deleting vertices and then tackle them all at once
+				i += 1
+		
+		#  MAKE it sorted, nobody will mind
+		soft.anchors_list.sort(key=lambda x: x[1])
+		# extract the vert indices into a list of their town
+		anchorlist = [x[1] for x in soft.anchors_list]
+		# remap
+		newanchorlist = newval_from_rangemap(anchorlist, vert_shiftmap)
+		# write the remapped values back into where they came from
+		for x, newval in zip(soft.anchors_list, newanchorlist):
+			x[1] = newval
+		
+		# vertex pins
+		# first, delete any references to delme verts
+		i = 0
+		while i < len(soft.vertex_pin_list):
+			# if the vertex referenced is in the list of verts being deleted,
+			if core.binary_search_isin(soft.vertex_pin_list[i], vert_dellist):
+				# delete it here too
+				soft.vertex_pin_list.pop(i)
+			else:
+				# otherwise, remap it
+				# but don't remap it here, wait until I'm done deleting vertices and then tackle them all at once
+				i += 1
+		#  MAKE it sorted, nobody will mind
+		soft.anchors_list.sort()
+		# remap
+		soft.vertex_pin_list = newval_from_rangemap(soft.vertex_pin_list, vert_shiftmap)
+	# done with softbodies!
+	
+	# now, finally, actually delete the vertices from the vertex list
+	vert_dellist.reverse()
+	for f in vert_dellist:
+		pmx.verts.pop(f)
+		
+	return
+
 
 def prune_unused_vertices(pmx: pmxstruct.Pmx, moreinfo=False):
 	#############################
@@ -71,115 +187,7 @@ def prune_unused_vertices(pmx: pmxstruct.Pmx, moreinfo=False):
 	if moreinfo:
 		core.MY_PRINT_FUNC("Detected %d orphan vertices arranged in %d contiguous blocks" % (len(delme_verts), len(delme_range[0])))
 	
-	# need to update places that reference vertices: faces, morphs, softbody
-	# first get the total # of iterations I need to do, for progress purposes: #faces + sum of len of all UV and vert morphs
-	totalwork = len(pmx.faces) + sum([len(m.items) for m in pmx.morphs if (m.morphtype in (pmxstruct.MorphType.VERTEX,
-																						   pmxstruct.MorphType.UV,
-																						   pmxstruct.MorphType.UV_EXT1,
-																						   pmxstruct.MorphType.UV_EXT2,
-																						   pmxstruct.MorphType.UV_EXT3,
-																						   pmxstruct.MorphType.UV_EXT4))])
-	
-	# faces:
-	d = 0
-	for d,face in enumerate(pmx.faces):
-		# vertices in a face are not guaranteed sorted, and sorting them is a Very Bad Idea
-		# therefore they must be remapped individually
-		face[0] = newval_from_rangemap(face[0], delme_range)
-		face[1] = newval_from_rangemap(face[1], delme_range)
-		face[2] = newval_from_rangemap(face[2], delme_range)
-		# display progress printouts
-		core.print_progress_oneline(d / totalwork)
-		
-	# core.MY_PRINT_FUNC("Done updating vertex references in faces")
-	
-	# morphs:
-	orphan_vertex_references = 0
-	for morph in pmx.morphs:
-		# if not a vertex morph or UV morph, skip it
-		if not morph.morphtype in (pmxstruct.MorphType.VERTEX,
-								   pmxstruct.MorphType.UV,
-								   pmxstruct.MorphType.UV_EXT1,
-								   pmxstruct.MorphType.UV_EXT2,
-								   pmxstruct.MorphType.UV_EXT3,
-								   pmxstruct.MorphType.UV_EXT4): continue
-		lenbefore = len(morph.items)
-		# it is plausible that vertex/uv morphs could reference orphan vertices, so I should check for and delete those
-		i = 0
-		while i < len(morph.items):
-			# if the vertex being manipulated is in the list of verts being deleted,
-			if core.binary_search_isin(morph.items[i].vert_idx, delme_verts):
-				# delete it here too
-				morph.items.pop(i)
-				orphan_vertex_references += 1
-			else:
-				# otherwise, remap it
-				# but don't remap it here, wait until I'm done deleting vertices and then tackle them all at once
-				i += 1
-		
-		# morphs usually contain vertexes in sorted order, but not guaranteed!!! MAKE it sorted, nobody will mind
-		morph.items.sort(key=lambda x: x.vert_idx)
-		
-		# separate the vertices from the morph entries into a list of their own, for more efficient remapping
-		vertlist = [x.vert_idx for x in morph.items]
-		# remap
-		remappedlist = newval_from_rangemap(vertlist, delme_range)
-		# write the remapped values back into where they came from
-		for x, newval in zip(morph.items, remappedlist):
-			x.vert_idx = newval
-		# display progress printouts
-		d += lenbefore
-		core.print_progress_oneline(d / totalwork)
-
-	# core.MY_PRINT_FUNC("Done updating vertex references in morphs")
-	
-	# softbody: probably not relevant but eh
-	for soft in pmx.softbodies:
-		# anchors
-		# first, delete any references to delme verts in the anchors
-		i = 0
-		while i < len(soft.anchors_list):
-			# if the vertex referenced is in the list of verts being deleted,
-			if core.binary_search_isin(soft.anchors_list[i][1], delme_verts):
-				# delete it here too
-				soft.anchors_list.pop(i)
-			else:
-				# otherwise, remap it
-				# but don't remap it here, wait until I'm done deleting vertices and then tackle them all at once
-				i += 1
-		
-		#  MAKE it sorted, nobody will mind
-		soft.anchors_list.sort(key=lambda x: x[1])
-		# extract the vert indices into a list of their town
-		anchorlist = [x[1] for x in soft.anchors_list]
-		# remap
-		newanchorlist = newval_from_rangemap(anchorlist, delme_range)
-		# write the remapped values back into where they came from
-		for x, newval in zip(soft.anchors_list, newanchorlist):
-			x[1] = newval
-		
-		# vertex pins
-		# first, delete any references to delme verts
-		i = 0
-		while i < len(soft.vertex_pin_list):
-			# if the vertex referenced is in the list of verts being deleted,
-			if core.binary_search_isin(soft.vertex_pin_list[i], delme_verts):
-				# delete it here too
-				soft.vertex_pin_list.pop(i)
-			else:
-				# otherwise, remap it
-				# but don't remap it here, wait until I'm done deleting vertices and then tackle them all at once
-				i += 1
-		#  MAKE it sorted, nobody will mind
-		soft.anchors_list.sort()
-		# remap
-		soft.vertex_pin_list = newval_from_rangemap(soft.vertex_pin_list, delme_range)
-		# done with softbodies!
-		
-	# now, finally, actually delete the vertices from the vertex list
-	delme_verts.reverse()
-	for f in delme_verts:
-		pmx.verts.pop(f)
+	vert_delete_and_remap(pmx, delme_verts, delme_range)
 	
 	core.MY_PRINT_FUNC("Identified and deleted {} / {} = {:.1%} vertices for being unused".format(
 		numdeleted, prevtotal, numdeleted/prevtotal))
