@@ -86,7 +86,7 @@ def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
 	# return this bezier.
 	rms_error, max_error, split_point = _compute_errors_and_split(p, bezier, u)
 	if _acceptable_error(rms_error, max_error, rms_err_tol, max_err_tol):
-		_path_logger.debug('Depth {}: Optimal solution found with RMS={} and maximum error={}'.format(depth, rms_error, max_error))
+		_path_logger.debug('Depth {}: First-try solution! RMSerr={:.4f} and MAXerr={:.4f}'.format(depth, rms_error, max_error))
 		return [bezier]
 
 	# If the error is not too large, then try to find an
@@ -94,19 +94,19 @@ def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
 	if rms_error < REPARAM_TOL_MULTIPLIER*rms_err_tol:
 
 		for i in range(max_reparam_iter):
-			_path_logger.debug('Depth {}: Reparameterising step {:2d}/{:2d} with RMS={} maximum error={}'.format(depth, i, max_reparam_iter, rms_error, max_error))
+			_path_logger.debug('Depth {}: Reparameterising step {:2d}/{:2d} with RMSerr={:.4f} and MAXerr={:.4f}'.format(depth, i, max_reparam_iter, rms_error, max_error))
 			uprime = _reparameterise(bezier, p, u)
 			bezier = generate_bezier(p, uprime, left_tangent, right_tangent)
 			rms_error, max_error, split_point = _compute_errors_and_split(p, bezier, uprime)
 			if _acceptable_error(rms_error, max_error, rms_err_tol, max_err_tol):
-				_path_logger.debug('Depth {}: Optimal reparameterised solution found with RMS={} maximum error={}'.format(depth, rms_error, max_error))
+				_path_logger.debug('Depth {}: Reparameterised solution! RMSerr={:.4f} and MAXerr={:.4f}'.format(depth, rms_error, max_error))
 				return [bezier]
 			u = uprime
-		_path_logger.debug('Depth {}: No optimal reparameterised solution found with RMS={} maximum error={} and split={} and length={}'.format(depth, rms_error, max_error, split_point, len(p)))
+		_path_logger.debug('Depth {}: No reparameterised solution found with RMSerr={:.4f} and MAXerr={:.4f} and split={} and length={}'.format(depth, rms_error, max_error, split_point, len(p)))
 
 	# We can't refine this anymore, so try splitting at the maximum error point
 	# and fit recursively.
-	_path_logger.debug('Depth {}: Splitting'.format(depth))
+	_path_logger.debug('Depth {}: Splitting at point {} of {}'.format(depth, split_point, len(p)))
 	beziers = []
 	centre_tangent = _normalise(p[split_point-1,:] - p[split_point+1,:])
 	beziers += _fit_cubic(p[:split_point+1,:], left_tangent, centre_tangent, rms_err_tol, max_err_tol, max_reparam_iter=max_reparam_iter, depth=depth+1)
