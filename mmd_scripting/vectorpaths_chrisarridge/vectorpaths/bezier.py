@@ -192,13 +192,15 @@ class CubicBezier:
 			plt.plot(self._px[1], self._py[1], 'ko', fillstyle='none', **kwargs)
 			plt.plot(self._px[2], self._py[2], 'ko', fillstyle='none', **kwargs)
 			plt.plot(self._px[3], self._py[3], 'ko', markerfacecolor='k', **kwargs)
-			plt.plot(self._px, self._py, '--k', **kwargs)
+			plt.plot(self._px[0:2], self._py[0:2], '--k', **kwargs)
+			plt.plot(self._px[2:4], self._py[2:4], '--k', **kwargs)
 		else:
 			ax.plot(self._px[0], self._py[0], 'ko', markerfacecolor='k', **kwargs)
 			ax.plot(self._px[1], self._py[1], 'ko', fillstyle='none', **kwargs)
 			ax.plot(self._px[2], self._py[2], 'ko', fillstyle='none', **kwargs)
 			ax.plot(self._px[3], self._py[3], 'ko', markerfacecolor='k', **kwargs)
-			ax.plot(self._px, self._py, '--k', **kwargs)
+			ax.plot(self._px[0:2], self._py[0:2], '--k', **kwargs)
+			ax.plot(self._px[2:4], self._py[2:4], '--k', **kwargs)
 
 	@staticmethod
 	def _q(p, t):
