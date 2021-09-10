@@ -1,12 +1,14 @@
-"""Code to fit Cubic Beziers to a set of points.
+"""
+Code to fit Cubic Beziers to a set of points.
 
 The original code was C++ code by Philip J. Schneider and published in
 'Graphics Gems' (Academic Press, 1990) 'Algorithm for Automatically Fitting
-Digitized Curves'.  This code is based on a Python implementation by
-Volker Poplawski (Copyright (c) 2014).
+Digitized Curves'.
+Python implementation by Volker Poplawski (Copyright (c) 2014).
+Refactoring, optimization, and cleanup by Chris Arridge (Copyright (c) 2020).
 """
 import numpy as np
-import logging
+# import logging
 
 from . import CubicBezier
 from . import _path_logger
@@ -14,15 +16,19 @@ from . import _path_logger
 
 def fit_cubic_bezier(xc, yc, rms_err_tol, max_err_tol=None,
 	max_reparam_iter=20):
-	"""Fit a set of cubic bezier curves to points (xc,yc).
+	"""
+	Fit a set of cubic bezier curves to points (xc,yc).
+	The order of the datapoints matters, because the bezier attempts to visit
+	the points in the order they are given.
 
 	:param xc: (n,) array of x coordinates of the points to fit.
 	:param yc: (n,) array of y coordinates of the points to fit.
 	:param rms_err_tol: RMS error tolerance (in units of xc and yc).
-	:param max_err_tol: Tolerance for maximum error (in units of xc and yc).
-	:param max_reparam_iter: Maximum number of reparameterisation iterations.
+	:param max_err_tol: (optional) Tolerance for maximum error (in units of xc and yc).
+	:param max_reparam_iter: (optional) Maximum number of reparameterisation iterations.
+	:return: list of CubicBezier objects
 	"""
-	_path_logger.debug('Fitting points')
+	# _path_logger.debug('Fitting points')
 
 	if len(xc)!=len(yc):
 		raise ValueError('Number of x and y points does not match')
@@ -35,10 +41,10 @@ def fit_cubic_bezier(xc, yc, rms_err_tol, max_err_tol=None,
 	right_tangent = _normalise(p[-2,:]-p[-1,:])
 
 	return _fit_cubic(p, left_tangent, right_tangent, rms_err_tol,
-						max_err_tol, 0, max_reparam_iter=max_reparam_iter)
+						max_err_tol, max_reparam_iter=max_reparam_iter)
 
 def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
-				depth, max_reparam_iter=20):
+				max_reparam_iter=20, depth=0):
 	"""Recursive routine to fit cubic bezier to a set of data points.
 
 	:param p: (n,2) array of (x,y) coordinates of points to fit.
@@ -46,24 +52,26 @@ def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
 	:param right_tangent: (,2) tangent vector at the right-hand end.
 	:param rms_err_tol: RMS error tolerance (in units of xc and yc).
 	:param max_err_tol: Tolerance for maximum error (in units of xc and yc).
-	:param max_reparam_iter: Maximum number of reparameterisation iterations.
+	:param max_reparam_iter: (optional) Maximum number of reparameterisation iterations.
+	:param depth: (optional) count how deep the recursive rabbit hole goes, just for logging
+	:return: list of CubicBezier objects
 	"""
+	# this controls the error threshold for "the fit is so bad i'm just gonna split it right away instead of iterating"
 	REPARAM_TOL_MULTIPLIER = 4
 
-	def _acceptable_error(rms_error, max_error, rms_err_tol, max_err_tol):
-		if rms_error<rms_err_tol:
-			if max_err_tol is not None:
-				if max_error<max_err_tol:
-					return True
-				else:
-					return False
-			else:
+	def _acceptable_error(rms_error2, max_error2, rms_err_tol2, max_err_tol2):
+		# if the RMS error passes AND the max error passes, return TRUE
+		# but if the "max_err_tol" is None then that counts as the max error passing by default
+		if rms_error2 < rms_err_tol2:
+			if (max_err_tol2 is None) or (max_error2 < max_err_tol2):
 				return True
+			else:
+				return False
 		else:
 			return False
 
 	# Use heuristic if region only has two points in it.
-	if (len(p) == 2):
+	if len(p) == 2:
 		_path_logger.debug('Depth {}: Using heuristic for two points'.format(depth))
 		dist = np.linalg.norm(p[0,:] - p[1,:])/3.0
 		left = left_tangent*dist
@@ -81,10 +89,9 @@ def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
 		_path_logger.debug('Depth {}: Optimal solution found with RMS={} and maximum error={}'.format(depth, rms_error, max_error))
 		return [bezier]
 
-	# The error is too large, if it's not too big then try to find an
+	# If the error is not too large, then try to find an
 	# alternative reparameterisation that has a smaller error.
 	if rms_error < REPARAM_TOL_MULTIPLIER*rms_err_tol:
-		_path_logger.debug('Depth {}: Reparameterising RMS={} maximum error={}'.format(depth, rms_error, max_error))
 
 		for i in range(max_reparam_iter):
 			_path_logger.debug('Depth {}: Reparameterising step {:2d}/{:2d} with RMS={} maximum error={}'.format(depth, i, max_reparam_iter, rms_error, max_error))
@@ -102,13 +109,22 @@ def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
 	_path_logger.debug('Depth {}: Splitting'.format(depth))
 	beziers = []
 	centre_tangent = _normalise(p[split_point-1,:] - p[split_point+1,:])
-	beziers += _fit_cubic(p[:split_point+1,:], left_tangent, centre_tangent, rms_err_tol, max_err_tol, depth+1, max_reparam_iter=max_reparam_iter)
-	beziers += _fit_cubic(p[split_point:,:], -centre_tangent, right_tangent, rms_err_tol, max_err_tol, depth+1, max_reparam_iter=max_reparam_iter)
+	beziers += _fit_cubic(p[:split_point+1,:], left_tangent, centre_tangent, rms_err_tol, max_err_tol, max_reparam_iter=max_reparam_iter, depth=depth+1)
+	beziers += _fit_cubic(p[split_point:,:], -centre_tangent, right_tangent, rms_err_tol, max_err_tol, max_reparam_iter=max_reparam_iter, depth=depth+1)
 
 	return beziers
 
 
-def generate_bezier(p, u, left_tangent, right_tangent):
+def generate_bezier(p, u, left_tangent, right_tangent) -> CubicBezier:
+	"""
+	Create a CubicBezier object from the list of points. It's generally a pretty close fit, but might need some
+	reiteration later to get a better fit.
+	:param p: (n,2) array of (x,y) coordinates of points to fit.
+	:param u: (n,) array of floats, strictly increasing. the T-positions along the bezier that are "close" to the points p.
+	:param left_tangent: (,2) tangent vector at the left-hand end.
+	:param right_tangent: (,2) tangent vector at the right-hand end.
+	:return: one CubicBezier object.
+	"""
 	bezier = CubicBezier([p[0,:], [0,0], [0,0], p[-1,:]])
 
 	# Compute the A matrix.
@@ -118,9 +134,9 @@ def generate_bezier(p, u, left_tangent, right_tangent):
 
 	# Compute the C and X matrixes
 	C = np.zeros((2, 2))
-	C2 = np.zeros((2, 2))
+	# C2 = np.zeros((2, 2))
 	X = np.zeros(2)
-	X2 = np.zeros(2)
+	# X2 = np.zeros(2)
 
 	# C[0,0] = dot(left tangent term, left tangent term)
 	# C[0,1] = dot(left tangent term, right tangent term)
@@ -172,18 +188,31 @@ def generate_bezier(p, u, left_tangent, right_tangent):
 
 	return bezier
 
-def _chord_length_parameterise(p):
-	"""Assign parameter values to points using relative distances"""
-
+def _chord_length_parameterise(p) -> np.ndarray:
+	"""
+	Assign parameter values to points using relative distances.
+	:param p: (n,2) array of (x,y) coordinates of points to fit.
+	:return: (n,) array of floats, strictly increasing, [0.0-1.0], starts with 0 ends with 1.
+	"""
+	# this returns the "relative location of each point along the line-segment path that connects all the datapoints".
+	# i.e. assuming the resulting bezier is roughly the same as the line-segment path, estimate the T value needed
+	# to get the point along the bezier that is closest to the corresponding datapoint.
 	rel_dist = np.zeros(len(p))
-	rel_dist[1:] = np.linalg.norm(p[1:,:]-p[0:-1,:])
-	u = np.cumsum(rel_dist)
-	u /= u[-1]
-
+	rel_dist[1:] = np.linalg.norm(p[1:,:]-p[0:-1,:])  # get the distance between each point and the one before it
+	u = np.cumsum(rel_dist)  # each entry is the sum of itself plus all previous entries
+	u /= u[-1]  # scale it down so the final entry is exactly 1.0
 	return u
 
 
-def _reparameterise(bezier, p, u):
+def _reparameterise(bezier, p, u) -> np.ndarray:
+	"""
+	When given a list of "parameters" (i.e. T-positions along the bezier that are close to the points p),
+	recalculate and return a list of T-positions that are a slightly better match.
+	:param bezier: CubicBezier object.
+	:param p: (n,2) array of (x,y) coordinates of points to fit.
+	:param u: (n,) array of floats, strictly increasing. the T-positions along the bezier that are "close" to the points p.
+	:return: (n,) array of floats, strictly increasing. almost same as u, but a closer fit.
+	"""
 	delta = bezier.xy(u) - p
 	numerator = np.sum(delta*bezier.xyprime(u))
 	denominator = np.sum(bezier.xyprime(u)**2 + delta*bezier.xyprimeprime(u))
@@ -195,6 +224,7 @@ def _reparameterise(bezier, p, u):
 
 def _compute_max_error(p, bezier, u):
 	"""Compute the maximum error between a set of points and a bezier curve"""
+	# CURRENTLY UNUSED
 	max_dist = 0.0
 	split_point = len(p)//2
 
@@ -211,14 +241,19 @@ def _compute_max_error(p, bezier, u):
 
 
 def _compute_errors_and_split(p, bezier, u):
-	"""Compute the maximum and rms error between a set of points and a bezier curve"""
+	"""
+	Compute the maximum and rms error between a set of points and a bezier curve.
+	If the point of max error is the head or tail, then split at the midpoint.
+	:param p: (n,2) array of (x,y) coordinates of points to fit.
+	:param bezier: CubicBezier object
+	:param u: (n,) array of [0.0-1.0] floats, strictly increasing.
+	:return: tuple of (RMS error, max error, idx of the point with the max error)
+	"""
 	dists = np.linalg.norm(bezier.xy(u)-p,axis=1)
 	i = np.argmax(dists)
 	rms = np.sqrt(np.mean(dists**2))
 
-	if i==0:
-		return 0.0, rms, len(p)//2
-	elif i==len(p)-1:
+	if i==0 or i==len(p)-1:
 		return 0.0, rms, len(p)//2
 	else:
 		return rms, dists[i], i

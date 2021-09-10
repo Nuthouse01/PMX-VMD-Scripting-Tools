@@ -1,8 +1,8 @@
 """Path package; mainly for fitting cubic beziers to points.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
+# import numpy as np
+# import matplotlib.pyplot as plt
 import logging
 
 __author__ = 'Chris Arridge'

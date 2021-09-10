@@ -5,7 +5,7 @@
 	Updated to use new path class (10 May 2020, Chris Arridge).  Changes
 	Copyright (c) Chris Arridge 2020.
 """
-from __future__ import print_function
+# from __future__ import print_function
 import numpy as np
 import vectorpaths
 try:
@@ -13,6 +13,10 @@ try:
 except ImportError:
 	from tkinter import *
 import logging
+
+# left click to add a datapoint
+# left click and drag an existing point to move it
+# middle click to delete last datapoint
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 
@@ -31,10 +35,11 @@ class MyCanvas(Canvas):
 
 	def create_bezier(self, b, tag):
 		self.create_polyline(b.xy(np.linspace(0,1,50)), tag=tag, fill='blue', width='2') # there are better ways to draw a bezier
-		# self.create_line(b[0].tolist(), b[1].tolist(), tag=tag)
-		# self.create_point(b[1][0], b[1][1], 2, fill='black', tag=tag)
-		# self.create_line(b[3].tolist(), b[2].tolist(), tag=tag)
-		# self.create_point(b[2][0], b[2][1], 2, fill='black', tag=tag)
+		# # uncomment these to show the control points
+		# self.create_line( *b.p[0], *b.p[1], tag=tag)
+		# self.create_point(b.px[1], b.py[1], 2, fill='black', tag=tag)
+		# self.create_line( *b.p[3], *b.p[2], tag=tag)
+		# self.create_point(b.px[2], b.py[2], 2, fill='black', tag=tag)
 
 
 	def create_point(self, x, y, r, **kwargs):
@@ -84,7 +89,7 @@ class MainObject:
 			self.redraw()
 
 
-	def onButton2Press(self, event):
+	def onButton2Press(self, _):
 		self.canvas.delete(self.points.pop())
 		self.redraw()
 
@@ -95,7 +100,7 @@ class MainObject:
 			self.redraw()
 
 
-	def onButton1Release(self, event):
+	def onButton1Release(self, _):
 		self.draggingPoint = None
 
 
@@ -104,7 +109,7 @@ class MainObject:
 
 
 	def redraw(self):
-		# redraw polyline
+		# redraw line that connects the datapoints
 		self.canvas.delete('polyline')
 		self.canvas.create_polyline([self.canvas.pos(pId) for pId in self.points], fill='grey', tag='polyline')
 		self.canvas.tag_lower('polyline')
@@ -113,9 +118,10 @@ class MainObject:
 		if len(self.points) < 2:
 			return
 
+		# redraw all the beziers
 		self.canvas.delete('bezier')
 		points = np.array([self.canvas.pos(p) for p in self.points])
-		print(points)
+		# print(points)
 		beziers = vectorpaths.fit_cubic_bezier(points[:,0], points[:,1], float(self.spinbox.get())**2)
 		for bezier in beziers:
 			self.canvas.create_bezier(bezier, tag='bezier')

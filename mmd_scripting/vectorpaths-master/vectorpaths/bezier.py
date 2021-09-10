@@ -4,7 +4,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from . import _path_logger
+# from . import _path_logger
 
 class CubicBezier:
 	def __init__(self, p, px=None, py=None):
