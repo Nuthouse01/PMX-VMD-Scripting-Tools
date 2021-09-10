@@ -33,8 +33,8 @@ def fit_cubic_bezier(xc, yc, rms_err_tol, max_err_tol=None,
 	if len(xc)!=len(yc):
 		raise ValueError('Number of x and y points does not match')
 	p = np.zeros((len(xc),2))
-	p[:,0] = xc
-	p[:,1] = yc
+	p[:,0] = np.array(xc)
+	p[:,1] = np.array(yc)
 
 	# Compute unit tangents at the end points of the points.
 	left_tangent = _normalise(p[1,:]-p[0,:])
