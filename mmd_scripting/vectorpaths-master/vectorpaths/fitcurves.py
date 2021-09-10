@@ -198,7 +198,7 @@ def _chord_length_parameterise(p) -> np.ndarray:
 	# i.e. assuming the resulting bezier is roughly the same as the line-segment path, estimate the T value needed
 	# to get the point along the bezier that is closest to the corresponding datapoint.
 	rel_dist = np.zeros(len(p))
-	rel_dist[1:] = np.linalg.norm(p[1:,:]-p[0:-1,:])  # get the distance between each point and the one before it
+	rel_dist[1:] = np.linalg.norm(p[1:,:]-p[0:-1,:], axis=1)  # get the distance between each point and the one before it
 	u = np.cumsum(rel_dist)  # each entry is the sum of itself plus all previous entries
 	u /= u[-1]  # scale it down so the final entry is exactly 1.0
 	return u
