@@ -254,7 +254,7 @@ def _compute_errors_and_split(p, bezier, u):
 	rms = np.sqrt(np.mean(dists**2))
 
 	if i==0 or i==len(p)-1:
-		return 0.0, rms, len(p)//2
+		return rms, dists[i], len(p)//2
 	else:
 		return rms, dists[i], i
 
