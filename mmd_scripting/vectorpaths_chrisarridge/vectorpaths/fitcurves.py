@@ -213,13 +213,16 @@ def _reparameterise(bezier, p, u) -> np.ndarray:
 	:param u: (n,) array of floats, strictly increasing. the T-positions along the bezier that are "close" to the points p.
 	:return: (n,) array of floats, strictly increasing. almost same as u, but a closer fit.
 	"""
-	delta = bezier.xy(u) - p
-	numerator = np.sum(delta*bezier.xyprime(u))
-	denominator = np.sum(bezier.xyprime(u)**2 + delta*bezier.xyprimeprime(u))
-	if denominator==0.0:
-		return u
-	else:
-		return u - numerator/denominator
+	delta_list = bezier.xy(u) - p  #(n,2)
+	# ADD THE X COMPONENT TO THE Y COMPONENT, not sure why that's the right answer but it is
+	# https://github.com/erich666/GraphicsGems/blob/master/gems/FitCurves.c line 343
+	numerator_componentwise = delta_list*bezier.xyprime(u)  #(n,2)
+	numerator = np.sum(numerator_componentwise, axis=1)  #(n,1)
+	denominator_componentwise = bezier.xyprime(u)**2 + delta_list*bezier.xyprimeprime(u)  #(n,2)
+	denominator = np.sum(denominator_componentwise, axis=1)  #(n,1)
+	r = numerator/denominator  # do the divide (n,1)
+	r = np.nan_to_num(r, copy=False, nan=0, posinf=0, neginf=0)  # handle any divide-by-zeros that happened
+	return u - r
 
 
 def _compute_max_error(p, bezier, u):
