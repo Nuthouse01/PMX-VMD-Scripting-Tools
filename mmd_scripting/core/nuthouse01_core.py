@@ -814,14 +814,14 @@ def my_slerp(v0: Sequence[float], v1: Sequence[float], t: float) -> Tuple[float,
 def quat_ln(_q: Tuple[float, float, float, float]) -> Tuple[float, float, float, float]:
 	vm = my_euclidian_distance(_q[1:4])
 	qm = my_euclidian_distance(_q)
-	tt = (math.acos(_q[0] / qm) / vm) if (vm > 0.000001) else 0.0
+	tt = (math.acos(_q[0] / qm) / vm) if (vm > 1e-9) else 0.0
 	w = math.log(qm)
 	return w, _q[1] * tt, _q[2] * tt, _q[3] * tt
 
 def quat_exp(_q: Tuple[float, float, float, float]) -> Tuple[float, float, float, float]:
 	r = my_euclidian_distance(_q[1:4])
 	et = math.exp(_q[0])
-	s = (et * math.sin(r) / r) if (r > 0.000001) else 0.0
+	s = (et * math.sin(r) / r) if (r > 1e-9) else 0.0
 	w = et * math.cos(r)
 	return w, _q[1] * s, _q[2] * s, _q[3] * s
 
