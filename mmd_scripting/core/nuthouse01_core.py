@@ -773,16 +773,25 @@ def my_slerp(v0: Sequence[float], v1: Sequence[float], t: float) -> Tuple[float,
 	# https://www.mathworks.com/help/fusion/ref/quaternion.slerp.html#mw_0419144b-0e16-4d56-b5d7-19783b790e4b
 	# this algorithm works tho
 	
-	# calculate dot product manually
-	# dot = np.dot(v0, v1)
-	dot = my_dot(v0, v1)
+	if math.isclose(t, 0.0, abs_tol=1e-6):
+		return v0
+	if math.isclose(t, 1.0, abs_tol=1e-6):
+		return v1
 	
 	# If the dot product is negative, the quaternions
 	# have opposite handed-ness and slerp won't take
 	# the shorter path. Fix by reversing one quaternion.
+	dot = my_dot(v0, v1)
 	if dot < 0.0:
 		v1 = [-v for v in v1]
 		dot = -dot
+	
+	# q0not = my_quat_conjugate(q0)
+	# a = hamilton_product(q1, q0not)
+	# a = normalize_distance(a)
+	# b = quat_pow(a, t)
+	# c = hamilton_product(b, q0)
+	# return c
 	
 	# clamp just to be safe
 	dot = clamp(dot, -1.0, 1.0)
@@ -797,6 +806,70 @@ def my_slerp(v0: Sequence[float], v1: Sequence[float], t: float) -> Tuple[float,
 	factor1 = math.sin(t * theta) / math.sin(theta)
 	res = tuple((v0[i] * factor0) + (v1[i] * factor1) for i in range(4))
 	return res[0], res[1], res[2], res[3]
+	
+# https://en.wikipedia.org/wiki/Quaternion#Exponential,_logarithm,_and_power_functions
+# https://math.stackexchange.com/questions/939229/unit-quaternion-to-a-scalar-power
+# wikipedia is always good, this stackexchange thing is a bit hard to parse
+
+def quat_ln(_q: Tuple[float, float, float, float]) -> Tuple[float, float, float, float]:
+	vm = my_euclidian_distance(_q[1:4])
+	qm = my_euclidian_distance(_q)
+	tt = (math.acos(_q[0] / qm) / vm) if (vm > 0.000001) else 0.0
+	w = math.log(qm)
+	return w, _q[1] * tt, _q[2] * tt, _q[3] * tt
+
+def quat_exp(_q: Tuple[float, float, float, float]) -> Tuple[float, float, float, float]:
+	r = my_euclidian_distance(_q[1:4])
+	et = math.exp(_q[0])
+	s = (et * math.sin(r) / r) if (r > 0.000001) else 0.0
+	w = et * math.cos(r)
+	return w, _q[1] * s, _q[2] * s, _q[3] * s
+
+def quat_pow(_q: Tuple[float, float, float, float], _n: float) -> Tuple[float, float, float, float]:
+	aa = quat_ln(_q)  # pycharm type checker can go to hell
+	bb = tuple(_n * i for i in aa)
+	cc = quat_exp(bb)  # pycharm type checker can go to hell
+	return cc
+
+
+'''
+# code block to validate the SLERP code via 3d plotting
+	original_point = [1, 0, 0]
+	t_list = [i/20 for i in range(20)]
+	while True:
+		R = [random.randint(-170, 170) for _ in range(6)]
+		euler1 = R[0:3]
+		euler2 = R[3:6]
+		print(euler1, euler2)
+		quat1 = core.euler_to_quaternion(euler1)
+		quat2 = core.euler_to_quaternion(euler2)
+		point_list = []
+		point_list_new = []
+		for t in t_list:
+			rot = core.my_slerp(quat1, quat2, t) # old slerp
+			newpoint = core.rotate3d((0,0,0), rot, original_point)
+			point_list.append(newpoint)
+			rot = core.new_slerp(quat1, quat2, t) # new slerp
+			newpoint = core.rotate3d((0, 0, 0), rot, original_point)
+			point_list_new.append(newpoint)
+		# now graph them
+		fig = plt.figure()
+		ax = fig.add_subplot(111, projection='3d')
+		x,y,z = zip(*point_list)
+		ax.scatter(x,y,z, label="old")
+		x,y,z = zip(*point_list_new)
+		ax.scatter(x,y,z, label="new")
+		ax.scatter(0,0,0, label="origin")  # plot the origin too
+		ax.set_xlim(-1, 1)
+		ax.set_ylim(-1, 1)
+		ax.set_zlim(-1, 1)
+		STARTPOINT = core.rotate3d((0,0,0), quat1, original_point)
+		ENDPOINT = core.rotate3d((0,0,0), quat2, original_point)
+		ax.scatter(*STARTPOINT, marker='x', label='START')
+		ax.scatter(*ENDPOINT, marker='x', label='END')
+		ax.legend()
+		plt.show(block=True)
+'''
 
 def hamilton_product(quat1: Sequence[float], quat2: Sequence[float]) -> Tuple[float,float,float,float]:
 	"""
