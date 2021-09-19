@@ -1,5 +1,6 @@
 import math
-from typing import List, Tuple, Set
+from typing import List, Tuple, Set, Sequence
+import random
 
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_vmd_parser as vmdlib
@@ -73,7 +74,7 @@ MORPH_ERROR_THRESHOLD = 0.00001
 BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS = 1.2
 BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX = 1.2
 
-BONE_ROTATION_STRAIGHTNESS_VALUE = 0.85
+BONE_ROTATION_STRAIGHTNESS_VALUE = 0.15
 
 # TODO: overall cleanup, once everything is acceptably working. variable names, comments, function names, etc.
 
@@ -108,6 +109,38 @@ def sign(U):
 	elif U > 0: return 1
 	else:       return -1
 
+
+def get_difference_quat(quatA: Tuple[float, float, float, float],
+						quatB: Tuple[float, float, float, float]) -> Tuple[float, float, float, float]:
+	# get the "difference quaternion" that represents how to get from A to B...
+	# or is this how to get from B to A?
+	# as long as I'm consistent I don't think it matters?
+	deltaquat_AB = core.hamilton_product(core.my_quat_conjugate(quatA), quatB)
+	return deltaquat_AB
+
+def get_quat_angular_distance(quatA: Tuple[float, float, float, float],
+							  quatB: Tuple[float, float, float, float]) -> float:
+	"""
+	Calculate the "angular distance" between two quaternions, in radians. Opposite direction = pi = 3.14.
+	:param quatA: WXYZ quaternion A
+	:param quatB: WXYZ quaternion B
+	:return: float radians
+	"""
+	# https://math.stackexchange.com/questions/90081/quaternion-distance
+	# theta = arccos{2 * dot(qA, qB)^2 - 1}
+	# unlike previous "get_corner_sharpness_factor", this doesn't discard the W component
+	# so i have a bit more confidence in this approach, i think?
+	quatA = core.normalize_distance(quatA)
+	quatB = core.normalize_distance(quatB)
+	
+	# TODO: how do i handle if one or both quats are zero-rotation!?
+	
+	a = core.my_dot(quatA, quatB)
+	b = (2 * (a ** 2)) - 1
+	c = core.clamp(b, -1.0, 1.0)  # this may not be necessary? better to be safe tho
+	d = math.acos(c)
+	# d: radians, 0 = same, pi = opposite
+	return d / math.pi
 
 def get_corner_sharpness_factor(deltaquat_AB: Tuple[float, float, float, float],
 								deltaquat_BC: Tuple[float, float, float, float],) -> float:
@@ -151,6 +184,19 @@ def get_corner_sharpness_factor(deltaquat_AB: Tuple[float, float, float, float],
 	# if ang = 180, perfeclty opposite, factor = 0
 	factor = 1 - (ang_d / math.pi)
 	return factor
+
+def reverse_slerp(q, q0, q1):
+	# https://math.stackexchange.com/questions/2346982/slerp-inverse-given-3-quaternions-find-t
+	# t = log(q0not * q) / log(q0not * q1)
+	# elementwise division, except skip the w component
+	q0not = core.my_quat_conjugate(q0)
+	a = core.quat_ln(core.hamilton_product(q0not, q))
+	b = core.quat_ln(core.hamilton_product(q0not, q1))
+	a = a[1:4]
+	b = b[1:4]
+	ret = tuple(aa/bb for aa,bb in zip(a,b))
+	return ret
+	
 
 
 def simplify_morphframes(allmorphlist: List[vmdstruct.VmdMorphFrame]) -> List[vmdstruct.VmdMorphFrame]:
@@ -234,10 +280,10 @@ def simplify_morphframes(allmorphlist: List[vmdstruct.VmdMorphFrame]) -> List[vm
 
 def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBoneFrame]) -> Set[int]:
 	"""
-	
-	:param bonename:
-	:param bonelist:
-	:return:
+	Wrapper function for the sake of organization.
+	:param bonename: str name of the bone being operated on
+	:param bonelist: list of all boneframes that correspond to this bone
+	:return: set of ints, referring to indices within bonelist that are "important frames"
 	"""
 	keepset = set()
 	# i'll do the x independent from the y independent from the z
@@ -266,7 +312,7 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 				z_next = bonelist[z + 1]
 				z_delta = (z_next.pos[C] - z_this.pos[C]) / (z_next.f - z_this.f)
 				# TODO: also break if the delta is way significantly different than the previous delta?
-				#  pretty sure that idea is needed for the camera jumpcuts to be guaranteed detected?
+				#  pretty sure this concept is needed for the camera jumpcuts to be guaranteed detected?
 				if sign(z_delta) == b_sign:
 					pass  # if this is potentially part of the same sequence, keep iterating
 				else:
@@ -319,8 +365,8 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 					if len(bezier_list) == 1:
 						# once i find a good interp curve match (if a match is found),
 						if DEBUG:
-							print("MATCH! bone='%s' : chan=%d : len = %d : i,w,z=%d, %d, %d : sign=%d" % (
-								bonename, C, len(bonelist), i, w, z, b_sign))
+							print("MATCH! bone='%s' : chan=%d : i,w,z=%d,%d,%d : sign=%d" % (
+								bonename, C, i, w, z, b_sign))
 						if DEBUG_PLOTS:
 							bezier_list[0].plotcontrol()
 							bezier_list[0].plot()
@@ -341,14 +387,153 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 			# ignore everything that found only 1, cuz that would mean just startpoint and endpoint
 			# add 1 to the length cuz frame 0 is implicitly important to all axes
 			print("bone='%s' : pos : chan=%d   : keep %d/%d" % (bonename, C, len(axis_keep_list) + 1, len(bonelist)))
-		# everything that this axis says needs to be kept, is stored
+		# everything that this axis says needs to be kept, is stored in the set
 		keepset.update(axis_keep_list)
 		pass  # end for x, then y, then z
 	# now i have found every frame# that is important due to position changes
 	if DEBUG and len(keepset) > 1:
 		# if it found only 1, ignore it, cuz that would mean just startpoint and endpoint
-		# add 1 to the length cuz frame 0 is implicitly important to all axes
+		# add 1 to the length cuz frame 0 is implicitly important to all axes (added to set in outer level)
 		print("bone='%s' : pos : chan=ALL : keep %d/%d" % (bonename, len(keepset) + 1, len(bonelist)))
+	return keepset
+
+
+def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBoneFrame]) -> Set[int]:
+	"""
+	Wrapper function for the sake of organization.
+	:param bonename: str name of the bone being operated on
+	:param bonelist: list of all boneframes that correspond to this bone
+	:return: set of ints, referring to indices within bonelist that are "important frames"
+	"""
+	keepset = set()
+	i = 0
+	while i < (len(bonelist) - 1):
+		# start walking down this list
+		# assume that i is the start point of a potentially over-keyed section
+		b_this = bonelist[i]
+		b_next = bonelist[i + 1]
+		# find the delta for this channel
+		deltaquat_AB = core.hamilton_product(core.my_quat_conjugate(core.euler_to_quaternion(b_this.rot)),
+											 core.euler_to_quaternion(b_next.rot))
+		
+		# now, walk FORWARD from here until i identify a frame z that has a significantly different angle delta
+		# everything between i and z might be in a over-key section!
+		FACTORS = []
+		
+		def foober(start):
+			# ugly debug function for computing 10 steps farther than i would normally stop
+			for zz in range(start, start + 10):
+				# if i reach the end of the bonelist, then "return" the final valid index
+				if zz == len(bonelist) - 1:
+					break
+				zz_this = bonelist[zz]
+				zz_next = bonelist[zz + 1]
+				deltaquatt_CD = core.hamilton_product(core.my_quat_conjugate(core.euler_to_quaternion(zz_this.rot)),
+													  core.euler_to_quaternion(zz_next.rot))
+				# what is the angle between these two deltas? are the rotations moving the same direction?
+				factorr = get_corner_sharpness_factor(deltaquat_AB, deltaquatt_CD)
+				FACTORS.append(factorr)
+		
+		z = 0  # to make pycharm shut up
+		# for z in range(i+1, 1000):
+		for z in range(i + 1, len(bonelist)):
+			# if i reach the end of the bonelist, then "return" the final valid index
+			if z == len(bonelist) - 1:
+				break
+			z_this = bonelist[z]
+			z_next = bonelist[z + 1]
+			# TODO: compare AB to CD or compare AB to AD ?
+			deltaquat_CD = core.hamilton_product(core.my_quat_conjugate(core.euler_to_quaternion(z_this.rot)),
+												 core.euler_to_quaternion(z_next.rot))
+			# what is the angle between these two deltas? are the rotations moving the same direction?
+			angdist = get_corner_sharpness_factor(deltaquat_AB, deltaquat_CD)
+			FACTORS.append(angdist)
+			# TODO: for debug graphing, i want to do this same thing 10 units farther... this is so ugly
+			if angdist <= BONE_ROTATION_STRAIGHTNESS_VALUE:
+				# if this is potentially part of the same sequence, keep iterating
+				pass
+			else:
+				# if this is definitely no longer part of the sequence, THEN i can break
+				if DEBUG_PLOTS: foober(z)
+				break
+		if DEBUG_PLOTS:
+			plt.plot(FACTORS)
+			plt.show(block=True)
+		
+		# now i have z, and anything past z is DEFINITELY NOT the endpoint for this sequence
+		# if AB has zero rotation, then the whole sequence has zero rotation, so i already know it's linear and i don't need to try to fit a curve to it
+		# todo
+		# if math.fabs(deltaquat_AB[0] - 1.0) < 0.000001:
+		# if core.my_euclidian_distance(deltaquat_AB) < 1e-8:
+		if math.isclose(deltaquat_AB[0], 1.0, rel_tol=1e-9, abs_tol=1e-7):
+			keepset.add(z)  # then save this proposed endpoint as a valid endpoint,
+			i = z  # and move the startpoint to here and keep walking from here
+			continue
+		
+		# todo this is important, somehow
+		#  algorithm for un-slerping, deduce the T value if given 3 quaternions
+		#  https://math.stackexchange.com/questions/2346982/slerp-inverse-given-3-quaternions-find-t
+		
+		# now i know i've got something interesting to work with!
+		# from z, walk backward and test endpoint quality at each frame
+		x_points = []
+		y_points = []
+		x_start = b_this.f
+		y_start = core.euler_to_quaternion(b_this.rot)
+		# gonna need to do a bunch of testing to quantify what "acceptably good" looks like tho
+		for w in range(z, i, -1):
+			# calculate the x,y (scale of 0 to 1) for all points between i and "test"
+			# calculate the "angular distance" from the start rotation to the end rotation... right?
+			y_range = get_quat_angular_distance(y_start, core.euler_to_quaternion(bonelist[w].rot))
+			if y_range == 0:
+				# TODO HOW SI THIS STILL HAPPENING?!
+				print("what")
+			x_range = bonelist[w].f - x_start
+			x_points.clear()
+			y_points.clear()
+			for P in range(i, w + 1):
+				point = bonelist[P]
+				x_rel = 128 * (point.f - x_start) / x_range
+				y_rel = 128 * (1 - get_quat_angular_distance(y_start, core.euler_to_quaternion(point.rot))) / y_range
+				x_points.append(x_rel)
+				y_points.append(y_rel)
+			# then run regression to find a reasonable interpolation curve for this stretch
+			# TODO what are good error parameters to use for targets?
+			#  RMSerr=2.3 and MAXerr=4.5 are pretty darn close, but could maybe be better
+			#  RMSerr=9.2 and MAXerr=15.5 is TOO LARGE
+			# TODO: modify to return the error values, for easier logging?
+			bezier_list = vectorpaths.fit_cubic_bezier(x_points, y_points,
+													   rms_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS,
+													   max_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX)
+			# this innately measures both the RMS error and the max error, and i can specify thresholds
+			# if it cannot satisfy those thresholds it will split and try again
+			# if it has split, then it's not good for my purposes
+			# TODO: do something to ensure that control points are guaranteed within the box
+			
+			if len(bezier_list) == 1:
+				# once i find a good interp curve match (if a match is found),
+				if DEBUG:
+					print("MATCH! bone='%s' : i,w,z=%d,%d,%d" % (
+						bonename, i, w, z))
+				if DEBUG_PLOTS:
+					bezier_list[0].plotcontrol()
+					bezier_list[0].plot()
+					plt.plot(x_points, y_points, 'r+')
+					plt.show(block=True)
+				
+				keepset.add(w)  # then save this proposed endpoint as a valid endpoint,
+				i = w  # and move the startpoint to here and keep walking from here
+				break
+			# TODO: what do i do to handle if i cannot find a good match?
+			#  if i let it iterate all the way down to 2 points then it is guaranteed to find a match (cuz linear)
+			#  actually it's probably also guaranteed to pass at 3 points. do i want that? hm... probably not?
+			pass  # end walking backwards from z to i
+		pass  # end "while i < len(bonelist)"
+	# now i have found every frame# that is important due to position changes
+	if DEBUG and len(keepset) > 1:
+		# if it found only 1, ignore it, cuz that would mean just startpoint and endpoint
+		# add 1 to the length cuz frame 0 is implicitly important to all axes (added to set in outer level)
+		print("bone='%s' : rot : keep %d/%d" % (bonename, len(keepset) + 1, len(bonelist)))
 	return keepset
 
 
@@ -394,129 +579,15 @@ def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdst
 		#######################################################################################
 		# now, i walk along the frames analyzing the ROTATION channel. this is the hard part.
 		if SIMPLIFY_BONE_ROTATION:
-			i = 0
-			while i < (len(bonelist) - 1):
-				# start walking down this list
-				# assume that i is the start point of a potentially over-keyed section
-				b_this = bonelist[i]
-				b_next = bonelist[i + 1]
-				# find the delta for this channel
-				deltaquat_AB = core.hamilton_product(core.my_quat_conjugate(core.euler_to_quaternion(b_this.rot)),
-													 core.euler_to_quaternion(b_next.rot))
-				
-				# now, walk FORWARD from here until i identify a frame z that has a significantly different angle delta
-				# everything between i and z might be in a over-key section!
-				def foober(start):
-					ret = ""
-					for zz in range(start, start+10):
-						# if i reach the end of the bonelist, then "return" the final valid index
-						if zz == len(bonelist) - 1:
-							break
-						zz_this = bonelist[zz]
-						zz_next = bonelist[zz + 1]
-						deltaquatt_CD = core.hamilton_product(core.my_quat_conjugate(core.euler_to_quaternion(zz_this.rot)),
-															 core.euler_to_quaternion(zz_next.rot))
-						# what is the angle between these two deltas? are the rotations moving the same direction?
-						factorr = get_corner_sharpness_factor(deltaquat_AB, deltaquatt_CD)
-						ret += "%.3f, " % factorr
-						
-					return ret
-				
-				z = 0  # to make pycharm shut up
-				# FACTORS = []
-				# for z in range(i+1, 1000):
-				for z in range(i + 1, len(bonelist)):
-					# if i reach the end of the bonelist, then "return" the final valid index
-					if z == len(bonelist) - 1:
-						break
-					z_this = bonelist[z]
-					z_next = bonelist[z + 1]
-					# TODO: compare AB to CD or compare AB to AD ?
-					deltaquat_CD = core.hamilton_product(core.my_quat_conjugate(core.euler_to_quaternion(z_this.rot)),
-														 core.euler_to_quaternion(z_next.rot))
-					# what is the angle between these two deltas? are the rotations moving the same direction?
-					factor = get_corner_sharpness_factor(deltaquat_AB, deltaquat_CD)
-					# FACTORS.append(factor)
-					# TODO: for debug graphing, i want to do this same thing 10 units farther...
-					if factor >= BONE_ROTATION_STRAIGHTNESS_VALUE:
-						# if this is potentially part of the same sequence, keep iterating
-						pass
-					else:
-						# if this is definitely no longer part of the sequence, THEN i can break
-						print(foober(z))
-						
-						break
-				# plt.plot(FACTORS)
-				# plt.show(block=True)
-				
-				# now i have z, and anything past z is DEFINITELY NOT the endpoint for this sequence
-				# if AB has zero rotation, then the whole sequence has zero rotation, so i already know it's linear and i don't need to try to fit a curve to it
-				# if math.fabs(deltaquat_AB[0] - 1.0) < 0.000001:
-				if core.my_euclidian_distance(deltaquat_AB[1:4]) < 1e-8:
-					keepset.add(z)  # then save this proposed endpoint as a valid endpoint,
-					i = z  # and move the startpoint to here and keep walking from here
-					continue
-				
-				# now i know i've got something interesting to work with!
-				# from z, walk backward and test endpoint quality at each frame
-				x_points = []
-				y_points = []
-				x_start = b_this.f
-				y_start = core.euler_to_quaternion(b_this.rot)
-				# gonna need to do a bunch of testing to quantify what "acceptably good" looks like tho
-				for w in range(z, i, -1):
-					# calculate the x,y (scale of 0 to 1) for all points between i and "test"
-					# calculate the "angular distance" from the start rotation to the end rotation... right?
-					y_range = (1 - get_corner_sharpness_factor(y_start, core.euler_to_quaternion(bonelist[w].rot)))
-					if y_range == 0:
-						# TODO HOW SI THIS STILL HAPPENING?!
-						print("what")
-					x_range = bonelist[w].f - x_start
-					x_points.clear()
-					y_points.clear()
-					for P in range(i, w + 1):
-						point = bonelist[P]
-						x_rel = 128 * (point.f - x_start) / x_range
-						y_rel = 128 * (1 - get_corner_sharpness_factor(y_start, core.euler_to_quaternion(point.rot))) / y_range
-						x_points.append(x_rel)
-						y_points.append(y_rel)
-					# then run regression to find a reasonable interpolation curve for this stretch
-					# TODO what are good error parameters to use for targets?
-					#  RMSerr=2.3 and MAXerr=4.5 are pretty darn close, but could maybe be better
-					#  RMSerr=9.2 and MAXerr=15.5 is TOO LARGE
-					# TODO: modify to return the error values, for easier logging?
-					bezier_list = vectorpaths.fit_cubic_bezier(x_points, y_points,
-															   rms_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS,
-															   max_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX)
-					# this innately measures both the RMS error and the max error, and i can specify thresholds
-					# if it cannot satisfy those thresholds it will split and try again
-					# if it has split, then it's not good for my purposes
-					# TODO: do something to ensure that control points are guaranteed within the box
-					
-					if len(bezier_list) == 1:
-						# once i find a good interp curve match (if a match is found),
-						if DEBUG:
-							print("MATCH! bone='%s' : len = %d : i,w,z=%d,%d,%d" % (
-								bonename, len(bonelist), i, w, z))
-						if DEBUG_PLOTS:
-							bezier_list[0].plotcontrol()
-							bezier_list[0].plot()
-							plt.plot(x_points, y_points, 'r+')
-							plt.show(block=True)
-						
-						keepset.add(w)  # then save this proposed endpoint as a valid endpoint,
-						i = w  # and move the startpoint to here and keep walking from here
-						break
-					# TODO: what do i do to handle if i cannot find a good match?
-					#  if i let it iterate all the way down to 2 points then it is guaranteed to find a match (cuz linear)
-					#  actually it's probably also guaranteed to pass at 3 points. do i want that? hm... probably not?
-					pass
-		
+			keepset.update(_simplify_boneframes_rotation(bonename, bonelist))
+			
 		#######################################################################################
 		# now done searching for the "important" points, filled "keepset"
-		print("RESULT: bone='%s', keep=%d, total=%d, keep%%=%f%%" % (
-			bonename, len(keepset), len(bonelist), 100*len(keepset)/len(bonelist)
-		))
+		if DEBUG and len(keepset) > 2:
+			# if it found only 2, ignore it, cuz that would mean just startpoint and endpoint
+			print("bone='%s' : RESULT : keep %d/%d : keep%%=%f%%"% (
+				bonename, len(keepset), len(bonelist), 100*len(keepset)/len(bonelist)))
+			
 		# now that i have filled the "keepidx" set, turn those into frames
 		keepframe_indices = sorted(list(keepset))
 		# TODO: for each of them, re-calculate the best interpolation curve for each channel based on the frames between the keepframes
@@ -583,3 +654,36 @@ if __name__ == '__main__':
 	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
 	core.MY_PRINT_FUNC(helptext)
 	core.RUN_WITH_TRACEBACK(main)
+	
+	
+	# e1 = [0, 0, 0]
+	# e2 = [0, 10, 0]
+	# e3 = [0, 20, 0]
+	# e4 = [43, 25, -4]
+	# e5 = [43, 35, -4]
+	# q1 = core.euler_to_quaternion(e1)
+	# q2 = core.euler_to_quaternion(e2)
+	# q3 = core.euler_to_quaternion(e3)
+	# q4 = core.euler_to_quaternion(e4)
+	# q5 = core.euler_to_quaternion(e5)
+	#
+	# d12 = get_difference_quat(q1, q2)
+	# d23 = get_difference_quat(q2, q3)
+	# d45 = get_difference_quat(q4, q5)
+	#
+	# print(d12)
+	# print(d23)
+	# print(d45)
+	#
+	# dist1 = get_quat_angular_distance(q1, q2)
+	# dist2 = get_quat_angular_distance(q1, q3)
+	# print(dist1)
+	# print(dist2)
+	# dist1 = get_quat_angular_distance(q1, q4)
+	# dist2 = get_quat_angular_distance(q1, q5)
+	# print(dist1)
+	# print(dist2)
+	# print(get_quat_angular_distance(q1, core.euler_to_quaternion((180, 0, 0))))
+	# print(get_quat_angular_distance(q1, core.euler_to_quaternion((0, 180, 0))))
+	# print(get_quat_angular_distance(q1, core.euler_to_quaternion((0, 0, 180))))
+	# pass
