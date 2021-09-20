@@ -15,9 +15,10 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.05 - 9/7/2021"
 # https://github.com/chrisarridge/vectorpaths
 
 DEBUG = True
-DEBUG_PLOTS = True
+DEBUG_MORE = False
+DEBUG_PLOTS = False
 
-if DEBUG:
+if DEBUG_MORE:
 	import logging
 	# this prints a bunch of useful stuff in the bezier regression, and a bunch of useless stuff from matplotlib
 	logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
@@ -66,20 +67,81 @@ total=6212
 2.9, keep%=21%
 '''
 
-SIMPLIFY_BONE_POSITION = False
+'''
+bone='アホ毛１' : rot : keep 18/197
+bone='アホ毛１' : RESULT : keep 18/197 : keep%=9.137056%
+bone='アホ毛２' : rot : keep 28/6404
+bone='アホ毛２' : RESULT : keep 28/6404 : keep%=0.437227%
+bone='センター' : pos : chan=0   : keep 1366/6212
+bone='センター' : pos : chan=1   : keep 1469/6212
+bone='センター' : pos : chan=2   : keep 1384/6212
+bone='センター' : pos : chan=ALL : keep 3200/6212
+bone='センター' : RESULT : keep 3200/6212 : keep%=51.513200%
+bone='上半身' : rot : keep 4203/6034
+bone='上半身' : RESULT : keep 4203/6034 : keep%=69.655287%
+bone='上半身2' : rot : keep 4060/5660
+bone='上半身2' : RESULT : keep 4060/5660 : keep%=71.731449%
+bone='下半身' : rot : keep 4387/6237
+bone='下半身' : RESULT : keep 4387/6237 : keep%=70.338304%
+bone='前髪１' : rot : keep 4/197
+bone='前髪１' : RESULT : keep 4/197 : keep%=2.030457%
+bone='前髪１_２' : rot : keep 47/6406
+bone='前髪１_２' : RESULT : keep 47/6406 : keep%=0.733687%
+bone='前髪２' : rot : keep 4/197
+bone='前髪２' : RESULT : keep 4/197 : keep%=2.030457%
+bone='前髪２_２' : rot : keep 4/197
+bone='前髪２_２' : RESULT : keep 4/197 : keep%=2.030457%
+bone='前髪３' : rot : keep 4/197
+bone='前髪３' : RESULT : keep 4/197 : keep%=2.030457%
+bone='前髪３_２' : rot : keep 4/197
+bone='前髪３_２' : RESULT : keep 4/197 : keep%=2.030457%
+bone='右ひじ' : rot : keep 3982/5448
+bone='右ひじ' : RESULT : keep 3982/5448 : keep%=73.091043%
+bone='右もみあげ１' : rot : keep 4/197
+bone='右もみあげ１' : RESULT : keep 4/197 : keep%=2.030457%
+bone='右もみあげ２' : rot : keep 4/197
+bone='右もみあげ２' : RESULT : keep 4/197 : keep%=2.030457%
+bone='右中指１' : rot : keep 2209/4263
+bone='右中指１' : RESULT : keep 2209/4263 : keep%=51.817969%
+bone='右中指２' : rot : keep 1585/3963
+bone='右中指２' : RESULT : keep 1585/3963 : keep%=39.994953%
+bone='右中指３' : rot : keep 1541/4290
+bone='右中指３' : RESULT : keep 1541/4290 : keep%=35.920746%
+bone='右人指１' : rot : keep 2448/4602
+bone='右人指１' : RESULT : keep 2448/4602 : keep%=53.194263%
+bone='右人指２' : rot : keep 1644/5017
+bone='右人指２' : RESULT : keep 1644/5017 : keep%=32.768587%
+bone='右人指３' : rot : keep 1609/4506
+bone='右人指３' : RESULT : keep 1609/4506 : keep%=35.707945%
+bone='右小指１' : rot : keep 2884/5256
+bone='右小指１' : RESULT : keep 2884/5256 : keep%=54.870624%
+bone='右小指２' : rot : keep 2246/5570
+bone='右小指２' : RESULT : keep 2246/5570 : keep%=40.323160%
+bone='右小指３' : rot : keep 1569/4619
+bone='右小指３' : RESULT : keep 1569/4619 : keep%=33.968391%
+'''
+
+# enable/disable switches
+SIMPLIFY_BONE_POSITION = True
 SIMPLIFY_BONE_ROTATION = True
 
+# this controls how "straight" a line has to be (in 1d morph-space) to get collapsed
+# higher values = more likely to collapse = fewer frames in result, but greater deviation from original movements
 MORPH_ERROR_THRESHOLD = 0.00001
 
 BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS = 1.2
 BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX = 1.2
 
-BONE_ROTATION_STRAIGHTNESS_VALUE = 0.15
+# BONE_ROTATION_STRAIGHTNESS_VALUE = 0.15
 
+# this controls how "straight" a line has to be (in rotation-space) to get collapsed
+# higher values = more likely to collapse = fewer frames in result, but greater deviation from original movements
 REVERSE_SLERP_TOLERANCE = 0.05
 
 CONTROL_POINT_BOX_THRESHOLD = 2
 
+# this reduces quality-of-results slightly (by not stripping out every single theoretically collapsable frame)
+# but, it's needed to prevent O(n^2) compute time from getting out of hand :(
 BONE_ROTATION_MAX_Z_LOOKAHEAD = 500
 
 
@@ -135,6 +197,36 @@ def scale_list(L:List[float], R: float) -> List[float]:
 		L = [v * R / ra for v in L]  # scale the list to be the desired range
 	L = [v - L[0] for v in L]  # shift it so the 0th item equals 0
 	return L
+
+def scale_two_lists(x:List[float], y:List[float], R: float) -> Tuple[List[float], List[float]]:
+	"""
+	Take a list of floats, shift/scale it so it starts at 0 and ends at R.
+	:param x: list of floats for x
+	:param y: list of floats for y
+	:param R: range endpoint
+	:return: list of floats, same length
+	"""
+	assert len(x) == len(y)
+	assert len(x) >= 2
+	# one mult and one shift
+	# first do x
+	xR = x[-1] - x[0]  # current range of list
+	assert not (-1e-6 < xR < 1e-6)  # x must have real-valued range
+	x = [v * R / xR for v in x]  # scale the list to be the desired range
+	x = [v - x[0] for v in x]  # shift it so the 0th item equals 0
+	# now, do y
+	yR = y[-1] - y[0]
+	
+	if -1e-6 < yR < 1e-6:
+		# if the range is basically 0, then add 0 to the first, add R to the last, and interpolate in between
+		# offset = [R * s / (len(x) - 1) for s in range(len(x))]
+		offset = [core.linear_map(0, 0, x[-1], R, xx) for xx in x]
+		y = [v + o for v, o in zip(y, offset)]
+	else:
+		# if the range is "real",
+		y = [v * R / yR for v in y]  # scale the list to be the desired range
+	y = [v - y[0] for v in y]  # shift it so the 0th item equals 0
+	return x, y
 
 def get_difference_quat(quatA: Tuple[float, float, float, float],
 						quatB: Tuple[float, float, float, float]) -> Tuple[float, float, float, float]:
@@ -327,17 +419,27 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 		while i < (len(bonelist) - 1):
 			# start walking down this list
 			# assume that i is the start point of a potentially over-keyed section
-			b_this = bonelist[i]
-			b_next = bonelist[i + 1]
+			i_this = bonelist[i]
+			i_next = bonelist[i + 1]
 			# find the delta for this channel
-			b_delta = (b_next.pos[C] - b_this.pos[C]) / (b_next.f - b_this.f)
-			b_sign = sign(b_delta)
+			i_delta = (i_next.pos[C] - i_this.pos[C]) / (i_next.f - i_this.f)
+			i_sign = sign(i_delta)
 			
 			#+++++++++++++++++++++++++++++++++++++
 			# now, walk forward from here until i "return" the frame "z" that has a different delta
 			# "z" is the farthest plausible endpoint of the section (the real endpoint might be between i and z, tho)
 			# "different" means only different state, i.e. rising/falling/zero
-			z = 0  # to make pycharm shut up
+			
+			z = i + 1  # to make pycharm shut up
+			# zero-change  shortcut
+			while (z < len(bonelist)) and bonelist[i].pos[C] == bonelist[z].pos[C]:
+				z += 1
+			if z != i + 1:  # if the while-loop went thru at least 1 loop,
+				z -= 1  # back off one value, since that's the value that no longer matches,
+				axis_keep_list.append(z)  # then save this proposed endpoint as a valid endpoint,
+				i = z  # and move the startpoint to here and keep walking from here
+				continue
+				
 			for z in range(i + 1, len(bonelist)):
 				# if i reach the end of the bonelist, then "return" the final valid index
 				if z == len(bonelist) - 1:
@@ -347,43 +449,52 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 				z_delta = (z_next.pos[C] - z_this.pos[C]) / (z_next.f - z_this.f)
 				# TODO: also break if the delta is way significantly different than the previous delta?
 				#  pretty sure this concept is needed for the camera jumpcuts to be guaranteed detected?
-				if sign(z_delta) == b_sign:
+				if sign(z_delta) == i_sign:
 					pass  # if this is potentially part of the same sequence, keep iterating
 				else:
 					break  # if this is definitely no longer part of the sequence, THEN i can break
 			# anything past z is DEFINITELY NOT the endpoint for this sequence
 			# everything from i to z is monotonic: always increasing OR always decreasing OR flat zero
 			# if it's flat zero, then i already know it's linear and i don't need to try to fit a curve to it lol
-			if b_sign == 0:
+			if i_sign == 0:
 				axis_keep_list.append(z)  # then save this proposed endpoint as a valid endpoint,
 				i = z  # and move the startpoint to here and keep walking from here
 				continue
 			# if it hits past here, then i've got something interesting to work with!
-
+			
+			# +++++++++++++++++++++++++++++++++++++
+			# generate all the x-values and y-values (will scale to [0-128] later)
+			# the x-values are easy to calculate:
+			# y_start = i_this.pos[C]
+			# y_range = bonelist[w].pos[C] - y_start
+			# x_range = bonelist[z].f - i_this.f
+			x_points_all = []
+			y_points_all = []
+			for P in range(i, z + 1):
+				point = bonelist[P]
+				x_rel = point.f - i_this.f
+				x_points_all.append(x_rel)
+				y_rel = point.pos[C] - i_this.pos[C]
+				y_points_all.append(y_rel)
+			# now i have x_points_all and y_points_all, same length, including endpoints
+			assert len(x_points_all) == len(y_points_all)
+			
 			# OPTIMIZE: if i find z, then walk backward a bit, i can reuse the same z! no need to re-walk the same section
 			while i < z:
 				# +++++++++++++++++++++++++++++++++++++
 				# from z, walk backward and test endpoint quality at each frame
-				x_points = []
-				y_points = []
-				b_this = bonelist[i]
-				y_start = b_this.pos[C]
-				x_start = b_this.f
+				# x_points = []
+				# y_points = []
+				# i_this = bonelist[i]  # need to
+				# y_start = i_this.pos[C]
+				# x_start = i_this.f
 				# i think i want to run backwards from z until i find "an acceptably good match"
 				# gonna need to do a bunch of testing to quantify what "acceptably good" looks like tho
 				# TODO: no need to recompute this for each w, just use the same data and scale the bezier parameters that come out
-				for w in range(z, i, -1):
-					# calculate the x,y (scale of 0 to 1) for all points between i and "test"
-					y_range = bonelist[w].pos[C] - y_start
-					x_range = bonelist[w].f - x_start
-					x_points.clear()
-					y_points.clear()
-					for P in range(i, w + 1):
-						point = bonelist[P]
-						x_rel = 127 * (point.f - x_start) / x_range
-						y_rel = 127 * (point.pos[C] - y_start) / y_range
-						x_points.append(x_rel)
-						y_points.append(y_rel)
+				for w in range(len(x_points_all) - 1, 0, -1):
+					# take a subset of the range of points, and scale them to [0-128] range
+					x_points, y_points = scale_two_lists(x_points_all[0:w + 1], y_points_all[0:w + 1], 128)
+					
 					# then run regression to find a reasonable interpolation curve for this stretch
 					# TODO what are good error parameters to use for targets?
 					#  RMSerr=2.3 and MAXerr=4.5 are pretty darn close, but could maybe be better
@@ -395,22 +506,28 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 					# this innately measures both the RMS error and the max error, and i can specify thresholds
 					# if it cannot satisfy those thresholds it will split and try again
 					# if it has split, then it's not good for my purposes
-					# TODO: do something to ensure that control points are guaranteed within the box
+					if len(bezier_list) != 1:
+						continue
+					# if any control points are not within the box, it's no good
+					# (well, if its only slightly outside the box thats okay, i can clamp it)
+					bez = bezier_list[0]
+					cpp = (bez.p[1][0], bez.p[1][1], bez.p[2][0], bez.p[2][1])
+					if not all((0 - CONTROL_POINT_BOX_THRESHOLD < p < 128 + CONTROL_POINT_BOX_THRESHOLD) for p in cpp):
+						continue
 					
-					if len(bezier_list) == 1:
-						# once i find a good interp curve match (if a match is found),
-						if DEBUG:
-							print("MATCH! bone='%s' : chan=%d : i,w,z=%d,%d,%d : sign=%d" % (
-								bonename, C, i, w, z, b_sign))
-						if DEBUG_PLOTS:
-							bezier_list[0].plotcontrol()
-							bezier_list[0].plot()
-							plt.plot(x_points, y_points, 'r+')
-							plt.show(block=True)
-						
-						axis_keep_list.append(w)  # then save this proposed endpoint as a valid endpoint,
-						i = w  # and move the startpoint to here and keep walking from here
-						break
+					# once i find a good interp curve match (if a match is found),
+					if DEBUG_MORE or DEBUG_PLOTS:
+						print("MATCH! bone='%s' : chan=%d : i,w,z=%d,%d,%d : sign=%d" % (
+							bonename, C, i, i+w, z, i_sign))
+					if DEBUG_PLOTS:
+						bezier_list[0].plotcontrol()
+						bezier_list[0].plot()
+						plt.plot(x_points, y_points, 'r+')
+						plt.show(block=True)
+					
+					axis_keep_list.append(i+w)  # then save this proposed endpoint as a valid endpoint,
+					i = i+w  # and move the startpoint to here and keep walking from here
+					break
 					# TODO: what do i do to handle if i cannot find a good match?
 					#  if i let it iterate all the way down to 2 points then it is guaranteed to find a match (cuz linear)
 					#  actually it's probably also guaranteed to pass at 3 points. do i want that? hm... probably not?
@@ -440,6 +557,9 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 	:param bonelist: list of all boneframes that correspond to this bone
 	:return: set of ints, referring to indices within bonelist that are "important frames"
 	"""
+	def rotation_close(_a, _b) -> bool:
+		return all(math.isclose(_aa, _bb, abs_tol=1e-06) for _aa, _bb in zip(_a, _b))
+		
 	keepset = set()
 	i = 0
 	while i < (len(bonelist) - 1):
@@ -450,11 +570,19 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 		
 		# now, walk FORWARD from here until i identify a frame z that might be an 'endpoint' of an over-key section
 		y_points_all = []
-		z = 0  # to make pycharm shut up
+		z = i+1  # to make pycharm shut up
+		
+		# zero-rotation shortcut
+		while (z < len(bonelist)) and rotation_close(bonelist[i].rot, bonelist[z].rot):
+			z += 1
+		if z != i + 1:  # if the while-loop went thru at least 1 loop,
+			z -= 1  # back off one value, since that's the value that no longer matches
+			# y_points_all = [0] * (z-i-1)
+			keepset.add(z)  # add this endpoint
+			i = z
+			continue
+			
 		for z in range(i + 1, min(len(bonelist), i + BONE_ROTATION_MAX_Z_LOOKAHEAD)):
-			# # if i reach the end of the bonelist, then "return" the final valid index
-			# if z == len(bonelist) - 1:
-			# 	break
 			z_this_quat = core.euler_to_quaternion(bonelist[z].rot)
 			# walk forward from here, testing frames as i go
 			# NEW IDEA:
@@ -481,10 +609,9 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 					# if any of the frames between i and z cannot be reverse-slerped, then break
 					endpoint_good = False
 					break
-			# if DEBUG:
-			# 	if temp_reverse_slerp_diffs:
-			# 		m = max(temp_reverse_slerp_diffs)
-			# 		print(i, z, max(temp_reverse_slerp_diffs))
+			if DEBUG_MORE:
+				if temp_reverse_slerp_diffs:
+					print(i, z, max(temp_reverse_slerp_diffs))
 			if not endpoint_good:
 				# when i find something that isn't a good endpoint, then "return" the last good endpoint
 				z -= 1
@@ -499,7 +626,11 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 		# BUT, that doesn't mean it's all on one bezier! it might be several beziers in a row...
 		# from z, walk backward and test endpoint quality at each frame!
 		# the y-values are already calculated, mostly, just need to add endpoints:
-		y_points_all.append(1)
+		# if the change in rotation is basically zero, append a 0. if the change in rotation is something "real", append a 1.
+		if rotation_close(bonelist[i].rot, bonelist[z].rot):
+			y_points_all.append(0)
+		else:
+			y_points_all.append(1)
 		y_points_all.insert(0, 0)
 		# the x-values are easy to calculate:
 		x_range = bonelist[z].f - i_this.f
@@ -516,6 +647,13 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 			plt.plot(x_points_all, y_points_all, 'r+')
 			plt.show(block=True)
 		
+		
+		# TODO: "center" is nothing but flat then cliff! wtf is going on??? is this also the result of LN thresholding?
+		#  this is because the center bone has no rotation on it, it's all zeros, then i manually append a 1
+		# TODO: "upper body" is almost totally fully keyed at the reverse-slerp level! can this be fixed with sensitivity? or is it legit?
+		#  i think its just legit very complex...
+		
+		
 		# OPTIMIZE: if i find z, then walk backward a bit and find a good bezier, i can reuse the same z!
 		# no need to re-walk forward cuz i'll just find the same z-point.
 		# actually, or will i? first i should try it without this optimization.
@@ -526,17 +664,14 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 		# for w in range(z, i, -1):
 		for w in range(len(x_points_all)-1, 0, -1):
 			# take a subset of the range of points, and scale them to [0-128] range
-			x_points = scale_list(x_points_all[0:w+1], 128)
-			y_points = scale_list(y_points_all[0:w+1], 128)
+			x_points, y_points = scale_two_lists(x_points_all[0:w+1], y_points_all[0:w+1], 128)
 			
 			# then run regression to find a reasonable interpolation curve for this stretch
 			# this innately measures both the RMS error and the max error, and i can specify thresholds
 			# if it cannot satisfy those thresholds it will split and try again
-			# TODO is this right? too tired
 			bezier_list = vectorpaths.fit_cubic_bezier(x_points, y_points,
 													   rms_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS,
 													   max_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX)
-			# TODO: do something to ensure that control points are guaranteed within the box
 			
 			# if it has split, then it's not good for my purposes
 			# note: i modified the code so that if it would split, it returns an empty list instead
@@ -553,7 +688,7 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 				continue
 			
 			# once i find a good interp curve match (if a match is found),
-			if DEBUG:
+			if DEBUG_MORE or DEBUG_PLOTS:
 				print("MATCH! bone='%s' : i,w,z=%d,%d,%d" % (
 					bonename, i, i+w, z))
 			if DEBUG_PLOTS:
