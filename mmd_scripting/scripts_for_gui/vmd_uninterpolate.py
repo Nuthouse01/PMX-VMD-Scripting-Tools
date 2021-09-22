@@ -1,6 +1,6 @@
 import math
 from typing import List, Tuple, Set, Sequence
-import random
+import time
 
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_vmd_parser as vmdlib
@@ -121,6 +121,15 @@ bone='右小指３' : rot : keep 1569/4619
 bone='右小指３' : RESULT : keep 1569/4619 : keep%=33.968391%
 '''
 
+'''
+9/22/2021: program is almost totally complete
+running on marionette 1person dance:
+TOTAL TOTAL RESULT: keep 141052/292580 = 48.21%
+TIME FOR ALL BONES: 5067.36 = 84 minutes = 1.5 hr
+jesus christ that's so slow, for such a poor result... and this is just the "find the keyframes" part
+i still dont have the "assemble into final keyframe list" part yet
+'''
+
 # enable/disable switches
 SIMPLIFY_BONE_POSITION = True
 SIMPLIFY_BONE_ROTATION = True
@@ -188,7 +197,7 @@ def scale_list(L:List[float], R: float) -> List[float]:
 	assert len(L) >= 2
 	# one mult and one shift
 	ra = L[-1] - L[0]  # current range of list
-	if -1e-6 < ra < 1e-6:
+	if math.isclose(ra, 0, abs_tol=1e-6):
 		# if the range is basically 0, then add 0 to the first, add R to the last, and interpolate in between
 		offset = [R * s / (len(L)-1) for s in range(len(L))]
 		L = [v + o for v,o in zip(L,offset)]
@@ -211,13 +220,13 @@ def scale_two_lists(x:List[float], y:List[float], R: float) -> Tuple[List[float]
 	# one mult and one shift
 	# first do x
 	xR = x[-1] - x[0]  # current range of list
-	assert not (-1e-6 < xR < 1e-6)  # x must have real-valued range
+	assert not math.isclose(xR, 0, abs_tol=1e-6)  # x must have real-valued range
 	x = [v * R / xR for v in x]  # scale the list to be the desired range
 	x = [v - x[0] for v in x]  # shift it so the 0th item equals 0
 	# now, do y
 	yR = y[-1] - y[0]
 	
-	if -1e-6 < yR < 1e-6:
+	if math.isclose(yR, 0, abs_tol=1e-6):
 		# if the range is basically 0, then add 0 to the first, add R to the last, and interpolate in between
 		# offset = [R * s / (len(x) - 1) for s in range(len(x))]
 		offset = [core.linear_map(0, 0, x[-1], R, xx) for xx in x]
@@ -342,8 +351,10 @@ def simplify_morphframes(allmorphlist: List[vmdstruct.VmdMorphFrame]) -> List[vm
 	# sort into dict form to process each morph independently
 	morphdict = vmdutil.dictify_framelist(allmorphlist)
 	
+	print("NUMBER OF MORPHS %d" % len(morphdict))
 	# analyze each morph one at a time
 	for morphname, morphlist in morphdict.items():
+		print("MORPH '%s' LEN %d" % (morphname, len(morphlist)))
 		# make a list of the deltas, for simplicity
 		thisoutput = []
 		# the first frame is always kept. and the last frame is also always kept.
@@ -370,7 +381,8 @@ def simplify_morphframes(allmorphlist: List[vmdstruct.VmdMorphFrame]) -> List[vm
 				z_this = morphlist[z]
 				z_next = morphlist[z + 1]
 				delta_z = (z_next.val - z_this.val) / (z_next.f - z_this.f)
-				if (delta_rate - MORPH_ERROR_THRESHOLD) < delta_z < (delta_rate + MORPH_ERROR_THRESHOLD):
+				if math.isclose(delta_z, delta_rate, abs_tol=MORPH_ERROR_THRESHOLD):
+				# if (delta_rate - MORPH_ERROR_THRESHOLD) < delta_z < (delta_rate + MORPH_ERROR_THRESHOLD):
 					# if this is within the tolerance, then this is continuing the slide and should be skipped over
 					pass
 				else:
@@ -385,22 +397,22 @@ def simplify_morphframes(allmorphlist: List[vmdstruct.VmdMorphFrame]) -> List[vm
 			i = z
 		if DEBUG:
 			# when i am done with this morph, how many have i lost?
-			tossed = len(morphlist) - len(thisoutput)
-			if tossed:
-				print(morphname)
-				print("tossed %d frames" % tossed)
-				for i in range(len(morphlist)):
-					m = morphlist[i]
-					if i == len(morphlist)-1:
-						delta = 999
-					else:
-						m2 = morphlist[i+1]
-						delta = (m2.val - m.val) / (m2.f - m.f)
-					print("%s n:%s f:%d v:%f d:%f" % ("*" if m in thisoutput else " ", morphname, m.f, m.val, delta))
+			if len(thisoutput) != len(morphlist):
+				print("'%s' : RESULT : keep %d/%d = %.2f%%" % (morphname, len(thisoutput), len(morphlist), 100 * len(thisoutput) / len(morphlist)))
+			# tossed = len(morphlist) - len(thisoutput)
+			# if tossed:
+			# 	for i in range(len(morphlist)):
+			# 		m = morphlist[i]
+			# 		if i == len(morphlist)-1:
+			# 			delta = 999
+			# 		else:
+			# 			m2 = morphlist[i+1]
+			# 			delta = (m2.val - m.val) / (m2.f - m.f)
+			# 		print("%s n:%s f:%d v:%f d:%f" % ("*" if m in thisoutput else " ", morphname, m.f, m.val, delta))
 		
 		output.extend(thisoutput)
 	# FIN
-	print("TOTAL: tossed %d frames" % (len(allmorphlist) - len(output)))
+	print("MORPH TOTAL: keep %d/%d = %.2f%%" % (len(output), len(allmorphlist), 100 * len(output) / len(allmorphlist)))
 	
 	return output
 
@@ -538,7 +550,7 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 		if DEBUG and len(axis_keep_list) > 1:
 			# ignore everything that found only 1, cuz that would mean just startpoint and endpoint
 			# add 1 to the length cuz frame 0 is implicitly important to all axes
-			print("bone='%s' : pos : chan=%d   : keep %d/%d" % (bonename, C, len(axis_keep_list) + 1, len(bonelist)))
+			print("'%s' : pos : chan=%d   : keep %d/%d" % (bonename, C, len(axis_keep_list) + 1, len(bonelist)))
 		# everything that this axis says needs to be kept, is stored in the set
 		keepset.update(axis_keep_list)
 		pass  # end for x, then y, then z
@@ -546,7 +558,7 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 	if DEBUG and len(keepset) > 1:
 		# if it found only 1, ignore it, cuz that would mean just startpoint and endpoint
 		# add 1 to the length cuz frame 0 is implicitly important to all axes (added to set in outer level)
-		print("bone='%s' : pos : chan=ALL : keep %d/%d" % (bonename, len(keepset) + 1, len(bonelist)))
+		print("'%s' : pos : chan=ALL : keep %d/%d" % (bonename, len(keepset) + 1, len(bonelist)))
 	return keepset
 
 
@@ -709,7 +721,7 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 	if DEBUG and len(keepset) > 1:
 		# if it found only 1, ignore it, cuz that would mean just startpoint and endpoint
 		# add 1 to the length cuz frame 0 is implicitly important to all axes (added to set in outer level)
-		print("bone='%s' : rot : keep %d/%d" % (bonename, len(keepset) + 1, len(bonelist)))
+		print("'%s' : rot : keep %d/%d" % (bonename, len(keepset) + 1, len(bonelist)))
 	return keepset
 
 
@@ -729,15 +741,26 @@ def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdst
 	# sort into dict form to process each morph independently
 	bonedict = vmdutil.dictify_framelist(allbonelist)
 	
+	totalbonelen = len(allbonelist)
+	sofarbonelen = 0
+	
+	allbonelist_out = 0
+	
+	print("NUMBER OF BONES %d" % len(bonedict))
 	# analyze each morph one at a time
 	for bonename, bonelist in bonedict.items():
-		print(bonename, len(bonelist))
-		# if bonename != "センター": # or bonename == "左足ＩＫ":
+		print("BONE '%s' LEN %d" % (bonename, len(bonelist)))
+		# if bonename != "センター":
 		# 	continue
-		# if bonename != "上半身": # or bonename == "左足ＩＫ":
+		# if bonename != "上半身":
 		# 	continue
+		# if bonename != "右足ＩＫ" and bonename != "左足ＩＫ":
+		# 	continue
+		sofarbonelen += len(bonelist)
+		core.print_progress_oneline(sofarbonelen/totalbonelen)
 		
 		if len(bonelist) <= 2:
+			allbonelist_out += len(bonelist)
 			output.extend(bonelist)
 			continue
 		
@@ -761,24 +784,32 @@ def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdst
 		# now done searching for the "important" points, filled "keepset"
 		if DEBUG and len(keepset) > 2:
 			# if it found only 2, ignore it, cuz that would mean just startpoint and endpoint
-			print("bone='%s' : RESULT : keep %d/%d : keep%%=%f%%"% (
+			print("'%s' : RESULT : keep %d/%d = %.2f%%"% (
 				bonename, len(keepset), len(bonelist), 100*len(keepset)/len(bonelist)))
 			
 		# now that i have filled the "keepidx" set, turn those into frames
 		keepframe_indices = sorted(list(keepset))
+		allbonelist_out += len(keepset)
 		# TODO: for each of them, re-calculate the best interpolation curve for each channel based on the frames between the keepframes
 		pass  # end "for each bonename, bonelist"
+	print("TOTAL TOTAL RESULT: keep %d/%d = %.2f%%" % (allbonelist_out, len(allbonelist), 100 * allbonelist_out / len(allbonelist)))
 	return output
 
 def main(moreinfo=True):
 	###################################################################################
 	# prompt for inputs
-	# vmd = vmdlib.read_vmd("../../../Apple Pie_Cam-interpolated.vmd")
-	vmd = vmdlib.read_vmd("../../../marionette motion 1person.vmd")
-	# simplify_morphframes(vmd.morphframes)
+	# vmdname = core.MY_FILEPROMPT_FUNC("VMD file", ".vmd")
+	# vmdname = "../../../Apple Pie_Cam-interpolated.vmd"
+	vmdname = "../../../marionette motion 1person.vmd"
+	vmd = vmdlib.read_vmd(vmdname)
 	
+	start = time.time()
+	simplify_morphframes(vmd.morphframes)
+	morphend = time.time()
+	print("TIME FOR ALL MORPHS:", morphend - start)
 	simplify_boneframes(vmd.boneframes)
-	
+	boneend = time.time()
+	print("TIME FOR ALL BONES:", boneend - morphend)
 	
 	# framenums = [cam.f for cam in vmd.camframes]
 	# rotx = [cam.rot[0] for cam in vmd.camframes]
