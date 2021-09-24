@@ -1,5 +1,5 @@
 import math
-from typing import List, Tuple, Set, Sequence
+from typing import List, Tuple, Set, Sequence, Callable, Any
 import time
 
 import mmd_scripting.core.nuthouse01_core as core
@@ -8,6 +8,8 @@ import mmd_scripting.core.nuthouse01_vmd_struct as vmdstruct
 import mmd_scripting.core.nuthouse01_vmd_utils as vmdutil
 from mmd_scripting.vectorpaths_chrisarridge import vectorpaths
 
+import cProfile
+import pstats
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.05 - 9/7/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -228,8 +230,9 @@ def scale_two_lists(x:List[float], y:List[float], R: float) -> Tuple[List[float]
 	
 	if math.isclose(yR, 0, abs_tol=1e-6):
 		# if the range is basically 0, then add 0 to the first, add R to the last, and interpolate in between
-		# offset = [R * s / (len(x) - 1) for s in range(len(x))]
-		offset = [core.linear_map(0, 0, x[-1], R, xx) for xx in x]
+		# offset = [R * s / (len(x) - 1) for s in range(len(x))]  # wrong
+		# offset = [core.linear_map(0, 0, x[-1], R, xx) for xx in x]  # inefficient
+		offset = [R*xx/x[-1] for xx in x]
 		y = [v + o for v, o in zip(y, offset)]
 	else:
 		# if the range is "real",
@@ -312,7 +315,7 @@ def get_corner_sharpness_factor(deltaquat_AB: Tuple[float, float, float, float],
 	factor = 1 - (ang_d / math.pi)
 	return factor
 
-def reverse_slerp(q, q0, q1):
+def reverse_slerp(q, q0, q1) -> Tuple[float,float,float]:
 	# https://math.stackexchange.com/questions/2346982/slerp-inverse-given-3-quaternions-find-t
 	# t = log(q0not * q) / log(q0not * q1)
 	# elementwise division, except skip the w component
@@ -329,8 +332,8 @@ def reverse_slerp(q, q0, q1):
 		# normalized to 128 anyways
 		x = 100 * get_quat_angular_distance(q0, q)
 		return x,x,x
-	ret = tuple(aa/bb for aa,bb in zip(a,b))
-	return ret
+	# ret = tuple(aa/bb for aa,bb in zip(a,b))
+	return a[0]/b[0], a[1]/b[1], a[2]/b[2]
 	
 
 
@@ -351,7 +354,7 @@ def simplify_morphframes(allmorphlist: List[vmdstruct.VmdMorphFrame]) -> List[vm
 	# sort into dict form to process each morph independently
 	morphdict = vmdutil.dictify_framelist(allmorphlist)
 	
-	print("NUMBER OF MORPHS %d" % len(morphdict))
+	print("number of morphs %d" % len(morphdict))
 	# analyze each morph one at a time
 	for morphname, morphlist in morphdict.items():
 		print("MORPH '%s' LEN %d" % (morphname, len(morphlist)))
@@ -399,16 +402,6 @@ def simplify_morphframes(allmorphlist: List[vmdstruct.VmdMorphFrame]) -> List[vm
 			# when i am done with this morph, how many have i lost?
 			if len(thisoutput) != len(morphlist):
 				print("'%s' : RESULT : keep %d/%d = %.2f%%" % (morphname, len(thisoutput), len(morphlist), 100 * len(thisoutput) / len(morphlist)))
-			# tossed = len(morphlist) - len(thisoutput)
-			# if tossed:
-			# 	for i in range(len(morphlist)):
-			# 		m = morphlist[i]
-			# 		if i == len(morphlist)-1:
-			# 			delta = 999
-			# 		else:
-			# 			m2 = morphlist[i+1]
-			# 			delta = (m2.val - m.val) / (m2.f - m.f)
-			# 		print("%s n:%s f:%d v:%f d:%f" % ("*" if m in thisoutput else " ", morphname, m.f, m.val, delta))
 		
 		output.extend(thisoutput)
 	# FIN
@@ -434,22 +427,25 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 			i_this = bonelist[i]
 			i_next = bonelist[i + 1]
 			# find the delta for this channel
-			i_delta = (i_next.pos[C] - i_this.pos[C]) / (i_next.f - i_this.f)
-			i_sign = sign(i_delta)
+			# i_delta = (i_next.pos[C] - i_this.pos[C]) / (i_next.f - i_this.f)
+			# i_delta = i_next.pos[C] - i_this.pos[C]
+			# i_sign = sign(i_delta)
+			i_sign = i_next.pos[C] > i_this.pos[C]
 			
 			#+++++++++++++++++++++++++++++++++++++
 			# now, walk forward from here until i "return" the frame "z" that has a different delta
 			# "z" is the farthest plausible endpoint of the section (the real endpoint might be between i and z, tho)
 			# "different" means only different state, i.e. rising/falling/zero
 			
-			z = i + 1  # to make pycharm shut up
+			z = i+1  # to make pycharm shut up
 			# zero-change  shortcut
+			# while (z < len(bonelist)) and math.isclose(bonelist[i].pos[C], bonelist[z].pos[C], abs_tol=1e-4):
 			while (z < len(bonelist)) and bonelist[i].pos[C] == bonelist[z].pos[C]:
 				z += 1
-			if z != i + 1:  # if the while-loop went thru at least 1 loop,
-				z -= 1  # back off one value, since that's the value that no longer matches,
+			if z != i+1:                  # if the while-loop went thru at least 1 loop,
+				z -= 1                    # back off one value, since z is the value that no longer matches,
 				axis_keep_list.append(z)  # then save this proposed endpoint as a valid endpoint,
-				i = z  # and move the startpoint to here and keep walking from here
+				i = z                     # and move the startpoint to here and keep walking from here
 				continue
 				
 			for z in range(i + 1, len(bonelist)):
@@ -458,51 +454,29 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 					break
 				z_this = bonelist[z]
 				z_next = bonelist[z + 1]
-				z_delta = (z_next.pos[C] - z_this.pos[C]) / (z_next.f - z_this.f)
+				# z_delta = (z_next.pos[C] - z_this.pos[C]) / (z_next.f - z_this.f)
+				# z_delta = z_next.pos[C] - z_this.pos[C]
+				z_sign = z_next.pos[C] > z_this.pos[C]
 				# TODO: also break if the delta is way significantly different than the previous delta?
 				#  pretty sure this concept is needed for the camera jumpcuts to be guaranteed detected?
-				if sign(z_delta) == i_sign:
+				if z_sign == i_sign:
 					pass  # if this is potentially part of the same sequence, keep iterating
 				else:
 					break  # if this is definitely no longer part of the sequence, THEN i can break
 			# anything past z is DEFINITELY NOT the endpoint for this sequence
-			# everything from i to z is monotonic: always increasing OR always decreasing OR flat zero
-			# if it's flat zero, then i already know it's linear and i don't need to try to fit a curve to it lol
-			if i_sign == 0:
-				axis_keep_list.append(z)  # then save this proposed endpoint as a valid endpoint,
-				i = z  # and move the startpoint to here and keep walking from here
-				continue
-			# if it hits past here, then i've got something interesting to work with!
+			# everything from i to z is monotonic: always increasing OR always decreasing
 			
 			# +++++++++++++++++++++++++++++++++++++
 			# generate all the x-values and y-values (will scale to [0-128] later)
-			# the x-values are easy to calculate:
-			# y_start = i_this.pos[C]
-			# y_range = bonelist[w].pos[C] - y_start
-			# x_range = bonelist[z].f - i_this.f
-			x_points_all = []
-			y_points_all = []
-			for P in range(i, z + 1):
-				point = bonelist[P]
-				x_rel = point.f - i_this.f
-				x_points_all.append(x_rel)
-				y_rel = point.pos[C] - i_this.pos[C]
-				y_points_all.append(y_rel)
-			# now i have x_points_all and y_points_all, same length, including endpoints
+			x_points_all, y_points_all = make_xy_from_segment_scalar(bonelist, i, z, lambda x: x.pos[C])
 			assert len(x_points_all) == len(y_points_all)
 			
 			# OPTIMIZE: if i find z, then walk backward a bit, i can reuse the same z! no need to re-walk the same section
 			while i < z:
 				# +++++++++++++++++++++++++++++++++++++
 				# from z, walk backward and test endpoint quality at each frame
-				# x_points = []
-				# y_points = []
-				# i_this = bonelist[i]  # need to
-				# y_start = i_this.pos[C]
-				# x_start = i_this.f
 				# i think i want to run backwards from z until i find "an acceptably good match"
 				# gonna need to do a bunch of testing to quantify what "acceptably good" looks like tho
-				# TODO: no need to recompute this for each w, just use the same data and scale the bezier parameters that come out
 				for w in range(len(x_points_all) - 1, 0, -1):
 					# take a subset of the range of points, and scale them to [0-128] range
 					x_points, y_points = scale_two_lists(x_points_all[0:w + 1], y_points_all[0:w + 1], 128)
@@ -512,6 +486,10 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 					#  RMSerr=2.3 and MAXerr=4.5 are pretty darn close, but could maybe be better
 					#  RMSerr=9.2 and MAXerr=15.5 is TOO LARGE
 					# TODO: modify to return the error values, for easier logging?
+					
+					# todo: in the scalar system, because the endpoint-finding will pick stuff that is strictly
+					#  monotonic, i think the innate recursive splitting behavior of the fitting algorithm
+					#  might be useful?
 					bezier_list = vectorpaths.fit_cubic_bezier(x_points, y_points,
 															   rms_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS,
 															   max_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX)
@@ -660,8 +638,6 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 			plt.show(block=True)
 		
 		
-		# TODO: "center" is nothing but flat then cliff! wtf is going on??? is this also the result of LN thresholding?
-		#  this is because the center bone has no rotation on it, it's all zeros, then i manually append a 1
 		# TODO: "upper body" is almost totally fully keyed at the reverse-slerp level! can this be fixed with sensitivity? or is it legit?
 		#  i think its just legit very complex...
 		
@@ -734,34 +710,33 @@ def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdst
 	:return:
 	"""
 	
-	output = []
-	
 	# verify there is no overlapping frames, just in case
 	allbonelist = vmdutil.assert_no_overlapping_frames(allbonelist)
 	# sort into dict form to process each morph independently
 	bonedict = vmdutil.dictify_framelist(allbonelist)
 	
+	# for progress printouts
 	totalbonelen = len(allbonelist)
 	sofarbonelen = 0
 	
-	allbonelist_out = 0
+	# the final list of all boneframes that i am keeping
+	allbonelist_out = []
 	
-	print("NUMBER OF BONES %d" % len(bonedict))
+	print("number of bones %d" % len(bonedict))
 	# analyze each morph one at a time
 	for bonename, bonelist in bonedict.items():
-		print("BONE '%s' LEN %d" % (bonename, len(bonelist)))
 		# if bonename != "センター":
 		# 	continue
 		# if bonename != "上半身":
 		# 	continue
-		# if bonename != "右足ＩＫ" and bonename != "左足ＩＫ":
+		# if bonename != "右足ＩＫ" and bonename != "左足ＩＫ" and bonename != "上半身" and bonename != "センター":
 		# 	continue
+		print("BONE '%s' LEN %d" % (bonename, len(bonelist)))
 		sofarbonelen += len(bonelist)
 		core.print_progress_oneline(sofarbonelen/totalbonelen)
 		
 		if len(bonelist) <= 2:
-			allbonelist_out += len(bonelist)
-			output.extend(bonelist)
+			allbonelist_out.extend(bonelist)
 			continue
 		
 		# since i need to analyze what's "important" along 4 different channels,
@@ -783,17 +758,120 @@ def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdst
 		#######################################################################################
 		# now done searching for the "important" points, filled "keepset"
 		if DEBUG and len(keepset) > 2:
-			# if it found only 2, ignore it, cuz that would mean just startpoint and endpoint
+			# if it found only 2, dont print cuz that would mean just startpoint and endpoint
 			print("'%s' : RESULT : keep %d/%d = %.2f%%"% (
 				bonename, len(keepset), len(bonelist), 100*len(keepset)/len(bonelist)))
 			
-		# now that i have filled the "keepidx" set, turn those into frames
-		keepframe_indices = sorted(list(keepset))
-		allbonelist_out += len(keepset)
-		# TODO: for each of them, re-calculate the best interpolation curve for each channel based on the frames between the keepframes
+		# recap: i have found the minimal set of frames needed to define the motion of this bone,
+		# i.e. the endpoints where a bezier can define the motion between them.
+		# when i unify the sets from each source, i am makign those segments shorter.
+		# if a bezier curve can be fit onto points A thru Z, then it's guaranteed that a bezier curve can
+		# be fit onto points A thru M and separately onto points M thru Z.
+		# i know it's possible, so, thats what i'm doing now.
+		
+		r = _finally_put_it_all_together(bonelist, keepset)
+		allbonelist_out.extend(r)
 		pass  # end "for each bonename, bonelist"
-	print("TOTAL TOTAL RESULT: keep %d/%d = %.2f%%" % (allbonelist_out, len(allbonelist), 100 * allbonelist_out / len(allbonelist)))
+	print("TOTAL TOTAL RESULT: keep %d/%d = %.2f%%" % (len(allbonelist_out), len(allbonelist), 100 * len(allbonelist_out) / len(allbonelist)))
+	return allbonelist_out
+
+def _finally_put_it_all_together(bonelist: List[vmdstruct.VmdBoneFrame], keepset: Set[int]) -> List[vmdstruct.VmdBoneFrame]:
+	"""
+	I have found the minimal set of frames needed to define the motion of this bone with respect to each separate
+	channel... when I unify the sets from each source, I am inserting new points into the middle of most segments.
+	If a bezier curve can be fit onto points A thru Z, then it's guaranteed that a bezier curve can be fit onto
+	points A thru M and separately onto points M thru Z.
+	So now I am re-generating the beziers and this time I actually change the interp parameters.
+	
+	:param bonelist: list of all boneframes that correspond to this bone
+	:param keepset: set of ints, referring to indices within bonelist that are "important frames"
+	:return: list of the boneframes that 'keepset' refers to, with the interpolation parameters modified
+	"""
+	
+	# turn the set into sorted list for walking
+	keepframe_indices = sorted(list(keepset))
+	
+	# frame 0 always gets in, so just add it now
+	# don't even need to modify it's interp curves, since it's the first frame its curves dont matter
+	output = [bonelist[keepframe_indices[0]]]
+	
+	# for each of them, re-calculate the best interpolation curve for each channel based on the frames between the keepframes
+	for a in range(len(keepset) - 1):
+		# for each start/end pair,
+		idx_this = keepframe_indices[a]
+		idx_next = keepframe_indices[a + 1]
+		# for each channel (x/y/z/rot),
+		# look at all the points in between (including endpoints) and scale to [0-127],
+		allxally = [make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[0]), # x pos
+					make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[1]), # y pos
+					make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[2]), # z pos
+					make_xy_from_segment_rotation(bonelist, idx_this, idx_next),                   # rotation
+					]
+		all_interp_params = []
+		# for each channel (x/y/z/rot),
+		# generate the proper bezier interp curve,
+		for x_points,y_points in allxally:
+			bezier_list = vectorpaths.fit_cubic_bezier(x_points, y_points,
+													   rms_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS,
+													   max_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX)
+			assert len(bezier_list) == 1
+			bez = bezier_list[0]
+			# clamp all the control points to valid [0-127] range, and also make them be integers
+			cpp = (bez.p[1][0], bez.p[1][1], bez.p[2][0], bez.p[2][1])
+			params = [round(core.clamp(v, 0, 127)) for v in cpp]
+			all_interp_params.append(params)
+			
+		# for each channel (x/y/z/rot),
+		# store the params into the proper field of frame_next,
+		frame_next = bonelist[idx_next]
+		frame_next.interp_x = all_interp_params[0]
+		frame_next.interp_y = all_interp_params[1]
+		frame_next.interp_z = all_interp_params[2]
+		frame_next.interp_r = all_interp_params[3]
+		
+		# and finally store the modified frame in the ultimate output list.
+		output.append(frame_next)
+	# verify that i stored one frame for each value in keepset
+	assert len(output) == len(keepset)
 	return output
+
+
+def make_xy_from_segment_rotation(bonelist: List[vmdstruct.VmdBoneFrame],
+								  idx_this:int,
+								  idx_next:int,) -> Tuple[List[float], List[float]]:
+	# for each channel (x/y/z/rot),
+	# look at all the points in between (including endpoints),
+	frame_this = bonelist[idx_this]
+	y_points = []
+	x_points = []
+	quat_start = core.euler_to_quaternion(frame_this.rot)
+	quat_end = core.euler_to_quaternion(bonelist[idx_next].rot)
+	for i in range(idx_this, idx_next + 1):
+		point = bonelist[i]
+		x_pos = point.f - frame_this.f
+		x_points.append(x_pos)
+		q = core.euler_to_quaternion(point.rot)
+		t3 = reverse_slerp(q, quat_start, quat_end)
+		y_pos = sum(t3) / 3
+		y_points.append(y_pos)
+	return scale_two_lists(x_points, y_points, 127)
+
+def make_xy_from_segment_scalar(bonelist: List[vmdstruct.VmdBoneFrame],
+								idx_this:int,
+								idx_next:int,
+								getter: Callable[[vmdstruct.VmdBoneFrame], float]) -> Tuple[List[float], List[float]]:
+	# look at all the points in between (including endpoints),
+	y_points = []
+	x_points = []
+	for i in range(idx_this, idx_next + 1):
+		point = bonelist[i]
+		x_pos = point.f - bonelist[idx_this].f
+		x_points.append(x_pos)
+		y_pos = getter(point) - getter(bonelist[idx_this])
+		y_points.append(y_pos)
+	return scale_two_lists(x_points, y_points, 127)
+
+
 
 def main(moreinfo=True):
 	###################################################################################
@@ -803,56 +881,74 @@ def main(moreinfo=True):
 	vmdname = "../../../marionette motion 1person.vmd"
 	vmd = vmdlib.read_vmd(vmdname)
 	
-	start = time.time()
-	simplify_morphframes(vmd.morphframes)
-	morphend = time.time()
-	print("TIME FOR ALL MORPHS:", morphend - start)
-	simplify_boneframes(vmd.boneframes)
-	boneend = time.time()
-	print("TIME FOR ALL BONES:", boneend - morphend)
+	anychange = False
 	
-	# framenums = [cam.f for cam in vmd.camframes]
-	# rotx = [cam.rot[0] for cam in vmd.camframes]
-	# roty = [cam.rot[1] for cam in vmd.camframes]
-	# rotz = [cam.rot[2] for cam in vmd.camframes]
-	# plt.plot(framenums, rotx, label="x")
-	# plt.plot(framenums, roty, label="y")
-	# plt.plot(framenums, rotz, label="z")
-	# plt.legend()
-	# plt.show()
+	if vmd.morphframes:
+		start = time.time()
+		newmorphs = simplify_morphframes(vmd.morphframes)
+		morphend = time.time()
+		print("TIME FOR ALL MORPHS:", morphend - start)
+		if newmorphs != vmd.morphframes:
+			print('morphs changed')
+			anychange = True
+			vmd.morphframes = newmorphs
+			
+	if vmd.boneframes:
+		start = time.time()
+		newbones = simplify_boneframes(vmd.boneframes)
+		boneend = time.time()
+		print("TIME FOR ALL BONES:", boneend - start)
+		if newbones != vmd.boneframes:
+			print('bones changed')
+			anychange = True
+			vmd.boneframes = newbones
+			
+			
+	if vmd.camframes:
+		# framenums = [cam.f for cam in vmd.camframes]
+		# rotx = [cam.rot[0] for cam in vmd.camframes]
+		# roty = [cam.rot[1] for cam in vmd.camframes]
+		# rotz = [cam.rot[2] for cam in vmd.camframes]
+		# plt.plot(framenums, rotx, label="x")
+		# plt.plot(framenums, roty, label="y")
+		# plt.plot(framenums, rotz, label="z")
+		# plt.legend()
+		# plt.show()
+		
+		for i in range(len(vmd.camframes) - 1):
+			cam = vmd.camframes[i]
+			nextcam = vmd.camframes[i+1]
+			rot_delta = [f - i for f,i in zip(nextcam.rot, cam.rot)]
+			framedelta = nextcam.f - cam.f
+			rot_delta = [r/framedelta for r in rot_delta]
+			# print(cam.rot)
+			try:
+				r1 = rot_delta[0] / rot_delta[1]
+			except ZeroDivisionError:
+				r1 = 0
+			try:
+				r2 = rot_delta[1] / rot_delta[2]
+			except ZeroDivisionError:
+				r2 = 0
+			try:
+				r3 = rot_delta[0] / rot_delta[2]
+			except ZeroDivisionError:
+				r3 = 0
+			if cam.f in (460, 2100, 2149):
+				print('hi')
+			print(cam.f, round(r1, 3), round(r2, 3), round(r3, 3))
 	
-	for i in range(len(vmd.camframes) - 1):
-		cam = vmd.camframes[i]
-		nextcam = vmd.camframes[i+1]
-		rot_delta = [f - i for f,i in zip(nextcam.rot, cam.rot)]
-		framedelta = nextcam.f - cam.f
-		rot_delta = [r/framedelta for r in rot_delta]
-		# print(cam.rot)
-		try:
-			r1 = rot_delta[0] / rot_delta[1]
-		except ZeroDivisionError:
-			r1 = 0
-		try:
-			r2 = rot_delta[1] / rot_delta[2]
-		except ZeroDivisionError:
-			r2 = 0
-		try:
-			r3 = rot_delta[0] / rot_delta[2]
-		except ZeroDivisionError:
-			r3 = 0
-		if cam.f in (460, 2100, 2149):
-			print('hi')
-		print(cam.f, round(r1, 3), round(r2, 3), round(r3, 3))
-	
+	core.MY_PRINT_FUNC("")
 	###################################################################################
 	# write outputs
-	#
-	#
-	#
-	core.MY_PRINT_FUNC("")
-	# output_filename_vmd = core.filepath_insert_suffix(input_filename_vmd, "_renamed")
-	# output_filename_vmd = core.filepath_get_unused_name(output_filename_vmd)
-	# vmdlib.write_vmd(output_filename_vmd, vmd, moreinfo=moreinfo)
+
+	if not anychange:
+		core.MY_PRINT_FUNC("nothing changed, nothing to write")
+		return None
+	else:
+		output_filename_vmd = core.filepath_insert_suffix(vmdname, "_simplified")
+		output_filename_vmd = core.filepath_get_unused_name(output_filename_vmd)
+		vmdlib.write_vmd(output_filename_vmd, vmd, moreinfo=moreinfo)
 	
 	core.MY_PRINT_FUNC("Done!")
 	return None
@@ -861,6 +957,10 @@ if __name__ == '__main__':
 	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
 	core.MY_PRINT_FUNC(helptext)
 	core.RUN_WITH_TRACEBACK(main)
+	# cProfile.run('main()', 'uninterpolate_stats')
+	# ppp = pstats.Stats('uninterpolate_stats')
+	# ppp.sort_stats(pstats.SortKey.CUMULATIVE)
+	# ppp.print_stats()
 	
 	# x = [0] + [50]*50 + [100]
 	# y = [0] + [50]*50 + [100]
