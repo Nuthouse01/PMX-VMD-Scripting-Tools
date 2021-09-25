@@ -10,18 +10,17 @@ from mmd_scripting.vectorpaths_chrisarridge import vectorpaths
 
 import cProfile
 import pstats
+import logging
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.05 - 9/7/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
 # https://github.com/chrisarridge/vectorpaths
 
-DEBUG = True
-DEBUG_MORE = False
+DEBUG = 2
 DEBUG_PLOTS = False
 
-if DEBUG_MORE:
-	import logging
+if DEBUG >= 4:
 	# this prints a bunch of useful stuff in the bezier regression, and a bunch of useless stuff from matplotlib
 	logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 
@@ -329,7 +328,7 @@ def reverse_slerp(q, q0, q1) -> Tuple[float,float,float]:
 		# actually, what if something starts at A, goes to B, then returns to A? it's all perfectly linear with
 		# start/end exactly the same! but it's definitely 2 segments. so I cant just return a static value.
 		# i'll return the angular distance between q and q0 instead, its on a different scale but w/e, it gets
-		# normalized to 128 anyways
+		# normalized to 127 anyways
 		x = 100 * get_quat_angular_distance(q0, q)
 		return x,x,x
 	# ret = tuple(aa/bb for aa,bb in zip(a,b))
@@ -467,7 +466,7 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 			# everything from i to z is monotonic: always increasing OR always decreasing
 			
 			# +++++++++++++++++++++++++++++++++++++
-			# generate all the x-values and y-values (will scale to [0-128] later)
+			# generate all the x-values and y-values (will scale to [0-127] later)
 			x_points_all, y_points_all = make_xy_from_segment_scalar(bonelist, i, z, lambda x: x.pos[C])
 			assert len(x_points_all) == len(y_points_all)
 			
@@ -478,8 +477,8 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 				# i think i want to run backwards from z until i find "an acceptably good match"
 				# gonna need to do a bunch of testing to quantify what "acceptably good" looks like tho
 				for w in range(len(x_points_all) - 1, 0, -1):
-					# take a subset of the range of points, and scale them to [0-128] range
-					x_points, y_points = scale_two_lists(x_points_all[0:w + 1], y_points_all[0:w + 1], 128)
+					# take a subset of the range of points, and scale them to [0-127] range
+					x_points, y_points = scale_two_lists(x_points_all[0:w + 1], y_points_all[0:w + 1], 127)
 					
 					# then run regression to find a reasonable interpolation curve for this stretch
 					# TODO what are good error parameters to use for targets?
@@ -502,13 +501,13 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 					# (well, if its only slightly outside the box thats okay, i can clamp it)
 					bez = bezier_list[0]
 					cpp = (bez.p[1][0], bez.p[1][1], bez.p[2][0], bez.p[2][1])
-					if not all((0 - CONTROL_POINT_BOX_THRESHOLD < p < 128 + CONTROL_POINT_BOX_THRESHOLD) for p in cpp):
+					if not all((0 - CONTROL_POINT_BOX_THRESHOLD < p < 127 + CONTROL_POINT_BOX_THRESHOLD) for p in cpp):
 						continue
 					
 					# once i find a good interp curve match (if a match is found),
-					if DEBUG_MORE or DEBUG_PLOTS:
-						print("MATCH! bone='%s' : chan=%d : i,w,z=%d,%d,%d : sign=%d" % (
-							bonename, C, i, i+w, z, i_sign))
+					if DEBUG >= 2 or DEBUG_PLOTS:
+						print("MATCH! bone='%s' : chan=%d : i,w,z=%d,%d,%d : sign=%d : len=%d" % (
+							bonename, C, i, i+w, z, i_sign, w))
 					if DEBUG_PLOTS:
 						bezier_list[0].plotcontrol()
 						bezier_list[0].plot()
@@ -599,7 +598,7 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 					# if any of the frames between i and z cannot be reverse-slerped, then break
 					endpoint_good = False
 					break
-			if DEBUG_MORE:
+			if DEBUG >= 3:
 				if temp_reverse_slerp_diffs:
 					print(i, z, max(temp_reverse_slerp_diffs))
 			if not endpoint_good:
@@ -651,8 +650,8 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 		# gonna need to do a bunch of testing to quantify what "acceptably good" looks like tho
 		# for w in range(z, i, -1):
 		for w in range(len(x_points_all)-1, 0, -1):
-			# take a subset of the range of points, and scale them to [0-128] range
-			x_points, y_points = scale_two_lists(x_points_all[0:w+1], y_points_all[0:w+1], 128)
+			# take a subset of the range of points, and scale them to [0-127] range
+			x_points, y_points = scale_two_lists(x_points_all[0:w+1], y_points_all[0:w+1], 127)
 			
 			# then run regression to find a reasonable interpolation curve for this stretch
 			# this innately measures both the RMS error and the max error, and i can specify thresholds
@@ -672,13 +671,13 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 			# (well, if its only slightly outside the box thats okay, i can clamp it)
 			bez = bezier_list[0]
 			cpp = (bez.p[1][0], bez.p[1][1], bez.p[2][0], bez.p[2][1])
-			if not all((0-CONTROL_POINT_BOX_THRESHOLD < p < 128+CONTROL_POINT_BOX_THRESHOLD) for p in cpp):
+			if not all((0-CONTROL_POINT_BOX_THRESHOLD < p < 127+CONTROL_POINT_BOX_THRESHOLD) for p in cpp):
 				continue
 			
 			# once i find a good interp curve match (if a match is found),
-			if DEBUG_MORE or DEBUG_PLOTS:
-				print("MATCH! bone='%s' : i,w,z=%d,%d,%d" % (
-					bonename, i, i+w, z))
+			if DEBUG >= 2 or DEBUG_PLOTS:
+				print("MATCH! bone='%s' : i,w,z=%d,%d,%d : len=%d" % (
+					bonename, i, i+w, z, w))
 			if DEBUG_PLOTS:
 				bezier_list[0].plotcontrol()
 				bezier_list[0].plot()
@@ -729,8 +728,8 @@ def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdst
 		# 	continue
 		# if bonename != "上半身":
 		# 	continue
-		# if bonename != "右足ＩＫ" and bonename != "左足ＩＫ" and bonename != "上半身" and bonename != "センター":
-		# 	continue
+		if bonename != "右足ＩＫ" and bonename != "左足ＩＫ" and bonename != "上半身" and bonename != "センター":
+			continue
 		print("BONE '%s' LEN %d" % (bonename, len(bonelist)))
 		sofarbonelen += len(bonelist)
 		core.print_progress_oneline(sofarbonelen/totalbonelen)
@@ -788,6 +787,9 @@ def _finally_put_it_all_together(bonelist: List[vmdstruct.VmdBoneFrame], keepset
 	:return: list of the boneframes that 'keepset' refers to, with the interpolation parameters modified
 	"""
 	
+	if DEBUG >= 2:
+		logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
+		
 	# turn the set into sorted list for walking
 	keepframe_indices = sorted(list(keepset))
 	
@@ -814,6 +816,15 @@ def _finally_put_it_all_together(bonelist: List[vmdstruct.VmdBoneFrame], keepset
 			bezier_list = vectorpaths.fit_cubic_bezier(x_points, y_points,
 													   rms_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS,
 													   max_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX)
+			# TODO: this assertion failed! why!? damnit i dont want to explore this more right now
+			if len(bezier_list) != 1:
+				print('stop it')
+				print("i,z=%d,%d" % (idx_this, idx_next))
+				# bezier_list[0].plotcontrol()
+				# bezier_list[0].plot()
+				plt.plot(x_points, y_points, 'r+')
+				plt.show(block=True)
+			
 			assert len(bezier_list) == 1
 			bez = bezier_list[0]
 			# clamp all the control points to valid [0-127] range, and also make them be integers
