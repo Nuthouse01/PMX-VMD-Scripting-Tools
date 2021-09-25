@@ -471,14 +471,15 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 			assert len(x_points_all) == len(y_points_all)
 			
 			# OPTIMIZE: if i find z, then walk backward a bit, i can reuse the same z! no need to re-walk the same section
+			head = 0  # head: the total amount 'i' has been increased since entering the while loop
 			while i < z:
 				# +++++++++++++++++++++++++++++++++++++
 				# from z, walk backward and test endpoint quality at each frame
 				# i think i want to run backwards from z until i find "an acceptably good match"
 				# gonna need to do a bunch of testing to quantify what "acceptably good" looks like tho
-				for w in range(len(x_points_all) - 1, 0, -1):
+				for w in range(len(x_points_all) - 1, head, -1):
 					# take a subset of the range of points, and scale them to [0-127] range
-					x_points, y_points = scale_two_lists(x_points_all[0:w + 1], y_points_all[0:w + 1], 127)
+					x_points, y_points = scale_two_lists(x_points_all[head:w+1], y_points_all[head:w+1], 127)
 					
 					# then run regression to find a reasonable interpolation curve for this stretch
 					# TODO what are good error parameters to use for targets?
@@ -504,18 +505,20 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 					if not all((0 - CONTROL_POINT_BOX_THRESHOLD < p < 127 + CONTROL_POINT_BOX_THRESHOLD) for p in cpp):
 						continue
 					
+					L = w-head  # the length(?) of the data that i walked over
+					
 					# once i find a good interp curve match (if a match is found),
 					if DEBUG >= 2 or DEBUG_PLOTS:
 						print("MATCH! bone='%s' : chan=%d : i,w,z=%d,%d,%d : sign=%d : len=%d" % (
-							bonename, C, i, i+w, z, i_sign, w))
+							bonename, C, i, i+L, z, i_sign, L))
 					if DEBUG_PLOTS:
 						bezier_list[0].plotcontrol()
 						bezier_list[0].plot()
 						plt.plot(x_points, y_points, 'r+')
 						plt.show(block=True)
-					
-					axis_keep_list.append(i+w)  # then save this proposed endpoint as a valid endpoint,
-					i = i+w  # and move the startpoint to here and keep walking from here
+					axis_keep_list.append(i+L)  # then save this proposed endpoint as a valid endpoint,
+					i = i+L                     # and move the startpoint to here and keep walking from here,
+					head = w                    # and change which part of the 'x_points_all' array i'm working with
 					break
 					# TODO: what do i do to handle if i cannot find a good match?
 					#  if i let it iterate all the way down to 2 points then it is guaranteed to find a match (cuz linear)
