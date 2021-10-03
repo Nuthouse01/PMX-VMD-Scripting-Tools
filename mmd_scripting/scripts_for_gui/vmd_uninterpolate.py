@@ -18,6 +18,10 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.05 - 9/7/2021"
 # https://github.com/chrisarridge/vectorpaths
 
 DEBUG = 2
+# debug 1: per-channel results
+# debug 2: each match segment
+# debug 3: reverse slerp goodness
+# debug 4: bez logging always on
 DEBUG_PLOTS = False
 
 if DEBUG >= 4:
@@ -154,6 +158,10 @@ CONTROL_POINT_BOX_THRESHOLD = 2
 # but, it's needed to prevent O(n^2) compute time from getting out of hand :(
 BONE_ROTATION_MAX_Z_LOOKAHEAD = 500
 
+# TODO: use looser bezier parameters for rotation section?
+
+# TODO: find some better way to keep the bez error constraints "realistic" for curves at all scales
+
 
 # TODO: overall cleanup, once everything is acceptably working. variable names, comments, function names, etc.
 
@@ -162,11 +170,6 @@ BONE_ROTATION_MAX_Z_LOOKAHEAD = 500
 #  more consistency between sections.
 
 # TODO: optimize the position section of bone-simplify, add another loop layer so i don't need to keep re-finding z.
-
-# TODO: do something to ensure that bezier control points are guaranteed within the box...
-#  clamp it afterward? somehow change the regression algorithm to restrict them at each step?
-#  ALSO want to compute exactly how often the points are outside the box.
-#  **BEST**: if control points are outside the box, then it doesn't represent a curve that's possible in MMD! discard it!
 
 # TODO: modify the bezier regression to return the error values? i think it would just be for logging, not sure if its
 #  worth changing the structure.
@@ -178,9 +181,23 @@ BONE_ROTATION_MAX_Z_LOOKAHEAD = 500
 # TODO: how the fuck can i effectively visualize quaternions? i need to see them plotted on a globe or something
 #  so i can have confidence that my "how straight should be considered a straight line" threshold is working right
 
-# TODO: re-research how to measure quaternion angle and angular distance (is there a difference?)
+def rotation_close(_a, _b) -> bool:
+	return all(math.isclose(_aa, _bb, abs_tol=1e-06) for _aa, _bb in zip(_a, _b))
 
-# TODO: should quaternion straightness be judged by "AB vs CD" or "AB vs AC" ?
+def find_local_peak_valley(L:List[float]) -> List[int]:
+	# return the list of all local minimums or maximums in the input list
+	assert len(L) >= 2
+	
+	if len(L) == 2: return [0,1]
+	# i know that the length is 3 or greater
+	s = {0, len(L)-1}  # define a set that already contains the endpoints
+	for i in range(1, len(L)-1):
+		a = L[i-1]
+		b = L[i]
+		c = L[i+1]
+		if (a <= b > c) or (a >= b < c):
+			s.add(i)
+	return sorted(list(s))
 
 def sign(U):
 	# return -1/0/+1 if input is negative/zero/positive
@@ -318,24 +335,36 @@ def reverse_slerp(q, q0, q1) -> Tuple[float,float]:
 	# https://math.stackexchange.com/questions/2346982/slerp-inverse-given-3-quaternions-find-t
 	# t = log(q0not * q) / log(q0not * q1)
 	# elementwise division, except skip the w component
+	
 	if not rotation_close(q0, q1):
-		dbg = ""
-		if core.my_dot(q0,q1) < 0:
-			dbg += "a"
-		if core.my_dot(q, q0) < 0:
-			dbg += "b"
-		if core.my_dot(q, q1) < 0:
-			dbg += "c"
-		if dbg: print(dbg)
+		# check for and correct quaternion "handedness" to fix slerp going along wrong path
+		# todo problem: the slerp is doing something strange at certain points... how is it possible for what1, what2, what3
+		#  to be printed? it's a triangle, there should not be only one inequalty here????
+		dot01 = core.my_dot(q0,q1)
+		dot0q = core.my_dot(q0, q)
+		dotq1 = core.my_dot(q, q1)
+		if dot01 < 0:
+			if dot0q < 0:
+				# if 0!=1 and 0!=q then 0 is bad
+				q0 = [-z for z in q0]
+			elif dotq1 < 0:
+				# if 0!=1 and q!=1 then 1 is bad
+				q1 = [-z for z in q1]
+			else:
+				print("what1")
+		elif dot0q < 0 and dotq1 < 0:
+			# if 0!=q and q!=1 then q is bad
+			q = [-z for z in q]
+		elif dot0q < 0:
+			print("what2")
+		elif dotq1 < 0:
+			print("what3")
 		q0not = core.my_quat_conjugate(q0)
 		num = core.quat_ln(core.hamilton_product(q0not, q))
 		dom = core.quat_ln(core.hamilton_product(q0not, q1))
-		# todo problem 1: at rfootik 248, there's something funny going on iwht rev-slerp... i think it is broken cuz its going the long way around?
-		#  so i need to reverse one of the input quats, conditionally based on... something...
-		# todo problem 2: 'b' sometimes contains 0s even when the inputs are truly different
-		#  0 just means *that channel* is not changing...?
 		
 		# compute the result for each channel that doesn't div-by-zero-error
+		# if they all get zero (should never happen i hope?) then fall thru and do the ang dist thing
 		channel_results = []
 		for a,b in zip(num[1:4],dom[1:4]):
 			if b == 0: continue
@@ -473,6 +502,8 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 			if z != i+1:                  # if the while-loop went thru at least 1 loop,
 				z -= 1                    # back off one value, since z is the value that no longer matches,
 				axis_keep_list.append(z)  # then save this proposed endpoint as a valid endpoint,
+				if DEBUG >= 2:
+					print("MATCH! bone='%s' : i-w-z= %d-%d-%d : len=%d (ZERO CHANGE)" % (bonename, i, z, z, z - i))
 				i = z                     # and move the startpoint to here and keep walking from here
 				continue
 				
@@ -579,9 +610,7 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 	:param bonelist: list of all boneframes that correspond to this bone
 	:return: set of ints, referring to indices within bonelist that are "important frames"
 	"""
-	def rotation_close(_a, _b) -> bool:
-		return all(math.isclose(_aa, _bb, abs_tol=1e-06) for _aa, _bb in zip(_a, _b))
-		
+	
 	keepset = set()
 	i = 0
 	while i < (len(bonelist) - 1):
@@ -594,12 +623,16 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 		y_points_all = []
 		z = i+1  # to make pycharm shut up
 		
+		# todo problem: how do i distinguish between when it is most efficient to group a bunch of frames as zeros, vs
+		#  when it's really just a veeeeery slow lead-in to a bezier-matchable curve?
 		# zero-rotation shortcut
-		while (z < len(bonelist)) and rotation_close(bonelist[i].rot, bonelist[z].rot):
+		# while (z < len(bonelist)) and rotation_close(bonelist[i].rot, bonelist[z].rot):
+		while (z < len(bonelist)) and bonelist[i].rot == bonelist[z].rot:
 			z += 1
 		if z != i + 1:  # if the while-loop went thru at least 1 loop,
 			z -= 1  # back off one value, since that's the value that no longer matches
-			# y_points_all = [0] * (z-i-1)
+			if DEBUG >= 2:
+				print("MATCH! bone='%s' : i-w-z= %d-%d-%d : len=%d (ZERO CHANGE)" % (bonename, i, z, z, z-i))
 			keepset.add(z)  # add this endpoint
 			i = z
 			continue
@@ -630,9 +663,9 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 					# if any of the frames between i and z cannot be reverse-slerped, then break
 					endpoint_good = False
 					break
-			if DEBUG >= 3:
-				if temp_reverse_slerp_diffs:
-					print(i, z, max(temp_reverse_slerp_diffs))
+			if (DEBUG >= 3) and temp_reverse_slerp_diffs:
+				diff = max(temp_reverse_slerp_diffs)
+				print("rev-slerp-quality : i-z= %d-%d, diff=%.8f" % (i, z, diff))
 			if not endpoint_good:
 				# when i find something that isn't a good endpoint, then "return" the last good endpoint
 				z -= 1
@@ -654,76 +687,39 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 			y_points_all.append(1)
 		y_points_all.insert(0, 0)
 		# the x-values are easy to calculate:
-		x_range = bonelist[z].f - i_this.f
-		x_points_all = []
-		for P in range(i, z + 1):
-			point = bonelist[P]
-			x_rel = (point.f - i_this.f) / x_range
-			x_points_all.append(x_rel)
+		x_points_all = [bonelist[P].f for P in range(i, z + 1)]
+
 		# now i have x_points_all and y_points_all, same length, both in range [0-1], including endpoints
 		# because of slerp oddities it is possible that the y-points in the middle are outside [0-1] but thats okay i think
 		assert len(x_points_all) == len(y_points_all)
+		# the y-datapoints should be STRICTLY MONOTONIC (increasing or decreasing), so break the current y-values
+		#  apart until that's the case!
+		local_minmax = find_local_peak_valley(y_points_all)
+		if len(local_minmax) != 2:
+			# if breakup is needed (not often) then print a message
+			print("local breakup: bone='%s' : i-z= %d-%d : len=%d : segments=%d" % (bonename, i, z, z-i, len(local_minmax)-1))
 		if DEBUG_PLOTS:
-			print("reverse-slerp: bone='%s' : i,z=%d,%d" % (bonename, i, z))
-			plt.plot(x_points_all, y_points_all, 'r+')
-			plt.show(block=True)
+			if len(x_points_all) > 2:
+				print("reverse-slerp: bone='%s' : i-z= %d-%d" % (bonename, i, z))
+				plt.plot(x_points_all, y_points_all, 'r+')
+				plt.show(block=True)
 		
+		local_start = local_minmax[0]
+		local_end = local_minmax[1]
+		x_points = x_points_all[local_start:local_end+1]
+		y_points = y_points_all[local_start:local_end+1]
+		
+		k = something(x_points, y_points, local_start+i, local_end+i, bonename)
+		i = max(k)
+		keepset.update(k)
+
 		
 		# TODO: "upper body" is almost totally fully keyed at the reverse-slerp level! can this be fixed with sensitivity? or is it legit?
 		#  i think its just legit very complex...
 		
 		
-		# OPTIMIZE: if i find z, then walk backward a bit and find a good bezier, i can reuse the same z!
-		# no need to re-walk forward cuz i'll just find the same z-point.
-		# actually, or will i? first i should try it without this optimization.
-		# while i < z:
 		
-		# walk backwards from z until i find "an acceptably good match"... w= valid index within the points lists
-		# gonna need to do a bunch of testing to quantify what "acceptably good" looks like tho
-		# for w in range(z, i, -1):
-		for w in range(len(x_points_all)-1, 0, -1):
-			# take a subset of the range of points, and scale them to [0-127] range
-			x_points, y_points = scale_two_lists(x_points_all[0:w+1], y_points_all[0:w+1], 127)
-			
-			# then run regression to find a reasonable interpolation curve for this stretch
-			# this innately measures both the RMS error and the max error, and i can specify thresholds
-			# if it cannot satisfy those thresholds it will split and try again
-			bezier_list = vectorpaths.fit_cubic_bezier(x_points, y_points,
-													   rms_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS,
-													   max_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX)
-			
-			# if it has split, then it's not good for my purposes
-			# note: i modified the code so that if it would split, it returns an empty list instead
-			# TODO: it would be much more efficient if i could trust/use the splitting in the algorithm, but it changes
-			#  the location of the endpoints without scaling the error metrics so each split makes it easier to be
-			#  accepted, even without actually fitting any better
-			if len(bezier_list) != 1:
-				continue
-			# if any control points are not within the box, it's no good
-			# (well, if its only slightly outside the box thats okay, i can clamp it)
-			a = bezier_list[0]
-			bez, rms_error, max_error = a
-			cpp = (bez.p[1][0], bez.p[1][1], bez.p[2][0], bez.p[2][1])
-			if not all((0-CONTROL_POINT_BOX_THRESHOLD < p < 127+CONTROL_POINT_BOX_THRESHOLD) for p in cpp):
-				continue
-			
-			# once i find a good interp curve match (if a match is found),
-			if DEBUG >= 2 or DEBUG_PLOTS:
-				print("MATCH! bone='%s' : i,w,z=%d,%d,%d : len=%d" % (
-					bonename, i, i+w, z, w))
-			if DEBUG_PLOTS:
-				bezier_list[0].plotcontrol()
-				bezier_list[0].plot()
-				plt.plot(x_points, y_points, 'r+')
-				plt.show(block=True)
-			
-			keepset.add(i+w)  # then save this proposed endpoint as a valid endpoint,
-			i = i+w  # and move the startpoint to here and keep walking from here
-			break
-			# TODO: what do i do to handle if i cannot find a good match?
-			#  if i let it iterate all the way down to 2 points then it is guaranteed to find a match (cuz linear)
-			#  actually it's probably also guaranteed to pass at 3 points. do i want that? hm... probably not?
-			pass  # end walking backwards from z to i
+		
 		pass  # end "while i < len(bonelist)"
 	# now i have found every frame# that is important due to position changes
 	if DEBUG and len(keepset) > 1:
@@ -732,6 +728,69 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 		print("'%s' : rot : keep %d/%d" % (bonename, len(keepset) + 1, len(bonelist)))
 	return keepset
 
+
+def something(x_points_all, y_points_all, i, z, bonename):
+	# i know that the list of points I am given is STRICTLY MONOTONIC
+	# so, attempt to fit some number of beziers to this section
+	keepset = set()
+
+	# OPTIMIZE: if i find z, then walk backward a bit and find a good bezier, i can reuse the same z!
+	# no need to re-walk forward cuz i'll just find the same z-point.
+	# actually, or will i? first i should try it without this optimization.
+	
+	# while i < z:
+	# walk backwards from z until i find "an acceptably good match"... w= valid index within the points lists
+	# gonna need to do a bunch of testing to quantify what "acceptably good" looks like tho
+	# for w in range(z, i, -1):
+	
+	# w is the relative index within this i-to-z stretch
+	# it starts at i, and stops at z (should never actually hit z tho, should always pass when it's 2 points)
+	
+	for w in range(len(x_points_all) - 1, 0, -1):
+		# take a subset of the range of points, and scale them to [0-127] range
+		x_points, y_points = scale_two_lists(x_points_all[0:w + 1], y_points_all[0:w + 1], 127)
+		
+		# then run regression to find a reasonable interpolation curve for this stretch
+		# this innately measures both the RMS error and the max error, and i can specify thresholds
+		# if it cannot satisfy those thresholds it will split and try again
+		bezier_list = vectorpaths.fit_cubic_bezier(x_points, y_points,
+												   rms_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS,
+												   max_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX)
+		
+		# if it has split, then it's not good for my purposes
+		# note: i modified the code so that if it would split, it returns an empty list instead
+		# TODO: it would be much more efficient if i could trust/use the splitting in the algorithm, but it changes
+		#  the location of the endpoints without scaling the error metrics so each split makes it easier to be
+		#  accepted, even without actually fitting any better
+		if len(bezier_list) != 1:
+			continue
+		# if any control points are not within the box, it's no good
+		# (well, if its only slightly outside the box thats okay, i can clamp it)
+		a = bezier_list[0]
+		bez, rms_error, max_error = a
+		cpp = (bez.p[1][0], bez.p[1][1], bez.p[2][0], bez.p[2][1])
+		if not all((0 - CONTROL_POINT_BOX_THRESHOLD < p < 127 + CONTROL_POINT_BOX_THRESHOLD) for p in cpp):
+			continue
+		
+		# once i find a good interp curve match (if a match is found),
+		if DEBUG >= 2 or DEBUG_PLOTS:
+			print("MATCH! bone='%s' : i-w-z= %d-%d-%d : len=%d" % (
+				bonename, i, i + w, z, w))
+		if DEBUG_PLOTS:
+			if len(x_points_all) > 2:
+				bez.plotcontrol()
+				bez.plot()
+				plt.plot(x_points, y_points, 'r+')
+				plt.show(block=True)
+		
+		keepset.add(i + w)  # then save this proposed endpoint as a valid endpoint,
+		i = i + w  # and move the startpoint to here and keep walking from here
+		break
+		# TODO: what do i do to handle if i cannot find a good match?
+		#  if i let it iterate all the way down to 2 points then it is guaranteed to find a match (cuz linear)
+		#  actually it's probably also guaranteed to pass at 3 points. do i want that? hm... probably not?
+		pass  # end walking backwards from z to i
+	return keepset
 
 def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdstruct.VmdBoneFrame]:
 	"""
@@ -761,8 +820,10 @@ def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdst
 		# 	continue
 		# if bonename != "上半身":
 		# 	continue
-		if bonename != "右足ＩＫ" and bonename != "左足ＩＫ" and bonename != "上半身" and bonename != "センター":
-			continue
+		# if bonename != "右足ＩＫ" and bonename != "左足ＩＫ" and bonename != "上半身" and bonename != "センター":
+		# 	continue
+		# if bonename != "右足ＩＫ":
+		# 	continue
 		print("BONE '%s' LEN %d" % (bonename, len(bonelist)))
 		sofarbonelen += len(bonelist)
 		core.print_progress_oneline(sofarbonelen/totalbonelen)
@@ -780,12 +841,14 @@ def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdst
 		
 		#######################################################################################
 		if SIMPLIFY_BONE_POSITION:
-			keepset.update(_simplify_boneframes_position(bonename, bonelist))
+			k = _simplify_boneframes_position(bonename, bonelist)
+			keepset.update(k)
 			
 		#######################################################################################
 		# now, i walk along the frames analyzing the ROTATION channel. this is the hard part.
 		if SIMPLIFY_BONE_ROTATION:
-			keepset.update(_simplify_boneframes_rotation(bonename, bonelist))
+			k = _simplify_boneframes_rotation(bonename, bonelist)
+			keepset.update(k)
 			
 		#######################################################################################
 		# now done searching for the "important" points, filled "keepset"
@@ -952,6 +1015,7 @@ def main(moreinfo=True):
 	# vmdname = core.MY_FILEPROMPT_FUNC("VMD file", ".vmd")
 	# vmdname = "../../../Apple Pie_Cam-interpolated.vmd"
 	vmdname = "../../../marionette motion 1person.vmd"
+	# vmdname = "../../../IA_Conqueror_full_key_version.vmd"
 	vmd = vmdlib.read_vmd(vmdname)
 	
 	anychange = False
@@ -1030,6 +1094,7 @@ if __name__ == '__main__':
 	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
 	core.MY_PRINT_FUNC(helptext)
 	core.RUN_WITH_TRACEBACK(main)
+	
 	# cProfile.run('main()', 'uninterpolate_stats')
 	# ppp = pstats.Stats('uninterpolate_stats')
 	# ppp.sort_stats(pstats.SortKey.CUMULATIVE)
@@ -1070,3 +1135,47 @@ if __name__ == '__main__':
 	# print(get_quat_angular_distance(q1, core.euler_to_quaternion((0, 180, 0))))
 	# print(get_quat_angular_distance(q1, core.euler_to_quaternion((0, 0, 180))))
 	# pass
+	
+	# data = [[-34.18498160983529, 162.36696123640758, -47.77082064976655],
+	# 		[-33.254664043042155, 166.45073669252278, -51.87984353641723],
+	# 		[-32.0425151793791, 171.39295902289882, -56.85758479140585],
+	# 		[-30.312845492276253, 176.89607074752024, -62.42481334883806],
+	# 		[-27.887332931654115, -177.3761874021451, -68.26338866456251],
+	# 		[-24.670456884890783, -171.76023745536244, -74.05532823555019],
+	# 		[-20.65589689213871, -166.54581281354416, -79.53089393235882],
+	# 		[-15.913903709063252, -161.94521858255777, -84.50036877773108],
+	# 		]
+	#
+	# # code block to validate the SLERP code via 3d plotting
+	# original_point = [1, 0, 0]
+	# t_list = [i/20 for i in range(20)]
+	#
+	# # quat1 = core.euler_to_quaternion(euler1)
+	# # quat2 = core.euler_to_quaternion(euler2)
+	# point_list = []
+	# # point_list_new = []
+	# for rot in data:
+	# 	qrot = core.euler_to_quaternion(rot)
+	# 	newpoint = core.rotate3d((0,0,0), qrot, original_point)
+	# 	point_list.append(newpoint)
+	# 	# rot = core.new_slerp(quat1, quat2, t) # new slerp
+	# 	# newpoint = core.rotate3d((0, 0, 0), rot, original_point)
+	# 	# point_list_new.append(newpoint)
+	# # now graph them
+	# fig = plt.figure()
+	# ax = fig.add_subplot(111, projection='3d')
+	# x,y,z = zip(*point_list)
+	# ax.scatter(x,y,z, label="old")
+	# # x,y,z = zip(*point_list_new)
+	# # ax.scatter(x,y,z, label="new")
+	# ax.scatter(0,0,0, label="origin")  # plot the origin too
+	# ax.set_xlim(-1, 1)
+	# ax.set_ylim(-1, 1)
+	# ax.set_zlim(-1, 1)
+	# # STARTPOINT = core.rotate3d((0,0,0), quat1, original_point)
+	# # ENDPOINT = core.rotate3d((0,0,0), quat2, original_point)
+	# # ax.scatter(*STARTPOINT, marker='x', label='START')
+	# # ax.scatter(*ENDPOINT, marker='x', label='END')
+	# ax.legend()
+	# plt.show(block=True)
+	#
