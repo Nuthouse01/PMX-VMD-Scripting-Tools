@@ -500,7 +500,8 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 						continue
 					# if any control points are not within the box, it's no good
 					# (well, if its only slightly outside the box thats okay, i can clamp it)
-					bez = bezier_list[0]
+					a = bezier_list[0]
+					bez, rms_error, max_error = a
 					cpp = (bez.p[1][0], bez.p[1][1], bez.p[2][0], bez.p[2][1])
 					if not all((0 - CONTROL_POINT_BOX_THRESHOLD < p < 127 + CONTROL_POINT_BOX_THRESHOLD) for p in cpp):
 						continue
@@ -512,8 +513,8 @@ def _simplify_boneframes_position(bonename: str, bonelist: List[vmdstruct.VmdBon
 						print("MATCH! bone='%s' : chan=%d : i,w,z=%d,%d,%d : sign=%d : len=%d" % (
 							bonename, C, i, i+L, z, i_sign, L))
 					if DEBUG_PLOTS:
-						bezier_list[0].plotcontrol()
-						bezier_list[0].plot()
+						bez.plotcontrol()
+						bez.plot()
 						plt.plot(x_points, y_points, 'r+')
 						plt.show(block=True)
 					axis_keep_list.append(i+L)  # then save this proposed endpoint as a valid endpoint,
@@ -672,7 +673,8 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 				continue
 			# if any control points are not within the box, it's no good
 			# (well, if its only slightly outside the box thats okay, i can clamp it)
-			bez = bezier_list[0]
+			a = bezier_list[0]
+			bez, rms_error, max_error = a
 			cpp = (bez.p[1][0], bez.p[1][1], bez.p[2][0], bez.p[2][1])
 			if not all((0-CONTROL_POINT_BOX_THRESHOLD < p < 127+CONTROL_POINT_BOX_THRESHOLD) for p in cpp):
 				continue
@@ -815,21 +817,45 @@ def _finally_put_it_all_together(bonelist: List[vmdstruct.VmdBoneFrame], keepset
 		all_interp_params = []
 		# for each channel (x/y/z/rot),
 		# generate the proper bezier interp curve,
-		for x_points,y_points in allxally:
+		for d,(x_points,y_points) in enumerate(allxally):
 			bezier_list = vectorpaths.fit_cubic_bezier(x_points, y_points,
 													   rms_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS,
-													   max_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX)
-			# TODO: this assertion failed! why!? damnit i dont want to explore this more right now
-			if len(bezier_list) != 1:
-				print('stop it')
-				print("i,z=%d,%d" % (idx_this, idx_next))
-				# bezier_list[0].plotcontrol()
-				# bezier_list[0].plot()
-				plt.plot(x_points, y_points, 'r+')
-				plt.show(block=True)
+													   max_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX,
+													   max_reparam_iter=50,
+													   return_best_onelevel=True)
+			# TODO: this assertion failed! why!? damnit i dont want to explore this more right now...
+			#  basically, the previous steps find endpoints that allow for 'close enogh' fits, not perfect fits.
+			#  so at this stage, any sub-segments are also going to be only 'close enough'. BUT, because they are
+			#  shorter segments being scaled up to full 0-127 size, the error threshold is relatively tighter...
+			#  and in some cases, it's too difficult to attain.
+			# TODO to fix this i need to allow this part of the algorithm to return its "best effort fit", even if it
+			#  doesn't get below the error threshold. that's simple enough!
+			# TODO other idea: use the recursion and return list of results like originally designed
+			#  (need switch to toggle between these two behaviors)
 			
-			assert len(bezier_list) == 1
-			bez = bezier_list[0]
+			# 168,179 on channel0(x) isn't able to refine well enough
+			# best = RMSerr=0.8171 and MAXerr=1.3291
+			# but 165,179 was able to get below the error threshold!
+			# needs 52 iterations to get below 1.2, but it gets there
+			
+			# another problem, a later one fails with RMSerr=1.6185 and MAXerr=2.8596 after 100 iterations
+			# i,z=223,230, chan=1
+			# that can't be fixed by just letting it run longer...
+			# max-err bottoms at 2.8406 at iter 10, and increases from there
+			a = bezier_list[0]
+			bez, rms_error, max_error = a
+			
+			# TODO how the fuck can i get a "bad fit" warning on upperbody bone, the only source is the rotation!? and the rotation should guaranteed pass!?
+			
+			# if rms_error > BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS or max_error > BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX:
+			# 	print("bad fit : i,z=%d,%d, chan=%d : rmserr %f maxerr %f" % (idx_this, idx_next, d, rms_error, max_error))
+			# 	if max_error > 10:
+			# 		print(bez.p)
+			# 		bez.plotcontrol()
+			# 		bez.plot()
+			# 		plt.plot(x_points, y_points, 'r+')
+			# 		plt.show(block=True)
+
 			# clamp all the control points to valid [0-127] range, and also make them be integers
 			cpp = (bez.p[1][0], bez.p[1][1], bez.p[2][0], bez.p[2][1])
 			params = [round(core.clamp(v, 0, 127)) for v in cpp]

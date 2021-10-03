@@ -15,7 +15,8 @@ from . import _path_logger
 
 
 def fit_cubic_bezier(xc, yc, rms_err_tol, max_err_tol=None,
-	max_reparam_iter=20):
+					 max_reparam_iter=20,
+					 return_best_onelevel=False):
 	"""
 	Fit a set of cubic bezier curves to points (xc,yc).
 	The order of the datapoints matters, because the bezier attempts to visit
@@ -26,6 +27,7 @@ def fit_cubic_bezier(xc, yc, rms_err_tol, max_err_tol=None,
 	:param rms_err_tol: RMS error tolerance (in units of xc and yc).
 	:param max_err_tol: (optional) Tolerance for maximum error (in units of xc and yc).
 	:param max_reparam_iter: (optional) Maximum number of reparameterisation iterations.
+	:param return_best_onelevel: if True, return the best-effort result without recursing
 	:return: list of CubicBezier objects
 	"""
 	# _path_logger.debug('Fitting points')
@@ -40,11 +42,14 @@ def fit_cubic_bezier(xc, yc, rms_err_tol, max_err_tol=None,
 	left_tangent = _normalise(p[1,:]-p[0,:])
 	right_tangent = _normalise(p[-2,:]-p[-1,:])
 
-	return _fit_cubic(p, left_tangent, right_tangent, rms_err_tol,
-						max_err_tol, max_reparam_iter=max_reparam_iter)
+	return _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
+					  max_reparam_iter=max_reparam_iter,
+					  return_best_onelevel=return_best_onelevel)
 
 def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
-				max_reparam_iter=20, depth=0):
+			   max_reparam_iter=20,
+			   depth=0,
+			   return_best_onelevel=False):
 	"""Recursive routine to fit cubic bezier to a set of data points.
 
 	:param p: (n,2) array of (x,y) coordinates of points to fit.
@@ -54,6 +59,7 @@ def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
 	:param max_err_tol: Tolerance for maximum error (in units of xc and yc).
 	:param max_reparam_iter: (optional) Maximum number of reparameterisation iterations.
 	:param depth: (optional) count how deep the recursive rabbit hole goes, just for logging
+	:param return_best_onelevel: (optional) if True, return the best-effort result without recursing
 	:return: list of CubicBezier objects
 	"""
 	# this controls the error threshold for "the fit is so bad i'm just gonna split it right away instead of iterating"
@@ -76,7 +82,7 @@ def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
 		dist = np.linalg.norm(p[0,:] - p[1,:])/3.0
 		left = left_tangent*dist
 		right = right_tangent*dist
-		return [CubicBezier([p[0,:], p[0,:]+left, p[1,:]+right, p[1,:]])]
+		return [(CubicBezier([p[0,:], p[0,:]+left, p[1,:]+right, p[1,:]]), 0, 0)]
 
 	# We have more than two points so try to fit a curve.
 	u = _chord_length_parameterise(p)
@@ -87,11 +93,11 @@ def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
 	rms_error, max_error, split_point = _compute_errors_and_split(p, bezier, u)
 	if _acceptable_error(rms_error, max_error, rms_err_tol, max_err_tol):
 		_path_logger.debug('Depth {}: First-try solution! RMSerr={:.4f} and MAXerr={:.4f}'.format(depth, rms_error, max_error))
-		return [bezier]
+		return [(bezier, rms_error, max_error)]
 
 	# If the error is not too large, then try to find an
 	# alternative reparameterisation that has a smaller error.
-	if rms_error < REPARAM_TOL_MULTIPLIER*rms_err_tol:
+	if rms_error < REPARAM_TOL_MULTIPLIER*rms_err_tol or return_best_onelevel:
 
 		for i in range(max_reparam_iter):
 			_path_logger.debug('Depth {}: Reparameterising step {:2d}/{:2d} with RMSerr={:.4f} and MAXerr={:.4f}'.format(depth, i, max_reparam_iter, rms_error, max_error))
@@ -100,10 +106,14 @@ def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
 			rms_error, max_error, split_point = _compute_errors_and_split(p, bezier, uprime)
 			if _acceptable_error(rms_error, max_error, rms_err_tol, max_err_tol):
 				_path_logger.debug('Depth {}: Reparameterised solution! RMSerr={:.4f} and MAXerr={:.4f}'.format(depth, rms_error, max_error))
-				return [bezier]
+				return [(bezier, rms_error, max_error)]
 			u = uprime
 		_path_logger.debug('Depth {}: No reparameterised solution found with RMSerr={:.4f} and MAXerr={:.4f} and split={} and length={}'.format(depth, rms_error, max_error, split_point, len(p)))
 
+	if return_best_onelevel:
+		return [(bezier, rms_error, max_error)]
+	
+	return []  # TODO kind of a hack
 	# We can't refine this anymore, so try splitting at the maximum error point
 	# and fit recursively.
 	_path_logger.debug('Depth {}: Splitting at point {} of {}'.format(depth, split_point, len(p)))
