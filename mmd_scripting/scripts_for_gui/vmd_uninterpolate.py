@@ -314,25 +314,54 @@ def get_corner_sharpness_factor(deltaquat_AB: Tuple[float, float, float, float],
 	factor = 1 - (ang_d / math.pi)
 	return factor
 
-def reverse_slerp(q, q0, q1) -> Tuple[float,float,float]:
+def reverse_slerp(q, q0, q1) -> Tuple[float,float]:
 	# https://math.stackexchange.com/questions/2346982/slerp-inverse-given-3-quaternions-find-t
 	# t = log(q0not * q) / log(q0not * q1)
 	# elementwise division, except skip the w component
-	q0not = core.my_quat_conjugate(q0)
-	a = core.quat_ln(core.hamilton_product(q0not, q))
-	b = core.quat_ln(core.hamilton_product(q0not, q1))
-	a = a[1:4]
-	b = b[1:4]
-	if 0 in b:
-		# this happens when q0 EXACTLY EQUALS q1... so, if interpolating between Z and Z, you're not moving at all, right?
-		# actually, what if something starts at A, goes to B, then returns to A? it's all perfectly linear with
-		# start/end exactly the same! but it's definitely 2 segments. so I cant just return a static value.
-		# i'll return the angular distance between q and q0 instead, its on a different scale but w/e, it gets
-		# normalized to 127 anyways
-		x = 100 * get_quat_angular_distance(q0, q)
-		return x,x,x
-	# ret = tuple(aa/bb for aa,bb in zip(a,b))
-	return a[0]/b[0], a[1]/b[1], a[2]/b[2]
+	if not rotation_close(q0, q1):
+		dbg = ""
+		if core.my_dot(q0,q1) < 0:
+			dbg += "a"
+		if core.my_dot(q, q0) < 0:
+			dbg += "b"
+		if core.my_dot(q, q1) < 0:
+			dbg += "c"
+		if dbg: print(dbg)
+		q0not = core.my_quat_conjugate(q0)
+		num = core.quat_ln(core.hamilton_product(q0not, q))
+		dom = core.quat_ln(core.hamilton_product(q0not, q1))
+		# todo problem 1: at rfootik 248, there's something funny going on iwht rev-slerp... i think it is broken cuz its going the long way around?
+		#  so i need to reverse one of the input quats, conditionally based on... something...
+		# todo problem 2: 'b' sometimes contains 0s even when the inputs are truly different
+		#  0 just means *that channel* is not changing...?
+		
+		# compute the result for each channel that doesn't div-by-zero-error
+		channel_results = []
+		for a,b in zip(num[1:4],dom[1:4]):
+			if b == 0: continue
+			channel_results.append(a/b)
+			
+		if len(channel_results) != 0:
+			# compute the average t-value
+			avg = sum(channel_results) / len(channel_results)
+			# compute the deviation between the channels
+			channel_results.sort()  # sort the channels to be ascending
+			diff = channel_results[-1] - channel_results[0]  # the diff is the biggest minus smallest
+			return avg, diff
+		else:
+			print("OH COME ON")
+
+	
+	# fall thru case
+	# this also happens if b is ALL zeros
+	# this happens when q0 EXACTLY EQUALS q1... so, if interpolating between Z and Z, you're not moving at all, right?
+	# actually, what if something starts at A, goes to B, then returns to A? it's all perfectly linear with
+	# start/end exactly the same! but it's definitely 2 segments. so I cant just return a static value.
+	# i'll return the angular distance between q and q0 instead, its on a different scale but w/e, it gets
+	# normalized to 127 anyways
+	x = 100 * get_quat_angular_distance(q0, q)
+	return x, 0
+	
 	
 
 
@@ -590,13 +619,12 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 				#  this currently runs in O(n^2) which is unacceptable
 				#  but if i test less than every point, then my QoR will decrease...
 				q_this_quat = core.euler_to_quaternion(bonelist[q].rot)
-				rev = reverse_slerp(q_this_quat, i_this_quat, z_this_quat)
+				avg, diff = reverse_slerp(q_this_quat, i_this_quat, z_this_quat)
 				# 'rev' is the slerp T-value derived from x/y/z channels of the quats... 3 values that *should* all match
 				# find the greatest difference between any of these 3 values
-				diff = max(math.fabs(d) for d in (rev[0]-rev[1], rev[1]-rev[2], rev[0]-rev[2]))
 				temp_reverse_slerp_diffs.append(diff)
 				# store this reverse-slerp T value for use later
-				temp_reverse_slerp_results.append(sum(rev) / 3)
+				temp_reverse_slerp_results.append(avg)
 				# print(i, q, z, diff)
 				if diff >= REVERSE_SLERP_TOLERANCE:
 					# if any of the frames between i and z cannot be reverse-slerped, then break
@@ -878,7 +906,8 @@ def _finally_put_it_all_together(bonelist: List[vmdstruct.VmdBoneFrame], keepset
 
 def make_xy_from_segment_rotation(bonelist: List[vmdstruct.VmdBoneFrame],
 								  idx_this:int,
-								  idx_next:int,) -> Tuple[List[float], List[float]]:
+								  idx_next:int,
+								  noscale=False) -> Tuple[List[float], List[float]]:
 	# for each channel (x/y/z/rot),
 	# look at all the points in between (including endpoints),
 	frame_this = bonelist[idx_this]
@@ -891,25 +920,29 @@ def make_xy_from_segment_rotation(bonelist: List[vmdstruct.VmdBoneFrame],
 		x_pos = point.f - frame_this.f
 		x_points.append(x_pos)
 		q = core.euler_to_quaternion(point.rot)
-		t3 = reverse_slerp(q, quat_start, quat_end)
-		y_pos = sum(t3) / 3
-		y_points.append(y_pos)
-	return scale_two_lists(x_points, y_points, 127)
+		avg,diff = reverse_slerp(q, quat_start, quat_end)
+		y_points.append(avg)
+	if noscale: return x_points, y_points
+	else:       return scale_two_lists(x_points, y_points, 127)
 
 def make_xy_from_segment_scalar(bonelist: List[vmdstruct.VmdBoneFrame],
 								idx_this:int,
 								idx_next:int,
-								getter: Callable[[vmdstruct.VmdBoneFrame], float]) -> Tuple[List[float], List[float]]:
+								getter: Callable[[vmdstruct.VmdBoneFrame], float],
+								noscale=False) -> Tuple[List[float], List[float]]:
 	# look at all the points in between (including endpoints),
-	y_points = []
-	x_points = []
-	for i in range(idx_this, idx_next + 1):
-		point = bonelist[i]
-		x_pos = point.f - bonelist[idx_this].f
-		x_points.append(x_pos)
-		y_pos = getter(point) - getter(bonelist[idx_this])
-		y_points.append(y_pos)
-	return scale_two_lists(x_points, y_points, 127)
+	x_points = [bonelist[i].f for i in range(idx_this, idx_next + 1)]
+	y_points = [getter(bonelist[i]) for i in range(idx_this, idx_next + 1)]
+	# y_points = []
+	# x_points = []
+	# for i in range(idx_this, idx_next + 1):
+	# 	point = bonelist[i]
+	# 	x_pos = point.f - bonelist[idx_this].f
+	# 	x_points.append(x_pos)
+	# 	y_pos = getter(point) - getter(bonelist[idx_this])
+	# 	y_points.append(y_pos)
+	if noscale: return x_points, y_points
+	else:       return scale_two_lists(x_points, y_points, 127)
 
 
 
