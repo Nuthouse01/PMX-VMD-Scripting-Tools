@@ -181,8 +181,8 @@ BONE_ROTATION_MAX_Z_LOOKAHEAD = 500
 # TODO: how the fuck can i effectively visualize quaternions? i need to see them plotted on a globe or something
 #  so i can have confidence that my "how straight should be considered a straight line" threshold is working right
 
-def rotation_close(_a, _b) -> bool:
-	return all(math.isclose(_aa, _bb, abs_tol=1e-06) for _aa, _bb in zip(_a, _b))
+def rotation_close(_a, _b, tol=1e-6) -> bool:
+	return all(math.isclose(_aa, _bb, abs_tol=tol) for _aa, _bb in zip(_a, _b))
 
 def find_local_peak_valley(L:List[float]) -> List[int]:
 	# return the list of all local minimums or maximums in the input list
@@ -191,12 +191,48 @@ def find_local_peak_valley(L:List[float]) -> List[int]:
 	if len(L) == 2: return [0,1]
 	# i know that the length is 3 or greater
 	s = {0, len(L)-1}  # define a set that already contains the endpoints
-	for i in range(1, len(L)-1):
-		a = L[i-1]
-		b = L[i]
-		c = L[i+1]
-		if (a <= b > c) or (a >= b < c):
+	# finding discrete peaks is easy... what do i do about plateaus?
+	# i guess i only want to add the earliest edge of a plateau?
+	# but i also want to ignore plateaus at the start or end...?
+	# if i see a plateau, and then i see rising or falling (such that it creates a local minmax), then add the leading edge of the plateau
+	# if it starts with a flat, which flat-state doesn't matter because 0 will be added to the set, which is fine
+	# if it ends with a flat, it will never see the state stop being flat and will never add it to the set
+	flat_start_idx = 0
+	last_state = 3  # rising=1, falling=2, flat-last-rising=3, flat-last-falling=4
+	for i in range(0, len(L)-1):
+		a = L[i]    # this
+		b = L[i+1]  # next
+		# first, determine state of this-to-next
+		if a > b:
+			state = 2  # falling
+		elif a < b:
+			state = 1  # rising
+		elif last_state == 2:
+			state = 4  # flat-last-falling
+			flat_start_idx = i  # if it was falling, and now flat, then save idx of beginning of flat
+		elif last_state == 1:
+			state = 3  # flat-last-rising
+			flat_start_idx = i  # if it was rising, and now flat, then save idx of beginning of flat
+		else:
+			# if currently flat and was flat, then retain state
+			state = last_state
+		
+		# second, compare with state of prev-to-this
+		# in most cases, state will not change
+		if last_state == state:
+			pass
+		# if was rising, now falling OR was falling, now rising
+		elif (last_state == 1 and state == 2) or (last_state == 2 and state == 1):
+			# then store idx of THIS
 			s.add(i)
+		# if was flat-last-rising, now falling, then store the flat-start-idx
+		# if was flat-last-falling, now rising, then store the flat-start-idx
+		elif (last_state == 3 and state == 2) or (last_state == 4 and state == 1):
+			s.add(flat_start_idx)
+		
+		# third, move state to last-state
+		last_state = state
+		
 	return sorted(list(s))
 
 def sign(U):
@@ -336,7 +372,7 @@ def reverse_slerp(q, q0, q1) -> Tuple[float,float]:
 	# t = log(q0not * q) / log(q0not * q1)
 	# elementwise division, except skip the w component
 	
-	if not rotation_close(q0, q1):
+	if not rotation_close(q0, q1, tol=1e-6):
 		# check for and correct quaternion "handedness" to fix slerp going along wrong path
 		# todo problem: the slerp is doing something strange at certain points... how is it possible for what1, what2, what3
 		#  to be printed? it's a triangle, there should not be only one inequalty here????
@@ -378,7 +414,7 @@ def reverse_slerp(q, q0, q1) -> Tuple[float,float]:
 			diff = channel_results[-1] - channel_results[0]  # the diff is the biggest minus smallest
 			return avg, diff
 		else:
-			print("OH COME ON")
+			print("ERR OH COME ON")
 
 	
 	# fall thru case
@@ -681,10 +717,10 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 		# from z, walk backward and test endpoint quality at each frame!
 		# the y-values are already calculated, mostly, just need to add endpoints:
 		# if the change in rotation is basically zero, append a 0. if the change in rotation is something "real", append a 1.
-		if rotation_close(bonelist[i].rot, bonelist[z].rot):
-			y_points_all.append(0)
-		else:
-			y_points_all.append(1)
+		final, _ = reverse_slerp(core.euler_to_quaternion(bonelist[z].rot),
+							     core.euler_to_quaternion(bonelist[i].rot),
+							     core.euler_to_quaternion(bonelist[z].rot))
+		y_points_all.append(final)
 		y_points_all.insert(0, 0)
 		# the x-values are easy to calculate:
 		x_points_all = [bonelist[P].f for P in range(i, z + 1)]
