@@ -1,5 +1,5 @@
 import math
-from typing import List, Tuple, Set, Sequence, Callable, Any
+from typing import List, Tuple, Set, Sequence, Callable, Any, Generator
 import time
 
 import mmd_scripting.core.nuthouse01_core as core
@@ -180,6 +180,25 @@ BONE_ROTATION_MAX_Z_LOOKAHEAD = 500
 
 # TODO: how the fuck can i effectively visualize quaternions? i need to see them plotted on a globe or something
 #  so i can have confidence that my "how straight should be considered a straight line" threshold is working right
+
+
+# TODO investigate 'local breakup' when length = 2(3) but it breaks into 2 segments? are there really so many Vs?
+
+# TODO: ARMTWIST BONES are probably exclusively along one axis, whole thing is slerpable, MASSIVE efficiency loss to
+#  recompute that with every pass, really should reuse past results
+
+def get_some_interp_testpoints(start:int, end:int, maxnum:int) ->  Generator[int, None, None]:
+	# basically replaces the "range" operator, but lets me cap the number of intermediate points
+	# should this return as a list? or as a generator with yield? idk
+	# let's set it up as a generator, sure
+	R = end-start
+	if R <= maxnum:
+		for i in range(start,end):
+			yield i
+	else:
+		for i in range(maxnum):
+			yield start + round(i * R / maxnum)
+	pass
 
 def rotation_close(_a, _b, tol=1e-6) -> bool:
 	return all(math.isclose(_aa, _bb, abs_tol=tol) for _aa, _bb in zip(_a, _b))
@@ -674,6 +693,7 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 			continue
 			
 		for z in range(i + 1, min(len(bonelist), i + BONE_ROTATION_MAX_Z_LOOKAHEAD)):
+		# for z in range(i + 1, len(bonelist)):
 			z_this_quat = core.euler_to_quaternion(bonelist[z].rot)
 			# walk forward from here, testing frames as i go
 			# NEW IDEA:
@@ -683,6 +703,7 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 			temp_reverse_slerp_results = []
 			temp_reverse_slerp_diffs = []
 			for q in range(i + 1, z):
+			# for q in get_some_interp_testpoints(i + 1, z, maxnum=200):
 				# this is an exceptionally poor algorithm but idk how else to do this
 				# TODO: optimize this by making a constant/cap on the number of points that i test?
 				#  this currently runs in O(n^2) which is unacceptable
