@@ -322,10 +322,10 @@ def get_difference_quat(quatA: Tuple[float, float, float, float],
 def get_quat_angular_distance(quatA: Tuple[float, float, float, float],
 							  quatB: Tuple[float, float, float, float]) -> float:
 	"""
-	Calculate the "angular distance" between two quaternions, in radians. Opposite direction = pi = 3.14.
+	Calculate the "angular distance" between two quaternions, in radians. Opposite direction = 1.0.
 	:param quatA: WXYZ quaternion A
 	:param quatB: WXYZ quaternion B
-	:return: float radians
+	:return: float [0-1]
 	"""
 	# https://math.stackexchange.com/questions/90081/quaternion-distance
 	# theta = arccos{2 * dot(qA, qB)^2 - 1}
@@ -333,8 +333,6 @@ def get_quat_angular_distance(quatA: Tuple[float, float, float, float],
 	# so i have a bit more confidence in this approach, i think?
 	quatA = core.normalize_distance(quatA)
 	quatB = core.normalize_distance(quatB)
-	
-	# TODO: how do i handle if one or both quats are zero-rotation!?
 	
 	a = core.my_dot(quatA, quatB)
 	b = (2 * (a ** 2)) - 1
