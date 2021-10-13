@@ -331,7 +331,7 @@ def get_difference_quat(quatA: Tuple[float, float, float, float],
 def get_quat_angular_distance(quatA: Tuple[float, float, float, float],
 							  quatB: Tuple[float, float, float, float]) -> float:
 	"""
-	Calculate the "angular distance" between two quaternions, in radians. Opposite direction = 1.0.
+	Calculate the "angular distance" between two quaternions, in radians. Opposite direction = pi.
 	:param quatA: WXYZ quaternion A
 	:param quatB: WXYZ quaternion B
 	:return: float [0-1]
@@ -348,7 +348,8 @@ def get_quat_angular_distance(quatA: Tuple[float, float, float, float],
 	c = core.clamp(b, -1.0, 1.0)  # this may not be necessary? better to be safe tho
 	d = math.acos(c)
 	# d: radians, 0 = same, pi = opposite
-	return d / math.pi
+	# return d / math.pi
+	return d
 
 def get_corner_sharpness_factor(deltaquat_AB: Tuple[float, float, float, float],
 								deltaquat_BC: Tuple[float, float, float, float],) -> float:
