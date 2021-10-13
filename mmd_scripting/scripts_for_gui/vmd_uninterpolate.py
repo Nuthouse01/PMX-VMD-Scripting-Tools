@@ -702,6 +702,8 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 		# +++++++++++++++++++++++++++++++++++++
 		# the y-datapoints should be STRICTLY MONOTONIC (increasing or decreasing), so break the current y-values
 		#  apart until that's the case!
+		if z-i >= 200:
+			print(f"LONG SEGMENT, i-z= {i}-{z} : len={z-i}")
 		local_minmax = find_local_peak_valley(y_points_all)
 		if (DEBUG >= 2) and (len(local_minmax) != 2):
 			# if breakup is needed (not often) then print a message
