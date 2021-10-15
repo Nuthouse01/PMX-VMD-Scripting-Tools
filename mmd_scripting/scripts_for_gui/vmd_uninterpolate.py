@@ -24,12 +24,12 @@ DEBUG = 1
 # debug 4: bez logging always on
 DEBUG_PLOTS = False
 
-if DEBUG >= 4:
-	# this prints a bunch of useful stuff in the bezier regression, and a bunch of useless stuff from matplotlib
-	logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
+# if DEBUG >= 4:
+# 	# this prints a bunch of useful stuff in the bezier regression, and a bunch of useless stuff from matplotlib
+# 	logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 
-if DEBUG_PLOTS:
-	import matplotlib.pyplot as plt
+# if DEBUG_PLOTS:
+import matplotlib.pyplot as plt
 
 helptext = '''=================================================
 vmd_uninterpolate:
@@ -142,6 +142,12 @@ TOTAL TOTAL RESULT: keep 143284/292580 = 48.97%
 TIME FOR ALL BONES: 3762.887979030609
 down to 62 minutes! much faster!
 I think most of the time comes from the armtwist/wristtwist bones
+
+log3:
+add the "find the entire linear section and operate on all monotonic segments within it" idea
+from 62 minutes to 14 minutes :D
+there are a sparse handful of places where one method or the other used different numbers of frames
+for a section but it's a very minor difference.
 '''
 
 # enable/disable switches
@@ -166,6 +172,8 @@ CONTROL_POINT_BOX_THRESHOLD = 2
 # this reduces quality-of-results slightly (by not stripping out every single theoretically collapsable frame)
 # but, it's needed to prevent O(n^2) compute time from getting out of hand :(
 BONE_ROTATION_MAX_Z_LOOKAHEAD = 500
+
+BONE_ROTATION_MAX_SAMPLES = 200
 
 # TODO: use looser bezier parameters for rotation section?
 
@@ -587,7 +595,7 @@ def _simplify_boneframes_scalar(bonename: str,
 		
 		# +++++++++++++++++++++++++++++++++++++
 		# generate all the x-values and y-values (will scale to [0-127] later)
-		x_points_all, y_points_all = make_xy_from_segment_scalar(bonelist, i, z, getter)
+		x_points_all, y_points_all = make_xy_from_segment_scalar(bonelist, i, z, getter, noscale=True)
 		assert len(x_points_all) == len(y_points_all)
 		
 		# +++++++++++++++++++++++++++++++++++++
@@ -613,6 +621,8 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 	:return: set of ints, referring to indices within bonelist that are "important frames"
 	"""
 	chan = "R"
+	
+	# global DEBUG_PLOTS
 	
 	keepset = set()
 	i = 0
@@ -641,8 +651,8 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 		# +++++++++++++++++++++++++++++++++++++
 		# now, walk FORWARD from here until i identify a frame z that might be an 'endpoint' of an over-key section
 		y_points_all = []
-		for z in range(i + 1, min(len(bonelist), i + BONE_ROTATION_MAX_Z_LOOKAHEAD)):
-		# for z in range(i + 1, len(bonelist)):
+		# for z in range(i + 1, min(len(bonelist), i + BONE_ROTATION_MAX_Z_LOOKAHEAD)):
+		for z in range(i + 1, len(bonelist)):
 			z_this_quat = core.euler_to_quaternion(bonelist[z].rot)
 			# walk forward from here, testing frames as i go
 			# NEW IDEA:
@@ -651,8 +661,8 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 			endpoint_good = True
 			temp_reverse_slerp_results = []
 			temp_reverse_slerp_diffs = []
-			for q in range(i + 1, z):
-			# for q in get_some_interp_testpoints(i + 1, z, maxnum=200):
+			# for q in range(i + 1, z):
+			for q in get_some_interp_testpoints(i + 1, z, maxnum=BONE_ROTATION_MAX_SAMPLES):
 				# this is an exceptionally poor algorithm but idk how else to do this
 				# TODO: optimize this by making a constant/cap on the number of points that i test?
 				#  this currently runs in O(n^2) which is unacceptable
@@ -675,25 +685,33 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 			if not endpoint_good:
 				# when i find something that isn't a good endpoint, then "return" the last good endpoint
 				z -= 1
+				if DEBUG >= 2:
+					if temp_reverse_slerp_diffs:
+						print(f"rev-slerp-segment : i-z= {i}-{z} : pts={z-i+1} : nextdiff={max(temp_reverse_slerp_diffs)}")
+					else:
+						print(f"rev-slerp-segment : i-z= {i}-{z} : pts={z-i+1}")
 				break
 			else:
 				# if i got thru all the points between i and z, and they all passed, then this z is the last known good endpoint
 				# store the reverse-slerp results for later
 				y_points_all = temp_reverse_slerp_results
 		
+		# if i == 1190:
+		# 	DEBUG_PLOTS = True
 		# now i have z, and anything past z is DEFINITELY NOT the endpoint for this sequence
 		# everything from i to z is "slerpable", meaning it is all falling on a linear arc
 		# BUT, that doesn't mean it's all on one bezier! it might be several beziers in a row...
 		# from z, walk backward and test endpoint quality at each frame!
 		# the y-values are already calculated, mostly, just need to add endpoints:
 		# if the change in rotation is basically zero, append a 0. if the change in rotation is something "real", append a 1.
-		final, _ = reverse_slerp(core.euler_to_quaternion(bonelist[z].rot),
-							     core.euler_to_quaternion(bonelist[i].rot),
-							     core.euler_to_quaternion(bonelist[z].rot))
-		y_points_all.append(final)
-		y_points_all.insert(0, 0)
-		# the x-values are easy to calculate:
-		x_points_all = [bonelist[P].f for P in range(i, z + 1)]
+		# final, _ = reverse_slerp(core.euler_to_quaternion(bonelist[z].rot),
+		# 					     core.euler_to_quaternion(bonelist[i].rot),
+		# 					     core.euler_to_quaternion(bonelist[z].rot))
+		# y_points_all.append(final)
+		# y_points_all.insert(0, 0)
+		# # the x-values are easy to calculate:
+		# x_points_all = [bonelist[P].f for P in range(i, z + 1)]
+		x_points_all, y_points_all = make_xy_from_segment_rotation(bonelist, i, z, noscale=True)
 
 		# now i have x_points_all and y_points_all, same length, both in range [0-1], including endpoints
 		# because of slerp oddities it is possible that the y-points in the middle are outside [0-1] but thats okay i think
@@ -702,13 +720,12 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 		# +++++++++++++++++++++++++++++++++++++
 		# the y-datapoints should be STRICTLY MONOTONIC (increasing or decreasing), so break the current y-values
 		#  apart until that's the case!
-		if z-i >= 200:
-			print(f"LONG SEGMENT, i-z= {i}-{z} : len={z-i}")
+		if z-i >= BONE_ROTATION_MAX_SAMPLES:
+			print(f"LONG SEGMENT : i-z= {i}-{z} : pts={z-i+1}")
 		local_minmax = find_local_peak_valley(y_points_all)
 		if (DEBUG >= 2) and (len(local_minmax) != 2):
 			# if breakup is needed (not often) then print a message
-			print("local breakup: bone='%s' : i-z= %d-%d : len=%d : segments=%d" % (bonename, i, z, z-i, len(local_minmax)-1))
-			# print(local_minmax)
+			print(f"breakup : i-z= {i}-{z} : pts={z-i+1} : numseg={len(local_minmax)} : list=" + str([i+v for v in local_minmax]))
 			# plt.plot(x_points_all, y_points_all, 'r+')
 			# plt.show(block=True)
 		if DEBUG_PLOTS:
@@ -718,14 +735,20 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 				plt.show(block=True)
 		
 		# +++++++++++++++++++++++++++++++++++++
-		local_start = local_minmax[0]
-		local_end = local_minmax[1]
-		x_points = x_points_all[local_start:local_end+1]
-		y_points = y_points_all[local_start:local_end+1]
+		# if breakup was not needed, then i can safely make beziers from the one region that was found
+		# if breakup was needed, then i should make beziers from all monotonic segments except the last?? half?? all??
+		# lets start with all
+		initial_i = i
+		# for mm in range(1):
+		for mm in range(len(local_minmax)-1):
+			local_start = local_minmax[mm]
+			local_end = local_minmax[mm+1]
+			x_points = x_points_all[local_start:local_end+1]
+			y_points = y_points_all[local_start:local_end+1]
 		
-		k = make_beziers_from_datarange(x_points, y_points, local_start + i, local_end + i, bonename, chan)
-		i = max(k)
-		keepset.update(k)
+			k = make_beziers_from_datarange(x_points, y_points, local_start + initial_i, local_end + initial_i, bonename, chan)
+			i = max(k)
+			keepset.update(k)
 		
 		pass  # end "while i < len(bonelist)"
 	# now i have found every frame# that is important due to position changes
@@ -811,7 +834,7 @@ def make_beziers_from_datarange(x_points_all: List[float], y_points_all: List[fl
 					# 	  (bonename, i, z, i+v, i+w, w-v+1))
 				else:
 					# if there are more than 1 segment, then each also prints its index
-					print(f"MATCH! bone='{bonename}' {chan} : i-z= {i}-{z} : v-w= {i+v}-{i+w} : pts={w-v+1} : seg={segment_count}")
+					print(f"MATCH! bone='{bonename}' {chan} : i-z= {i}-{z} : v-w= {i+v}-{i+w} : pts={w-v+1} : #={segment_count}")
 					# print("MATCH! bone='%s' : i-z= %d-%d : v-w= %d-%d : pts=%d : seg=%d%s" %
 					# 	  (bonename, i, z, i+v, i+w, w-v+1, segment_count, "*" if (w == num_all_points-1) else ""))
 				# only show the graph if it is more than a simple two-point line segment
@@ -859,6 +882,8 @@ def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdst
 		# if bonename != "右足ＩＫ" and bonename != "左足ＩＫ" and bonename != "上半身" and bonename != "センター":
 		# 	continue
 		# if bonename != "右足ＩＫ":
+		# 	continue
+		# if bonename != "上半身2":
 		# 	continue
 		print("BONE '%s' LEN %d" % (bonename, len(bonelist)))
 		sofarbonelen += len(bonelist)
