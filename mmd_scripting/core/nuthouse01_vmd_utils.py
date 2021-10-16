@@ -31,6 +31,7 @@ def assert_no_overlapping_frames(frames: List[BONEFRAME_OR_MORPHFRAME]) -> List[
 		else:
 			# if no, keep this frame and make it part of the list that is returned
 			ret.append(frame)
+		pairs.add(key)
 	if num_collisions:
 		core.MY_PRINT_FUNC("WARNING: removed %d overlapping frames (same name, same timestep)" % num_collisions)
 	return ret
