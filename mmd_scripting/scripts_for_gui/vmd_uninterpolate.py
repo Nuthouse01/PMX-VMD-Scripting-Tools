@@ -1071,6 +1071,259 @@ def make_xy_from_segment_scalar(bonelist: List[vmdstruct.VmdBoneFrame],
 	else:       return scale_two_lists(x_points, y_points, 127)
 
 
+def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
+	# H = plt.hist([j for j in ANGLE_SHARPNESS_FACTORS if j!=0 and j!=1], bins=40, density=True)
+	# print("factors=", len(ANGLE_SHARPNESS_FACTORS))
+	# H = plt.hist(ANGLE_SHARPNESS_FACTORS, bins=16, density=True)
+	# plt.show()
+	print("")
+	
+	# conqueror full key (no foot ik, smaller pos dataset):
+	# morph 0.175
+	# xpos 0.094
+	# ypos 0.080
+	# zpos 0.069
+	# rot 0.078 cutoff at 0.5
+	
+	# marionette:
+	# morph 0.098
+	# xpos 0.155
+	# ypos 0.199
+	# zpos 0.160
+	# rot  0.078 cutoff at 0.5
+	
+	# animaru w/ exp (not full keyed!):
+	# morph 0.515 (!!!), massive spike at 0.5 and at 1.0
+	# xpos 0.195
+	# ypos 0.188
+	# zpos 0.265 (no pos channels have big spike at zero)
+	# rot 0.130 cutoff at 0.7
+	
+	# hibana (full keyed)
+	# xpos 0.096
+	# ypos 0.110
+	# zpos 0.053
+	# rot 0.091 cutoff at 0.6
+	
+	# getting "kinda close" is important, getting the exact right value is not!
+	# actually i dont need the morph value at all lol
+	# xpos ~ 0.15
+	# ypos ~ 0.18
+	# zpos ~ 0.16
+	# rot ~ 0.10
+	
+	if vmd.morphframes:
+		allmorphlist = vmdutil.assert_no_overlapping_frames(vmd.morphframes)
+		allmorphdict = vmdutil.dictify_framelist(allmorphlist)
+		
+		delta_rate_dataset = []
+		for morphname, morphlist in allmorphdict.items():
+			# i only care about delta between frames, if there is only one frame then i dont care
+			if len(morphlist) < 3: continue
+			print(f"morph '{morphname}' len {len(morphlist)}")
+			# for each pair of frames,
+			for i in range(len(morphlist)-1):
+				c_this = morphlist[i]
+				c_next = morphlist[i + 1]
+				# get the val-change-per-frame,
+				delta_val = (c_next.val - c_this.val)
+				delta_time = (c_next.f - c_this.f)
+				delta_rate = abs(delta_val) / delta_time
+				# if the delta is not zero, add it to the set
+				# 000.00100000
+				if delta_rate > 1e-3:
+				# if not delta_val == 0:
+					# the dataset should be weighted by length, i think
+					delta_rate_dataset.extend([delta_rate] * delta_time)
+		# now that i have the deltas for all morphs, get the avg and get the histogram
+		if delta_rate_dataset:
+			print(min(delta_rate_dataset))
+			avg = sum(delta_rate_dataset) / len(delta_rate_dataset)
+			print(f"average morph delta rate = {avg}")
+			H = plt.hist(delta_rate_dataset, bins=40, density=True)
+			plt.show(block=True)
+			pass
+	
+	if vmd.boneframes:
+		allbonelist = vmdutil.assert_no_overlapping_frames(vmd.boneframes)
+		allbonedict = vmdutil.dictify_framelist(allbonelist)
+		
+		delta_rate_dataset_x = []
+		delta_rate_dataset_y = []
+		delta_rate_dataset_z = []
+		delta_rate_dataset_rot = []
+		for bonename, bonelist in allbonedict.items():
+			# i only care about delta between frames, if there is only one frame then i dont care
+			if len(bonelist) < 3: continue
+			if bonename in ['アホ毛１','アホ毛２','前髪１','前髪１_２','前髪２','前髪２_２','前髪３','前髪３_２','右もみあげ１','右もみあげ２','左もみあげ１','左もみあげ２',]: continue
+			print(f"bone '{bonename}' len {len(bonelist)}")
+			# for each pair of frames,
+			for i in range(len(bonelist)-1):
+				c_this = bonelist[i]
+				c_next = bonelist[i + 1]
+				delta_time = (c_next.f - c_this.f)
+				
+				# X
+				# get the val-change-per-frame,
+				delta_val = (c_next.pos[0] - c_this.pos[0])
+				delta_rate = abs(delta_val) / delta_time
+				# if the delta is not zero, add it to the set
+				# if thresh=1e-3, avg=0.10
+				# if thresh=1e-2, avg=0.155
+				if delta_rate > 1e-2:
+					# the dataset should be weighted by length, i think
+					delta_rate_dataset_x.extend([delta_rate] * delta_time)
+				
+				# Y
+				# get the val-change-per-frame,
+				delta_val = (c_next.pos[1] - c_this.pos[1])
+				delta_rate = abs(delta_val) / delta_time
+				# if the delta is not zero, add it to the set
+				# if thresh=1e-3, avg=0.141
+				# if thresh=1e-2, avg=0.198
+				if delta_rate > 1e-2:
+					delta_rate_dataset_y.extend([delta_rate] * delta_time)
+				
+				# Z
+				# get the val-change-per-frame,
+				delta_val = (c_next.pos[2] - c_this.pos[2])
+				delta_rate = abs(delta_val) / delta_time
+				# if the delta is not zero, add it to the set
+				# if thresh=1e-3, avg=
+				# if thresh=1e-2, avg=0.160
+				if delta_rate > 1e-2:
+					delta_rate_dataset_z.extend([delta_rate] * delta_time)
+				
+				# rotation
+				# get the val-change-per-frame,
+				delta_val = get_quat_angular_distance(core.euler_to_quaternion(c_this.rot),
+													  core.euler_to_quaternion(c_next.rot))
+				delta_rate = abs(delta_val) / delta_time
+				# if the delta is not zero, add it to the set
+				# if thresh=0,    avg=0.055
+				# if thresh=1e-2, avg=0.079
+				if delta_rate > 1e-2:
+					delta_rate_dataset_rot.extend([delta_rate] * delta_time)
+				
+		# now that i have the deltas for all bones, get the avg and get the histogram
+		if delta_rate_dataset_x:
+			avg = sum(delta_rate_dataset_x) / len(delta_rate_dataset_x)
+			print(f"average bone x-position delta rate = {avg}")
+			H = plt.hist(delta_rate_dataset_x, bins=40, density=True)
+			plt.show(block=True)
+		
+		# now that i have the deltas for all bones, get the avg and get the histogram
+		if delta_rate_dataset_y:
+			avg = sum(delta_rate_dataset_y) / len(delta_rate_dataset_y)
+			print(f"average bone y-position delta rate = {avg}")
+			H = plt.hist(delta_rate_dataset_y, bins=40, density=True)
+			plt.show(block=True)
+		
+		# now that i have the deltas for all bones, get the avg and get the histogram
+		if delta_rate_dataset_z:
+			avg = sum(delta_rate_dataset_z) / len(delta_rate_dataset_z)
+			print(f"average bone z-position delta rate = {avg}")
+			H = plt.hist(delta_rate_dataset_z, bins=40, density=True)
+			plt.show(block=True)
+		
+		# now that i have the deltas for all bones, get the avg and get the histogram
+		if delta_rate_dataset_rot:
+			avg = sum(delta_rate_dataset_rot) / len(delta_rate_dataset_rot)
+			print(f"average bone rot-position delta rate = {avg}")
+			H = plt.hist(delta_rate_dataset_rot, bins=40, density=True)
+			plt.show(block=True)
+		pass
+	
+	if vmd.camframes:
+		camlist = vmd.camframes
+		
+		delta_rate_dataset_x = []
+		delta_rate_dataset_y = []
+		delta_rate_dataset_z = []
+		delta_rate_dataset_rot = []
+
+		print(f"cam len {len(camlist)}")
+		# for each pair of frames,
+		for i in range(len(camlist) - 1):
+			c_this = camlist[i]
+			c_next = camlist[i + 1]
+			delta_time = (c_next.f - c_this.f)
+			
+			# X
+			# get the val-change-per-frame,
+			delta_val = (c_next.pos[0] - c_this.pos[0])
+			delta_rate = abs(delta_val) / delta_time
+			# if the delta is not zero, add it to the set
+			# 000.00100000
+			# if thresh=1e-3, avg=0.10
+			# if thresh=1e-2, avg=0.155
+			if delta_rate > 1e-2:
+				# the dataset should be weighted by length, i think
+				delta_rate_dataset_x.extend([delta_rate] * delta_time)
+			
+			# Y
+			# get the val-change-per-frame,
+			delta_val = (c_next.pos[1] - c_this.pos[1])
+			delta_rate = abs(delta_val) / delta_time
+			# if the delta is not zero, add it to the set
+			# 000.00100000
+			# if thresh=1e-3, avg=0.141
+			# if thresh=1e-2, avg=0.198
+			if delta_rate > 1e-2:
+				delta_rate_dataset_y.extend([delta_rate] * delta_time)
+			
+			# Z
+			# get the val-change-per-frame,
+			delta_val = (c_next.pos[2] - c_this.pos[2])
+			delta_rate = abs(delta_val) / delta_time
+			# if the delta is not zero, add it to the set
+			# 000.00100000
+			# if thresh=1e-3, avg=
+			# if thresh=1e-2, avg=0.160
+			if delta_rate > 1e-2:
+				delta_rate_dataset_z.extend([delta_rate] * delta_time)
+			
+			# rotation
+			# get the val-change-per-frame,
+			delta_val = get_quat_angular_distance(core.euler_to_quaternion(c_this.rot),
+												  core.euler_to_quaternion(c_next.rot))
+			delta_rate = abs(delta_val) / delta_time
+			# if the delta is not zero, add it to the set
+			# 000.00100000
+			# if thresh=0,    avg=0.055
+			# if thresh=1e-2, avg=0.079
+			if delta_rate > 1e-2:
+				delta_rate_dataset_rot.extend([delta_rate] * delta_time)
+		
+		# now that i have the deltas for all bones, get the avg and get the histogram
+		if delta_rate_dataset_x:
+			avg = sum(delta_rate_dataset_x) / len(delta_rate_dataset_x)
+			print(f"average bone x-position delta rate = {avg}")
+			H = plt.hist(delta_rate_dataset_x, bins=40, density=True)
+			plt.show(block=True)
+		
+		# now that i have the deltas for all bones, get the avg and get the histogram
+		if delta_rate_dataset_y:
+			avg = sum(delta_rate_dataset_y) / len(delta_rate_dataset_y)
+			print(f"average bone y-position delta rate = {avg}")
+			H = plt.hist(delta_rate_dataset_y, bins=40, density=True)
+			plt.show(block=True)
+		
+		# now that i have the deltas for all bones, get the avg and get the histogram
+		if delta_rate_dataset_z:
+			avg = sum(delta_rate_dataset_z) / len(delta_rate_dataset_z)
+			print(f"average bone z-position delta rate = {avg}")
+			H = plt.hist(delta_rate_dataset_z, bins=40, density=True)
+			plt.show(block=True)
+		
+		# now that i have the deltas for all bones, get the avg and get the histogram
+		if delta_rate_dataset_rot:
+			avg = sum(delta_rate_dataset_rot) / len(delta_rate_dataset_rot)
+			print(f"average bone rot-position delta rate = {avg}")
+			H = plt.hist(delta_rate_dataset_rot, bins=40, density=True)
+			plt.show(block=True)
+		pass
+
 
 def main(moreinfo=True):
 	###################################################################################
@@ -1079,7 +1332,11 @@ def main(moreinfo=True):
 	# vmdname = "../../../Apple Pie_Cam-interpolated.vmd"
 	vmdname = "../../../marionette motion 1person.vmd"
 	# vmdname = "../../../IA_Conqueror_full_key_version.vmd"
+	# vmdname = r"../../../dances\ANIMAる {Umetora}\ANIMAru (京まりん)/ANIMAる(with expression).vmd"
+	# vmdname = r"../../../dances\Hibana {DECO.27}\Hibana (getz)/Hibana.vmd"
 	vmd = vmdlib.read_vmd(vmdname)
+	# measure_avg_change_per_frame(vmd)
+	# return
 	
 	anychange = False
 	
