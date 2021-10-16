@@ -622,8 +622,6 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 	"""
 	chan = "R"
 	
-	# global DEBUG_PLOTS
-	
 	keepset = set()
 	i = 0
 	while i < (len(bonelist) - 1):
@@ -650,67 +648,52 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 			
 		# +++++++++++++++++++++++++++++++++++++
 		# now, walk FORWARD from here until i identify a frame z that might be an 'endpoint' of an over-key section
-		y_points_all = []
-		# for z in range(i + 1, min(len(bonelist), i + BONE_ROTATION_MAX_Z_LOOKAHEAD)):
 		for z in range(i + 1, len(bonelist)):
 			z_this_quat = core.euler_to_quaternion(bonelist[z].rot)
 			# walk forward from here, testing frames as i go
-			# NEW IDEA:
 			# if i can succesfully reverse-slerp everything from i to z, then z is a valid endpoint!
 			# success means all reverse-slerp dimensions are close to equal
 			endpoint_good = True
-			temp_reverse_slerp_results = []
 			temp_reverse_slerp_diffs = []
-			# for q in range(i + 1, z):
+			# NEW IDEA: put a ceiling on the number of points that i test! even if i=7 and z=1007, only test 200 points
+			#  evenly spaced between those two ends. it's still really slow, but it's not O(n^2) any more ;)
 			for q in get_some_interp_testpoints(i + 1, z, maxnum=BONE_ROTATION_MAX_SAMPLES):
-				# this is an exceptionally poor algorithm but idk how else to do this
-				# TODO: optimize this by making a constant/cap on the number of points that i test?
-				#  this currently runs in O(n^2) which is unacceptable
-				#  but if i test less than every point, then my QoR will decrease...
 				q_this_quat = core.euler_to_quaternion(bonelist[q].rot)
-				avg, diff = reverse_slerp(q_this_quat, i_this_quat, z_this_quat)
-				# 'rev' is the slerp T-value derived from x/y/z channels of the quats... 3 values that *should* all match
-				# find the greatest difference between any of these 3 values
-				temp_reverse_slerp_diffs.append(diff)
-				# store this reverse-slerp T value for use later
-				temp_reverse_slerp_results.append(avg)
-				# print(i, q, z, diff)
-				if diff >= REVERSE_SLERP_TOLERANCE:
-					# if any of the frames between i and z cannot be reverse-slerped, then break
+				# calculate reverse-slerp for this start/end/intermediate
+				# note: if start==end, then divergence=0 and avg=distance in radians
+				avg, divergence = reverse_slerp(q_this_quat, i_this_quat, z_this_quat)
+				# "avg" = average of independent results from all 3 x/y/z channels
+				# "divergence" = greatest difference between these 3 results
+				temp_reverse_slerp_diffs.append(divergence)
+				# if any of the frames between i and z cannot be reverse-slerped, then break
+				if divergence >= REVERSE_SLERP_TOLERANCE:
 					endpoint_good = False
 					break
-			if (DEBUG >= 3) and temp_reverse_slerp_diffs:
-				diff = max(temp_reverse_slerp_diffs)
-				print("rev-slerp-quality : i-z= %d-%d, diff=%.8f" % (i, z, diff))
+			# if (DEBUG >= 3) and temp_reverse_slerp_diffs:
+			# 	divergence = max(temp_reverse_slerp_diffs)
+			# 	print("rev-slerp-quality : i-z= %d-%d, diff=%.8f" % (i, z, divergence))
 			if not endpoint_good:
-				# when i find something that isn't a good endpoint, then "return" the last good endpoint
+				# when i find something that is a BAD endpoint, i know (assume?) that the one before was GOOD.
+				# so, "return" z-1
 				z -= 1
 				if DEBUG >= 2:
 					if temp_reverse_slerp_diffs:
-						print(f"rev-slerp-segment : i-z= {i}-{z} : pts={z-i+1} : nextdiff={max(temp_reverse_slerp_diffs)}")
+						print(f"rev-slerp-segment : i-z= {i}-{z} : pts={z-i+1}" + (" : nextdiff=%.5f" % max(temp_reverse_slerp_diffs)))
 					else:
 						print(f"rev-slerp-segment : i-z= {i}-{z} : pts={z-i+1}")
 				break
 			else:
 				# if i got thru all the points between i and z, and they all passed, then this z is the last known good endpoint
-				# store the reverse-slerp results for later
-				y_points_all = temp_reverse_slerp_results
+				pass
 		
 		# if i == 1190:
 		# 	DEBUG_PLOTS = True
+		
 		# now i have z, and anything past z is DEFINITELY NOT the endpoint for this sequence
 		# everything from i to z is "slerpable", meaning it is all falling on a linear arc
 		# BUT, that doesn't mean it's all on one bezier! it might be several beziers in a row...
-		# from z, walk backward and test endpoint quality at each frame!
-		# the y-values are already calculated, mostly, just need to add endpoints:
-		# if the change in rotation is basically zero, append a 0. if the change in rotation is something "real", append a 1.
-		# final, _ = reverse_slerp(core.euler_to_quaternion(bonelist[z].rot),
-		# 					     core.euler_to_quaternion(bonelist[i].rot),
-		# 					     core.euler_to_quaternion(bonelist[z].rot))
-		# y_points_all.append(final)
-		# y_points_all.insert(0, 0)
-		# # the x-values are easy to calculate:
-		# x_points_all = [bonelist[P].f for P in range(i, z + 1)]
+
+		# next, properly calculate the x and y datapoints that will be used for bezier fitting
 		x_points_all, y_points_all = make_xy_from_segment_rotation(bonelist, i, z, noscale=True)
 
 		# now i have x_points_all and y_points_all, same length, both in range [0-1], including endpoints
@@ -739,7 +722,6 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 		# if breakup was needed, then i should make beziers from all monotonic segments except the last?? half?? all??
 		# lets start with all
 		initial_i = i
-		# for mm in range(1):
 		for mm in range(len(local_minmax)-1):
 			local_start = local_minmax[mm]
 			local_end = local_minmax[mm+1]
