@@ -600,7 +600,7 @@ def _simplify_boneframes_scalar(bonename: str,
 		
 		# +++++++++++++++++++++++++++++++++++++
 		# use this function to break this monotonic data into as many bezier segments as necessary
-		k = make_beziers_from_datarange(x_points_all, y_points_all, i, i, bonename, chan)
+		k = make_beziers_from_datarange(x_points_all, y_points_all, i, z, bonename, chan)
 		i = max(k)
 		keepset.update(k)
 		pass  # end "while i < len(bonelist)"
