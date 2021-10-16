@@ -403,9 +403,23 @@ def get_corner_sharpness_factor(deltaquat_AB: Tuple[float, float, float, float],
 	return factor
 
 def reverse_slerp(q, q0, q1) -> Tuple[float,float]:
-	# https://math.stackexchange.com/questions/2346982/slerp-inverse-given-3-quaternions-find-t
-	# t = log(q0not * q) / log(q0not * q1)
-	# elementwise division, except skip the w component
+	"""
+	If given a start-quat and an end-quat, assume that the intermediate-quat lies on the SLERP-path between start/end
+	and try to calculate its percentage for where it lies between them. This uses math from:
+	https://math.stackexchange.com/questions/2346982/slerp-inverse-given-3-quaternions-find-t
+	[t = log(q0not * q) / log(q0not * q1)], elementwise division, except skip the w component.
+	If the x/y/z channels will return similar values, then the intermediate truly does lie on the "linear" path.
+	If the values greatly diverge, then the intermediate quat does not lie on the path.
+	
+	Return the average of the 3 channels, and the greatest divergence among the 3 channels.
+	If start == end, divergence is zero and I can't return a percentage so instead calculate the angular distance
+	from start to intermediate.
+	
+	:param q: quaternion W X Y Z intermediate
+	:param q0: quaternion W X Y Z start
+	:param q1: quaternion W X Y Z end
+	:return: tuple(percentage, divergence)
+	"""
 	
 	if not rotation_close(q0, q1, tol=1e-6):
 		# check for and correct quaternion "handedness" to fix slerp going along wrong path
