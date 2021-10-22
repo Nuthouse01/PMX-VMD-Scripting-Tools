@@ -175,6 +175,9 @@ CONTROL_POINT_BOX_THRESHOLD = 1
 
 BONE_ROTATION_MAX_SAMPLES = 200
 
+# to prevent accidentally wrapping around "the wrong way" i need to put a cap on the max length a rotiation segment can be
+GREATEST_LENGTH_OF_ROTATION_SEGMENT_IN_DEGREES = 120
+
 
 # these values are the average/expected rate of change (units per frame) for the respective channels.
 # this was calculated by analyzing a few dance motions and looking at histograms or whatever.
@@ -185,6 +188,9 @@ EXPECTED_DELTA_BONE_XPOS = 0.15
 EXPECTED_DELTA_BONE_YPOS = 0.18
 EXPECTED_DELTA_BONE_ZPOS = 0.16
 EXPECTED_DELTA_BONE_ROTATION_RADIANS = 0.10
+
+ONE_DEGREE_IN_RADIANS = 0.017453292519943295
+
 
 # TODO: use looser bezier parameters for rotation section?
 
@@ -686,6 +692,18 @@ def _simplify_boneframes_rotation(bonename: str,
 			# success means all reverse-slerp dimensions are close to equal
 			endpoint_good = True
 			temp_reverse_slerp_diffs = []
+			
+			# TODO: i need to put a cap on the max length a rotational segment can span, so that i don't
+			# accidentally wrap around the wrong way!
+			total_rotation_segement_length = math.degrees(get_quat_angular_distance(i_this_quat, z_this_quat))
+			if total_rotation_segement_length >= GREATEST_LENGTH_OF_ROTATION_SEGMENT_IN_DEGREES:
+				# if this one is too far, then return the one before! if there is one before...
+				if z != i+1:
+					z -= 1
+				if DEBUG >= 2:
+					print(f"rev-slerp-segment : i-z= {i}-{z} : pts={z-i+1} : span={total_rotation_segement_length}deg")
+				break
+				
 			# NEW IDEA: put a ceiling on the number of points that i test! even if i=7 and z=1007, only test 200 points
 			#  evenly spaced between those two ends. it's still really slow, but it's not O(n^2) any more ;)
 			for q in get_some_interp_testpoints(i + 1, z, maxnum=BONE_ROTATION_MAX_SAMPLES):
@@ -1042,20 +1060,129 @@ def make_xy_from_segment_rotation(bonelist: List[vmdstruct.VmdBoneFrame],
 								  expected_delta_rate) -> Tuple[List[float], List[float]]:
 	# look at all the points in between (including endpoints),
 	assert idx_this != idx_next
-	frame_this = bonelist[idx_this]
+	# x-points are dead easy
+	x_points = [frame.f for frame in bonelist[idx_this: idx_next + 1]]
+	# for y-points.... knowing the direction/polarity is kind of a problem. first, check whether start==end:
+	quat_start = core.euler_to_quaternion(bonelist[idx_this].rot)
+	quat_end =   core.euler_to_quaternion(bonelist[idx_next].rot)
+	max_idx = idx_next - idx_this
+	if rotation_close(quat_start, quat_end):
+		# if start==end, then there is NO RIGHT ANSWER for polarity, so i just need to pick any direction
+		# and declare it positive! there is no objective truth. I will pick the greatest SQ distance as positive point.
+		max_quat = quat_start
+		max_val = 0
+		max_idx = 0
+		for i, frame in enumerate(bonelist[idx_this: idx_next + 1]):
+			q = core.euler_to_quaternion(frame.rot)
+			dist_SQ = get_quat_angular_distance(quat_start, q)  # SQ = start to Q
+			if dist_SQ > max_val:
+				max_val = dist_SQ
+				max_quat = q
+				max_idx = i
+		# possible shortcut: if all distances are super small, then return list of zeros
+		if max_val < 1e-6:
+			y_points = [0] * len(x_points)
+			return x_points, y_points
+		# if not all distances are small, then use this "greatest SQ" as the end quat
+		quat_end = max_quat
+	
+	# okay, now i have ensured that quat_start != quat_end, so i have a sense of direction!
+	dist_SE = get_quat_angular_distance(quat_start, quat_end)  # SE = start to end
 	y_points = []
-	x_points = [bonelist[i].f for i in range(idx_this, idx_next + 1)]
 	divergence_list = []
-	quat_start = core.euler_to_quaternion(frame_this.rot)
-	quat_end = core.euler_to_quaternion(bonelist[idx_next].rot)
-	for i in range(idx_this, idx_next + 1):
-		point = bonelist[i]
-		q = core.euler_to_quaternion(point.rot)
-		_,diff = reverse_slerp(q, quat_start, quat_end)
+	revslerp_list = []
+	
+	for i, frame in enumerate(bonelist[idx_this: idx_next + 1]):
+		q = core.euler_to_quaternion(frame.rot)
+		revslerp,diff = reverse_slerp(q, quat_start, quat_end)
 		divergence_list.append(diff)
-		rads = get_quat_angular_distance(quat_start, q)
-		y_points.append(rads)
-		
+		revslerp_list.append(revslerp)
+		# ^^ this is just for... stats? bookkeeping? curiosity? idk
+		# now i really calculate the answer
+		dist_SQ = get_quat_angular_distance(quat_start, q)  # SQ = start to Q
+		dist_EQ = get_quat_angular_distance(quat_end, q)  # EQ = end to Q
+		# how to determine "polarity": make it a triangle and compare distances
+		if dist_SE < dist_EQ and dist_SQ < dist_EQ:
+			y_points.append(-dist_SQ)
+		else:
+			y_points.append( dist_SQ)
+	
+	# todo
+	# problem 1: sometimes the divergence gets really high! but it seems like that is only in harmless situations? true divergence is very small...
+	# problem 2: "angular distance" has no concept of "backwards" in the way that reverse-slerp has/needs!!!
+	# wait
+	# if the start==end, then i CANNOT determine if something went "backwards", and i only implicitly know that everthing in between
+	# is linear because of how the stretch was found... this is the wrong solution...
+	# so, i shouldn't try to check closer/farther to determine what should be negative... that wouldn't catch the corner case.
+	# i should find local min and max and do "create xy" AFTER i know that the section is monotonic!
+	
+	# bad idea, better than no idea:
+	# output value is start-to-q distance
+	# measure start-end distance
+	# if q-to-end > start-to-end, then output should be negative! simple!
+		# wait, does this handle when exceeding the endpoint?
+	# BUT, this does not handle when start==end...
+	# if start==end, then there is a turnaround in the middle, so it could be broken into local min/max, somehow...
+	# i implicitly know that it is linear
+	
+	# if start==end, then there is NO RIGHT ANSWER for polarity, so i just need to pick any direction and declare it positive!
+	# after this stage, it is broken up into monotonic segments and checked for slerpability, the actual values don't matter???
+	# so, new plan:
+	# if start==end, then measure SQ for all points (all will be positive, some may be going in opposite directions but thats fine)
+	# choose the biggest SQ and DECLARE that that direction is POSITIVE!
+		# if the biggest is 0, i can just return all zeros (shortcut)
+	# if start!=end, then declare that "end" is positive
+	# THEN
+	# calculate SE
+	# then for each point, measure SQ and EQ, and save result with right sign!
+	
+	
+	
+	
+	# assert that all of the values I calculated are close to the linear slerp path
+	# but exactly how far off am i?
+	max_ang = y_points[max_idx]
+	if max_ang != 0 and not rotation_close(quat_start, quat_end):
+		revslerp_list_from_rads = [v / max_ang for v in y_points]
+		wrongness = []
+		for i in range(idx_this, idx_next + 1):
+			j = i - idx_this  # j is idx within "revslerp_list"
+			fwd_slerp = core.my_slerp(quat_start, quat_end, revslerp_list_from_rads[j])
+			# fwd_slerp_eul = core.quaternion_to_euler(fwd_slerp)
+			point = bonelist[i]
+			point_quat = core.euler_to_quaternion(point.rot)
+			ang = get_quat_angular_distance(fwd_slerp, point_quat)
+			wrongness.append(math.degrees(ang))
+		max_wrongness = max(wrongness)
+		if max_wrongness > 2:
+			print("max wrongness = %7.2fdeg" % max_wrongness)
+		if max_wrongness > 20:
+			print("oh no")
+	
+	# max_diverge = max(divergence_list)
+	# if max_diverge > REVERSE_SLERP_TOLERANCE * 2:
+		# if the divergence is too great, that's a bad thing...
+		# monotonic = all(y_points[i] <= y_points[i+1] for i in range(len(y_points)-1))
+		# if (max_ang > ONE_DEGREE_IN_RADIANS) or (not monotonic):
+		# 	print(f"ERROR: make_xy_from_segment_rotation, this={idx_this}, next={idx_next}, pts={idx_next-idx_this+1}, max slerp dev={max_diverge}, monotonic={monotonic}, max_ang={math.degrees(max_ang)}")
+		# 	# addl printing: sanity-check the reverse slerp results, since they seem so suspicious?
+		# 	# maybe also compare y-value (from ang dist) with rev-slerp result?
+		# 	revslerp_list_from_rads = [v / max_ang for v in y_points]
+		# 	# for each calculated y-value, derive the 0-to-1 slerp %, perform forward-slerp, and compare against the existing keyframe
+		# 	wrongness = []
+		# 	for i in range(idx_this, idx_next + 1):
+		# 		j = i-idx_this  # j is idx within "revslerp_list"
+		# 		fwd_slerp = core.my_slerp(quat_start, quat_end, revslerp_list_from_rads[j])
+		# 		fwd_slerp_eul = core.quaternion_to_euler(fwd_slerp)
+		# 		point = bonelist[i]
+		# 		point_quat = core.euler_to_quaternion(point.rot)
+		# 		ang = get_quat_angular_distance(fwd_slerp, point_quat)
+		# 		wrongness.append(math.degrees(ang))
+		# 		# # print the keyframed rotation and what i think the keyframed rotation should be
+		# 		# print("%d : s=%7.5f, r=%7.5f : act=%7.2f %7.2f %7.2f : calc=%7.2f %7.2f %7.2f" %
+		# 		# 	  (j, revslerp_list[j], revslerp_list_from_rads[j], *point.rot, *fwd_slerp_eul))
+		# 	print("max wrongness = %7.2fdeg" % max(wrongness))
+	
 	# the expected rate of change for time is 1frame/frame
 	# the expected rate of change for value is EXPECTED_DELTA_BONE_ROTATION_RADIANS/frame
 	# i need to get these to be square so that value-error has the same weight as time-error
@@ -1358,6 +1485,7 @@ def main(moreinfo=True):
 	# vmdname = core.MY_FILEPROMPT_FUNC("VMD file", ".vmd")
 	# vmdname = "../../../Apple Pie_Cam-interpolated.vmd"
 	vmdname = "../../../marionette motion 1person.vmd"
+	vmdname = "../../../marionette motion 1person CLEAN.vmd"
 	# vmdname = "../../../IA_Conqueror_full_key_version.vmd"
 	# vmdname = r"../../../dances\ANIMAる {Umetora}\ANIMAru (京まりん)/ANIMAる(with expression).vmd"
 	# vmdname = r"../../../dances\Hibana {DECO.27}\Hibana (getz)/Hibana.vmd"
