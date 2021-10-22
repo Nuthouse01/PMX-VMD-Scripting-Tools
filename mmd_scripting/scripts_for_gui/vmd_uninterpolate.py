@@ -1336,6 +1336,21 @@ def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
 			plt.show(block=True)
 		pass
 
+def fully_key_motion_for_testing(vmd: vmdstruct.Vmd) -> vmdstruct.Vmd:
+	bonelist = vmdutil.assert_no_overlapping_frames(vmd.boneframes)
+	highest_timestep = max(a.f for a in bonelist)
+	all_timesteps = list(range(highest_timestep+1))
+	bonedict = vmdutil.dictify_framelist(bonelist)
+	new_bonedict = vmdutil.fill_missing_boneframes(bonedict, moreinfo=True, relevant_frames=all_timesteps)
+	# reassemble
+	new_bonelist = []
+	for L in new_bonedict.items():
+		new_bonelist.extend(L)
+		
+	vmd2 = vmd.copy()
+	vmd2.boneframes = new_bonelist
+	return vmd2
+	
 
 def main(moreinfo=True):
 	###################################################################################
@@ -1346,10 +1361,12 @@ def main(moreinfo=True):
 	# vmdname = "../../../IA_Conqueror_full_key_version.vmd"
 	# vmdname = r"../../../dances\ANIMAる {Umetora}\ANIMAru (京まりん)/ANIMAる(with expression).vmd"
 	# vmdname = r"../../../dances\Hibana {DECO.27}\Hibana (getz)/Hibana.vmd"
+	# vmdname = '../../../Addiction_TdaFacial.vmd'
 	vmd = vmdlib.read_vmd(vmdname)
 	# measure_avg_change_per_frame(vmd)
 	# return
 	
+	# vmd = fully_key_motion_for_testing(vmd)
 	anychange = False
 	
 	if vmd.morphframes:
