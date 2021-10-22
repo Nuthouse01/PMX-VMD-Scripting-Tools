@@ -158,8 +158,8 @@ SIMPLIFY_BONE_ROTATION = True
 # higher values = more likely to collapse = fewer frames in result, but greater deviation from original movements
 MORPH_ERROR_THRESHOLD = 0.00001
 
-BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS = 1.2
-BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX = 1.2
+BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS = 0.3
+BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX = 0.3
 
 # BONE_ROTATION_STRAIGHTNESS_VALUE = 0.15
 
@@ -167,13 +167,24 @@ BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX = 1.2
 # higher values = more likely to collapse = fewer frames in result, but greater deviation from original movements
 REVERSE_SLERP_TOLERANCE = 0.05
 
-CONTROL_POINT_BOX_THRESHOLD = 2
+CONTROL_POINT_BOX_THRESHOLD = 1
 
-# this reduces quality-of-results slightly (by not stripping out every single theoretically collapsable frame)
-# but, it's needed to prevent O(n^2) compute time from getting out of hand :(
-BONE_ROTATION_MAX_Z_LOOKAHEAD = 500
+# # this reduces quality-of-results slightly (by not stripping out every single theoretically collapsable frame)
+# # but, it's needed to prevent O(n^2) compute time from getting out of hand :(
+# BONE_ROTATION_MAX_Z_LOOKAHEAD = 500
 
 BONE_ROTATION_MAX_SAMPLES = 200
+
+
+# these values are the average/expected rate of change (units per frame) for the respective channels.
+# this was calculated by analyzing a few dance motions and looking at histograms or whatever.
+# the exact value doesn't hugely matter (i hope?) it's just about getting the """weight""" of the value-change
+# to be roughly the same as the """weight""" of the time change.
+# todo should this data be derived from full-keyed motions? or partially-keyed motions? or both?
+EXPECTED_DELTA_BONE_XPOS = 0.15
+EXPECTED_DELTA_BONE_YPOS = 0.18
+EXPECTED_DELTA_BONE_ZPOS = 0.16
+EXPECTED_DELTA_BONE_ROTATION_RADIANS = 0.10
 
 # TODO: use looser bezier parameters for rotation section?
 
@@ -555,6 +566,7 @@ def _simplify_boneframes_scalar(bonename: str,
 								bonelist: List[vmdstruct.VmdBoneFrame],
 								chan: str,
 								getter: Callable[[vmdstruct.VmdBoneFrame], float],
+								expected_delta_rate: float,
 								) -> Set[int]:
 	"""
 	Wrapper function for the sake of organization.
@@ -563,6 +575,7 @@ def _simplify_boneframes_scalar(bonename: str,
 	:param bonelist: list of all boneframes that correspond to this bone
 	:param chan: str label for channel being analyzed, for debug print
 	:param getter: lambda func for accessing the scalar channel being analyzed
+	:param expected_delta_rate: float average/expected rate-of-change, radians per frame
 	:return: set of ints, referring to indices within bonelist that are "important frames"
 	"""
 	keepset = set()
@@ -608,10 +621,11 @@ def _simplify_boneframes_scalar(bonename: str,
 		# everything from i to z is monotonic: always increasing OR always decreasing
 		
 		# +++++++++++++++++++++++++++++++++++++
-		# generate all the x-values and y-values (will scale to [0-127] later)
-		x_points_all, y_points_all = make_xy_from_segment_scalar(bonelist, i, z, getter, noscale=True)
-		assert len(x_points_all) == len(y_points_all)
+		# generate all the x-values and y-values
+		x_points_all, y_points_all = make_xy_from_segment_scalar(bonelist, i, z, getter, expected_delta_rate)
 		
+		assert len(x_points_all) == len(y_points_all)
+
 		# +++++++++++++++++++++++++++++++++++++
 		# use this function to break this monotonic data into as many bezier segments as necessary
 		k = make_beziers_from_datarange(x_points_all, y_points_all, i, z, bonename, chan)
@@ -627,11 +641,14 @@ def _simplify_boneframes_scalar(bonename: str,
 	return keepset
 
 
-def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBoneFrame]) -> Set[int]:
+def _simplify_boneframes_rotation(bonename: str,
+								  bonelist: List[vmdstruct.VmdBoneFrame],
+								  expected_delta_rate:float) -> Set[int]:
 	"""
 	Wrapper function for the sake of organization.
 	:param bonename: str name of the bone being operated on
 	:param bonelist: list of all boneframes that correspond to this bone
+	:param expected_delta_rate: float average/expected rate-of-change, radians per frame
 	:return: set of ints, referring to indices within bonelist that are "important frames"
 	"""
 	chan = "R"
@@ -707,11 +724,10 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 		# everything from i to z is "slerpable", meaning it is all falling on a linear arc
 		# BUT, that doesn't mean it's all on one bezier! it might be several beziers in a row...
 
+		# +++++++++++++++++++++++++++++++++++++
 		# next, properly calculate the x and y datapoints that will be used for bezier fitting
-		x_points_all, y_points_all = make_xy_from_segment_rotation(bonelist, i, z, noscale=True)
-
-		# now i have x_points_all and y_points_all, same length, both in range [0-1], including endpoints
-		# because of slerp oddities it is possible that the y-points in the middle are outside [0-1] but thats okay i think
+		x_points_all, y_points_all = make_xy_from_segment_rotation(bonelist, i, z, expected_delta_rate)
+		
 		assert len(x_points_all) == len(y_points_all)
 		
 		# +++++++++++++++++++++++++++++++++++++
@@ -751,7 +767,6 @@ def _simplify_boneframes_rotation(bonename: str, bonelist: List[vmdstruct.VmdBon
 	if DEBUG and len(keepset) > 1:
 		# if it found only 1, ignore it, cuz that would mean just startpoint and endpoint
 		# add 1 to the length cuz frame 0 is implicitly important to all axes (added to set in outer level)
-		# print("'%s' : rot : keep %d/%d" % (bonename, len(keepset) + 1, len(bonelist)))
 		print(f"'{bonename}' {chan} : keep {len(keepset) + 1}/{len(bonelist)}")
 	return keepset
 
@@ -780,7 +795,7 @@ def make_beziers_from_datarange(x_points_all: List[float], y_points_all: List[fl
 	# no need to re-walk forward cuz i'll just find the same z-point.
 	
 	num_all_points = len(x_points_all)
-	found_beziers = []  # list of all beziers i find
+	found_beziers = []  # list of all beziers i find (for debug plotting?)
 	segment_count = 0  # which segment i am finding/have found
 	
 	v = 0  # v is the start of "this segment", w is the end of "this segment" (inclusive)
@@ -792,8 +807,10 @@ def make_beziers_from_datarange(x_points_all: List[float], y_points_all: List[fl
 		# w is always a valid index within the lists
 		# it starts at z, and counts down to i (should never actually hit i tho, should always pass when it's 2 points)
 		for w in reversed(range(v, num_all_points)):
-			# take a subset of the range of points, and scale them to [0-127] range
-			x_points, y_points = scale_two_lists(x_points_all[v:w + 1], y_points_all[v:w + 1], 127)
+			# take a subset of the range of points
+			x_points = x_points_all[v:w + 1]
+			y_points = y_points_all[v:w + 1]
+			# x_points, y_points = scale_two_lists(x_points_all[v:w + 1], y_points_all[v:w + 1], 127)
 			
 			# then run regression to find a reasonable interpolation curve for this stretch
 			# this innately measures both the RMS error and the max error, and i can specify thresholds
@@ -809,11 +826,15 @@ def make_beziers_from_datarange(x_points_all: List[float], y_points_all: List[fl
 			#  accepted, even without actually fitting any better
 			if len(bezier_list) != 1:
 				continue
+			bez, rms_error, max_error = bezier_list[0]
+
+			# under new sceme, the endpoints are not already at (0,0) and (127,127), so I gotta do that myself
+			px, py = scale_two_lists(bez.px, bez.py, 127)
+
 			# if any control points are not within the box, it's no good
 			# (well, if its only slightly outside the box thats okay, i can clamp it)
-			bez, rms_error, max_error = bezier_list[0]
-			cpp = (bez.p[1][0], bez.p[1][1], bez.p[2][0], bez.p[2][1])
-			if not all((0 - CONTROL_POINT_BOX_THRESHOLD < p < 127 + CONTROL_POINT_BOX_THRESHOLD) for p in cpp):
+			cpp = (px[1], py[1], px[2], py[2])
+			if not all((0-CONTROL_POINT_BOX_THRESHOLD < p < 127+CONTROL_POINT_BOX_THRESHOLD) for p in cpp):
 				continue
 			
 			# once i find a good interp curve match (if a match is found),
@@ -826,13 +847,9 @@ def make_beziers_from_datarange(x_points_all: List[float], y_points_all: List[fl
 				if (w == num_all_points-1) and (segment_count == 1):
 					# if one stretch of input data can be matched to one bezier curve, then don't print the segcnt
 					print(f"MATCH! bone='{bonename}' {chan} : i-z= {i}-{z} : v-w= {i+v}-{i+w} : pts={w-v+1}")
-					# print("MATCH! bone='%s' : i-z= %d-%d : v-w= %d-%d : pts=%d" %
-					# 	  (bonename, i, z, i+v, i+w, w-v+1))
 				else:
 					# if there are more than 1 segment, then each also prints its index
-					print(f"MATCH! bone='{bonename}' {chan} : i-z= {i}-{z} : v-w= {i+v}-{i+w} : pts={w-v+1} : #={segment_count}")
-					# print("MATCH! bone='%s' : i-z= %d-%d : v-w= %d-%d : pts=%d : seg=%d%s" %
-					# 	  (bonename, i, z, i+v, i+w, w-v+1, segment_count, "*" if (w == num_all_points-1) else ""))
+					print(f"MATCH! bone='{bonename}' {chan} : i-z= {i}-{z} : v-w= {i+v}-{i+w} : pts={w-v+1} : #={segment_count}{'*' if (w == num_all_points-1) else ''}")
 				# only show the graph if it is more than a simple two-point line segment
 				if (w-v+1 > 2) and DEBUG_PLOTS:
 					bez.plotcontrol()
@@ -845,6 +862,7 @@ def make_beziers_from_datarange(x_points_all: List[float], y_points_all: List[fl
 			# if i let it iterate all the way down to 2 points then it is guaranteed to find a match (cuz linear)
 			# actually it's probably also guaranteed to pass at 3 points. do i want that? hm... probably not?
 			pass  # end walking backwards from z to i
+	# todo: print ALL datapoints and ALL beziers on one graph!
 	return keepset
 
 def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdstruct.VmdBoneFrame]:
@@ -898,11 +916,11 @@ def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdst
 		
 		#######################################################################################
 		if SIMPLIFY_BONE_POSITION:
-			k = _simplify_boneframes_scalar(bonename, bonelist, "posX", lambda x: x.pos[0])
+			k = _simplify_boneframes_scalar(bonename, bonelist, "posX", lambda x: x.pos[0], EXPECTED_DELTA_BONE_XPOS)
 			keepset.update(k)
-			k = _simplify_boneframes_scalar(bonename, bonelist, "posY", lambda x: x.pos[1])
+			k = _simplify_boneframes_scalar(bonename, bonelist, "posY", lambda x: x.pos[1], EXPECTED_DELTA_BONE_YPOS)
 			keepset.update(k)
-			k = _simplify_boneframes_scalar(bonename, bonelist, "posZ", lambda x: x.pos[2])
+			k = _simplify_boneframes_scalar(bonename, bonelist, "posZ", lambda x: x.pos[2], EXPECTED_DELTA_BONE_ZPOS)
 			keepset.update(k)
 			# now i have found every frame# that is important due to position changes
 			if DEBUG and len(keepset) > 2:
@@ -912,7 +930,7 @@ def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdst
 		#######################################################################################
 		# now, i walk along the frames analyzing the ROTATION channel. this is the hard part.
 		if SIMPLIFY_BONE_ROTATION:
-			k = _simplify_boneframes_rotation(bonename, bonelist)
+			k = _simplify_boneframes_rotation(bonename, bonelist, EXPECTED_DELTA_BONE_ROTATION_RADIANS)
 			keepset.update(k)
 			
 		#######################################################################################
@@ -964,45 +982,29 @@ def _finally_put_it_all_together(bonelist: List[vmdstruct.VmdBoneFrame], keepset
 		idx_this = keepframe_indices[a]
 		idx_next = keepframe_indices[a + 1]
 		# for each channel (x/y/z/rot),
-		# look at all the points in between (including endpoints) and scale to [0-127],
-		allxally = [make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[0]), # x pos
-					make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[1]), # y pos
-					make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[2]), # z pos
-					make_xy_from_segment_rotation(bonelist, idx_this, idx_next),                   # rotation
+		# look at all the points in between (including endpoints),
+		allxally = [make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[0], EXPECTED_DELTA_BONE_XPOS), # x pos
+					make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[1], EXPECTED_DELTA_BONE_YPOS), # y pos
+					make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[2], EXPECTED_DELTA_BONE_ZPOS), # z pos
+					make_xy_from_segment_rotation(bonelist, idx_this, idx_next, EXPECTED_DELTA_BONE_ROTATION_RADIANS),       # rotation
 					]
 		all_interp_params = []
 		# for each channel (x/y/z/rot),
 		# generate the proper bezier interp curve,
-		for d,(x_points,y_points) in enumerate(allxally):
+		for d in range(len(allxally)):
+			x_points, y_points = allxally[d]
+			# todo: make "return_best_onelevel" iterate until the error stops decreasing, even past when it drops under the target
 			bezier_list = vectorpaths.fit_cubic_bezier(x_points, y_points,
 													   rms_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS,
 													   max_err_tol=BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX,
 													   max_reparam_iter=50,
 													   return_best_onelevel=True)
-			# TODO: this assertion failed! why!? damnit i dont want to explore this more right now...
-			#  basically, the previous steps find endpoints that allow for 'close enogh' fits, not perfect fits.
-			#  so at this stage, any sub-segments are also going to be only 'close enough'. BUT, because they are
-			#  shorter segments being scaled up to full 0-127 size, the error threshold is relatively tighter...
-			#  and in some cases, it's too difficult to attain.
-			# TODO to fix this i need to allow this part of the algorithm to return its "best effort fit", even if it
-			#  doesn't get below the error threshold. that's simple enough!
-			# TODO other idea: use the recursion and return list of results like originally designed
-			#  (need switch to toggle between these two behaviors)
 			
-			# 168,179 on channel0(x) isn't able to refine well enough
-			# best = RMSerr=0.8171 and MAXerr=1.3291
-			# but 165,179 was able to get below the error threshold!
-			# needs 52 iterations to get below 1.2, but it gets there
-			
-			# another problem, a later one fails with RMSerr=1.6185 and MAXerr=2.8596 after 100 iterations
-			# i,z=223,230, chan=1
-			# that can't be fixed by just letting it run longer...
-			# max-err bottoms at 2.8406 at iter 10, and increases from there
 			a = bezier_list[0]
 			bez, rms_error, max_error = a
 			
 			# if rms_error > BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS or max_error > BEZIER_ERROR_THRESHOLD_BONE_POSITION_MAX:
-			if max_error > 10:
+			if max_error > BEZIER_ERROR_THRESHOLD_BONE_POSITION_RMS * 2:
 				print("bad fit : i,z=%d,%d, chan=%d : rmserr %f maxerr %f" % (idx_this, idx_next, d, rms_error, max_error))
 				print(bez.p)
 				# bez.plotcontrol()
@@ -1010,13 +1012,17 @@ def _finally_put_it_all_together(bonelist: List[vmdstruct.VmdBoneFrame], keepset
 				# plt.plot(x_points, y_points, 'r+')
 				# plt.show(block=True)
 
+			# under new sceme, the endpoints are not already at (0,0) and (127,127), so I gotta do that myself
+			px, py = scale_two_lists(bez.px, bez.py, 127)
+
 			# clamp all the control points to valid [0-127] range, and also make them be integers
-			cpp = (bez.p[1][0], bez.p[1][1], bez.p[2][0], bez.p[2][1])
+			cpp = (px[1], py[1], px[2], py[2])  # ax ay bx by
 			params = [round(core.clamp(v, 0, 127)) for v in cpp]
 			all_interp_params.append(params)
 			
 		# for each channel (x/y/z/rot),
 		# store the params into the proper field of frame_next,
+		# this MUST MATCH THE ORDER that i used to fill "allxally"
 		frame_next = bonelist[idx_next]
 		frame_next.interp_x = all_interp_params[0]
 		frame_next.interp_y = all_interp_params[1]
@@ -1033,42 +1039,48 @@ def _finally_put_it_all_together(bonelist: List[vmdstruct.VmdBoneFrame], keepset
 def make_xy_from_segment_rotation(bonelist: List[vmdstruct.VmdBoneFrame],
 								  idx_this:int,
 								  idx_next:int,
-								  noscale=False) -> Tuple[List[float], List[float]]:
-	# for each channel (x/y/z/rot),
+								  expected_delta_rate) -> Tuple[List[float], List[float]]:
 	# look at all the points in between (including endpoints),
+	assert idx_this != idx_next
 	frame_this = bonelist[idx_this]
 	y_points = []
-	x_points = []
+	x_points = [bonelist[i].f for i in range(idx_this, idx_next + 1)]
+	divergence_list = []
 	quat_start = core.euler_to_quaternion(frame_this.rot)
 	quat_end = core.euler_to_quaternion(bonelist[idx_next].rot)
 	for i in range(idx_this, idx_next + 1):
 		point = bonelist[i]
-		x_pos = point.f - frame_this.f
-		x_points.append(x_pos)
 		q = core.euler_to_quaternion(point.rot)
-		avg,diff = reverse_slerp(q, quat_start, quat_end)
-		y_points.append(avg)
-	if noscale: return x_points, y_points
-	else:       return scale_two_lists(x_points, y_points, 127)
+		_,diff = reverse_slerp(q, quat_start, quat_end)
+		divergence_list.append(diff)
+		rads = get_quat_angular_distance(quat_start, q)
+		y_points.append(rads)
+		
+	# the expected rate of change for time is 1frame/frame
+	# the expected rate of change for value is EXPECTED_DELTA_BONE_ROTATION_RADIANS/frame
+	# i need to get these to be square so that value-error has the same weight as time-error
+	# so, i... divide by the expected? yeah? yeah.
+	y_points = [v / expected_delta_rate for v in y_points]
+
+	return x_points, y_points
 
 def make_xy_from_segment_scalar(bonelist: List[vmdstruct.VmdBoneFrame],
 								idx_this:int,
 								idx_next:int,
 								getter: Callable[[vmdstruct.VmdBoneFrame], float],
-								noscale=False) -> Tuple[List[float], List[float]]:
+								expected_delta_rate) -> Tuple[List[float], List[float]]:
 	# look at all the points in between (including endpoints),
+	assert idx_this != idx_next
 	x_points = [bonelist[i].f for i in range(idx_this, idx_next + 1)]
 	y_points = [getter(bonelist[i]) for i in range(idx_this, idx_next + 1)]
-	# y_points = []
-	# x_points = []
-	# for i in range(idx_this, idx_next + 1):
-	# 	point = bonelist[i]
-	# 	x_pos = point.f - bonelist[idx_this].f
-	# 	x_points.append(x_pos)
-	# 	y_pos = getter(point) - getter(bonelist[idx_this])
-	# 	y_points.append(y_pos)
-	if noscale: return x_points, y_points
-	else:       return scale_two_lists(x_points, y_points, 127)
+	# the expected rate of change for time is 1frame/frame
+	# the expected rate of change for value is ??/frame
+	# i need to get these to be square so that value-error has the same weight as time-error
+	# so, i... divide by the expected? yeah? yeah.
+	
+	y_points = [v / expected_delta_rate for v in y_points]
+	
+	return x_points, y_points
 
 
 def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
