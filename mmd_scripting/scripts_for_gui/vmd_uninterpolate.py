@@ -646,6 +646,58 @@ def _simplify_boneframes_scalar(bonename: str,
 		print(f"'{bonename}' {chan} : keep {len(keepset)+1}/{len(bonelist)}")
 	return keepset
 
+def recursive_something(bonelist: List[vmdstruct.VmdBoneFrame], y_points_all: List[float],
+						i:int, z:int, level=0) -> int:
+	# if level != 0:
+	# 	print(f"recursion {level}")
+	last_max = 0
+	last_min = 0
+	# walk along the "radians from start" list
+	for e, val in enumerate(y_points_all):
+		# track min and max
+		if val < last_min: last_min = val
+		if val > last_max: last_max = val
+		# if the range (max-min) exceeds 160 degrees, then this found segment is NOT OKAY!
+		range_in_degrees = math.degrees(last_max - last_min)
+		if range_in_degrees >= 160:
+			z = i + e - 1  # redefine z as the point before this one
+			if z == i: z += 1  # but, z must always be at least 1 greater than i. even if that puts me back where i started.
+			# recalculate the y_points_all from this new z value
+			_, y_points_new = make_xy_from_segment_rotation(bonelist, i, z, 1.0, check=False)
+			# moving the endpoint will sometimes cause radian measurements to flip!!
+			# compare the new y-list with the previous y-list... if all remaining elements match, then this is good!
+			# "zip" lets me iterate over pairs up to the length of the shorter list
+			if all(old == new for old, new in zip(y_points_all, y_points_new)):
+				# if all radian measurements are unchanged, i'm done! the new value is just good!
+				return z
+			else:
+				# if any radian measurements flipped, check it again!!
+				# might return the same answer, might return something different, might recurse even deeper
+				# return whatever result it comes up with
+				return recursive_something(bonelist, y_points_new, i, z, level=level+1)
+	# if i walked over the whole list and the range never exceeded 160, then this z is good.
+	return z
+
+
+def find_breaks_due_to_overrotation(bonelist: List[vmdstruct.VmdBoneFrame],
+									original_i:int,
+									original_z:int) -> List[int]:
+	retme = [original_i]
+	i = original_i
+	
+	while i != original_z:
+		# calculate the y-data from this proposed z value
+		_, y_points_all = make_xy_from_segment_rotation(bonelist, i, original_z, 1.0, check=False)
+		# test (and recurse/repeat if necessary) and find a new z point that doesn't include overrotation
+		new_z = recursive_something(bonelist, y_points_all, i, original_z)
+		if new_z != original_z or i != original_i:
+			print(f"OVERROTATE : i-z= {original_i}-{original_z} -> {i}-{new_z}")
+		retme.append(new_z)  # store this new value to the output list
+		i = new_z  # the next segment will start where this one ended...
+		original_z = original_z  # ... and end at the true end
+
+	# todo idea: ignore the final endpoint? so that i re-evaluate that stretch?
+	return retme
 
 def _simplify_boneframes_rotation(bonename: str,
 								  bonelist: List[vmdstruct.VmdBoneFrame],
@@ -693,17 +745,6 @@ def _simplify_boneframes_rotation(bonename: str,
 			endpoint_good = True
 			temp_reverse_slerp_diffs = []
 			
-			# TODO: i need to put a cap on the max length a rotational segment can span, so that i don't
-			# accidentally wrap around the wrong way!
-			total_rotation_segement_length = math.degrees(get_quat_angular_distance(i_this_quat, z_this_quat))
-			if total_rotation_segement_length >= GREATEST_LENGTH_OF_ROTATION_SEGMENT_IN_DEGREES:
-				# if this one is too far, then return the one before! if there is one before...
-				if z != i+1:
-					z -= 1
-				if DEBUG >= 2:
-					print(f"rev-slerp-segment : i-z= {i}-{z} : pts={z-i+1} : span={total_rotation_segement_length}deg")
-				break
-				
 			# NEW IDEA: put a ceiling on the number of points that i test! even if i=7 and z=1007, only test 200 points
 			#  evenly spaced between those two ends. it's still really slow, but it's not O(n^2) any more ;)
 			for q in get_some_interp_testpoints(i + 1, z, maxnum=BONE_ROTATION_MAX_SAMPLES):
@@ -718,10 +759,8 @@ def _simplify_boneframes_rotation(bonename: str,
 				if divergence >= REVERSE_SLERP_TOLERANCE:
 					endpoint_good = False
 					break
-			# if (DEBUG >= 3) and temp_reverse_slerp_diffs:
-			# 	divergence = max(temp_reverse_slerp_diffs)
-			# 	print("rev-slerp-quality : i-z= %d-%d, diff=%.8f" % (i, z, divergence))
 			if not endpoint_good:
+				# an endpoint z is "bad" if any of the points between i-z aren't reverse slerpable, i.e. i-z does not define a "linear" stretch.
 				# when i find something that is a BAD endpoint, i know (assume?) that the one before was GOOD.
 				# so, "return" z-1
 				z -= 1
@@ -733,16 +772,27 @@ def _simplify_boneframes_rotation(bonename: str,
 				break
 			else:
 				# if i got thru all the points between i and z, and they all passed, then this z is the last known good endpoint
+				# continue and test the next z
 				pass
-		
-		# if i == 1190:
-		# 	DEBUG_PLOTS = True
 		
 		# now i have z, and anything past z is DEFINITELY NOT the endpoint for this sequence
 		# everything from i to z is "slerpable", meaning it is all falling on a linear arc
 		# BUT, that doesn't mean it's all on one bezier! it might be several beziers in a row...
 
 		# +++++++++++++++++++++++++++++++++++++
+		# TODO new structure:
+		#  use slerpability test to find stretch of "linear" frames
+		#  break this apart into sections that contain no more than 160degree span of rotation
+		#  break this apart into sections that are strictly monotonic
+		#  break this apart into however many beziers are needed to fit the monotonic stretch
+		
+		# TODO: iterate over these results instead of only taking the first
+		break_from_overrotate = find_breaks_due_to_overrotation(bonelist, i, z)
+		i = break_from_overrotate[0]
+		z = break_from_overrotate[1]
+		
+		# TODO bone 右足ＩＫ frames 586 - 627, 42degree malfunction, not sure why? NEEDS GRAPHING! but, it doesn't come up in the "synthesis" stage...
+		
 		# next, properly calculate the x and y datapoints that will be used for bezier fitting
 		x_points_all, y_points_all = make_xy_from_segment_rotation(bonelist, i, z, expected_delta_rate)
 		
@@ -917,6 +967,8 @@ def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdst
 		# 	continue
 		# if bonename != "上半身2":
 		# 	continue
+		# if bonename != "左腕捩":
+		# 	continue
 		print("BONE '%s' LEN %d" % (bonename, len(bonelist)))
 		sofarbonelen += len(bonelist)
 		core.print_progress_oneline(sofarbonelen/totalbonelen)
@@ -1057,9 +1109,10 @@ def _finally_put_it_all_together(bonelist: List[vmdstruct.VmdBoneFrame], keepset
 def make_xy_from_segment_rotation(bonelist: List[vmdstruct.VmdBoneFrame],
 								  idx_this:int,
 								  idx_next:int,
-								  expected_delta_rate) -> Tuple[List[float], List[float]]:
+								  expected_delta_rate:float,
+								  check=True) -> Tuple[List[float], List[float]]:
 	# look at all the points in between (including endpoints),
-	assert idx_this != idx_next
+	assert idx_this < idx_next
 	# x-points are dead easy
 	x_points = [frame.f for frame in bonelist[idx_this: idx_next + 1]]
 	# for y-points.... knowing the direction/polarity is kind of a problem. first, check whether start==end:
@@ -1092,6 +1145,7 @@ def make_xy_from_segment_rotation(bonelist: List[vmdstruct.VmdBoneFrame],
 	divergence_list = []
 	revslerp_list = []
 	
+	# now, compute the actual results y_points
 	for i, frame in enumerate(bonelist[idx_this: idx_next + 1]):
 		q = core.euler_to_quaternion(frame.rot)
 		revslerp,diff = reverse_slerp(q, quat_start, quat_end)
@@ -1107,81 +1161,27 @@ def make_xy_from_segment_rotation(bonelist: List[vmdstruct.VmdBoneFrame],
 		else:
 			y_points.append( dist_SQ)
 	
-	# todo
-	# problem 1: sometimes the divergence gets really high! but it seems like that is only in harmless situations? true divergence is very small...
-	# problem 2: "angular distance" has no concept of "backwards" in the way that reverse-slerp has/needs!!!
-	# wait
-	# if the start==end, then i CANNOT determine if something went "backwards", and i only implicitly know that everthing in between
-	# is linear because of how the stretch was found... this is the wrong solution...
-	# so, i shouldn't try to check closer/farther to determine what should be negative... that wouldn't catch the corner case.
-	# i should find local min and max and do "create xy" AFTER i know that the section is monotonic!
-	
-	# bad idea, better than no idea:
-	# output value is start-to-q distance
-	# measure start-end distance
-	# if q-to-end > start-to-end, then output should be negative! simple!
-		# wait, does this handle when exceeding the endpoint?
-	# BUT, this does not handle when start==end...
-	# if start==end, then there is a turnaround in the middle, so it could be broken into local min/max, somehow...
-	# i implicitly know that it is linear
-	
-	# if start==end, then there is NO RIGHT ANSWER for polarity, so i just need to pick any direction and declare it positive!
-	# after this stage, it is broken up into monotonic segments and checked for slerpability, the actual values don't matter???
-	# so, new plan:
-	# if start==end, then measure SQ for all points (all will be positive, some may be going in opposite directions but thats fine)
-	# choose the biggest SQ and DECLARE that that direction is POSITIVE!
-		# if the biggest is 0, i can just return all zeros (shortcut)
-	# if start!=end, then declare that "end" is positive
-	# THEN
-	# calculate SE
-	# then for each point, measure SQ and EQ, and save result with right sign!
-	
-	
-	
-	
-	# assert that all of the values I calculated are close to the linear slerp path
-	# but exactly how far off am i?
-	max_ang = y_points[max_idx]
-	if max_ang != 0 and not rotation_close(quat_start, quat_end):
-		revslerp_list_from_rads = [v / max_ang for v in y_points]
-		wrongness = []
-		for i in range(idx_this, idx_next + 1):
-			j = i - idx_this  # j is idx within "revslerp_list"
-			fwd_slerp = core.my_slerp(quat_start, quat_end, revslerp_list_from_rads[j])
-			# fwd_slerp_eul = core.quaternion_to_euler(fwd_slerp)
-			point = bonelist[i]
-			point_quat = core.euler_to_quaternion(point.rot)
-			ang = get_quat_angular_distance(fwd_slerp, point_quat)
-			wrongness.append(math.degrees(ang))
-		max_wrongness = max(wrongness)
-		if max_wrongness > 2:
-			print("max wrongness = %7.2fdeg" % max_wrongness)
-		if max_wrongness > 20:
-			print("oh no")
-	
-	# max_diverge = max(divergence_list)
-	# if max_diverge > REVERSE_SLERP_TOLERANCE * 2:
-		# if the divergence is too great, that's a bad thing...
-		# monotonic = all(y_points[i] <= y_points[i+1] for i in range(len(y_points)-1))
-		# if (max_ang > ONE_DEGREE_IN_RADIANS) or (not monotonic):
-		# 	print(f"ERROR: make_xy_from_segment_rotation, this={idx_this}, next={idx_next}, pts={idx_next-idx_this+1}, max slerp dev={max_diverge}, monotonic={monotonic}, max_ang={math.degrees(max_ang)}")
-		# 	# addl printing: sanity-check the reverse slerp results, since they seem so suspicious?
-		# 	# maybe also compare y-value (from ang dist) with rev-slerp result?
-		# 	revslerp_list_from_rads = [v / max_ang for v in y_points]
-		# 	# for each calculated y-value, derive the 0-to-1 slerp %, perform forward-slerp, and compare against the existing keyframe
-		# 	wrongness = []
-		# 	for i in range(idx_this, idx_next + 1):
-		# 		j = i-idx_this  # j is idx within "revslerp_list"
-		# 		fwd_slerp = core.my_slerp(quat_start, quat_end, revslerp_list_from_rads[j])
-		# 		fwd_slerp_eul = core.quaternion_to_euler(fwd_slerp)
-		# 		point = bonelist[i]
-		# 		point_quat = core.euler_to_quaternion(point.rot)
-		# 		ang = get_quat_angular_distance(fwd_slerp, point_quat)
-		# 		wrongness.append(math.degrees(ang))
-		# 		# # print the keyframed rotation and what i think the keyframed rotation should be
-		# 		# print("%d : s=%7.5f, r=%7.5f : act=%7.2f %7.2f %7.2f : calc=%7.2f %7.2f %7.2f" %
-		# 		# 	  (j, revslerp_list[j], revslerp_list_from_rads[j], *point.rot, *fwd_slerp_eul))
-		# 	print("max wrongness = %7.2fdeg" % max(wrongness))
+	if check:
+		# assert that all of the values I calculated are close to the linear slerp path
+		# exactly how far off am i?
+		# radians -> slerp% -> quat -> compare with full-key input
+		max_ang = y_points[max_idx]
+		if max_ang != 0 and not rotation_close(quat_start, quat_end):
+			revslerp_list_from_rads = [v / max_ang for v in y_points]
+			wrongness = []
+			for i in range(idx_this, idx_next + 1):
+				j = i - idx_this  # j is idx within "revslerp_list"
+				fwd_slerp = core.my_slerp(quat_start, quat_end, revslerp_list_from_rads[j])
+				# fwd_slerp_eul = core.quaternion_to_euler(fwd_slerp)
+				point = bonelist[i]
+				point_quat = core.euler_to_quaternion(point.rot)
+				ang = get_quat_angular_distance(fwd_slerp, point_quat)
+				wrongness.append(math.degrees(ang))
+			max_wrongness = max(wrongness)
+			if max_wrongness > 2:
+				print("max wrongness = %7.2fdeg" % max_wrongness)
+			if max_wrongness > 20:
+				print("oh no")
 	
 	# the expected rate of change for time is 1frame/frame
 	# the expected rate of change for value is EXPECTED_DELTA_BONE_ROTATION_RADIANS/frame
@@ -1197,7 +1197,7 @@ def make_xy_from_segment_scalar(bonelist: List[vmdstruct.VmdBoneFrame],
 								getter: Callable[[vmdstruct.VmdBoneFrame], float],
 								expected_delta_rate) -> Tuple[List[float], List[float]]:
 	# look at all the points in between (including endpoints),
-	assert idx_this != idx_next
+	assert idx_this < idx_next
 	x_points = [bonelist[i].f for i in range(idx_this, idx_next + 1)]
 	y_points = [getter(bonelist[i]) for i in range(idx_this, idx_next + 1)]
 	# the expected rate of change for time is 1frame/frame
