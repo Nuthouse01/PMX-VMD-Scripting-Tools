@@ -176,7 +176,7 @@ CONTROL_POINT_BOX_THRESHOLD = 1
 BONE_ROTATION_MAX_SAMPLES = 200
 
 # to prevent accidentally wrapping around "the wrong way" i need to put a cap on the max length a rotiation segment can be
-GREATEST_LENGTH_OF_ROTATION_SEGMENT_IN_DEGREES = 120
+GREATEST_LENGTH_OF_ROTATION_SEGMENT_IN_DEGREES = 160
 
 
 # these values are the average/expected rate of change (units per frame) for the respective channels.
@@ -291,6 +291,7 @@ def break_due_to_monotonic_sections(L:List[float]) -> List[int]:
 	retme.append(len(L)-1)  # return list always ends with ultimate endpoint
 	return retme
 
+'''
 def sign(U):
 	# return -1/0/+1 if input is negative/zero/positive
 	if U == 0:  return 0
@@ -316,6 +317,59 @@ def scale_list(L:List[float], R: float) -> List[float]:
 		L = [v * R / ra for v in L]  # scale the list to be the desired range
 	L = [v - L[0] for v in L]  # shift it so the 0th item equals 0
 	return L
+
+def get_difference_quat(quatA: Tuple[float, float, float, float],
+						quatB: Tuple[float, float, float, float]) -> Tuple[float, float, float, float]:
+	# get the "difference quaternion" that represents how to get from A to B...
+	# or is this how to get from B to A?
+	# as long as I'm consistent I don't think it matters?
+	deltaquat_AB = core.hamilton_product(core.my_quat_conjugate(quatA), quatB)
+	return deltaquat_AB
+
+def get_corner_sharpness_factor(deltaquat_AB: Tuple[float, float, float, float],
+								deltaquat_BC: Tuple[float, float, float, float],) -> float:
+	"""
+	Calculate a [0.0-1.0] factor indicating how "sharp" the corner is at B.
+	By "corner" I mean the directional change when A->B stops and B->C begins.
+	If they are going the same angular "direction", then return 1.0. If they
+	are going perfectly opposite directions, return 0.0. Otherwise return something
+	in between.
+
+	:param deltaquat_AB: "delta quaterinon" WXYZ from frame A to B
+	:param deltaquat_BC: "delta quaternion" WXYZ from frame B to C
+	:return: float [0.0-1.0]
+	"""
+
+	# "how sharp a corner is" = the "angular distance" between AtoB delta and BtoC delta
+
+	# first, find the deltas between the quaternions
+	# deltaquat_AB = core.hamilton_product(core.my_quat_conjugate(quatA), quatB)
+	# deltaquat_BC = core.hamilton_product(core.my_quat_conjugate(quatB), quatC)
+	# to get sensible results below, ignore the "W" component and only use the XYZ components, treat as 3d vector
+	deltavect_AB = deltaquat_AB[1:4]
+	deltavect_BC = deltaquat_BC[1:4]
+	# second, find the angle between these two deltas
+	# use the plain old "find the angle between two vectors" formula
+	len1 = core.my_euclidian_distance(deltavect_AB)
+	len2 = core.my_euclidian_distance(deltavect_BC)
+	if (len1 == 0) and (len2 == 0):
+		# zero equals zero, so return 1!
+		return 1.0
+	t = len1 * len2
+	if t == 0:
+		# if exactly one vector has a length of 0 (but not both, otherwise it would be caught above) then they are DIFFERENT
+		return 0.0
+	# technically the clamp shouldn't be necessary but floating point inaccuracy caused it to do math.acos(1.000000002) which crashed lol
+	shut_up = core.my_dot(deltavect_AB, deltavect_BC) / t
+	shut_up = core.clamp(shut_up, -1.0, 1.0)
+	ang_d = math.acos(shut_up)
+	# print(math.degrees(ang_d))
+	# if ang = 0, perfectly colinear, factor = 1
+	# if ang = 180, perfeclty opposite, factor = 0
+	factor = 1 - (ang_d / math.pi)
+	return factor
+'''
+
 
 def scale_two_lists(x:List[float], y:List[float], R: float) -> Tuple[List[float], List[float]]:
 	"""
@@ -348,21 +402,13 @@ def scale_two_lists(x:List[float], y:List[float], R: float) -> Tuple[List[float]
 	y = [v - y[0] for v in y]  # shift it so the 0th item equals 0
 	return x, y
 
-def get_difference_quat(quatA: Tuple[float, float, float, float],
-						quatB: Tuple[float, float, float, float]) -> Tuple[float, float, float, float]:
-	# get the "difference quaternion" that represents how to get from A to B...
-	# or is this how to get from B to A?
-	# as long as I'm consistent I don't think it matters?
-	deltaquat_AB = core.hamilton_product(core.my_quat_conjugate(quatA), quatB)
-	return deltaquat_AB
-
 def get_quat_angular_distance(quatA: Tuple[float, float, float, float],
 							  quatB: Tuple[float, float, float, float]) -> float:
 	"""
 	Calculate the "angular distance" between two quaternions, in radians. Opposite direction = pi.
 	:param quatA: WXYZ quaternion A
 	:param quatB: WXYZ quaternion B
-	:return: float [0-1]
+	:return: float [0-pi]
 	"""
 	# https://math.stackexchange.com/questions/90081/quaternion-distance
 	# theta = arccos{2 * dot(qA, qB)^2 - 1}
@@ -378,49 +424,6 @@ def get_quat_angular_distance(quatA: Tuple[float, float, float, float],
 	# d: radians, 0 = same, pi = opposite
 	# return d / math.pi
 	return d
-
-def get_corner_sharpness_factor(deltaquat_AB: Tuple[float, float, float, float],
-								deltaquat_BC: Tuple[float, float, float, float],) -> float:
-	"""
-	Calculate a [0.0-1.0] factor indicating how "sharp" the corner is at B.
-	By "corner" I mean the directional change when A->B stops and B->C begins.
-	If they are going the same angular "direction", then return 1.0. If they
-	are going perfectly opposite directions, return 0.0. Otherwise return something
-	in between.
-
-	:param deltaquat_AB: "delta quaterinon" WXYZ from frame A to B
-	:param deltaquat_BC: "delta quaternion" WXYZ from frame B to C
-	:return: float [0.0-1.0]
-	"""
-	
-	# "how sharp a corner is" = the "angular distance" between AtoB delta and BtoC delta
-	
-	# first, find the deltas between the quaternions
-	# deltaquat_AB = core.hamilton_product(core.my_quat_conjugate(quatA), quatB)
-	# deltaquat_BC = core.hamilton_product(core.my_quat_conjugate(quatB), quatC)
-	# to get sensible results below, ignore the "W" component and only use the XYZ components, treat as 3d vector
-	deltavect_AB = deltaquat_AB[1:4]
-	deltavect_BC = deltaquat_BC[1:4]
-	# second, find the angle between these two deltas
-	# use the plain old "find the angle between two vectors" formula
-	len1 = core.my_euclidian_distance(deltavect_AB)
-	len2 = core.my_euclidian_distance(deltavect_BC)
-	if (len1 == 0) and (len2 == 0):
-		# zero equals zero, so return 1!
-		return 1.0
-	t = len1 * len2
-	if t == 0:
-		# if exactly one vector has a length of 0 (but not both, otherwise it would be caught above) then they are DIFFERENT
-		return 0.0
-	# technically the clamp shouldn't be necessary but floating point inaccuracy caused it to do math.acos(1.000000002) which crashed lol
-	shut_up = core.my_dot(deltavect_AB, deltavect_BC) / t
-	shut_up = core.clamp(shut_up, -1.0, 1.0)
-	ang_d = math.acos(shut_up)
-	# print(math.degrees(ang_d))
-	# if ang = 0, perfectly colinear, factor = 1
-	# if ang = 180, perfeclty opposite, factor = 0
-	factor = 1 - (ang_d / math.pi)
-	return factor
 
 def reverse_slerp(q, q0, q1) -> Tuple[float,float]:
 	"""
@@ -662,7 +665,7 @@ def recursive_something(bonelist: List[vmdstruct.VmdBoneFrame], y_points_all: Li
 		if val > last_max: last_max = val
 		# if the range (max-min) exceeds 160 degrees, then this found segment is NOT OKAY!
 		range_in_degrees = math.degrees(last_max - last_min)
-		if range_in_degrees >= 160:
+		if range_in_degrees >= GREATEST_LENGTH_OF_ROTATION_SEGMENT_IN_DEGREES:
 			z = i + e - 1  # redefine z as the point before this one
 			if z == i: z += 1  # but, z must always be at least 1 greater than i. even if that puts me back where i started.
 			# recalculate the y_points_all from this new z value
