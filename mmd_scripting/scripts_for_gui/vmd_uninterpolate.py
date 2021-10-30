@@ -237,13 +237,13 @@ def get_some_interp_testpoints(start:int, end:int, maxnum:int) ->  Generator[int
 def rotation_close(_a, _b, tol=1e-6) -> bool:
 	return all(math.isclose(_aa, _bb, abs_tol=tol) for _aa, _bb in zip(_a, _b))
 
-def find_local_peak_valley(L:List[float]) -> List[int]:
+def break_due_to_monotonic_sections(L:List[float]) -> List[int]:
 	# return the list of all local minimums or maximums in the input list
 	assert len(L) >= 2
 	
 	if len(L) == 2: return [0,1]
 	# i know that the length is 3 or greater
-	s = {0, len(L)-1}  # define a set that already contains the endpoints
+	retme = []
 	# finding discrete peaks is easy... what do i do about plateaus?
 	# i guess i only want to add the earliest edge of a plateau?
 	# but i also want to ignore plateaus at the start or end...?
@@ -277,16 +277,19 @@ def find_local_peak_valley(L:List[float]) -> List[int]:
 		# if was rising, now falling OR was falling, now rising
 		elif (last_state == 1 and state == 2) or (last_state == 2 and state == 1):
 			# then store idx of THIS
-			s.add(i)
+			retme.append(i)
 		# if was flat-last-rising, now falling, then store the flat-start-idx
 		# if was flat-last-falling, now rising, then store the flat-start-idx
 		elif (last_state == 3 and state == 2) or (last_state == 4 and state == 1):
-			s.add(flat_start_idx)
+			retme.append(flat_start_idx)
 		
 		# third, move state to last-state
 		last_state = state
 		
-	return sorted(list(s))
+	if (not retme) or retme[0] != 0:
+		retme.insert(0, 0)  # return list always begins with 0
+	retme.append(len(L)-1)  # return list always ends with ultimate endpoint
+	return retme
 
 def sign(U):
 	# return -1/0/+1 if input is negative/zero/positive
@@ -678,26 +681,43 @@ def recursive_something(bonelist: List[vmdstruct.VmdBoneFrame], y_points_all: Li
 	# if i walked over the whole list and the range never exceeded 160, then this z is good.
 	return z
 
-
+'''
 def find_breaks_due_to_overrotation(bonelist: List[vmdstruct.VmdBoneFrame],
 									original_i:int,
-									original_z:int) -> List[int]:
-	retme = [original_i]
+									original_z:int) -> List[Tuple[int,int]]:
+	retme = []
 	i = original_i
 	
 	while i != original_z:
+		# the proposed z value is always the end of the true sequence
 		# calculate the y-data from this proposed z value
 		_, y_points_all = make_xy_from_segment_rotation(bonelist, i, original_z, 1.0, check=False)
-		# test (and recurse/repeat if necessary) and find a new z point that doesn't include overrotation
+		# test (and recurse/repeat if necessary) and find a new, closer z point that doesn't include overrotation
 		new_z = recursive_something(bonelist, y_points_all, i, original_z)
 		if new_z != original_z or i != original_i:
 			print(f"OVERROTATE : i-z= {original_i}-{original_z} -> {i}-{new_z}")
-		retme.append(new_z)  # store this new value to the output list
+		retme.append((i, new_z))  # store this new value to the output list
 		i = new_z  # the next segment will start where this one ended...
-		original_z = original_z  # ... and end at the true end
 
 	# todo idea: ignore the final endpoint? so that i re-evaluate that stretch?
 	return retme
+'''
+def break_due_to_overrotation(bonelist: List[vmdstruct.VmdBoneFrame],
+									original_i:int,
+									original_z:int) -> int:
+	"""
+	Turn a "linear slerpable section" into a same-or-smaller sub-section that contains rotation of 160 degrees or less.
+	
+	:param bonelist: list of all boneframes
+	:param original_i: idx of beginning of linear slerpable section
+	:param original_z: idx of end of linear slerpable section
+	:return: new (or same) idx of end of section
+	"""
+	# calculate the y-data from this proposed z value
+	_, y_points_all = make_xy_from_segment_rotation(bonelist, original_i, original_z, 1.0, check=False)
+	# test (and recurse/repeat if necessary) and find a new, closer z point that doesn't include overrotation
+	new_z = recursive_something(bonelist, y_points_all, original_i, original_z)
+	return new_z
 
 def _simplify_boneframes_rotation(bonename: str,
 								  bonelist: List[vmdstruct.VmdBoneFrame],
@@ -775,70 +795,100 @@ def _simplify_boneframes_rotation(bonename: str,
 				# continue and test the next z
 				pass
 		
+		if z-i >= BONE_ROTATION_MAX_SAMPLES:
+			print(f"LONG SEGMENT : i-z= {i}-{z} : pts={z-i+1}")
+		
 		# now i have z, and anything past z is DEFINITELY NOT the endpoint for this sequence
 		# everything from i to z is "slerpable", meaning it is all falling on a linear arc
 		# BUT, that doesn't mean it's all on one bezier! it might be several beziers in a row...
 
-		# +++++++++++++++++++++++++++++++++++++
+		
 		# TODO new structure:
 		#  use slerpability test to find stretch of "linear" frames
 		#  break this apart into sections that contain no more than 160degree span of rotation
 		#  break this apart into sections that are strictly monotonic
 		#  break this apart into however many beziers are needed to fit the monotonic stretch
 		
-		# TODO: iterate over these results instead of only taking the first
-		break_from_overrotate = find_breaks_due_to_overrotation(bonelist, i, z)
-		i = break_from_overrotate[0]
-		z = break_from_overrotate[1]
-		
 		# TODO bone 右足ＩＫ frames 586 - 627, 42degree malfunction, not sure why? NEEDS GRAPHING! but, it doesn't come up in the "synthesis" stage...
+
+		# i,z are the begin,end of the linear slerpable section. but i cant/shouldnt analyze this entire chunk at once.
+		# i2,z2 are the begin,end of the section after "overrotate check", so i know it contains rotation < 160 degrees.
+		i2 = i
+		# once the inner loops have walked up thru the whole linear slerpable section, THEN i find a new linear slerpable section.
+		while i2 < z:
+			# +++++++++++++++++++++++++++++++++++++
+			# find ONE new endpoint that contains rotation < 160 degrees...
+			z2 = break_due_to_overrotation(bonelist, i2, z)
+			if z2 != z:
+				print(f"OVERROTATE : i-z= {i}-{z} : i2-z2= {i2}-{z2}")
+			
+			# if z2 == z, then no overrotate concerns were found, so do not "trim" at later stage
 		
-		# next, properly calculate the x and y datapoints that will be used for bezier fitting
-		x_points_all, y_points_all = make_xy_from_segment_rotation(bonelist, i, z, expected_delta_rate)
+			# next, calculate the x and y datapoints that will be used for bezier fitting
+			x_points_all, y_points_all = make_xy_from_segment_rotation(bonelist, i2, z2, expected_delta_rate)
+			assert len(x_points_all) == len(y_points_all)
 		
-		assert len(x_points_all) == len(y_points_all)
+			# +++++++++++++++++++++++++++++++++++++
+			# the y-datapoints should be STRICTLY MONOTONIC (increasing or decreasing), so break the current y-values
+			#  apart until that's the case!
+			# find ALL new endpoints due to monotonic ranges...
+			local_minmax = break_due_to_monotonic_sections(y_points_all)
+			# convert the local min/max from relative idx scope to i/z scope
+			local_minmax = [v+i2 for v in local_minmax]
+			if (len(local_minmax) != 2) and (DEBUG >= 2):
+				# if breakup is needed (often) then print a message
+				print(f"MONOTONIC  : i-z= {i}-{z} : i2-z2= {i2}-{z2} : numseg={len(local_minmax)-1} : list=" + str(local_minmax))
+				# plt.plot(x_points_all, y_points_all, 'r+')
+				# plt.show(block=True)
+			if DEBUG_PLOTS:
+				if len(x_points_all) > 2:
+					print("reverse-slerp: bone='%s' : i-z= %d-%d" % (bonename, i, z))
+					plt.plot(x_points_all, y_points_all, 'r+')
+					plt.show(block=True)
 		
-		# +++++++++++++++++++++++++++++++++++++
-		# the y-datapoints should be STRICTLY MONOTONIC (increasing or decreasing), so break the current y-values
-		#  apart until that's the case!
-		if z-i >= BONE_ROTATION_MAX_SAMPLES:
-			print(f"LONG SEGMENT : i-z= {i}-{z} : pts={z-i+1}")
-		local_minmax = find_local_peak_valley(y_points_all)
-		if (DEBUG >= 2) and (len(local_minmax) != 2):
-			# if breakup is needed (not often) then print a message
-			print(f"breakup : i-z= {i}-{z} : pts={z-i+1} : numseg={len(local_minmax)} : list=" + str([i+v for v in local_minmax]))
-			# plt.plot(x_points_all, y_points_all, 'r+')
-			# plt.show(block=True)
-		if DEBUG_PLOTS:
-			if len(x_points_all) > 2:
-				print("reverse-slerp: bone='%s' : i-z= %d-%d" % (bonename, i, z))
-				plt.plot(x_points_all, y_points_all, 'r+')
-				plt.show(block=True)
-		
-		# +++++++++++++++++++++++++++++++++++++
-		# if breakup was not needed, then i can safely make beziers from the one region that was found
-		# if breakup was needed, then i should make beziers from all monotonic segments except the last?? half?? all??
-		# lets start with all
-		initial_i = i
-		for mm in range(len(local_minmax)-1):
-			local_start = local_minmax[mm]
-			local_end = local_minmax[mm+1]
-			x_points = x_points_all[local_start:local_end+1]
-			y_points = y_points_all[local_start:local_end+1]
-		
-			k = make_beziers_from_datarange(x_points, y_points, local_start + initial_i, local_end + initial_i, bonename, chan)
-			i = max(k)
-			keepset.update(k)
-		
+			# iterate over ALL the local minimum/maximum points
+			bez_ends = []
+			for mm in range(len(local_minmax)-1):
+				i3 = local_minmax[mm]
+				z3 = local_minmax[mm+1]
+				
+				# i can either slice the previous results of make_xy_from_segment_rotation() or call it again?
+				# x_points, y_points = make_xy_from_segment_rotation(bonelist, i3, z3, expected_delta_rate)
+				
+				x_points = x_points_all[i3-i2:z3-i2+1]
+				y_points = y_points_all[i3-i2:z3-i2+1]
+				
+				# +++++++++++++++++++++++++++++++++++++
+				# i3,z3 is linear slerpable AND has rotation <= 160 degrees AND is monotonic
+				# NOW i can safely make beziers
+				k = make_beziers_from_datarange(x_points, y_points, i3, z3, bonename, chan)
+				bez_ends.extend(k)
+				pass  # end "for each monotonic section"
+			
+			# if overrotate correction was needed (z2 != z), and there is more than one endpoint that got found,
+			#  then i should ignore the final bezier endpoint i find cuz it might blend with the beginning of the
+			#  next section! or something? basically the overrotate breakpoints aren't "real" breakpoints that should
+			#  appear in the final VMD, it's just necessary to accurately compute stuff.
+			if (z2 != z) and (len(bez_ends) != 1):
+				bez_ends.pop(-1)
+
+			# each bez endpoint it calculates gets saved as the ultimate answer
+			keepset.update(bez_ends)
+			# after calculating all the beziers, move i2 to the last/greatest bez endpoint i successfully found
+			i2 = max(bez_ends)
+			pass  # end "while i2 < z"
+		i = i2
 		pass  # end "while i < len(bonelist)"
-	# now i have found every frame# that is important due to position changes
+	# now i have found every frame# that is important due to rotation changes
 	if DEBUG and len(keepset) > 1:
 		# if it found only 1, ignore it, cuz that would mean just startpoint and endpoint
 		# add 1 to the length cuz frame 0 is implicitly important to all axes (added to set in outer level)
 		print(f"'{bonename}' {chan} : keep {len(keepset) + 1}/{len(bonelist)}")
 	return keepset
 
-def make_beziers_from_datarange(x_points_all: List[float], y_points_all: List[float], i: int, z: int, bonename: str, chan: str):
+def make_beziers_from_datarange(x_points_all: List[float], y_points_all: List[float],
+								i: int, z: int,
+								bonename: str, chan: str,) -> List[int]:
 	"""
 	This function accepts a series of XY datapoints that define a strictly monotonic range.
 	Then it uses a "greedy" algorithm to define that range with the fewest possible number of bezier curves.
@@ -853,14 +903,11 @@ def make_beziers_from_datarange(x_points_all: List[float], y_points_all: List[fl
 	:param z: int idx within bonelist where the datarange ends (inclusive)
 	:param bonename: str name of bone, for debug printing
 	:param chan: str name of channel, for debug printing
-	:return: set of ints in i/z scope
+	:return: list of ints in i/z scope
 	"""
 	# i know that the list of points I am given is STRICTLY MONOTONIC
 	# so, attempt to fit some number of beziers to this section
-	keepset = set()
-	
-	# OPTIMIZE: if i find z, then walk backward a bit and find a good bezier, i can reuse the same z!
-	# no need to re-walk forward cuz i'll just find the same z-point.
+	keeplist = []
 	
 	num_all_points = len(x_points_all)
 	found_beziers = []  # list of all beziers i find (for debug plotting?)
@@ -878,7 +925,6 @@ def make_beziers_from_datarange(x_points_all: List[float], y_points_all: List[fl
 			# take a subset of the range of points
 			x_points = x_points_all[v:w + 1]
 			y_points = y_points_all[v:w + 1]
-			# x_points, y_points = scale_two_lists(x_points_all[v:w + 1], y_points_all[v:w + 1], 127)
 			
 			# then run regression to find a reasonable interpolation curve for this stretch
 			# this innately measures both the RMS error and the max error, and i can specify thresholds
@@ -908,7 +954,7 @@ def make_beziers_from_datarange(x_points_all: List[float], y_points_all: List[fl
 			# once i find a good interp curve match (if a match is found),
 			found_beziers.append(bez)
 			segment_count += 1
-			keepset.add(i + w)  # then save this proposed endpoint as a valid endpoint,
+			keeplist.append(i + w)  # then save this proposed endpoint as a valid endpoint,
 			if DEBUG >= 2 or DEBUG_PLOTS:
 				# i thru z is the full monotonic stretch
 				# v thru w is one bezier curve on the stretch
@@ -931,7 +977,7 @@ def make_beziers_from_datarange(x_points_all: List[float], y_points_all: List[fl
 			# actually it's probably also guaranteed to pass at 3 points. do i want that? hm... probably not?
 			pass  # end walking backwards from z to i
 	# todo: print ALL datapoints and ALL beziers on one graph!
-	return keepset
+	return keeplist
 
 def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdstruct.VmdBoneFrame]:
 	"""
