@@ -498,8 +498,162 @@ def reverse_slerp(q, q0, q1) -> Tuple[float,float]:
 	# normalized to 127 anyways
 	x = 100 * get_quat_angular_distance(q0, q)
 	return x, 0
+
+
+def recursive_something(bonelist: List[vmdstruct.VmdBoneFrame], y_points_all: List[float],
+						i: int, z: int, level=0) -> int:
+	# if level != 0:
+	# 	print(f"recursion {level}")
+	last_max = 0
+	last_min = 0
+	# walk along the "radians from start" list
+	for e, val in enumerate(y_points_all):
+		# track min and max
+		if val < last_min: last_min = val
+		if val > last_max: last_max = val
+		# if the range (max-min) exceeds 160 degrees, then this found segment is NOT OKAY!
+		range_in_degrees = math.degrees(last_max - last_min)
+		if range_in_degrees >= GREATEST_LENGTH_OF_ROTATION_SEGMENT_IN_DEGREES:
+			z = i + e - 1  # redefine z as the point before this one
+			if z == i: z += 1  # but, z must always be at least 1 greater than i. even if that puts me back where i started.
+			# recalculate the y_points_all from this new z value
+			_, y_points_new = make_xy_from_segment_rotation(bonelist, i, z, 1.0, check=False)
+			# moving the endpoint will sometimes cause radian measurements to flip!!
+			# compare the new y-list with the previous y-list... if all remaining elements match, then this is good!
+			# "zip" lets me iterate over pairs up to the length of the shorter list
+			if all(old == new for old, new in zip(y_points_all, y_points_new)):
+				# if all radian measurements are unchanged, i'm done! the new value is just good!
+				return z
+			else:
+				# if any radian measurements flipped, check it again!!
+				# might return the same answer, might return something different, might recurse even deeper
+				# return whatever result it comes up with
+				return recursive_something(bonelist, y_points_new, i, z, level=level + 1)
+	# if i walked over the whole list and the range never exceeded 160, then this z is good.
+	return z
+
+
+def break_due_to_overrotation(bonelist: List[vmdstruct.VmdBoneFrame],
+							  original_i: int,
+							  original_z: int) -> int:
+	"""
+	Turn a "linear slerpable section" into a same-or-smaller sub-section that contains rotation of 160 degrees or less.
+
+	:param bonelist: list of all boneframes
+	:param original_i: idx of beginning of linear slerpable section
+	:param original_z: idx of end of linear slerpable section
+	:return: new (or same) idx of end of section
+	"""
+	# calculate the y-data from this proposed z value
+	_, y_points_all = make_xy_from_segment_rotation(bonelist, original_i, original_z, 1.0, check=False)
+	# test (and recurse/repeat if necessary) and find a new, closer z point that doesn't include overrotation
+	new_z = recursive_something(bonelist, y_points_all, original_i, original_z)
+	return new_z
+
+
+def make_xy_from_segment_rotation(bonelist: List[vmdstruct.VmdBoneFrame],
+								  idx_this: int,
+								  idx_next: int,
+								  expected_delta_rate: float,
+								  check=True) -> Tuple[List[float], List[float]]:
+	# look at all the points in between (including endpoints),
+	assert idx_this < idx_next
+	# x-points are dead easy
+	x_points = [frame.f for frame in bonelist[idx_this: idx_next + 1]]
+	# for y-points.... knowing the direction/polarity is kind of a problem. first, check whether start==end:
+	quat_start = core.euler_to_quaternion(bonelist[idx_this].rot)
+	quat_end = core.euler_to_quaternion(bonelist[idx_next].rot)
+	max_idx = idx_next - idx_this
+	if rotation_close(quat_start, quat_end):
+		# if start==end, then there is NO RIGHT ANSWER for polarity, so i just need to pick any direction
+		# and declare it positive! there is no objective truth. I will pick the greatest SQ distance as positive point.
+		max_quat = quat_start
+		max_val = 0
+		max_idx = 0
+		for i, frame in enumerate(bonelist[idx_this: idx_next + 1]):
+			q = core.euler_to_quaternion(frame.rot)
+			dist_SQ = get_quat_angular_distance(quat_start, q)  # SQ = start to Q
+			if dist_SQ > max_val:
+				max_val = dist_SQ
+				max_quat = q
+				max_idx = i
+		# possible shortcut: if all distances are super small, then return list of zeros
+		if max_val < 1e-6:
+			y_points = [0] * len(x_points)
+			return x_points, y_points
+		# if not all distances are small, then use this "greatest SQ" as the end quat
+		quat_end = max_quat
 	
+	# okay, now i have ensured that quat_start != quat_end, so i have a sense of direction!
+	dist_SE = get_quat_angular_distance(quat_start, quat_end)  # SE = start to end
+	y_points = []
+	divergence_list = []
+	revslerp_list = []
 	
+	# now, compute the actual results y_points
+	for i, frame in enumerate(bonelist[idx_this: idx_next + 1]):
+		q = core.euler_to_quaternion(frame.rot)
+		revslerp, diff = reverse_slerp(q, quat_start, quat_end)
+		divergence_list.append(diff)
+		revslerp_list.append(revslerp)
+		# ^^ this is just for... stats? bookkeeping? curiosity? idk
+		# now i really calculate the answer
+		dist_SQ = get_quat_angular_distance(quat_start, q)  # SQ = start to Q
+		dist_EQ = get_quat_angular_distance(quat_end, q)  # EQ = end to Q
+		# how to determine "polarity": make it a triangle and compare distances
+		if dist_SE < dist_EQ and dist_SQ < dist_EQ:
+			y_points.append(-dist_SQ)
+		else:
+			y_points.append(dist_SQ)
+	
+	if check:
+		# assert that all of the values I calculated are close to the linear slerp path
+		# exactly how far off am i?
+		# radians -> slerp% -> quat -> compare with full-key input
+		max_ang = y_points[max_idx]
+		if max_ang != 0 and not rotation_close(quat_start, quat_end):
+			revslerp_list_from_rads = [v / max_ang for v in y_points]
+			wrongness = []
+			for i in range(idx_this, idx_next + 1):
+				j = i - idx_this  # j is idx within "revslerp_list"
+				fwd_slerp = core.my_slerp(quat_start, quat_end, revslerp_list_from_rads[j])
+				# fwd_slerp_eul = core.quaternion_to_euler(fwd_slerp)
+				point = bonelist[i]
+				point_quat = core.euler_to_quaternion(point.rot)
+				ang = get_quat_angular_distance(fwd_slerp, point_quat)
+				wrongness.append(math.degrees(ang))
+			max_wrongness = max(wrongness)
+			if max_wrongness > 2:
+				print("max wrongness = %7.2fdeg" % max_wrongness)
+			if max_wrongness > 20:
+				print("oh no")
+	
+	# the expected rate of change for time is 1frame/frame
+	# the expected rate of change for value is EXPECTED_DELTA_BONE_ROTATION_RADIANS/frame
+	# i need to get these to be square so that value-error has the same weight as time-error
+	# so, i... divide by the expected? yeah? yeah.
+	y_points = [v / expected_delta_rate for v in y_points]
+	
+	return x_points, y_points
+
+
+def make_xy_from_segment_scalar(bonelist: List[vmdstruct.VmdBoneFrame],
+								idx_this: int,
+								idx_next: int,
+								getter: Callable[[vmdstruct.VmdBoneFrame], float],
+								expected_delta_rate) -> Tuple[List[float], List[float]]:
+	# look at all the points in between (including endpoints),
+	assert idx_this < idx_next
+	x_points = [bonelist[i].f for i in range(idx_this, idx_next + 1)]
+	y_points = [getter(bonelist[i]) for i in range(idx_this, idx_next + 1)]
+	# the expected rate of change for time is 1frame/frame
+	# the expected rate of change for value is ??/frame
+	# i need to get these to be square so that value-error has the same weight as time-error
+	# so, i... divide by the expected? yeah? yeah.
+	
+	y_points = [v / expected_delta_rate for v in y_points]
+	
+	return x_points, y_points
 
 
 def simplify_morphframes(allmorphlist: List[vmdstruct.VmdMorphFrame]) -> List[vmdstruct.VmdMorphFrame]:
@@ -651,76 +805,6 @@ def _simplify_boneframes_scalar(bonename: str,
 		# add 1 to the length cuz frame 0 is implicitly important to all axes
 		print(f"'{bonename}' {chan} : keep {len(keepset)+1}/{len(bonelist)}")
 	return keepset
-
-def recursive_something(bonelist: List[vmdstruct.VmdBoneFrame], y_points_all: List[float],
-						i:int, z:int, level=0) -> int:
-	# if level != 0:
-	# 	print(f"recursion {level}")
-	last_max = 0
-	last_min = 0
-	# walk along the "radians from start" list
-	for e, val in enumerate(y_points_all):
-		# track min and max
-		if val < last_min: last_min = val
-		if val > last_max: last_max = val
-		# if the range (max-min) exceeds 160 degrees, then this found segment is NOT OKAY!
-		range_in_degrees = math.degrees(last_max - last_min)
-		if range_in_degrees >= GREATEST_LENGTH_OF_ROTATION_SEGMENT_IN_DEGREES:
-			z = i + e - 1  # redefine z as the point before this one
-			if z == i: z += 1  # but, z must always be at least 1 greater than i. even if that puts me back where i started.
-			# recalculate the y_points_all from this new z value
-			_, y_points_new = make_xy_from_segment_rotation(bonelist, i, z, 1.0, check=False)
-			# moving the endpoint will sometimes cause radian measurements to flip!!
-			# compare the new y-list with the previous y-list... if all remaining elements match, then this is good!
-			# "zip" lets me iterate over pairs up to the length of the shorter list
-			if all(old == new for old, new in zip(y_points_all, y_points_new)):
-				# if all radian measurements are unchanged, i'm done! the new value is just good!
-				return z
-			else:
-				# if any radian measurements flipped, check it again!!
-				# might return the same answer, might return something different, might recurse even deeper
-				# return whatever result it comes up with
-				return recursive_something(bonelist, y_points_new, i, z, level=level+1)
-	# if i walked over the whole list and the range never exceeded 160, then this z is good.
-	return z
-
-'''
-def find_breaks_due_to_overrotation(bonelist: List[vmdstruct.VmdBoneFrame],
-									original_i:int,
-									original_z:int) -> List[Tuple[int,int]]:
-	retme = []
-	i = original_i
-	
-	while i != original_z:
-		# the proposed z value is always the end of the true sequence
-		# calculate the y-data from this proposed z value
-		_, y_points_all = make_xy_from_segment_rotation(bonelist, i, original_z, 1.0, check=False)
-		# test (and recurse/repeat if necessary) and find a new, closer z point that doesn't include overrotation
-		new_z = recursive_something(bonelist, y_points_all, i, original_z)
-		if new_z != original_z or i != original_i:
-			print(f"OVERROTATE : i-z= {original_i}-{original_z} -> {i}-{new_z}")
-		retme.append((i, new_z))  # store this new value to the output list
-		i = new_z  # the next segment will start where this one ended...
-
-	# todo idea: ignore the final endpoint? so that i re-evaluate that stretch?
-	return retme
-'''
-def break_due_to_overrotation(bonelist: List[vmdstruct.VmdBoneFrame],
-									original_i:int,
-									original_z:int) -> int:
-	"""
-	Turn a "linear slerpable section" into a same-or-smaller sub-section that contains rotation of 160 degrees or less.
-	
-	:param bonelist: list of all boneframes
-	:param original_i: idx of beginning of linear slerpable section
-	:param original_z: idx of end of linear slerpable section
-	:return: new (or same) idx of end of section
-	"""
-	# calculate the y-data from this proposed z value
-	_, y_points_all = make_xy_from_segment_rotation(bonelist, original_i, original_z, 1.0, check=False)
-	# test (and recurse/repeat if necessary) and find a new, closer z point that doesn't include overrotation
-	new_z = recursive_something(bonelist, y_points_all, original_i, original_z)
-	return new_z
 
 def _simplify_boneframes_rotation(bonename: str,
 								  bonelist: List[vmdstruct.VmdBoneFrame],
@@ -982,96 +1066,6 @@ def make_beziers_from_datarange(x_points_all: List[float], y_points_all: List[fl
 	# todo: print ALL datapoints and ALL beziers on one graph!
 	return keeplist
 
-def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdstruct.VmdBoneFrame]:
-	"""
-	dont yet care about phys on/off... but, eventually i should.
-	only care about x/y/z/rotation
-	
-	:param allbonelist:
-	:return:
-	"""
-	
-	# verify there is no overlapping frames, just in case
-	allbonelist = vmdutil.assert_no_overlapping_frames(allbonelist)
-	# sort into dict form to process each morph independently
-	bonedict = vmdutil.dictify_framelist(allbonelist)
-	
-	# for progress printouts
-	totalbonelen = len(allbonelist)
-	sofarbonelen = 0
-	
-	# the final list of all boneframes that i am keeping
-	allbonelist_out = []
-	
-	print("number of bones %d" % len(bonedict))
-	# analyze each morph one at a time
-	for bonename, bonelist in bonedict.items():
-		# if bonename != "センター":
-		# 	continue
-		# if bonename != "上半身":
-		# 	continue
-		# if bonename != "右足ＩＫ" and bonename != "左足ＩＫ" and bonename != "上半身" and bonename != "センター":
-		# 	continue
-		# if bonename != "右足ＩＫ":
-		# 	continue
-		# if bonename != "上半身2":
-		# 	continue
-		# if bonename != "左腕捩":
-		# 	continue
-		print("BONE '%s' LEN %d" % (bonename, len(bonelist)))
-		sofarbonelen += len(bonelist)
-		core.print_progress_oneline(sofarbonelen/totalbonelen)
-		
-		if len(bonelist) <= 2:
-			allbonelist_out.extend(bonelist)
-			continue
-		
-		# since i need to analyze what's "important" along 4 different channels,
-		# i think it's best to store a set of the indices of the frames that i think are important?
-		keepset = set()
-		
-		# the first frame is always kept.
-		keepset.add(0)
-		
-		#######################################################################################
-		if SIMPLIFY_BONE_POSITION:
-			k = _simplify_boneframes_scalar(bonename, bonelist, "posX", lambda x: x.pos[0], EXPECTED_DELTA_BONE_XPOS)
-			keepset.update(k)
-			k = _simplify_boneframes_scalar(bonename, bonelist, "posY", lambda x: x.pos[1], EXPECTED_DELTA_BONE_YPOS)
-			keepset.update(k)
-			k = _simplify_boneframes_scalar(bonename, bonelist, "posZ", lambda x: x.pos[2], EXPECTED_DELTA_BONE_ZPOS)
-			keepset.update(k)
-			# now i have found every frame# that is important due to position changes
-			if DEBUG and len(keepset) > 2:
-				# if it found only 2, ignore it, cuz that would mean just startpoint and endpoint
-				print(f"'{bonename}' posALL : keep {len(keepset)}/{len(bonelist)}")
-		
-		#######################################################################################
-		# now, i walk along the frames analyzing the ROTATION channel. this is the hard part.
-		if SIMPLIFY_BONE_ROTATION:
-			k = _simplify_boneframes_rotation(bonename, bonelist, EXPECTED_DELTA_BONE_ROTATION_RADIANS)
-			keepset.update(k)
-			
-		#######################################################################################
-		# now done searching for the "important" points, filled "keepset"
-		if DEBUG and len(keepset) > 2:
-			# if it found only 2, dont print cuz that would mean just startpoint and endpoint
-			print("'%s' : RESULT : keep %d/%d = %.2f%%"% (
-				bonename, len(keepset), len(bonelist), 100*len(keepset)/len(bonelist)))
-			
-		# recap: i have found the minimal set of frames needed to define the motion of this bone,
-		# i.e. the endpoints where a bezier can define the motion between them.
-		# when i unify the sets from each source, i am makign those segments shorter.
-		# if a bezier curve can be fit onto points A thru Z, then it's guaranteed that a bezier curve can
-		# be fit onto points A thru M and separately onto points M thru Z.
-		# i know it's possible, so, thats what i'm doing now.
-		
-		r = _finally_put_it_all_together(bonelist, keepset)
-		allbonelist_out.extend(r)
-		pass  # end "for each bonename, bonelist"
-	print("TOTAL TOTAL RESULT: keep %d/%d = %.2f%%" % (len(allbonelist_out), len(allbonelist), 100 * len(allbonelist_out) / len(allbonelist)))
-	return allbonelist_out
-
 def _finally_put_it_all_together(bonelist: List[vmdstruct.VmdBoneFrame], keepset: Set[int]) -> List[vmdstruct.VmdBoneFrame]:
 	"""
 	I have found the minimal set of frames needed to define the motion of this bone with respect to each separate
@@ -1155,108 +1149,96 @@ def _finally_put_it_all_together(bonelist: List[vmdstruct.VmdBoneFrame], keepset
 	return output
 
 
-def make_xy_from_segment_rotation(bonelist: List[vmdstruct.VmdBoneFrame],
-								  idx_this:int,
-								  idx_next:int,
-								  expected_delta_rate:float,
-								  check=True) -> Tuple[List[float], List[float]]:
-	# look at all the points in between (including endpoints),
-	assert idx_this < idx_next
-	# x-points are dead easy
-	x_points = [frame.f for frame in bonelist[idx_this: idx_next + 1]]
-	# for y-points.... knowing the direction/polarity is kind of a problem. first, check whether start==end:
-	quat_start = core.euler_to_quaternion(bonelist[idx_this].rot)
-	quat_end =   core.euler_to_quaternion(bonelist[idx_next].rot)
-	max_idx = idx_next - idx_this
-	if rotation_close(quat_start, quat_end):
-		# if start==end, then there is NO RIGHT ANSWER for polarity, so i just need to pick any direction
-		# and declare it positive! there is no objective truth. I will pick the greatest SQ distance as positive point.
-		max_quat = quat_start
-		max_val = 0
-		max_idx = 0
-		for i, frame in enumerate(bonelist[idx_this: idx_next + 1]):
-			q = core.euler_to_quaternion(frame.rot)
-			dist_SQ = get_quat_angular_distance(quat_start, q)  # SQ = start to Q
-			if dist_SQ > max_val:
-				max_val = dist_SQ
-				max_quat = q
-				max_idx = i
-		# possible shortcut: if all distances are super small, then return list of zeros
-		if max_val < 1e-6:
-			y_points = [0] * len(x_points)
-			return x_points, y_points
-		# if not all distances are small, then use this "greatest SQ" as the end quat
-		quat_end = max_quat
-	
-	# okay, now i have ensured that quat_start != quat_end, so i have a sense of direction!
-	dist_SE = get_quat_angular_distance(quat_start, quat_end)  # SE = start to end
-	y_points = []
-	divergence_list = []
-	revslerp_list = []
-	
-	# now, compute the actual results y_points
-	for i, frame in enumerate(bonelist[idx_this: idx_next + 1]):
-		q = core.euler_to_quaternion(frame.rot)
-		revslerp,diff = reverse_slerp(q, quat_start, quat_end)
-		divergence_list.append(diff)
-		revslerp_list.append(revslerp)
-		# ^^ this is just for... stats? bookkeeping? curiosity? idk
-		# now i really calculate the answer
-		dist_SQ = get_quat_angular_distance(quat_start, q)  # SQ = start to Q
-		dist_EQ = get_quat_angular_distance(quat_end, q)  # EQ = end to Q
-		# how to determine "polarity": make it a triangle and compare distances
-		if dist_SE < dist_EQ and dist_SQ < dist_EQ:
-			y_points.append(-dist_SQ)
-		else:
-			y_points.append( dist_SQ)
-	
-	if check:
-		# assert that all of the values I calculated are close to the linear slerp path
-		# exactly how far off am i?
-		# radians -> slerp% -> quat -> compare with full-key input
-		max_ang = y_points[max_idx]
-		if max_ang != 0 and not rotation_close(quat_start, quat_end):
-			revslerp_list_from_rads = [v / max_ang for v in y_points]
-			wrongness = []
-			for i in range(idx_this, idx_next + 1):
-				j = i - idx_this  # j is idx within "revslerp_list"
-				fwd_slerp = core.my_slerp(quat_start, quat_end, revslerp_list_from_rads[j])
-				# fwd_slerp_eul = core.quaternion_to_euler(fwd_slerp)
-				point = bonelist[i]
-				point_quat = core.euler_to_quaternion(point.rot)
-				ang = get_quat_angular_distance(fwd_slerp, point_quat)
-				wrongness.append(math.degrees(ang))
-			max_wrongness = max(wrongness)
-			if max_wrongness > 2:
-				print("max wrongness = %7.2fdeg" % max_wrongness)
-			if max_wrongness > 20:
-				print("oh no")
-	
-	# the expected rate of change for time is 1frame/frame
-	# the expected rate of change for value is EXPECTED_DELTA_BONE_ROTATION_RADIANS/frame
-	# i need to get these to be square so that value-error has the same weight as time-error
-	# so, i... divide by the expected? yeah? yeah.
-	y_points = [v / expected_delta_rate for v in y_points]
+def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdstruct.VmdBoneFrame]:
+	"""
+	dont yet care about phys on/off... but, eventually i should.
+	only care about x/y/z/rotation
 
-	return x_points, y_points
-
-def make_xy_from_segment_scalar(bonelist: List[vmdstruct.VmdBoneFrame],
-								idx_this:int,
-								idx_next:int,
-								getter: Callable[[vmdstruct.VmdBoneFrame], float],
-								expected_delta_rate) -> Tuple[List[float], List[float]]:
-	# look at all the points in between (including endpoints),
-	assert idx_this < idx_next
-	x_points = [bonelist[i].f for i in range(idx_this, idx_next + 1)]
-	y_points = [getter(bonelist[i]) for i in range(idx_this, idx_next + 1)]
-	# the expected rate of change for time is 1frame/frame
-	# the expected rate of change for value is ??/frame
-	# i need to get these to be square so that value-error has the same weight as time-error
-	# so, i... divide by the expected? yeah? yeah.
+	:param allbonelist:
+	:return:
+	"""
 	
-	y_points = [v / expected_delta_rate for v in y_points]
+	# verify there is no overlapping frames, just in case
+	allbonelist = vmdutil.assert_no_overlapping_frames(allbonelist)
+	# sort into dict form to process each morph independently
+	bonedict = vmdutil.dictify_framelist(allbonelist)
 	
-	return x_points, y_points
+	# for progress printouts
+	totalbonelen = len(allbonelist)
+	sofarbonelen = 0
+	
+	# the final list of all boneframes that i am keeping
+	allbonelist_out = []
+	
+	print("number of bones %d" % len(bonedict))
+	# analyze each morph one at a time
+	for bonename, bonelist in bonedict.items():
+		# if bonename != "センター":
+		# 	continue
+		# if bonename != "上半身":
+		# 	continue
+		# if bonename != "右足ＩＫ" and bonename != "左足ＩＫ" and bonename != "上半身" and bonename != "センター":
+		# 	continue
+		# if bonename != "右足ＩＫ":
+		# 	continue
+		# if bonename != "上半身2":
+		# 	continue
+		# if bonename != "左腕捩":
+		# 	continue
+		print("BONE '%s' LEN %d" % (bonename, len(bonelist)))
+		sofarbonelen += len(bonelist)
+		core.print_progress_oneline(sofarbonelen / totalbonelen)
+		
+		if len(bonelist) <= 2:
+			allbonelist_out.extend(bonelist)
+			continue
+		
+		# since i need to analyze what's "important" along 4 different channels,
+		# i think it's best to store a set of the indices of the frames that i think are important?
+		keepset = set()
+		
+		# the first frame is always kept.
+		keepset.add(0)
+		
+		#######################################################################################
+		if SIMPLIFY_BONE_POSITION:
+			k = _simplify_boneframes_scalar(bonename, bonelist, "posX", lambda x: x.pos[0], EXPECTED_DELTA_BONE_XPOS)
+			keepset.update(k)
+			k = _simplify_boneframes_scalar(bonename, bonelist, "posY", lambda x: x.pos[1], EXPECTED_DELTA_BONE_YPOS)
+			keepset.update(k)
+			k = _simplify_boneframes_scalar(bonename, bonelist, "posZ", lambda x: x.pos[2], EXPECTED_DELTA_BONE_ZPOS)
+			keepset.update(k)
+			# now i have found every frame# that is important due to position changes
+			if DEBUG and len(keepset) > 2:
+				# if it found only 2, ignore it, cuz that would mean just startpoint and endpoint
+				print(f"'{bonename}' posALL : keep {len(keepset)}/{len(bonelist)}")
+		
+		#######################################################################################
+		# now, i walk along the frames analyzing the ROTATION channel. this is the hard part.
+		if SIMPLIFY_BONE_ROTATION:
+			k = _simplify_boneframes_rotation(bonename, bonelist, EXPECTED_DELTA_BONE_ROTATION_RADIANS)
+			keepset.update(k)
+		
+		#######################################################################################
+		# now done searching for the "important" points, filled "keepset"
+		if DEBUG and len(keepset) > 2:
+			# if it found only 2, dont print cuz that would mean just startpoint and endpoint
+			print("'%s' : RESULT : keep %d/%d = %.2f%%" % (
+				bonename, len(keepset), len(bonelist), 100 * len(keepset) / len(bonelist)))
+		
+		# recap: i have found the minimal set of frames needed to define the motion of this bone,
+		# i.e. the endpoints where a bezier can define the motion between them.
+		# when i unify the sets from each source, i am makign those segments shorter.
+		# if a bezier curve can be fit onto points A thru Z, then it's guaranteed that a bezier curve can
+		# be fit onto points A thru M and separately onto points M thru Z.
+		# i know it's possible, so, thats what i'm doing now.
+		
+		r = _finally_put_it_all_together(bonelist, keepset)
+		allbonelist_out.extend(r)
+		pass  # end "for each bonename, bonelist"
+	print("TOTAL TOTAL RESULT: keep %d/%d = %.2f%%" % (
+	len(allbonelist_out), len(allbonelist), 100 * len(allbonelist_out) / len(allbonelist)))
+	return allbonelist_out
 
 
 def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
