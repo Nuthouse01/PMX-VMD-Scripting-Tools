@@ -500,38 +500,6 @@ def reverse_slerp(q, q0, q1) -> Tuple[float,float]:
 	return x, 0
 
 
-def recursive_something(bonelist: List[vmdstruct.VmdBoneFrame], y_points_all: List[float],
-						i: int, z: int, level=0) -> int:
-	# if level != 0:
-	# 	print(f"recursion {level}")
-	last_max = 0
-	last_min = 0
-	# walk along the "radians from start" list
-	for e, val in enumerate(y_points_all):
-		# track min and max
-		if val < last_min: last_min = val
-		if val > last_max: last_max = val
-		# if the range (max-min) exceeds 160 degrees, then this found segment is NOT OKAY!
-		range_in_degrees = math.degrees(last_max - last_min)
-		if range_in_degrees >= GREATEST_LENGTH_OF_ROTATION_SEGMENT_IN_DEGREES:
-			z = i + e - 1  # redefine z as the point before this one
-			if z == i: z += 1  # but, z must always be at least 1 greater than i. even if that puts me back where i started.
-			# recalculate the y_points_all from this new z value
-			_, y_points_new = make_xy_from_segment_rotation(bonelist, i, z, 1.0, check=False)
-			# moving the endpoint will sometimes cause radian measurements to flip!!
-			# compare the new y-list with the previous y-list... if all remaining elements match, then this is good!
-			# "zip" lets me iterate over pairs up to the length of the shorter list
-			if all(old == new for old, new in zip(y_points_all, y_points_new)):
-				# if all radian measurements are unchanged, i'm done! the new value is just good!
-				return z
-			else:
-				# if any radian measurements flipped, check it again!!
-				# might return the same answer, might return something different, might recurse even deeper
-				# return whatever result it comes up with
-				return recursive_something(bonelist, y_points_new, i, z, level=level + 1)
-	# if i walked over the whole list and the range never exceeded 160, then this z is good.
-	return z
-
 
 def break_due_to_overrotation(bonelist: List[vmdstruct.VmdBoneFrame],
 							  original_i: int,
@@ -544,10 +512,41 @@ def break_due_to_overrotation(bonelist: List[vmdstruct.VmdBoneFrame],
 	:param original_z: idx of end of linear slerpable section
 	:return: new (or same) idx of end of section
 	"""
+	
+	def recursive_something(y_points_all2: List[float],
+							i: int, z: int, level=0) -> int:
+		last_max = 0
+		last_min = 0
+		# walk along the "radians from start" list
+		for e, val in enumerate(y_points_all2):
+			# track min and max
+			if val < last_min: last_min = val
+			if val > last_max: last_max = val
+			# if the range (max-min) exceeds 160 degrees, then this found segment is NOT OKAY!
+			range_in_degrees = math.degrees(last_max - last_min)
+			if range_in_degrees >= GREATEST_LENGTH_OF_ROTATION_SEGMENT_IN_DEGREES:
+				z = i + e - 1  # redefine z as the point before this one
+				if z == i: z += 1  # but, z must always be at least 1 greater than i. even if that puts me back where i started.
+				# recalculate the y_points_all from this new z value
+				_, y_points_new = make_xy_from_segment_rotation(bonelist, i, z, 1.0, check=False)
+				# moving the endpoint will sometimes cause radian measurements to flip!!
+				# compare the new y-list with the previous y-list... if all remaining elements match, then this is good!
+				# "zip" lets me iterate over pairs up to the length of the shorter list
+				if all(old == new for old, new in zip(y_points_all2, y_points_new)):
+					# if all radian measurements are unchanged, i'm done! the new value is just good!
+					return z
+				else:
+					# if any radian measurements flipped, check it again!!
+					# might return the same answer, might return something different, might recurse even deeper
+					# return whatever result it comes up with
+					return recursive_something(y_points_new, i, z, level=level+1)
+		# if i walked over the whole list and the range never exceeded 160, then this z is good.
+		return z
+	
 	# calculate the y-data from this proposed z value
 	_, y_points_all = make_xy_from_segment_rotation(bonelist, original_i, original_z, 1.0, check=False)
 	# test (and recurse/repeat if necessary) and find a new, closer z point that doesn't include overrotation
-	new_z = recursive_something(bonelist, y_points_all, original_i, original_z)
+	new_z = recursive_something(y_points_all, original_i, original_z)
 	return new_z
 
 
