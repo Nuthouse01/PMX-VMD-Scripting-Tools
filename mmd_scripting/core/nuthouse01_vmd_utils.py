@@ -215,7 +215,7 @@ def fill_missing_boneframes(boneframe_dict: Dict[str, List[vmdstruct.VmdBoneFram
 	if relevant_frames is None:
 		relevant_framenums = set()
 	else:
-		relevant_framenums = relevant_frames.copy()
+		relevant_framenums = set(relevant_frames)
 	for listofboneframes in boneframe_dict.values():
 		for oneframe in listofboneframes:
 			relevant_framenums.add(oneframe.f)

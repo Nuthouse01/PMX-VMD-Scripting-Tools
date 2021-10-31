@@ -1518,7 +1518,7 @@ def fully_key_motion_for_testing(vmd: vmdstruct.Vmd) -> vmdstruct.Vmd:
 	new_bonedict = vmdutil.fill_missing_boneframes(bonedict, moreinfo=True, relevant_frames=all_timesteps)
 	# reassemble
 	new_bonelist = []
-	for L in new_bonedict.items():
+	for L in new_bonedict.values():
 		new_bonelist.extend(L)
 		
 	vmd2 = vmd.copy()
@@ -1537,7 +1537,7 @@ def main(moreinfo=True):
 	# vmdname = r"../../../dances\ANIMAる {Umetora}\ANIMAru (京まりん)/ANIMAる(with expression).vmd"
 	# vmdname = r"../../../dances\Hibana {DECO.27}\Hibana (getz)/Hibana.vmd"
 	# vmdname = '../../../Addiction_TdaFacial.vmd'
-	vmd = vmdlib.read_vmd(vmdname)
+	vmd = vmdlib.read_vmd(vmdname, moreinfo=moreinfo)
 	# measure_avg_change_per_frame(vmd)
 	# return
 	
