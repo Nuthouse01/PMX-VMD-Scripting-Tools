@@ -17,11 +17,12 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.05 - 9/7/2021"
 #####################
 # https://github.com/chrisarridge/vectorpaths
 
-DEBUG = 1
+DEBUG = 3
 # debug 1: per-channel results
-# debug 2: each match segment
-# debug 3: reverse slerp goodness
-# debug 4: bez logging always on
+# debug 2: overrotate/longseg/monotonic prints
+# debug 3: each match segment
+# debug 4: reverse slerp info
+# debug 5: bez logging always on
 DEBUG_PLOTS = False
 
 # if DEBUG >= 4:
@@ -758,7 +759,7 @@ def _simplify_boneframes_scalar(bonename: str,
 			z += 1
 		if z != i+1:  # if the while-loop went thru at least 1 loop,
 			z -= 1  # back off one value, since z is the value that no longer matches,
-			if DEBUG >= 2:
+			if DEBUG >= 3:
 				print(f"MATCH! bone='{bonename}' {chan} : i-z= {i}-{z} : pts={z-i+1} (ZERO CHANGE)")
 			keepset.add(z)  # add this endpoint
 			i = z  # and move the startpoint to here and keep walking from here
@@ -835,7 +836,7 @@ def _simplify_boneframes_rotation(bonename: str,
 			z += 1
 		if z != i + 1:  # if the while-loop went thru at least 1 loop,
 			z -= 1  # back off one value, since that's the value that no longer matches
-			if DEBUG >= 2:
+			if DEBUG >= 3:
 				print(f"MATCH! bone='{bonename}' {chan} : i-z= {i}-{z} : pts={z-i+1} (ZERO CHANGE)")
 			keepset.add(z)  # add this endpoint
 			i = z
@@ -870,19 +871,19 @@ def _simplify_boneframes_rotation(bonename: str,
 				# when i find something that is a BAD endpoint, i know (assume?) that the one before was GOOD.
 				# so, "return" z-1
 				z -= 1
-				if DEBUG >= 2:
+				if DEBUG >= 4:
 					if temp_reverse_slerp_diffs:
-						print(f"rev-slerp-segment : i-z= {i}-{z} : pts={z-i+1}" + (" : nextdiff=%.5f" % max(temp_reverse_slerp_diffs)))
+						print(f"rev-slerp  : i-z= {i}-{z} : pts={z-i+1}" + (" : nextdiff=%.5f" % max(temp_reverse_slerp_diffs)))
 					else:
-						print(f"rev-slerp-segment : i-z= {i}-{z} : pts={z-i+1}")
+						print(f"rev-slerp  : i-z= {i}-{z} : pts={z-i+1}")
 				break
 			else:
 				# if i got thru all the points between i and z, and they all passed, then this z is the last known good endpoint
 				# continue and test the next z
 				pass
 		
-		if z-i >= BONE_ROTATION_MAX_SAMPLES:
-			print(f"LONG SEGMENT : i-z= {i}-{z} : pts={z-i+1}")
+		if DEBUG >= 2 and (z-i >= BONE_ROTATION_MAX_SAMPLES):
+			print(f"long seg   : i-z= {i}-{z} : pts={z-i+1}")
 		
 		# now i have z, and anything past z is DEFINITELY NOT the endpoint for this sequence
 		# everything from i to z is "slerpable", meaning it is all falling on a linear arc
@@ -905,8 +906,8 @@ def _simplify_boneframes_rotation(bonename: str,
 			# +++++++++++++++++++++++++++++++++++++
 			# find ONE new endpoint that contains rotation < 160 degrees...
 			z2 = break_due_to_overrotation(bonelist, i2, z)
-			if z2 != z:
-				print(f"OVERROTATE : i-z= {i}-{z} : i2-z2= {i2}-{z2}")
+			if DEBUG >= 2 and (z2 != z):
+				print(f"overrotate : i-z= {i}-{z} : i2-z2= {i2}-{z2}")
 			
 			# if z2 == z, then no overrotate concerns were found, so do not "trim" at later stage
 		
@@ -921,9 +922,9 @@ def _simplify_boneframes_rotation(bonename: str,
 			local_minmax = break_due_to_monotonic_sections(y_points_all)
 			# convert the local min/max from relative idx scope to i/z scope
 			local_minmax = [v+i2 for v in local_minmax]
-			if (len(local_minmax) != 2) and (DEBUG >= 2):
+			if DEBUG >= 2 and (len(local_minmax) != 2):
 				# if breakup is needed (often) then print a message
-				print(f"MONOTONIC  : i-z= {i}-{z} : i2-z2= {i2}-{z2} : numseg={len(local_minmax)-1} : list=" + str(local_minmax))
+				print(f"monotonic  : i-z= {i}-{z} : i2-z2= {i2}-{z2} : numseg={len(local_minmax)-1} : list=" + str(local_minmax))
 				# plt.plot(x_points_all, y_points_all, 'r+')
 				# plt.show(block=True)
 			if DEBUG_PLOTS:
@@ -1041,7 +1042,7 @@ def make_beziers_from_datarange(x_points_all: List[float], y_points_all: List[fl
 			found_beziers.append(bez)
 			segment_count += 1
 			keeplist.append(i + w)  # then save this proposed endpoint as a valid endpoint,
-			if DEBUG >= 2 or DEBUG_PLOTS:
+			if DEBUG >= 3:
 				# i thru z is the full monotonic stretch
 				# v thru w is one bezier curve on the stretch
 				if (w == num_all_points-1) and (segment_count == 1):
@@ -1050,19 +1051,27 @@ def make_beziers_from_datarange(x_points_all: List[float], y_points_all: List[fl
 				else:
 					# if there are more than 1 segment, then each also prints its index
 					print(f"MATCH! bone='{bonename}' {chan} : i-z= {i}-{z} : v-w= {i+v}-{i+w} : pts={w-v+1} : #={segment_count}{'*' if (w == num_all_points-1) else ''}")
-				# only show the graph if it is more than a simple two-point line segment
-				if (w-v+1 > 2) and DEBUG_PLOTS:
-					bez.plotcontrol()
-					bez.plot()
-					plt.plot(x_points, y_points, 'r+')
-					plt.show(block=True)
+				# # only show the graph if it is more than a simple two-point line segment
+				# if (w-v+1 > 2) and DEBUG_PLOTS:
+				# 	bez.plotcontrol()
+				# 	bez.plot()
+				# 	plt.plot(x_points, y_points, 'r+')
+				# 	plt.show(block=True)
 					
 			v = w  # where this segment ends is where the next segment will begin
 			break
 			# if i let it iterate all the way down to 2 points then it is guaranteed to find a match (cuz linear)
 			# actually it's probably also guaranteed to pass at 3 points. do i want that? hm... probably not?
-			pass  # end walking backwards from z to i
-	# todo: print ALL datapoints and ALL beziers on one graph!
+			pass  # end "w walking backwards from z to i"
+		pass  # end "loop until v == z"
+	if DEBUG >= 3 and DEBUG_PLOTS:
+		# todo: print ALL datapoints and ALL beziers on one graph!
+		for bez in found_beziers:
+			bez.plotcontrol()
+			bez.plot()
+		plt.plot(x_points_all, y_points_all, 'r+')
+		plt.show(block=True)
+	
 	return keeplist
 
 def _finally_put_it_all_together(bonelist: List[vmdstruct.VmdBoneFrame], keepset: Set[int]) -> List[vmdstruct.VmdBoneFrame]:
