@@ -473,11 +473,15 @@ def reverse_slerp(q, q0, q1) -> Tuple[float,float]:
 		dom = core.quat_ln(core.hamilton_product(q0not, q1))
 		
 		# compute the result for each channel that doesn't div-by-zero-error
+		# if b==0, then a SHOULD also be zero... if it's not, that's divergence! i'm not sure the scale matches, but oh well...
 		# if they all get zero (should never happen i hope?) then fall thru and do the ang dist thing
 		channel_results = []
+		channel_zerror = []
 		for a,b in zip(num[1:4],dom[1:4]):
-			if b == 0: continue
-			channel_results.append(a/b)
+			if b == 0:
+				channel_zerror.append(2*abs(a))
+			else:
+				channel_results.append(a/b)
 			
 		if len(channel_results) != 0:
 			# compute the average t-value
@@ -485,6 +489,10 @@ def reverse_slerp(q, q0, q1) -> Tuple[float,float]:
 			# compute the deviation between the channels
 			channel_results.sort()  # sort the channels to be ascending
 			diff = channel_results[-1] - channel_results[0]  # the diff is the biggest minus smallest
+			if channel_zerror:
+				# if max(channel_zerror) > diff:
+				# 	print("new error thing, %.5f %.5f" % (diff, max(channel_zerror)))
+				diff = max(diff, max(channel_zerror))
 			return avg, diff
 		else:
 			print("ERR OH COME ON")
