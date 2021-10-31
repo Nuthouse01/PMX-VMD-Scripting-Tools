@@ -1606,6 +1606,49 @@ def main(moreinfo=True):
 	core.MY_PRINT_FUNC("Done!")
 	return None
 
+def plot_3d(data, is_euler=False):
+	original_point = [1, 0, 0]
+	
+	# if input data is a list of quats, convert them to eulers
+	if is_euler:
+		data_e = data
+		data_q = [core.euler_to_quaternion(q) for q in data]
+	else:
+		data_e = [core.quaternion_to_euler(q) for q in data]
+		data_q = data
+	
+	# print all the points in euler-space
+	for e in data_e:
+		print("{:8.3f}, {:8.3f}, {:8.3f}".format(e[0], e[1], e[2]))
+	
+	point_list = []
+	for qrot in data_q:
+		# rotate [1,0,0] around [0,0,0] by the given amount
+		# THIS IS NOT PERFECT, this does not represent the x-rotation of the quat at all! but it's better than nothing?
+		# TODO find a better way of printing this, bunch of arrows instead of bunch of dots
+		newpoint = core.rotate3d((0, 0, 0), qrot, original_point)
+		# store the resulting XYZ coordinates
+		point_list.append(newpoint)
+	
+	# now graph them
+	fig = plt.figure()
+	ax = fig.add_subplot(111, projection='3d')
+	x, y, z = zip(*point_list)
+	ax.scatter(x, y, z, label="points")
+	# x,y,z = zip(*point_list_new)
+	# ax.scatter(x,y,z, label="new")
+	ax.scatter(0, 0, 0, marker='+', color='k', label="origin")  # plot the origin too
+	ax.set_xlim(-1, 1)
+	ax.set_ylim(-1, 1)
+	ax.set_zlim(-1, 1)
+	STARTPOINT = core.rotate3d((0, 0, 0), data_q[0], original_point)
+	ENDPOINT = core.rotate3d((0, 0, 0), data_q[-1], original_point)
+	ax.scatter(*STARTPOINT, marker='x', color='r', label='START')
+	ax.scatter(*ENDPOINT, marker='x', color='b', label='END')
+	ax.legend()
+	plt.show(block=True)
+
+
 if __name__ == '__main__':
 	core.MY_PRINT_FUNC(_SCRIPT_VERSION)
 	core.MY_PRINT_FUNC(helptext)
@@ -1662,36 +1705,4 @@ if __name__ == '__main__':
 	# 		[-15.913903709063252, -161.94521858255777, -84.50036877773108],
 	# 		]
 	#
-	# # code block to validate the SLERP code via 3d plotting
-	# original_point = [1, 0, 0]
-	# t_list = [i/20 for i in range(20)]
-	#
-	# # quat1 = core.euler_to_quaternion(euler1)
-	# # quat2 = core.euler_to_quaternion(euler2)
-	# point_list = []
-	# # point_list_new = []
-	# for rot in data:
-	# 	qrot = core.euler_to_quaternion(rot)
-	# 	newpoint = core.rotate3d((0,0,0), qrot, original_point)
-	# 	point_list.append(newpoint)
-	# 	# rot = core.new_slerp(quat1, quat2, t) # new slerp
-	# 	# newpoint = core.rotate3d((0, 0, 0), rot, original_point)
-	# 	# point_list_new.append(newpoint)
-	# # now graph them
-	# fig = plt.figure()
-	# ax = fig.add_subplot(111, projection='3d')
-	# x,y,z = zip(*point_list)
-	# ax.scatter(x,y,z, label="old")
-	# # x,y,z = zip(*point_list_new)
-	# # ax.scatter(x,y,z, label="new")
-	# ax.scatter(0,0,0, label="origin")  # plot the origin too
-	# ax.set_xlim(-1, 1)
-	# ax.set_ylim(-1, 1)
-	# ax.set_zlim(-1, 1)
-	# # STARTPOINT = core.rotate3d((0,0,0), quat1, original_point)
-	# # ENDPOINT = core.rotate3d((0,0,0), quat2, original_point)
-	# # ax.scatter(*STARTPOINT, marker='x', label='START')
-	# # ax.scatter(*ENDPOINT, marker='x', label='END')
-	# ax.legend()
-	# plt.show(block=True)
-	#
+	# code block to validate the SLERP code via 3d plotting
