@@ -89,6 +89,9 @@ def parse_pmx_header(raw: bytearray) -> pmxstruct.PmxHeader:
 		core.MY_PRINT_FUNC("WARNING: This file does not begin with the correct magic bytes. Maybe it was locked? Locks wont stop me!")
 		core.MY_PRINT_FUNC("         Expected '%s' but found '%s'" % (expectedmagic.hex(), magic.hex()))
 	
+	# hotfix: round the version info so it matches friendly numbers like 2.1
+	ver = round(ver, 5)
+	
 	# only first 8 bytes have known uses
 	# more bytes have no known purpose but need to be accounted for anyway
 	if numglobal != 8:
@@ -1299,7 +1302,7 @@ def write_pmx(pmx_filename: str, pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 	output_bytes += encode_pmx_dispframes(pmx.frames)
 	output_bytes += encode_pmx_rigidbodies(pmx.rigidbodies)
 	output_bytes += encode_pmx_joints(pmx.joints)
-	if pmx.header == 2.1:
+	if pmx.header.ver == 2.1:
 		# if version==2.1, parse soft bodies
 		output_bytes += encode_pmx_softbodies(pmx.softbodies)
 
