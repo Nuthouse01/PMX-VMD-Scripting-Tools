@@ -17,7 +17,7 @@ _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.05 - 9/7/2021"
 #####################
 # https://github.com/chrisarridge/vectorpaths
 
-DEBUG = 3
+DEBUG = 1
 # debug 1: per-channel results
 # debug 2: overrotate/longseg/monotonic prints
 # debug 3: each match segment
@@ -1511,18 +1511,41 @@ def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
 		pass
 
 def fully_key_motion_for_testing(vmd: vmdstruct.Vmd) -> vmdstruct.Vmd:
-	bonelist = vmdutil.assert_no_overlapping_frames(vmd.boneframes)
-	highest_timestep = max(a.f for a in bonelist)
-	all_timesteps = list(range(highest_timestep+1))
-	bonedict = vmdutil.dictify_framelist(bonelist)
-	new_bonedict = vmdutil.fill_missing_boneframes(bonedict, moreinfo=True, relevant_frames=all_timesteps)
-	# reassemble
-	new_bonelist = []
-	for L in new_bonedict.values():
-		new_bonelist.extend(L)
-		
+	start = time.time()
 	vmd2 = vmd.copy()
-	vmd2.boneframes = new_bonelist
+	core.MY_PRINT_FUNC("")
+	if vmd.morphframes:
+		core.MY_PRINT_FUNC("fully keying morph frames...")
+		morphlist = vmdutil.assert_no_overlapping_frames(vmd.morphframes)
+		highest_timestep = max(a.f for a in morphlist)
+		all_timesteps = list(range(highest_timestep+1))
+		new_morphlist = vmdutil.fill_missing_boneframes_new(morphlist, desired_frames=all_timesteps, moreinfo=True,
+															enable_append_prepend=False)
+		vmd2.morphframes = new_morphlist
+
+	if vmd.boneframes:
+		core.MY_PRINT_FUNC("fully keying bone frames...")
+		bonelist = vmdutil.assert_no_overlapping_frames(vmd.boneframes)
+		highest_timestep = max(a.f for a in bonelist)
+		all_timesteps = list(range(highest_timestep+1))
+		new_bonelist = vmdutil.fill_missing_boneframes_new(bonelist, desired_frames=all_timesteps, moreinfo=True,
+														   enable_append_prepend=False)
+		vmd2.boneframes = new_bonelist
+		
+	if vmd.camframes:
+		core.MY_PRINT_FUNC("fully keying cam frames...")
+		camlist = vmd.camframes
+		highest_timestep = max(a.f for a in camlist)
+		all_timesteps = list(range(highest_timestep+1))
+		new_camlist = vmdutil.fill_missing_boneframes_new(camlist, desired_frames=all_timesteps, moreinfo=True,
+														  enable_append_prepend=False)
+		vmd2.camframes = new_camlist
+	
+	fillend = time.time()
+	#TODO: function to prettyprint times
+	core.MY_PRINT_FUNC(f"TIME TO FULLY KEY: {round(fillend - start)}sec")
+	core.MY_PRINT_FUNC("")
+	
 	return vmd2
 	
 
@@ -1541,7 +1564,11 @@ def main(moreinfo=True):
 	# measure_avg_change_per_frame(vmd)
 	# return
 	
-	# vmd = fully_key_motion_for_testing(vmd)
+	num_morphframes = len(vmd.morphframes)
+	num_boneframes = len(vmd.boneframes)
+	num_camframes = len(vmd.camframes)
+	
+	vmd = fully_key_motion_for_testing(vmd)
 	anychange = False
 	
 	if vmd.morphframes:
@@ -1551,6 +1578,7 @@ def main(moreinfo=True):
 		print("TIME FOR ALL MORPHS:", morphend - start)
 		if newmorphs != vmd.morphframes:
 			print('morphs changed')
+			
 			anychange = True
 			vmd.morphframes = newmorphs
 			
