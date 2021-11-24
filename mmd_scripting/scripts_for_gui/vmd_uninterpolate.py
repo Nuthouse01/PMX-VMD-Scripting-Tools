@@ -601,9 +601,10 @@ def make_xy_from_segment_rotation(bonelist: List[vmdstruct.VmdBoneFrame],
 	# now, compute the actual results y_points
 	for i, frame in enumerate(bonelist[idx_this: idx_next + 1]):
 		q = core.euler_to_quaternion(frame.rot)
-		revslerp, diff = reverse_slerp(q, quat_start, quat_end)
-		divergence_list.append(diff)
-		revslerp_list.append(revslerp)
+		if check:
+			revslerp, diff = reverse_slerp(q, quat_start, quat_end)
+			divergence_list.append(diff)
+			revslerp_list.append(revslerp)
 		# ^^ this is just for... stats? bookkeeping? curiosity? idk
 		# now i really calculate the answer
 		dist_SQ = get_quat_angular_distance(quat_start, q)  # SQ = start to Q
