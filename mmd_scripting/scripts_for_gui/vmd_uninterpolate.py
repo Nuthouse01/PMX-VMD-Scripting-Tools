@@ -681,16 +681,19 @@ def simplify_morphframes(allmorphlist: List[vmdstruct.VmdMorphFrame]) -> List[vm
 	# sort into dict form to process each morph independently
 	morphdict = vmdutil.dictify_framelist(allmorphlist)
 	
-	print("number of morphs %d" % len(morphdict))
+	num_skipped = 0
+	
+	# print("number of morphs %d" % len(morphdict))
 	# analyze each morph one at a time
 	for morphname, morphlist in morphdict.items():
-		print("MORPH '%s' LEN %d" % (morphname, len(morphlist)))
+		# print("MORPH '%s' LEN %d" % (morphname, len(morphlist)))
 		# make a list of the deltas, for simplicity
 		thisoutput = []
 		# the first frame is always kept. and the last frame is also always kept.
 		# if there is only one frame, or two, then don't even bother walking i guess?
 		if len(morphlist) <= 2:
 			output.extend(morphlist)
+			num_skipped += 1
 			continue
 		
 		# the first frame is always kept.
@@ -732,7 +735,9 @@ def simplify_morphframes(allmorphlist: List[vmdstruct.VmdMorphFrame]) -> List[vm
 		
 		output.extend(thisoutput)
 	# FIN
-	print("MORPH TOTAL: keep %d/%d = %.2f%%" % (len(output), len(allmorphlist), 100 * len(output) / len(allmorphlist)))
+	print("MORPH RESULTS (inner):")
+	print("    identified %d unique morphs, processed %d" % (len(morphdict), len(morphdict) - num_skipped))
+	print("    keep frames %d/%d = %.2f%%" % (len(output), len(allmorphlist), 100 * len(output) / len(allmorphlist)))
 	
 	return output
 
@@ -1186,7 +1191,9 @@ def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdst
 	# the final list of all boneframes that i am keeping
 	allbonelist_out = []
 	
-	print("number of bones %d" % len(bonedict))
+	num_skipped = 0
+	
+	# print("number of bones %d" % len(bonedict))
 	# analyze each morph one at a time
 	for bonename, bonelist in bonedict.items():
 		# if bonename != "センター":
@@ -1201,12 +1208,13 @@ def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdst
 		# 	continue
 		# if bonename != "左腕捩":
 		# 	continue
-		print("BONE '%s' LEN %d" % (bonename, len(bonelist)))
+		# print("BONE '%s' LEN %d" % (bonename, len(bonelist)))
 		sofarbonelen += len(bonelist)
 		core.print_progress_oneline(sofarbonelen / totalbonelen)
 		
 		if len(bonelist) <= 2:
 			allbonelist_out.extend(bonelist)
+			num_skipped += 1
 			continue
 		
 		# since i need to analyze what's "important" along 4 different channels,
@@ -1252,8 +1260,10 @@ def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdst
 		r = _finally_put_it_all_together(bonelist, keepset)
 		allbonelist_out.extend(r)
 		pass  # end "for each bonename, bonelist"
-	print("TOTAL TOTAL RESULT: keep %d/%d = %.2f%%" % (
-	len(allbonelist_out), len(allbonelist), 100 * len(allbonelist_out) / len(allbonelist)))
+	print("BONE RESULTS (inner):")
+	print("    identified %d unique bones, processed %d" % (len(bonedict), len(bonedict) - num_skipped))
+	print("    keep frames %d/%d = %.2f%%" % (len(allbonelist_out), len(allbonelist), 100 * len(allbonelist_out) / len(allbonelist)))
+
 	return allbonelist_out
 
 
@@ -1513,7 +1523,6 @@ def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
 def fully_key_motion_for_testing(vmd: vmdstruct.Vmd) -> vmdstruct.Vmd:
 	start = time.time()
 	vmd2 = vmd.copy()
-	core.MY_PRINT_FUNC("")
 	if vmd.morphframes:
 		core.MY_PRINT_FUNC("fully keying morph frames...")
 		morphlist = vmdutil.assert_no_overlapping_frames(vmd.morphframes)
@@ -1544,7 +1553,6 @@ def fully_key_motion_for_testing(vmd: vmdstruct.Vmd) -> vmdstruct.Vmd:
 	fillend = time.time()
 	#TODO: function to prettyprint times
 	core.MY_PRINT_FUNC(f"TIME TO FULLY KEY: {round(fillend - start)}sec")
-	core.MY_PRINT_FUNC("")
 	
 	return vmd2
 	
@@ -1560,74 +1568,60 @@ def main(moreinfo=True):
 	# vmdname = r"../../../dances\ANIMAる {Umetora}\ANIMAru (京まりん)/ANIMAる(with expression).vmd"
 	# vmdname = r"../../../dances\Hibana {DECO.27}\Hibana (getz)/Hibana.vmd"
 	# vmdname = '../../../Addiction_TdaFacial.vmd'
-	vmd = vmdlib.read_vmd(vmdname, moreinfo=moreinfo)
+	vmd_orig = vmdlib.read_vmd(vmdname, moreinfo=moreinfo)
 	# measure_avg_change_per_frame(vmd)
 	# return
 	
-	num_morphframes = len(vmd.morphframes)
-	num_boneframes = len(vmd.boneframes)
-	num_camframes = len(vmd.camframes)
+	core.MY_PRINT_FUNC("")
+	vmd_orig_full = fully_key_motion_for_testing(vmd_orig)
 	
-	vmd = fully_key_motion_for_testing(vmd)
+	
 	anychange = False
+	vmd_simple = vmd_orig.copy()
 	
-	if vmd.morphframes:
+	if vmd_orig_full.morphframes:
+		core.MY_PRINT_FUNC("")
+		core.MY_PRINT_FUNC("now attempting to simplify morphs...")
 		start = time.time()
-		newmorphs = simplify_morphframes(vmd.morphframes)
+		newmorphs = simplify_morphframes(vmd_orig_full.morphframes)
 		morphend = time.time()
-		print("TIME FOR ALL MORPHS:", morphend - start)
-		if newmorphs != vmd.morphframes:
+		print(f"TIME FOR ALL MORPHS: {round(morphend - start)}sec")
+		if newmorphs != vmd_orig_full.morphframes:
 			print('morphs changed')
-			
+			print("net change frames %d/%d = %.2f%%" % (len(newmorphs), len(vmd_orig.morphframes), 100 * len(newmorphs) / len(vmd_orig.morphframes)))
 			anychange = True
-			vmd.morphframes = newmorphs
+			vmd_simple.morphframes = newmorphs
 			
-	if vmd.boneframes:
+	if vmd_orig_full.boneframes:
+		core.MY_PRINT_FUNC("")
+		core.MY_PRINT_FUNC("now attempting to simplify bones...")
 		start = time.time()
-		newbones = simplify_boneframes(vmd.boneframes)
+		newbones = simplify_boneframes(vmd_orig_full.boneframes)
 		boneend = time.time()
-		print("TIME FOR ALL BONES:", boneend - start)
-		if newbones != vmd.boneframes:
+		print(f"TIME FOR ALL BONES: {round(boneend - start)}sec")
+		if newbones != vmd_orig_full.boneframes:
 			print('bones changed')
+			print("net change frames %d/%d = %.2f%%" % (len(newbones), len(vmd_orig.boneframes), 100 * len(newbones) / len(vmd_orig.boneframes)))
 			anychange = True
-			vmd.boneframes = newbones
+			vmd_simple.boneframes = newbones
 			
 			
-	if vmd.camframes:
-		# framenums = [cam.f for cam in vmd.camframes]
-		# rotx = [cam.rot[0] for cam in vmd.camframes]
-		# roty = [cam.rot[1] for cam in vmd.camframes]
-		# rotz = [cam.rot[2] for cam in vmd.camframes]
-		# plt.plot(framenums, rotx, label="x")
-		# plt.plot(framenums, roty, label="y")
-		# plt.plot(framenums, rotz, label="z")
-		# plt.legend()
-		# plt.show()
-		
-		for i in range(len(vmd.camframes) - 1):
-			cam = vmd.camframes[i]
-			nextcam = vmd.camframes[i+1]
-			rot_delta = [f - i for f,i in zip(nextcam.rot, cam.rot)]
-			framedelta = nextcam.f - cam.f
-			rot_delta = [r/framedelta for r in rot_delta]
-			# print(cam.rot)
-			try:
-				r1 = rot_delta[0] / rot_delta[1]
-			except ZeroDivisionError:
-				r1 = 0
-			try:
-				r2 = rot_delta[1] / rot_delta[2]
-			except ZeroDivisionError:
-				r2 = 0
-			try:
-				r3 = rot_delta[0] / rot_delta[2]
-			except ZeroDivisionError:
-				r3 = 0
-			if cam.f in (460, 2100, 2149):
-				print('hi')
-			print(cam.f, round(r1, 3), round(r2, 3), round(r3, 3))
+	if vmd_orig_full.camframes:
+		core.MY_PRINT_FUNC("")
+		core.MY_PRINT_FUNC("now attempting to simplify camera frames...")
+		# start = time.time()
+		# newbones = simplify_boneframes(vmd_orig_full.boneframes)
+		# boneend = time.time()
+		# print(f"TIME FOR ALL CAM FRAMES: {round(boneend - start)}sec")
+		# if newbones != vmd_orig_full.boneframes:
+		# 	print('bones changed')
+		# 	print("net change frames %d/%d = %.2f%%" % (len(newbones), len(vmd_orig.boneframes), 100 * len(newbones) / len(vmd_orig.boneframes)))
+		# 	anychange = True
+		# 	vmd_simple.boneframes = newbones
 	
 	core.MY_PRINT_FUNC("")
+	
+	# todo validation: fully key vmd_simple and compare against vmd_full to quantify greatest/avg deviation
 	###################################################################################
 	# write outputs
 
@@ -1637,7 +1631,7 @@ def main(moreinfo=True):
 	else:
 		output_filename_vmd = core.filepath_insert_suffix(vmdname, "_simplified")
 		output_filename_vmd = core.filepath_get_unused_name(output_filename_vmd)
-		vmdlib.write_vmd(output_filename_vmd, vmd, moreinfo=moreinfo)
+		vmdlib.write_vmd(output_filename_vmd, vmd_simple, moreinfo=moreinfo)
 	
 	core.MY_PRINT_FUNC("Done!")
 	return None
