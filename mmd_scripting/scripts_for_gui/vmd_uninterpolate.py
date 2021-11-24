@@ -155,6 +155,11 @@ for a section but it's a very minor difference.
 SIMPLIFY_BONE_POSITION = True
 SIMPLIFY_BONE_ROTATION = True
 
+SIMPLIFY_CAM_POSITION = True
+SIMPLIFY_CAM_FOV = True
+SIMPLIFY_CAM_DIST = True
+SIMPLIFY_CAM_ROTATION = True
+
 # this controls how "straight" a line has to be (in 1d morph-space) to get collapsed
 # higher values = more likely to collapse = fewer frames in result, but greater deviation from original movements
 MORPH_ERROR_THRESHOLD = 0.00001
@@ -189,6 +194,14 @@ EXPECTED_DELTA_BONE_XPOS = 0.15
 EXPECTED_DELTA_BONE_YPOS = 0.18
 EXPECTED_DELTA_BONE_ZPOS = 0.16
 EXPECTED_DELTA_BONE_ROTATION_RADIANS = 0.10
+
+# todo evaluate the cam-frame heuristics
+EXPECTED_DELTA_CAM_XPOS = 0.15
+EXPECTED_DELTA_CAM_YPOS = 0.18
+EXPECTED_DELTA_CAM_ZPOS = 0.16
+EXPECTED_DELTA_CAM_FOV = 0.16
+EXPECTED_DELTA_CAM_DIST = 0.16
+EXPECTED_DELTA_CAM_ROTATION_RADIANS = 0.10
 
 ONE_DEGREE_IN_RADIANS = 0.017453292519943295
 
@@ -1114,7 +1127,14 @@ def _finally_put_it_all_together(bonelist: List[vmdstruct.VmdBoneFrame], keepset
 	
 	# if DEBUG >= 2:
 	# 	logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
-		
+	
+	if isinstance(bonelist[0], vmdstruct.VmdBoneFrame):
+		isbone = True
+	elif isinstance(bonelist[0], vmdstruct.VmdCamFrame):
+		isbone = False
+	else:
+		raise ValueError()
+	
 	# turn the set into sorted list for walking
 	keepframe_indices = sorted(list(keepset))
 	
@@ -1129,11 +1149,20 @@ def _finally_put_it_all_together(bonelist: List[vmdstruct.VmdBoneFrame], keepset
 		idx_next = keepframe_indices[a + 1]
 		# for each channel (x/y/z/rot),
 		# look at all the points in between (including endpoints),
-		allxally = [make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[0], EXPECTED_DELTA_BONE_XPOS), # x pos
-					make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[1], EXPECTED_DELTA_BONE_YPOS), # y pos
-					make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[2], EXPECTED_DELTA_BONE_ZPOS), # z pos
-					make_xy_from_segment_rotation(bonelist, idx_this, idx_next, EXPECTED_DELTA_BONE_ROTATION_RADIANS),       # rotation
-					]
+		if isbone:
+			allxally = [make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[0], EXPECTED_DELTA_BONE_XPOS), # x pos
+						make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[1], EXPECTED_DELTA_BONE_YPOS), # y pos
+						make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[2], EXPECTED_DELTA_BONE_ZPOS), # z pos
+						make_xy_from_segment_rotation(bonelist, idx_this, idx_next, EXPECTED_DELTA_BONE_ROTATION_RADIANS),       # rotation
+						]
+		else:
+			allxally = [make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[0], EXPECTED_DELTA_CAM_XPOS), # x pos
+						make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[1], EXPECTED_DELTA_CAM_YPOS), # y pos
+						make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.pos[2], EXPECTED_DELTA_CAM_ZPOS), # z pos
+						make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.fov, EXPECTED_DELTA_CAM_FOV),     # fov
+						make_xy_from_segment_scalar(bonelist, idx_this, idx_next, lambda x: x.dist, EXPECTED_DELTA_CAM_DIST),   # dist
+						make_xy_from_segment_rotation(bonelist, idx_this, idx_next, EXPECTED_DELTA_CAM_ROTATION_RADIANS),       # rotation
+						]
 		all_interp_params = []
 		# for each channel (x/y/z/rot),
 		# generate the proper bezier interp curve,
@@ -1169,11 +1198,19 @@ def _finally_put_it_all_together(bonelist: List[vmdstruct.VmdBoneFrame], keepset
 		# for each channel (x/y/z/rot),
 		# store the params into the proper field of frame_next,
 		# this MUST MATCH THE ORDER that i used to fill "allxally"
-		frame_next = bonelist[idx_next]
-		frame_next.interp_x = all_interp_params[0]
-		frame_next.interp_y = all_interp_params[1]
-		frame_next.interp_z = all_interp_params[2]
-		frame_next.interp_r = all_interp_params[3]
+		frame_next = bonelist[idx_next].copy()
+		if isbone:
+			frame_next.interp_x = all_interp_params[0]
+			frame_next.interp_y = all_interp_params[1]
+			frame_next.interp_z = all_interp_params[2]
+			frame_next.interp_r = all_interp_params[3]
+		else:
+			frame_next.interp_x = all_interp_params[0]
+			frame_next.interp_y = all_interp_params[1]
+			frame_next.interp_z = all_interp_params[2]
+			frame_next.interp_fov = all_interp_params[3]
+			frame_next.interp_dist = all_interp_params[4]
+			frame_next.interp_r = all_interp_params[5]
 		
 		# and finally store the modified frame in the ultimate output list.
 		output.append(frame_next)
@@ -1277,6 +1314,73 @@ def simplify_boneframes(allbonelist: List[vmdstruct.VmdBoneFrame]) -> List[vmdst
 	print("    keep frames %d/%d = %.2f%%" % (len(allbonelist_out), len(allbonelist), 100 * len(allbonelist_out) / len(allbonelist)))
 
 	return allbonelist_out
+
+def simplify_camframes(allcamlist: List[vmdstruct.VmdCamFrame]) -> List[vmdstruct.VmdCamFrame]:
+	"""
+	only care about x/y/z/rotation
+
+	:param allcamlist:
+	:return:
+	"""
+	
+	# print("number of cams %d" % len(camdict))
+	
+	if len(allcamlist) <= 2:
+		return allcamlist
+	
+	# since i need to analyze what's "important" along 6 different channels,
+	# i think it's best to store a set of the indices of the frames that i think are important?
+	keepset = set()
+	
+	# the first frame is always kept.
+	keepset.add(0)
+	
+	camlist = allcamlist
+	
+	#######################################################################################
+	if SIMPLIFY_CAM_POSITION:
+		k = _simplify_boneframes_scalar("cam", camlist, "posX", lambda x: x.pos[0], EXPECTED_DELTA_CAM_XPOS)
+		keepset.update(k)
+		k = _simplify_boneframes_scalar("cam", camlist, "posY", lambda x: x.pos[1], EXPECTED_DELTA_CAM_YPOS)
+		keepset.update(k)
+		k = _simplify_boneframes_scalar("cam", camlist, "posZ", lambda x: x.pos[2], EXPECTED_DELTA_CAM_ZPOS)
+		keepset.update(k)
+		# now i have found every frame# that is important due to position changes
+		if DEBUG and len(keepset) > 2:
+			# if it found only 2, ignore it, cuz that would mean just startpoint and endpoint
+			print(f"'cam' posALL : keep {len(keepset)}/{len(camlist)}")
+	
+	#######################################################################################
+	if SIMPLIFY_CAM_FOV:
+		k = _simplify_boneframes_scalar("cam", camlist, "fov", lambda x: x.fov, EXPECTED_DELTA_CAM_FOV)
+		keepset.update(k)
+	
+	#######################################################################################
+	if SIMPLIFY_CAM_DIST:
+		k = _simplify_boneframes_scalar("cam", camlist, "dist", lambda x: x.dist, EXPECTED_DELTA_CAM_DIST)
+		keepset.update(k)
+	
+	#######################################################################################
+	# now, i walk along the frames analyzing the ROTATION channel. this is the hard part.
+	if SIMPLIFY_CAM_ROTATION:
+		k = _simplify_boneframes_rotation("cam", camlist, EXPECTED_DELTA_CAM_ROTATION_RADIANS)
+		keepset.update(k)
+	
+	#######################################################################################
+	
+	# recap: i have found the minimal set of frames needed to define the motion of this cam,
+	# i.e. the endpoints where a bezier can define the motion between them.
+	# when i unify the sets from each source, i am makign those segments shorter.
+	# if a bezier curve can be fit onto points A thru Z, then it's guaranteed that a bezier curve can
+	# be fit onto points A thru M and separately onto points M thru Z.
+	# i know it's possible, so, thats what i'm doing now.
+	
+	allcamlist_out = _finally_put_it_all_together(camlist, keepset)
+	
+	print("CAM RESULTS (inner):")
+	print("    keep frames %d/%d = %.2f%%" % (len(allcamlist_out), len(allcamlist), 100 * len(allcamlist_out) / len(allcamlist)))
+
+	return allcamlist_out
 
 
 def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
@@ -1573,9 +1677,9 @@ def main(moreinfo=True):
 	###################################################################################
 	# prompt for inputs
 	# vmdname = core.MY_FILEPROMPT_FUNC("VMD file", ".vmd")
-	# vmdname = "../../../Apple Pie_Cam-interpolated.vmd"
-	vmdname = "../../../marionette motion 1person.vmd"
-	vmdname = "../../../marionette motion 1person CLEAN.vmd"
+	vmdname = "../../../Apple Pie_Cam-interpolated.vmd"
+	# vmdname = "../../../marionette motion 1person.vmd"
+	# vmdname = "../../../marionette motion 1person CLEAN.vmd"
 	# vmdname = "../../../IA_Conqueror_full_key_version.vmd"
 	# vmdname = r"../../../dances\ANIMAる {Umetora}\ANIMAru (京まりん)/ANIMAる(with expression).vmd"
 	# vmdname = r"../../../dances\Hibana {DECO.27}\Hibana (getz)/Hibana.vmd"
@@ -1621,15 +1725,15 @@ def main(moreinfo=True):
 	if vmd_orig_full.camframes:
 		core.MY_PRINT_FUNC("")
 		core.MY_PRINT_FUNC("now attempting to simplify camera frames...")
-		# start = time.time()
-		# newbones = simplify_boneframes(vmd_orig_full.boneframes)
-		# boneend = time.time()
-		# print(f"TIME FOR ALL CAM FRAMES: {round(boneend - start)}sec")
-		# if newbones != vmd_orig_full.boneframes:
-		# 	print('bones changed')
-		# 	print("net change frames %d/%d = %.2f%%" % (len(newbones), len(vmd_orig.boneframes), 100 * len(newbones) / len(vmd_orig.boneframes)))
-		# 	anychange = True
-		# 	vmd_simple.boneframes = newbones
+		start = time.time()
+		newcams = simplify_camframes(vmd_orig_full.camframes)
+		camend = time.time()
+		print(f"TIME FOR ALL CAM FRAMES: {round(camend - start)}sec")
+		if newcams != vmd_orig_full.camframes:
+			print('cams changed')
+			print("net change frames %d/%d = %.2f%%" % (len(newcams), len(vmd_orig.camframes), 100 * len(newcams) / len(vmd_orig.camframes)))
+			anychange = True
+			vmd_simple.camframes = newcams
 	
 	core.MY_PRINT_FUNC("")
 	
