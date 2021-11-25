@@ -476,6 +476,12 @@ def _fill_missing_boneframes_new(framelist: List[VMD_BONEMORPHCAM_FRAME],
 					bez_dist = core.MyBezier((dist_ax, dist_ay), (dist_bx, dist_by))
 					fov_ax, fov_ay, fov_bx, fov_by = afterframe.interp_fov
 					bez_fov = core.MyBezier((fov_ax, fov_ay), (fov_bx, fov_by))
+					# for cam only, check and warn if there is large rotation!
+					delta = [abs(b - a) for b, a in zip(beforeframe.rot, afterframe.rot)]
+					if max(delta) > 160:
+						core.MY_PRINT_FUNC("WARNING: f %d-%d=%d, cam-frame interpolation has massive deltas!!" % (beforeframe.f, afterframe.f, afterframe.f-beforeframe.f))
+						core.MY_PRINT_FUNC("         [%.3f, %.3f, %.3f]" % (delta[0], delta[1], delta[2]))
+				
 				#############
 				# part 2: loop over each framenum between before/after
 				#		do the thing
@@ -526,10 +532,10 @@ def _fill_missing_boneframes_new(framelist: List[VMD_BONEMORPHCAM_FRAME],
 						if beforeframe.rot == afterframe.rot:
 							interp_euler = beforeframe.rot.copy()
 						else:
-							# for cam only, check and warn if there is large rotation!
-							delta = [abs(b-a) for b,a in zip(beforeframe.rot, afterframe.rot)]
-							if max(delta) > 160:
-								core.MY_PRINT_FUNC("WARNING: cam-frame interpolation has large deltas, not sure if i'm doing this right!")
+							# # for cam only, check and warn if there is large rotation!
+							# delta = [abs(b-a) for b,a in zip(beforeframe.rot, afterframe.rot)]
+							# if max(delta) > 160:
+							# 	core.MY_PRINT_FUNC("WARNING: cam-frame interpolation has large deltas, not sure if i'm doing this right!")
 							# push percentage into bezier, get new percentage out
 							bez_percentage = bez_rot.approximate(percentage)
 							# TODO: verify whether cam interpolation uses piecewise linear or quaternions...?
