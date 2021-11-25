@@ -550,6 +550,7 @@ def _fill_missing_boneframes_new(framelist: List[VMD_BONEMORPHCAM_FRAME],
 						else:
 							bez_percentage = bez_fov.approximate(percentage)
 							interp_fov = core.linear_map(0, beforeframe.fov, 1, afterframe.fov, bez_percentage)
+							interp_fov = round(interp_fov)  # note: fov must be an INT
 						if beforeframe.dist == afterframe.dist:
 							interp_dist = beforeframe.dist
 						else:
