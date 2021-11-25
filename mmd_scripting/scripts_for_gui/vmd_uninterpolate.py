@@ -1779,6 +1779,12 @@ def main(moreinfo=True):
 	# vmdname = r"../../../dances\ANIMAる {Umetora}\ANIMAru (京まりん)/ANIMAる(with expression).vmd"
 	# vmdname = r"../../../dances\Hibana {DECO.27}\Hibana (getz)/Hibana.vmd"
 	# vmdname = '../../../Addiction_TdaFacial.vmd'
+	# TODO BUG: why does Donut Hole INCREASE the number of frames so drastically??? 298 -> 1900
+	#  is my full-interpolating function wrong?
+	#  is my bez-matching criteria too strict?
+	#  it has no wraparound warnings, it should guaranteed find the same or smaller number of frames!!
+	vmdname = r"../../../dances\Donut Hole {Hachi}\Donut Hole camera (DG-RINER)/ドーナツホール - Camera Motion.vmd"
+
 	
 	vmd_orig = vmdlib.read_vmd(vmdname, moreinfo=moreinfo)
 	
