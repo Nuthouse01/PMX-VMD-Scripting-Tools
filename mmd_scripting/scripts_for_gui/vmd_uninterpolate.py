@@ -190,18 +190,18 @@ GREATEST_LENGTH_OF_ROTATION_SEGMENT_IN_DEGREES = 160
 # the exact value doesn't hugely matter (i hope?) it's just about getting the """weight""" of the value-change
 # to be roughly the same as the """weight""" of the time change.
 # todo should this data be derived from full-keyed motions? or partially-keyed motions? or both?
+# todo re-evaluate motion heuristics with larger dataset
 EXPECTED_DELTA_BONE_XPOS = 0.15
 EXPECTED_DELTA_BONE_YPOS = 0.18
 EXPECTED_DELTA_BONE_ZPOS = 0.16
 EXPECTED_DELTA_BONE_ROTATION_RADIANS = 0.10
 
-# todo evaluate the cam-frame heuristics
-EXPECTED_DELTA_CAM_XPOS = 0.15
-EXPECTED_DELTA_CAM_YPOS = 0.18
-EXPECTED_DELTA_CAM_ZPOS = 0.16
-EXPECTED_DELTA_CAM_FOV = 0.16
-EXPECTED_DELTA_CAM_DIST = 0.16
-EXPECTED_DELTA_CAM_ROTATION_RADIANS = 0.10
+EXPECTED_DELTA_CAM_XPOS = 0.1149
+EXPECTED_DELTA_CAM_YPOS = 0.0796
+EXPECTED_DELTA_CAM_ZPOS = 0.1319
+EXPECTED_DELTA_CAM_FOV = 0.4926
+EXPECTED_DELTA_CAM_DIST = 0.3184
+EXPECTED_DELTA_CAM_ROTATION_RADIANS = 0.0525
 
 ONE_DEGREE_IN_RADIANS = 0.017453292519943295
 
