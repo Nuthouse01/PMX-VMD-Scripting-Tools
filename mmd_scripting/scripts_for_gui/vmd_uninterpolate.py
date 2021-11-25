@@ -1424,6 +1424,9 @@ def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
 	# zpos ~ 0.16
 	# rot ~ 0.10
 	
+	UPPER_OUTLIER_BOUND = 0.96
+	LOWER_OUTLIER_BOUND = 1e-2
+	
 	if vmd.morphframes:
 		allmorphlist = vmdutil.assert_no_overlapping_frames(vmd.morphframes)
 		allmorphdict = vmdutil.dictify_framelist(allmorphlist)
@@ -1451,8 +1454,8 @@ def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
 		if delta_rate_dataset:
 			print(min(delta_rate_dataset))
 			avg = sum(delta_rate_dataset) / len(delta_rate_dataset)
-			print(f"average morph delta rate = {avg}")
-			H = plt.hist(delta_rate_dataset, bins=40, density=True)
+			print(f"average morph delta rate = {round(avg,5)}")
+			H = plt.hist(delta_rate_dataset, bins=40, range=(0.0, 1.0), density=True)
 			plt.show(block=True)
 			pass
 	
@@ -1467,7 +1470,7 @@ def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
 		for bonename, bonelist in allbonedict.items():
 			# i only care about delta between frames, if there is only one frame then i dont care
 			if len(bonelist) < 3: continue
-			if bonename in ['アホ毛１','アホ毛２','前髪１','前髪１_２','前髪２','前髪２_２','前髪３','前髪３_２','右もみあげ１','右もみあげ２','左もみあげ１','左もみあげ２',]: continue
+			if bonename not in standard_skeleton_bones: continue
 			print(f"bone '{bonename}' len {len(bonelist)}")
 			# for each pair of frames,
 			for i in range(len(bonelist)-1):
@@ -1482,7 +1485,7 @@ def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
 				# if the delta is not zero, add it to the set
 				# if thresh=1e-3, avg=0.10
 				# if thresh=1e-2, avg=0.155
-				if delta_rate > 1e-2:
+				if delta_rate > LOWER_OUTLIER_BOUND:
 					# the dataset should be weighted by length, i think
 					delta_rate_dataset_x.extend([delta_rate] * delta_time)
 				
@@ -1493,7 +1496,7 @@ def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
 				# if the delta is not zero, add it to the set
 				# if thresh=1e-3, avg=0.141
 				# if thresh=1e-2, avg=0.198
-				if delta_rate > 1e-2:
+				if delta_rate > LOWER_OUTLIER_BOUND:
 					delta_rate_dataset_y.extend([delta_rate] * delta_time)
 				
 				# Z
@@ -1503,7 +1506,7 @@ def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
 				# if the delta is not zero, add it to the set
 				# if thresh=1e-3, avg=
 				# if thresh=1e-2, avg=0.160
-				if delta_rate > 1e-2:
+				if delta_rate > LOWER_OUTLIER_BOUND:
 					delta_rate_dataset_z.extend([delta_rate] * delta_time)
 				
 				# rotation
@@ -1514,41 +1517,55 @@ def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
 				# if the delta is not zero, add it to the set
 				# if thresh=0,    avg=0.055
 				# if thresh=1e-2, avg=0.079
-				if delta_rate > 1e-2:
+				if delta_rate > LOWER_OUTLIER_BOUND:
 					delta_rate_dataset_rot.extend([delta_rate] * delta_time)
-				
+		
+		fig, axs = plt.subplots(2, 2)
+		
 		# now that i have the deltas for all bones, get the avg and get the histogram
 		if delta_rate_dataset_x:
+			# first, discard the top 5% of values for being outliers
+			delta_rate_dataset_x = sorted(delta_rate_dataset_x)[0:int(len(delta_rate_dataset_x)*UPPER_OUTLIER_BOUND)]
 			avg = sum(delta_rate_dataset_x) / len(delta_rate_dataset_x)
-			print(f"average bone x-position delta rate = {avg}")
-			H = plt.hist(delta_rate_dataset_x, bins=40, density=True)
-			plt.show(block=True)
+			print(f"average bone x-position delta rate = {round(avg,5)}")
+			axs[0,0].hist(delta_rate_dataset_x, bins=40, density=True)
+			axs[0,0].set_title("bone x-pos delta")
 		
 		# now that i have the deltas for all bones, get the avg and get the histogram
 		if delta_rate_dataset_y:
+			# first, discard the top 5% of values for being outliers
+			delta_rate_dataset_y = sorted(delta_rate_dataset_y)[0:int(len(delta_rate_dataset_y)*UPPER_OUTLIER_BOUND)]
 			avg = sum(delta_rate_dataset_y) / len(delta_rate_dataset_y)
-			print(f"average bone y-position delta rate = {avg}")
-			H = plt.hist(delta_rate_dataset_y, bins=40, density=True)
-			plt.show(block=True)
+			print(f"average bone y-position delta rate = {round(avg,5)}")
+			axs[0,1].hist(delta_rate_dataset_y, bins=40, density=True)
+			axs[0,1].set_title("bone y-pos delta")
 		
 		# now that i have the deltas for all bones, get the avg and get the histogram
 		if delta_rate_dataset_z:
+			# first, discard the top 5% of values for being outliers
+			delta_rate_dataset_z = sorted(delta_rate_dataset_z)[0:int(len(delta_rate_dataset_z)*UPPER_OUTLIER_BOUND)]
 			avg = sum(delta_rate_dataset_z) / len(delta_rate_dataset_z)
-			print(f"average bone z-position delta rate = {avg}")
-			H = plt.hist(delta_rate_dataset_z, bins=40, density=True)
-			plt.show(block=True)
+			print(f"average bone z-position delta rate = {round(avg,5)}")
+			axs[1,0].hist(delta_rate_dataset_z, bins=40, density=True)
+			axs[1,0].set_title("bone z-pos delta")
 		
 		# now that i have the deltas for all bones, get the avg and get the histogram
 		if delta_rate_dataset_rot:
+			# first, discard the top 5% of values for being outliers
+			delta_rate_dataset_rot = sorted(delta_rate_dataset_rot)[0:int(len(delta_rate_dataset_rot)*UPPER_OUTLIER_BOUND)]
 			avg = sum(delta_rate_dataset_rot) / len(delta_rate_dataset_rot)
-			print(f"average bone rot-position delta rate = {avg}")
-			H = plt.hist(delta_rate_dataset_rot, bins=40, density=True)
-			plt.show(block=True)
+			print(f"average bone rot delta rate = {round(avg,5)}")
+			axs[1,1].hist(delta_rate_dataset_rot, bins=40, density=True)
+			axs[1,1].set_title("bone rot delta")
+
+		plt.show(block=True)
 		pass
 	
 	if vmd.camframes:
 		camlist = vmd.camframes
 		
+		delta_rate_dataset_fov = []
+		delta_rate_dataset_dist = []
 		delta_rate_dataset_x = []
 		delta_rate_dataset_y = []
 		delta_rate_dataset_z = []
@@ -1561,6 +1578,30 @@ def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
 			c_next = camlist[i + 1]
 			delta_time = (c_next.f - c_this.f)
 			
+			# fov
+			# get the val-change-per-frame,
+			delta_val = (c_next.fov - c_this.fov)
+			delta_rate = abs(delta_val) / delta_time
+			# if the delta is not zero, add it to the set
+			# 000.00100000
+			# if thresh=1e-3, avg=0.10
+			# if thresh=1e-2, avg=0.155
+			if delta_rate > LOWER_OUTLIER_BOUND:
+				# the dataset should be weighted by length, i think
+				delta_rate_dataset_fov.extend([delta_rate] * delta_time)
+			
+			# dist
+			# get the val-change-per-frame,
+			delta_val = (c_next.dist - c_this.dist)
+			delta_rate = abs(delta_val) / delta_time
+			# if the delta is not zero, add it to the set
+			# 000.00100000
+			# if thresh=1e-3, avg=0.10
+			# if thresh=1e-2, avg=0.155
+			if delta_rate > LOWER_OUTLIER_BOUND:
+				# the dataset should be weighted by length, i think
+				delta_rate_dataset_dist.extend([delta_rate] * delta_time)
+			
 			# X
 			# get the val-change-per-frame,
 			delta_val = (c_next.pos[0] - c_this.pos[0])
@@ -1569,7 +1610,7 @@ def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
 			# 000.00100000
 			# if thresh=1e-3, avg=0.10
 			# if thresh=1e-2, avg=0.155
-			if delta_rate > 1e-2:
+			if delta_rate > LOWER_OUTLIER_BOUND:
 				# the dataset should be weighted by length, i think
 				delta_rate_dataset_x.extend([delta_rate] * delta_time)
 			
@@ -1581,7 +1622,7 @@ def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
 			# 000.00100000
 			# if thresh=1e-3, avg=0.141
 			# if thresh=1e-2, avg=0.198
-			if delta_rate > 1e-2:
+			if delta_rate > LOWER_OUTLIER_BOUND:
 				delta_rate_dataset_y.extend([delta_rate] * delta_time)
 			
 			# Z
@@ -1592,7 +1633,7 @@ def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
 			# 000.00100000
 			# if thresh=1e-3, avg=
 			# if thresh=1e-2, avg=0.160
-			if delta_rate > 1e-2:
+			if delta_rate > LOWER_OUTLIER_BOUND:
 				delta_rate_dataset_z.extend([delta_rate] * delta_time)
 			
 			# rotation
@@ -1604,37 +1645,68 @@ def measure_avg_change_per_frame(vmd: vmdstruct.Vmd):
 			# 000.00100000
 			# if thresh=0,    avg=0.055
 			# if thresh=1e-2, avg=0.079
-			if delta_rate > 1e-2:
+			if delta_rate > LOWER_OUTLIER_BOUND:
 				delta_rate_dataset_rot.extend([delta_rate] * delta_time)
+		
+		fig, axs = plt.subplots(2, 3)
 		
 		# now that i have the deltas for all bones, get the avg and get the histogram
 		if delta_rate_dataset_x:
+			# first, discard the top 5% of values for being outliers
+			delta_rate_dataset_x = sorted(delta_rate_dataset_x)[0:int(len(delta_rate_dataset_x) * UPPER_OUTLIER_BOUND)]
 			avg = sum(delta_rate_dataset_x) / len(delta_rate_dataset_x)
-			print(f"average bone x-position delta rate = {avg}")
-			H = plt.hist(delta_rate_dataset_x, bins=40, density=True)
-			plt.show(block=True)
+			print(f"average cam x-position delta rate = {round(avg,5)}")
+			axs[0, 0].hist(delta_rate_dataset_x, bins=40, density=True)
+			axs[0, 0].set_title("cam x-pos delta")
 		
 		# now that i have the deltas for all bones, get the avg and get the histogram
 		if delta_rate_dataset_y:
+			# first, discard the top 5% of values for being outliers
+			delta_rate_dataset_y = sorted(delta_rate_dataset_y)[0:int(len(delta_rate_dataset_y) * UPPER_OUTLIER_BOUND)]
 			avg = sum(delta_rate_dataset_y) / len(delta_rate_dataset_y)
-			print(f"average bone y-position delta rate = {avg}")
-			H = plt.hist(delta_rate_dataset_y, bins=40, density=True)
-			plt.show(block=True)
+			print(f"average cam y-position delta rate = {round(avg,5)}")
+			axs[0, 1].hist(delta_rate_dataset_y, bins=40, density=True)
+			axs[0, 1].set_title("cam y-pos delta")
 		
 		# now that i have the deltas for all bones, get the avg and get the histogram
 		if delta_rate_dataset_z:
+			# first, discard the top 5% of values for being outliers
+			delta_rate_dataset_z = sorted(delta_rate_dataset_z)[0:int(len(delta_rate_dataset_z) * UPPER_OUTLIER_BOUND)]
 			avg = sum(delta_rate_dataset_z) / len(delta_rate_dataset_z)
-			print(f"average bone z-position delta rate = {avg}")
-			H = plt.hist(delta_rate_dataset_z, bins=40, density=True)
-			plt.show(block=True)
+			print(f"average cam z-position delta rate = {round(avg,5)}")
+			axs[1, 0].hist(delta_rate_dataset_z, bins=40, density=True)
+			axs[1, 0].set_title("cam z-pos delta")
 		
 		# now that i have the deltas for all bones, get the avg and get the histogram
 		if delta_rate_dataset_rot:
+			# first, discard the top 5% of values for being outliers
+			delta_rate_dataset_rot = sorted(delta_rate_dataset_rot)[0:int(len(delta_rate_dataset_rot) * UPPER_OUTLIER_BOUND)]
 			avg = sum(delta_rate_dataset_rot) / len(delta_rate_dataset_rot)
-			print(f"average bone rot-position delta rate = {avg}")
-			H = plt.hist(delta_rate_dataset_rot, bins=40, density=True)
-			plt.show(block=True)
+			print(f"average cam rot delta rate = {round(avg,5)}")
+			axs[1, 1].hist(delta_rate_dataset_rot, bins=40, density=True)
+			axs[1, 1].set_title("cam rot delta")
+			
+		# now that i have the deltas for all bones, get the avg and get the histogram
+		if delta_rate_dataset_fov:
+			# first, discard the top 5% of values for being outliers
+			delta_rate_dataset_fov = sorted(delta_rate_dataset_fov)[0:int(len(delta_rate_dataset_fov) * UPPER_OUTLIER_BOUND)]
+			avg = sum(delta_rate_dataset_fov) / len(delta_rate_dataset_fov)
+			print(f"average cam fov delta rate = {round(avg,5)}")
+			axs[0,2].hist(delta_rate_dataset_fov, bins=40, density=True)
+			axs[0,2].set_title("cam fov delta")
+		
+		# now that i have the deltas for all bones, get the avg and get the histogram
+		if delta_rate_dataset_dist:
+			# first, discard the top 5% of values for being outliers
+			delta_rate_dataset_dist = sorted(delta_rate_dataset_dist)[0:int(len(delta_rate_dataset_dist) * UPPER_OUTLIER_BOUND)]
+			avg = sum(delta_rate_dataset_dist) / len(delta_rate_dataset_dist)
+			print(f"average cam dist delta rate = {round(avg,5)}")
+			axs[1,2].hist(delta_rate_dataset_dist, bins=40, density=True)
+			axs[1,2].set_title("cam dist delta")
+		
+		plt.show(block=True)
 		pass
+
 
 def fully_key_motion_for_testing(vmd: vmdstruct.Vmd) -> vmdstruct.Vmd:
 	start = time.time()
@@ -1672,21 +1744,42 @@ def fully_key_motion_for_testing(vmd: vmdstruct.Vmd) -> vmdstruct.Vmd:
 	
 	return vmd2
 	
+def profile_camera_heuristics():
+	cameras = []
+	cameras.append("../../../dances/a[a]ddiction {reol}/addiction cam (184)/[A]ddictionカメラ.vmd")
+	cameras.append("../../../dances/a[a]ddiction {reol}/addiction cam (tsweitao)/Addiction_Camera_ver2.00_by_TsWEITAO.vmd")
+	cameras.append(r"../../../dances\Abracadabra {Brown Eyed Girls}\Abracadabra (NatsumiSan)/camera.vmd")
+	cameras.append(r"../../../dances\ANIMAる {Umetora}\ANIMAru cam (地動説)/ANIMAるCamera配布用.vmd")
+	cameras.append(r"../../../dances\Donut Hole {Hachi}\Donut Hole camera (DG-RINER)/ドーナツホール - Camera Motion.vmd")
+	cameras.append(r"../../../dances\Apple Pie {Fiestar}\Apple Pie camera (404nF)/apple pie_cam-interpolated.vmd")
+	cameras.append(r"../../../dances\Apple Pie {Fiestar}\Apple Pie camera (404nF)/apple pie_cam-original.vmd")
+	cameras.append(r"../../../dances\Roki {MikitoP}\Roki Camera (クリアクロス)/Loki_Clear Cross Camera (Matching Original Song).vmd")
+	cameras.append(r"../../../dances\LUVORATORRRRRY! {Reol}\Luvoratory cam (だんしゃくいも)/LUVORATORRRRRY! new cam.vmd")
+	cameras.append(r"../../../dances/Kimagure Mercy {HachiojiP}\Kimagure Mercy [5] (moka)/camera.vmd")
+	cameras.append(r"../../../dances\Otome Kaibou {DECO.27}\Otome Kaibou cam (アット)/乙女解剖カメラモーション配布.vmd")
+	cameras.append(r"../../../dances\Chocolate Cream {Laysha}\camera (Dr. Cossack)/camera (changed by dr. cossack).vmd")
+	cameras.append(r"../../../dances\SNOBBISM {Neru}\Snobbism cam (mina mint)/SNOBBISM cam v3.0.vmd")
+
+	for vmdname in cameras:
+		vmd_orig = vmdlib.read_vmd(vmdname, moreinfo=True)
+		vmd_orig = fully_key_motion_for_testing(vmd_orig)
+		measure_avg_change_per_frame(vmd_orig)
+	return
+
 
 def main(moreinfo=True):
 	###################################################################################
 	# prompt for inputs
 	# vmdname = core.MY_FILEPROMPT_FUNC("VMD file", ".vmd")
-	vmdname = "../../../Apple Pie_Cam-interpolated.vmd"
+
 	# vmdname = "../../../marionette motion 1person.vmd"
-	# vmdname = "../../../marionette motion 1person CLEAN.vmd"
+	vmdname = "../../../marionette motion 1person CLEAN.vmd"
 	# vmdname = "../../../IA_Conqueror_full_key_version.vmd"
 	# vmdname = r"../../../dances\ANIMAる {Umetora}\ANIMAru (京まりん)/ANIMAる(with expression).vmd"
 	# vmdname = r"../../../dances\Hibana {DECO.27}\Hibana (getz)/Hibana.vmd"
 	# vmdname = '../../../Addiction_TdaFacial.vmd'
+	
 	vmd_orig = vmdlib.read_vmd(vmdname, moreinfo=moreinfo)
-	# measure_avg_change_per_frame(vmd)
-	# return
 	
 	core.MY_PRINT_FUNC("")
 	vmd_orig_full = fully_key_motion_for_testing(vmd_orig)
