@@ -88,16 +88,38 @@ def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
 	u = _chord_length_parameterise(p)
 	bezier = generate_bezier(p, u, left_tangent, right_tangent)
 
-	# Compute the error of the fit.  If the error is acceptable then
-	# return this bezier.
+	# Compute the error of the fit.
 	rms_error, max_error, split_point = _compute_errors_and_split(p, bezier, u)
+	
+	# if i want to return the "best" without recursing, keep reparameterizing until it stops improving
+	if return_best_onelevel:
+		prev_rms_error = rms_error
+		i = 0
+		for _ in range(300):
+			i += 1
+			_path_logger.debug('Force onelevel: Reparameterising step {:2d}/??? with RMSerr={:.4f} and MAXerr={:.4f}'.format(i, rms_error, max_error))
+			uprime = _reparameterise(bezier, p, u)  # compute an incrementally better set of "parameters"
+			bezier = generate_bezier(p, uprime, left_tangent, right_tangent)  # generate a new bez from these params
+			rms_error, max_error, split_point = _compute_errors_and_split(p, bezier, uprime)  # calculate the error of the new bez
+			# if the rms is not improving quickly enough, stop.
+			if prev_rms_error - rms_error < 0.0004:
+				break
+			u = uprime  # save the params for next loop iter
+			prev_rms_error = rms_error  # save the params for next loop iter
+		# okay, once it hits here then we've really bottomed out the rms. so how good is it? return regardless
+		if _acceptable_error(rms_error, max_error, rms_err_tol, max_err_tol):
+			_path_logger.debug('Force onelevel: Reparameterised solution! RMSerr={:.4f} and MAXerr={:.4f}'.format(rms_error, max_error))
+		else:
+			_path_logger.debug('Force onelevel: No reparameterised solution found with RMSerr={:.4f} and MAXerr={:.4f} and split={} and length={}'.format(rms_error, max_error, split_point, len(p)))
+		return [(bezier, rms_error, max_error)]
+	
+	# If the error from the first fitting attempt is acceptable then return this bezier.
 	if _acceptable_error(rms_error, max_error, rms_err_tol, max_err_tol):
 		_path_logger.debug('Depth {}: First-try solution! RMSerr={:.4f} and MAXerr={:.4f}'.format(depth, rms_error, max_error))
 		return [(bezier, rms_error, max_error)]
 
-	# If the error is not too large, then try to find an
-	# alternative reparameterisation that has a smaller error.
-	if rms_error < REPARAM_TOL_MULTIPLIER*rms_err_tol or return_best_onelevel:
+	# If the error is not too large, then try to find an alternative reparameterisation that has a smaller error.
+	if rms_error < REPARAM_TOL_MULTIPLIER*rms_err_tol:
 
 		for i in range(max_reparam_iter):
 			_path_logger.debug('Depth {}: Reparameterising step {:2d}/{:2d} with RMSerr={:.4f} and MAXerr={:.4f}'.format(depth, i, max_reparam_iter, rms_error, max_error))
@@ -110,9 +132,6 @@ def _fit_cubic(p, left_tangent, right_tangent, rms_err_tol, max_err_tol,
 			u = uprime
 		_path_logger.debug('Depth {}: No reparameterised solution found with RMSerr={:.4f} and MAXerr={:.4f} and split={} and length={}'.format(depth, rms_error, max_error, split_point, len(p)))
 
-	if return_best_onelevel:
-		return [(bezier, rms_error, max_error)]
-	
 	return []  # TODO kind of a hack
 	# We can't refine this anymore, so try splitting at the maximum error point
 	# and fit recursively.
