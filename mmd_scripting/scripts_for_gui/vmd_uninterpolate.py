@@ -1735,7 +1735,8 @@ def fully_key_motion_for_testing(vmd: vmdstruct.Vmd) -> vmdstruct.Vmd:
 		highest_timestep = max(a.f for a in camlist)
 		all_timesteps = list(range(highest_timestep+1))
 		new_camlist = vmdutil.fill_missing_boneframes_new(camlist, desired_frames=all_timesteps, moreinfo=True,
-														  enable_append_prepend=False)
+														  enable_append_prepend=False,
+														  fix_fov=False)
 		vmd2.camframes = new_camlist
 	
 	fillend = time.time()
@@ -1820,6 +1821,9 @@ def main(moreinfo=True):
 		core.MY_PRINT_FUNC("now attempting to simplify camera frames...")
 		start = time.time()
 		newcams = simplify_camframes(vmd_orig_full.camframes)
+		# need to fix the fov by making them all ints!
+		for camframe in newcams:
+			camframe.fov = round(camframe.fov)
 		camend = time.time()
 		print(f"TIME FOR ALL CAM FRAMES: {round(camend - start)}sec")
 		if newcams != vmd_orig_full.camframes:

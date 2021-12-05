@@ -321,7 +321,8 @@ VMD_BONEMORPHCAM_FRAME = TypeVar('VMD_BONEMORPHCAM_FRAME', vmdstruct.VmdBoneFram
 def fill_missing_boneframes_new(all_frame_list: List[VMD_BONEMORPHCAM_FRAME],
 								desired_frames: Iterable[int],
 								moreinfo=False,
-								enable_append_prepend=True) -> List[VMD_BONEMORPHCAM_FRAME]:
+								enable_append_prepend=True,
+								fix_fov=True) -> List[VMD_BONEMORPHCAM_FRAME]:
 	"""
 	Take a list of bone/morph/camframes, then fill it out as much as I want, and return another flat list.
 	This requires that you specify the frames you want keys at.
@@ -361,7 +362,8 @@ def fill_missing_boneframes_new(all_frame_list: List[VMD_BONEMORPHCAM_FRAME],
 		all_frames_out, (i, p, a) = _fill_missing_boneframes_new(all_frame_list, desired_frames,
 															     enable_interp=True,
 															     enable_append=enable_append_prepend,
-															     enable_prepend=enable_append_prepend)
+															     enable_prepend=enable_append_prepend,
+																 fix_fov=fix_fov)
 		# accumulate stats
 		num_append += a
 		num_prepend += p
@@ -384,6 +386,7 @@ def _fill_missing_boneframes_new(framelist: List[VMD_BONEMORPHCAM_FRAME],
 								 enable_interp=True,
 								 enable_append=True,
 								 enable_prepend=True,
+								 fix_fov=True,
 								 ) -> Tuple[List[VMD_BONEMORPHCAM_FRAME], Tuple[int,int,int]]:
 	"""
 	Take a list of frames of one type, for one bone/morph/camera. It should already be sorted.
@@ -394,6 +397,7 @@ def _fill_missing_boneframes_new(framelist: List[VMD_BONEMORPHCAM_FRAME],
 	:param enable_interp:
 	:param enable_append:
 	:param enable_prepend:
+	:param fix_fov:
 	:return: list of boneframes, but filled out
 	"""
 
@@ -550,7 +554,8 @@ def _fill_missing_boneframes_new(framelist: List[VMD_BONEMORPHCAM_FRAME],
 						else:
 							bez_percentage = bez_fov.approximate(percentage)
 							interp_fov = core.linear_map(0, beforeframe.fov, 1, afterframe.fov, bez_percentage)
-							interp_fov = round(interp_fov)  # note: fov must be an INT
+							if fix_fov:
+								interp_fov = round(interp_fov)  # note: fov must be an INT before saving to vmd
 						if beforeframe.dist == afterframe.dist:
 							interp_dist = beforeframe.dist
 						else:
