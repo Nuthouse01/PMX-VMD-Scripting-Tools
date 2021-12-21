@@ -205,7 +205,6 @@ morph_dict = {
 "困った": "sadness",  # phonetically "komaru", same as above
 "困り": "troubled",  # phonetically "komari"
 "動揺": "upset",
-"真面目": "serious",  # has the symbol for "eye" but is actually a brow morph, odd
 "怒り": "anger",
 "にこり": "cheerful",
 "ｷﾘｯ": "serious eyes", # phonetically "kiri-tsu", might informally mean "confident"? kinda a meme phrase, a professional model translated this to 'serious' tho so idk
@@ -690,6 +689,7 @@ words_dict = {
 "困る": "sadness",  # phonetically "komaru", google translates to "troubled", but PMXE translates to "sadness"... maybe "worried" is best?
 "困った": "sadness",  # phonetically "komaru", same as above
 "困り": "troubled",  # phonetically "komari"
+"真面目": "serious",  # has the symbol for "eye" but is actually a brow morph, odd
 "真面": "serious",
 "怒り": "anger",
 "怒": "anger",
@@ -731,7 +731,7 @@ words_dict = {
 "丸い": "round",
 "丸": "round",
 "はちゅ": "round",
-"縮小": "small",
+"縮": "shrink",
 "小さく": "small",
 "小": "small",
 "消し": "erase",
