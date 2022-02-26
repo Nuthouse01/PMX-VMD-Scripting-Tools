@@ -12,6 +12,34 @@ import cProfile
 import pstats
 import logging
 
+"""
+There are too many problems with this task, and the benefit for if I get
+it working is too small. This script is indefinitely shelved.
+
+1. The major problem with trying to "uninterpolate" a VMD file is the fact that
+the bezier-fitting algorithm has too much difficulty finding the correct
+solution, even when an exact solution exists. Its threshold for "good enough"
+is too easy to reach with an imperfect solution, which means that the algorithm
+will insert more endpoints than necessary.
+The current vectorpaths algorithm is "iterate until total error is below a threshold",
+but in order to get a proper match I need to change the algorithm to "iterate
+until error stops improving", and when I do that it jumps from ~50 iterations to ~800
+iterations for evaluating one potential endpoint.
+It simply is not suited to matching control points when they are in the extreme
+corners.
+Also, it doesn't leverage the fact that the control points must be within
+a specific box; that should reduce the possibility space immensely but I don't
+know how the algorithm could be changed to leverage this.
+
+2. Second, I don't know how to handle everything that the camera VMDs can
+throw at me. I don't know how to detect or handle jump-cuts. Also, camera VMDs
+are stored as raw degrees, not quats... meaning the difference between two
+frames can exceed 180deg or 360deg if the camera is orbiting the focus.
+I simply don't know how to SLERP between two "points" that are greater than 180deg
+apart! The current alg requires converting to quaternions, which has no concept
+of great-rotations.
+"""
+
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.05 - 9/7/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
 #####################
