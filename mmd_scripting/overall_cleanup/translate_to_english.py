@@ -3,8 +3,7 @@ from typing import List
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
-from mmd_scripting.overall_cleanup import translation_functions
-from mmd_scripting.overall_cleanup import translation_dictionaries
+from mmd_scripting.core import translation_dictionaries, translation_functions
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.04 - 8/19/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.

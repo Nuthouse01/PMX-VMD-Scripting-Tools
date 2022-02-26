@@ -1,10 +1,10 @@
 from collections import defaultdict
-from typing import List, Tuple
+from typing import List
 
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
-from mmd_scripting.overall_cleanup.prune_unused_vertices import newval_from_range_map, delme_list_to_rangemap
+from mmd_scripting.core.nuthouse01_pmx_utils import delete_multiple_bones, delme_list_to_rangemap
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v0.6.00 - 6/10/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -74,53 +74,6 @@ def showprompt():
 	return pmx, input_filename_pmx
 	
 	
-# todo: probably wanna move this to somewhere more central and visible
-def insert_single_bone(pmx: pmxstruct.Pmx, newbone: pmxstruct.PmxBone, newindex: int):
-	"""
-	Wrapper function to make inserting bones simpler.
-	(!) No existing bones should refer to this bone before it is inserted. (!) When constructing newbone, it should
-	refer to already-existing bones by using their indices BEFORE this insert happens. (!) If you want to refer to
-	bones that haven't yet been created, too bad, come back and modify it after all insertions are done.
-	
-	:param pmx: PMX object
-	:param newbone: PMX Bone object to be inserted
-	:param newindex: position to insert it
-	"""
-	if newindex > len(pmx.bones) or newindex < 0:
-		raise ValueError("invalid index %d for inserting bone, current bonelist len= %d" % (newindex, len(pmx.bones)))
-	elif newindex == len(pmx.bones):
-		pmx.bones.append(newbone)
-	else:
-		# insert the bone at the new location
-		pmx.bones.insert(newindex, newbone)
-		# create the shiftmap for inserting things
-		bone_shiftmap = ([newindex], [-1])
-		# apply the shiftmap
-		# this also changes any references inside newbone to refer to the correct indices after the insertion
-		apply_bone_remapping(pmx, [], bone_shiftmap)
-	return
-	
-# todo: probably wanna move this somewhere more central and visible
-def delete_multiple_bones(pmx: pmxstruct.Pmx, bone_dellist: List[int]):
-	"""
-	Wrapper function to make deleting bones simpler.
-	
-	:param pmx: PMX object
-	:param bone_dellist: list of bone indices to delete
-	"""
-	# force it to be sorted, just to be safe
-	bone_dellist2 = sorted(bone_dellist)
-	# build the rangemap to determine how index references will be modified from this deletion
-	bone_shiftmap = delme_list_to_rangemap(bone_dellist2)
-	# acutally delete the bones
-	for f in reversed(bone_dellist):
-		pmx.bones.pop(f)
-	# apply remapping scheme to all remaining bones
-	apply_bone_remapping(pmx, bone_dellist2, bone_shiftmap)
-	return
-
-
-
 def identify_unused_bones(pmx: pmxstruct.Pmx, moreinfo: bool) -> List[int]:
 	"""
 	Process the PMX and return a list of all unused bone indicies in the model.
@@ -243,104 +196,6 @@ def identify_unused_bones(pmx: pmxstruct.Pmx, moreinfo: bool) -> List[int]:
 					core.MY_PRINT_FUNC("#: %d    ct: %d" % (bp, vertex_ct[bp]))
 	
 	return unused_bones_list
-	
-
-def apply_bone_remapping(pmx: pmxstruct.Pmx, bone_dellist: List[int], bone_shiftmap: Tuple[List[int],List[int]]):
-	"""
-	Given a list of bones to delete, delete them, and update the indices for all references to all remaining bones.
-	PMX is modified in-place. Behavior is undefined if the dellist bones are still in use somewhere!
-	References include: vertex weight, bone morph, display frame, rigidbody anchor, bone tail, bone partial inherit,
-	bone IK target, bone IK link.
-	
-	:param pmx: PMX object
-	:param bone_dellist: list of bone indices to delete
-	:param bone_shiftmap: created by delme_list_to_rangemap() before calling
-	"""
-	
-	core.print_progress_oneline(0 / 5)
-	# VERTICES:
-	# just remap the bones that have weight
-	# any references to bones being deleted will definitely have 0 weight, and therefore it doesn't matter what they reference afterwards
-	for d, vert in enumerate(pmx.verts):
-		for pair in vert.weight:
-			pair[0] = newval_from_range_map(int(pair[0]), bone_shiftmap)
-	# done with verts
-	
-	core.print_progress_oneline(1 / 5)
-	# MORPHS:
-	for d, morph in enumerate(pmx.morphs):
-		# only operate on bone morphs
-		if morph.morphtype != pmxstruct.MorphType.BONE: continue
-		# first, it is plausible that bone morphs could reference otherwise unused bones, so I should check for and delete those
-		i = 0
-		while i < len(morph.items):
-			it = morph.items[i]
-			it: pmxstruct.PmxMorphItemBone
-			# if the bone being manipulated is in the list of bones being deleted, delete it here too. otherwise remap.
-			if core.binary_search_isin(it.bone_idx, bone_dellist):
-				morph.items.pop(i)
-			else:
-				it.bone_idx = newval_from_range_map(it.bone_idx, bone_shiftmap)
-				i += 1
-	# done with morphs
-	
-	core.print_progress_oneline(2 / 5)
-	# DISPLAY FRAMES
-	for d, frame in enumerate(pmx.frames):
-		i = 0
-		while i < len(frame.items):
-			item = frame.items[i]
-			# if this item is a morph, skip it
-			if item.is_morph:
-				i += 1
-			else:
-				# if this is one of the bones being deleted, delete it here too. otherwise remap.
-				if core.binary_search_isin(item.idx, bone_dellist):
-					frame.items.pop(i)
-				else:
-					item.idx = newval_from_range_map(item.idx, bone_shiftmap)
-					i += 1
-	# done with frames
-	
-	core.print_progress_oneline(3 / 5)
-	# RIGIDBODY
-	for d, body in enumerate(pmx.rigidbodies):
-		# only remap, no possibility of one of these bones being deleted
-		body.bone_idx = newval_from_range_map(body.bone_idx, bone_shiftmap)
-	# done with bodies
-	
-	core.print_progress_oneline(4 / 5)
-	# BONES: point-at target, true parent, external parent, partial append, ik stuff
-	for d, bone in enumerate(pmx.bones):
-		# point-at link:
-		if bone.tail_usebonelink:
-			if core.binary_search_isin(bone.tail, bone_dellist):
-				# if pointing at a bone that will be deleted, instead change to offset with offset 0,0,0
-				bone.tail_usebonelink = False
-				bone.tail = [0, 0, 0]
-			else:
-				# otherwise, remap
-				bone.tail = newval_from_range_map(bone.tail, bone_shiftmap)
-		# other 4 categories only need remapping
-		# true parent:
-		bone.parent_idx = newval_from_range_map(bone.parent_idx, bone_shiftmap)
-		# partial append:
-		if (bone.inherit_rot or bone.inherit_trans) and bone.inherit_parent_idx != -1:
-			if core.binary_search_isin(bone.inherit_parent_idx, bone_dellist):
-				# if a bone is getting partial append from a bone getting deleted, break that relationship
-				# shouldn't be possible but whatever i'll support the case
-				bone.inherit_rot = False
-				bone.inherit_trans = False
-				bone.inherit_parent_idx = -1
-			else:
-				bone.inherit_parent_idx = newval_from_range_map(bone.inherit_parent_idx, bone_shiftmap)
-		# ik stuff:
-		if bone.has_ik:
-			bone.ik_target_idx = newval_from_range_map(bone.ik_target_idx, bone_shiftmap)
-			for link in bone.ik_links:
-				link.idx = newval_from_range_map(link.idx, bone_shiftmap)
-	# done with bones
-	return
 
 
 def prune_unused_bones(pmx: pmxstruct.Pmx, moreinfo=False):

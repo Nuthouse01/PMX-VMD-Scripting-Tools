@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README  
-Created by Nuthouse01 - v1.07.04 - 8/19/2021
+Created by Nuthouse01 - v1.07.05 - 2/26/2022
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!  
 If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)  
@@ -69,7 +69,7 @@ If you are loading a motion designed for some different model (usually the case)
 
 This script will reveal what exactly is mismatched; but to fix the issue, you must either change the PMX to match the VMD/VPD (using PMXEditor or a similar tool) or you must change the VMD/VPD to match the PMX (use script "vmd_rename_bones_morphs" to do find-and-replace within the VMD!).
 
-##### bone_make_semistandard_auto_armtwist.py
+##### bone_add_semistandard_auto_armtwist.py
 This will generate "automatic armtwist rigging" that will fix pinching at shoulders/elbows.
 
 **This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.**
@@ -280,6 +280,17 @@ The following files should be included with this README:
   <summary>Click to expand!</summary>
 
 ```
+v1.07.05:
+prevent "morph winnow" from deleting AutoLuminous morphs
+rename "bone_make_semistandard_auto_armtwist" -> "bone_add_semistandard_auto_armtwist"
+in "bone_add_semistandard_auto_armtwist", make all the crazy IK bones added at the BOTTOM of the bone list
+move "translation_functions", "translation_dicts" to CORE
+move some fundamental PMX functions into new separate file "core.nuthouse01_pmx_utils"
+new script "bone_add_leg_Dbones"
+bugfix in function assert_no_overlapping_frames() in vmd_utils
+add some new words in translation dict
+attempt & give up on "vmd uninterpolate" script
+
 v1.07.04:
 fix crashing bug in "nuthouse01_vmd_utils", oops
 change how VMD interpolation data is stored

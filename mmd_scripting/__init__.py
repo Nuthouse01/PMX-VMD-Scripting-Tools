@@ -5,8 +5,8 @@ but to directly run any of the other files you need to execute "_RUN_THIS_TO_INS
 directory properly registered as a "package" for your local Python.
 Check out README.md for... well, everything I guess.
 """
-__version__ = "v1.07.03"
-__date__ = "8/9/2021"
+__version__ = "v1.07.05"
+__date__ = "2/26/2022"
 __pkg_welcome__ = "mmd_scripting package: Nuthouse01 - %s - %s" % (__version__, __date__)
 print(__pkg_welcome__)
 

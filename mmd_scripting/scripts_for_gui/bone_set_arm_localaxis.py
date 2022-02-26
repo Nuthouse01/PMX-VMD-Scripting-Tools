@@ -4,7 +4,7 @@ from typing import List
 import mmd_scripting.core.nuthouse01_core as core
 import mmd_scripting.core.nuthouse01_pmx_parser as pmxlib
 import mmd_scripting.core.nuthouse01_pmx_struct as pmxstruct
-from mmd_scripting.scripts_for_gui import bone_make_semistandard_auto_armtwist
+from mmd_scripting.scripts_for_gui import bone_add_semistandard_auto_armtwist
 
 _SCRIPT_VERSION = "Script version:  Nuthouse01 - v1.07.00 - 7/13/2021"
 # This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause.
@@ -76,7 +76,7 @@ def set_bone_localaxis(pmx: pmxstruct.Pmx, me: pmxstruct.PmxBone, pointat: pmxst
 	# set localaxis
 	xaxis = [f - i for i, f in zip(me.pos, pointat.pos)]
 	xaxis = core.normalize_distance(xaxis)
-	yaxis = bone_make_semistandard_auto_armtwist.calculate_perpendicular_offset_vector(xaxis)
+	yaxis = bone_add_semistandard_auto_armtwist.calculate_perpendicular_offset_vector(xaxis)
 	zaxis = core.my_cross_product(xaxis, yaxis)
 	me.has_localaxis = True
 	me.localaxis_x = xaxis
@@ -175,7 +175,7 @@ def set_all_arm_localaxis(pmx: pmxstruct.Pmx, moreinfo=False) -> None:
 				endpoint = [a+b for a,b in zip(wrist.pos, wrist.tail)]
 			xaxis = [f - i for i, f in zip(wrist.pos, endpoint)]
 			xaxis = core.normalize_distance(xaxis)
-			yaxis = bone_make_semistandard_auto_armtwist.calculate_perpendicular_offset_vector(xaxis)
+			yaxis = bone_add_semistandard_auto_armtwist.calculate_perpendicular_offset_vector(xaxis)
 			zaxis = core.my_cross_product(xaxis, yaxis)
 			wrist.has_localaxis = True
 			wrist.localaxis_x = xaxis
