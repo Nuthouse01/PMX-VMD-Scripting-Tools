@@ -1,7 +1,7 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README  
-Created by Nuthouse01 - v1.07.05 - 8/19/2021
+Created by Nuthouse01 - v1.07.05 - 2/26/2022
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!  
 If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)  
@@ -287,6 +287,9 @@ in "bone_add_semistandard_auto_armtwist", make all the crazy IK bones added at t
 move "translation_functions", "translation_dicts" to CORE
 move some fundamental PMX functions into new separate file "core.nuthouse01_pmx_utils"
 new script "bone_add_leg_Dbones"
+bugfix in function assert_no_overlapping_frames() in vmd_utils
+add some new words in translation dict
+attempt & give up on "vmd uninterpolate" script
 
 v1.07.04:
 fix crashing bug in "nuthouse01_vmd_utils", oops
