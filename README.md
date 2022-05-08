@@ -1,11 +1,11 @@
 # PMX-VMD-Scripting-Tools
 
 PMX/VMD Scripting Tools README  
-Created by Nuthouse01 - 6/10/2021 - v6.00
+Created by Nuthouse01 - v1.07.05 - 2/26/2022
 
 If you appreciate my work, consider sending me a [donation via Paypal](https://paypal.me/nuthouse01)!  
 If you would like to contact me (questions or feedback), my email domain is yahoo.com and my username is brian.henson1 (screw those bots)  
-If you want to contribute a script or bugfix you've made, please make a Git Pull Request that merges onto the "development" branch. Any pull requests onto "master" branch will be rejected.
+If you want to contribute a script or bugfix you've made, please make a Git Pull Request that merges onto the "develop" branch. Any pull requests onto "master" branch will be rejected.
 
 ###### Legal:
 This code is free to use and re-distribute, but I cannot be held responsible for damages that it may or may not cause. You are permitted to examine and modify the code as you see fit, but I make no guarantees about the safety or quality of the result.  
@@ -13,54 +13,92 @@ I take no responsibility for how you use this code: any damages, or copyright vi
 You are free to use this for any commercial or non-commercial applications.  
 Don't try to claim this work as yours. That would be a profoundly dick move.
 
+###### What is this?
+This package is designed to let you (or me, or others) write and run Python scripts for reading, understanding, or modifying PMX (Polygon Model eXtended) 3d model data, VMD (Vocaloid Motion Data) motions, or VPD (Vocaloid Pose Data) poses.
+This also includes several immensely useful scripts which I have written (described below) and a GUI (Graphical User Interface) for running them.
+
+If you have a task that is difficult to do in PMXE (PMXEditor) or MMD (Miku Miku Dance) but you can programmatically describe what you want, then you can easily write a custom script that does just that!
+Examples of good script ideas include: "for each rigidbody whose name begins with 'Skirt', increase the X-dimension by 50%", or "delete any bones that serve no function", or "amplify the effect of this morph by 130%".
+Ideas such as "add breast bones and weights to the model" are not suitable for scripting, because while a human could easily say "the boobs start here and end here" a computer has no easy way of understanding where the "breasts" should be, nor does it have any concept of what "looks nice".
+Please look through the contents of the "scripts_for_gui" folder to see several examples, and copy "_SCRIPT_TEMPLATE.py" as a starting point.
+
+All of the scripts in this package are designed to be directly runnable by double-click, but this will run them in the default Windows console which doesn't properly display Japanese characters.
+To run a script in the GUI, it must define a string "helptext", it must define a function "main" that accepts exactly one argument, and it must be located in the "scripts_for_gui" folder.
+Any calls to the builtin function "input()" should be avoided if you want to run a script from the GUI.
+
+###### Installation:
+Click the green button above, select "Download ZIP", save it, and unzip it somewhere.  
+If you want to run the EXE version, that's it! You're ready to go! If you want, you can delete everything except for the EXE.  
+If you want to run the PY version or modify the code:  
+1. [Install Python](https://www.google.com/search?q=how+to+install+python) version 3.6 or higher.
+2. Double-click "_RUN_THIS_TO_INSTALL.bat" to download "googletrans" and to locally install the "mmd_scripting" package you just downloaded.
+   1. This will create a folder "mmd_scripting.egg-info", don't delete it, just ignore it.
+
 ###### Usage:
-1. Click the green button above, select "Download ZIP", save it, and unzip it somewhere.
-2. Just double-click "graphic_user_interface.exe" to open the user interface window. (For simplicity I recommend you use the EXE version. No installation is required. But if you want to run the PY versions or modify the code, you will need to [Install Python3](https://www.google.com/search?q=how+to+install+python) and the "googletrans" library ("pip install googletrans==4.0.0-rc1").)
+1. Just double-click "graphic_user_interface.exe" or "graphic_user_interface.py"
     1. If you get a popup saying "Windows protected your PC", you can click "More Info" and then "Run Anyway". This does not mean that it detected a virus (that is a different popup), this happens whenever you run an EXE from an unknown publisher, like me.
-3. Use the dropdown menu at the top to select which script you want to run. You can press the "Help" button to print out a detailed explanation of what the currently selected script does, how it does it, and what output files it creates.
-4. Click the large "RUN" button to the left to execute the selected script. This will begin by prompting you for input file(s), and will then run to completion. Outputs and info will be printed in the large space at the bottom of the window.
+2. Use the dropdown menu at the top to select which script you want to run. You can press the "Help" button to print out a detailed explanation of what the currently selected script does, how it does it, and what output files it creates.
+3. Click the large "RUN" button to the left to execute the selected script. This will begin by prompting you for input file(s), and will then run to completion. Outputs and info will be printed in the large space at the bottom of the window.
     1. If the "print extra info" checkbox is checked when the "RUN" button is clicked, more detailed info will be printed as the script runs.
-5. Read all information that is printed to the screen (such as whether it succeeded or failed), then leave the window open. You can click "RUN" again to run the same script (it will prompt you again for input file(s)) or you can switch to a different script with the dropdown menu and run something else instead. You can click "Clear" to clear the printout space if it gets too messy.
-6. Enjoy!
+4. Read all information that is printed to the screen (such as whether it succeeded or failed), then leave the window open. You can click "RUN" again to run the same script (it will prompt you again for input file(s)) or you can switch to a different script with the dropdown menu and run something else instead. You can click "Clear" to clear the printout space if it gets too messy.
+5. Enjoy!
 
 ![Screenshot of console](https://raw.githubusercontent.com/Nuthouse01/PMX-VMD-Scripting-Tools/master/img/screenshot1.png)
 
-### Purpose:
+### Descriptions:
+I've got more than 20 different runnable scripts in this package, but here are some of the most useful ones:
 ##### model_overall_cleanup.py
-This will perform a series of first-pass cleanup operations to generally improve any PMX model. This includes: translating missing english names (via Google Translate!), correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, cleaning up display frames, and detecting issues that might cause MMD to crash. These operations will reduce file size (sometimes massively!) and improve overall model health & usability.
+This will perform a series of first-pass cleanup operations to generally improve any PMX model.
+This includes: translating missing english names (via Google Translate!), correcting alphamorphs, normalizing vertex weights, pruning invalid faces & orphan vertices, removing bones that serve no purpose, pruning imperceptible vertex morphs, cleaning up display frames, and detecting issues that might cause MMD to crash.
+These operations will reduce file size (sometimes massively!) and improve overall model health & usability.
 
 ##### file_sort_textures.py
-This script is for organizing the texture imports used in a PMX model, to eliminate "top-level" clutter and sort Tex/Toon/SPH files into folders based on how they are used. This script will also report any files it finds that are not used by the PMX, and it will also report any files the PMX tries to reference which do not exist in the file system.
+This script is for organizing the texture imports used in a PMX model, to eliminate "top-level" clutter and sort Tex/Toon/SPH files into folders based on how they are used.
+This script will also report any files it finds that are not used by the PMX, and it will also report any files the PMX tries to reference which do not exist in the file system.
 
-##### file_translate_names.py
-This is for translating JP names of files to English. Unlike the "file_sort_textures" script, this will attempt to rename ALL files within the tree, it will not restrict itself to only certain filetypes.
+##### file_translate_filenames.py
+This is for translating JP names of files to English.
+Unlike the "file_sort_textures" script, this will attempt to rename ALL files within the tree, it will not restrict itself to only certain filetypes.
 
 ##### check_model_compatability.py
-This script is to check if the model you are using is compatible with the VMD/VPD you wish to use. This will display a summary that lists all the bones/morphs in the VMD/VPD file that are not supported by the model. If you are loading a motion designed for some different model (usually the case), and it seems to be playing wrong, it is very likely that there is a name mismatch.
+This script is to check if the model you are using is compatible with the VMD/VPD you wish to use. 
+This will display a summary that lists all the bones/morphs in the VMD/VPD file that are not supported by the model. 
+If you are loading a motion designed for some different model (usually the case), and it seems to be playing wrong, it is very likely that there is a name mismatch.
 
 (For example, if a model's eye-smile morph is named "笑い" and the motion uses "笑顔" for eye-smile, that morph will not be applied to the model and it will look wrong when played.)
 
-This script will reveal what exactly is mismatched; but to fix the issue, you must either change the PMX to match the VMD/VPD (using PMXEditor or a similar tool) or you must change the VMD/VPD to match the PMX (convert the VMD to text form, replace all uses of "笑顔" with "笑い" to match the model, and then convert it back to VMD form).
+This script will reveal what exactly is mismatched; but to fix the issue, you must either change the PMX to match the VMD/VPD (using PMXEditor or a similar tool) or you must change the VMD/VPD to match the PMX (use script "vmd_rename_bones_morphs" to do find-and-replace within the VMD!).
 
-##### bone_auto_armtwist.py
-This will generate "automatic armtwist rigging" that will fix pinching at shoulders/elbows.  
-**This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.**  
-It creates a clever IK bone setup that hijacks the semistandard bones and moves them as needed to reach whatever pose you make with the arm/腕 or elbow/ひじ bones. You do not need to manually move the armtwist bones at all, you can animate all 3 axes of rotation on the arm bone and the twisting axis will be automatically extracted and transferred to the armtwist bone as needed!
+##### bone_add_semistandard_auto_armtwist.py
+This will generate "automatic armtwist rigging" that will fix pinching at shoulders/elbows.
+
+**This only works on models that already have semistandard armtwist/腕捩 and wristtwist/手捩 bone rigs.**
+Install the "Semi-Standard Bone Plugin" in PMXE to create these bones if they do not exist.
+
+It creates a clever IK bone setup that hijacks the semistandard bones and moves them as needed to reach whatever pose you make with the arm/腕 or elbow/ひじ bones.
+You do not need to manually move the armtwist bones at all, you can animate all 3 axes of rotation on the arm bone and the twisting axis will be automatically extracted and transferred to the armtwist bone as needed!
 
 ##### morph_hide.py
-This script simply sets the specified morphs within a model to group "0" so they do not show up in the eye/lip/brow/other menus. This is handy for components of group morphs that you don't want to be used independently.
+This script simply sets the specified morphs within a model to "group 0" so they do not show up in the eye/lip/brow/other menus.
+This is handy for components of group morphs that you don't want to be used independently.
 
 ##### morph_invert.py
-This will "invert" a vertex or UV morph by permanently applying it to the model's mesh, then reversing the values inside that morph.
+This will "invert" a vertex/UV/material/group morph by permanently applying it to the model, then reversing the values inside that morph.
+(Bone morphs are not supported!)
+Note that the name of the morph will not be changed, so its name will be the opposite of what it actually does after running this script.
 
 ##### morph_scale.py
-This will scale the strength/magnitude of a vertex, UV, or bone morph by a specified factor such as 2.9 or 0.75.
+This will scale the strength/magnitude of a vertex/UV/material/bone morph by a specified factor such as 2.9 or 0.75.
 
 ##### convert_vmd_to_txt.py
-This tool is for converting VMD (Vocaloid Motion Data) files from their packed binary form to a human-readable and human-editable text form, and vice versa. This can allow 3rd-party scripts to perform procedural edits on the VMD data while it is in text format, such as (for example) constraining certain bones to a desired max range of motion, and then converting it back to VMD form for use in MikuMikuDance. Or it can be used to modify the names of the bones/morphs that the VMD is trying to control, to customize it to work better with a specific model.
+This tool is for converting VMD (Vocaloid Motion Data) files from their packed binary form to a human-readable and human-editable text form, and vice versa. 
+This can allow 3rd-party scripts to perform procedural edits on the VMD data while it is in text format, such as (for example) constraining certain bones to a desired max range of motion, and then converting it back to VMD form for use in MikuMikuDance.
+Or it can be used to modify the names of the bones/morphs that the VMD is trying to control, to customize it to work better with a specific model.
 
 ##### convert_vpd_to_vmd.py
-This script will convert VPD (Vocaloid Pose Data) files to or from VMD (Vocaloid Motion Data) files. The motion files will be only a single frame long, with all bones/morphs framed at time=0.
+This script will convert VPD (Vocaloid Pose Data) files to or from VMD (Vocaloid Motion Data) files.
+The motion files will be only a single frame long, with all bones/morphs framed at time=0.
+Why would you want to do this? I'm not sure, but now you can.
 
 ### Notes:
 Note: if you want to run the Python version rather than the EXE version, you will need have Python 3.6 or higher and need to install the "googletrans" library (pip install googletrans). This is the only non-standard library used in my codebase.
@@ -217,24 +255,100 @@ Thanks to the people who made PyInstaller for making a super easy way to build a
 
 ###### Files:
 The following files should be included with this README:
+* img/screenshot1.png
+* mmd_scripting/core/*.py
+* mmd_scripting/kaitai/*.py
+* mmd_scripting/overall_cleanup/*.py
+* mmd_scripting/scratch_stuff/*.py
+* mmd_scripting/scripts_for_gui/*.py
+* mmd_scripting/scripts_not_for_gui/*.py
+* mmd_scripting/wip/*.py
+* .gitignore
+* _RUN_THIS_TO_INSTALL.bat
+* graphic_user_interface.exe
+* graphic_user_interface.py
 * LICENSE
 * README.md
 * README.txt
 * README_command_line_support.txt
-* graphic_user_interface.py
-* graphic_user_interface.exe
-* python/*.py
-* handy_tools/README_handy_tools.txt
-* handy_tools/*.py
-* img/screenshot1.png
-* kaitai/vmd.ksy
-* kaitai/vmd.py
+* setup.cfg
+* setup.py
+* todo_list.txt
 
 #### Changelog:
 <details>
   <summary>Click to expand!</summary>
 
 ```
+v1.07.05:
+prevent "morph winnow" from deleting AutoLuminous morphs
+rename "bone_make_semistandard_auto_armtwist" -> "bone_add_semistandard_auto_armtwist"
+in "bone_add_semistandard_auto_armtwist", make all the crazy IK bones added at the BOTTOM of the bone list
+move "translation_functions", "translation_dicts" to CORE
+move some fundamental PMX functions into new separate file "core.nuthouse01_pmx_utils"
+new script "bone_add_leg_Dbones"
+bugfix in function assert_no_overlapping_frames() in vmd_utils
+add some new words in translation dict
+attempt & give up on "vmd uninterpolate" script
+
+v1.07.04:
+fix crashing bug in "nuthouse01_vmd_utils", oops
+change how VMD interpolation data is stored
+new tool "delete_alpha_layer" that deltes the transparency from an image
+refactor basically all JP-to-EN translation code:
+   split "translation functions" from "translation dictionaries"
+   move Google Translate code from "translate to english" to "translation functions"
+   refactor "translate to english" to have better function encapsulation, for cleanliness
+   implement new "sub-assembly idea" for more consistent results from Google Translate
+   implement "half-to-full-katakana" filtering for more consistent local local translate results
+   remove option to use "chunkwise translate" vs "oldstyle translate", no more old style
+new tool (toy) "just_fuck_my_shit_up_fam" for turning models into abominations
+
+v1.07.03:
+"model overall cleanup" do not check the length/encoding of bones/morphs that wont go into VMDs
+"model overall cleanup" add check for materials that are never visible
+add "what is this?" section to readme
+refactor "file recompress images" to ask for permission before making changes
+rewrite binary packer/unpacker code to be more efficient and moved to separate file "nuthouse01_packer"
+move some VMD-related functions to "nuthouse01_vmd_utils"
+make PMX encode progress tracker more linear & cleaner
+
+v1.07.02:
+several minor changes to reduce the "boilerplate" code, no functional changes
+   new func "RUN_WITH_TRACEBACK" to simplify direct-run code
+   new func "filepath_insert_suffix" for creating output file name
+   tweak how core files are imported
+split the file I/O functions into a separate file, nuthouse01_io.py
+add proper traceback display to GUI
+improve exceptions in validation, file I/O
+change "get_unused_filename" numbering template (very minor change)
+file write will not fail, even if destination exists and is read-only
+"file recompress images": changed to work even if images are read-only
+
+v1.07.01:
+"morph invert" script now supports material morphs & group morphs
+NEW: minor improvements in the GUI!
+    GUI will automatically find/load all scripts within "scripts_for_gui" folder, so if you write your own & stick it in there it will just work
+    GUI will select the "last used script" when launched
+    file input dialogue remembers different locations for each filetype
+add "_SCRIPT_TEMPLATE"
+
+v1.07.00:
+overhaul the structure and imports to make it more like a proper package
+bugfix in the new "bone_set_arm_localaxis" script
+other than that, it should be functionally identical!
+
+v6.01:
+add todo_list.txt, you can track what i'm planning to do next!
+NEW: add 'bone_set_arm_localaxis.py' to quickly set the localaxis params of arm bones
+NEW: add 'vmd_rename_bones_morphs.py' for simple find-and-replace names within VMD
+NEW: add "image set downloader" in handy tools
+NEW: "bone auto armtwist" FIX HANDTWIST PINCHING WOOOOOO
+NEW: add "bone sdef twist hand adapter" that will fix handtwist pinching on SDEF-autotwist models
+overhaul "make ik from vmd" to make it more object-based and more readable
+bugfixes in "reweight blender fragments", remove fancy optimizations
+change persistent storage method to use one json-formatted file
+
 v6.00:
 BIG: overhaul several parts of my PMX/VMD classes to make things more intuitive and more readable
    overhaul how vertex weights are stored, now all weight types use same structure of [index,value] pairs

@@ -1,0 +1,117 @@
+
+#####
+
+TODO: remove material morph items that point at -2 or invalid numbers? need to find a way to replicate this bug, see how it is saved so i know what to delete... also same in group morphs
+TODO: split "core" files into multiple?
+
+TODO: WIP-sdef-armtwist should invoke bone-sdeftwist-hand-adapter
+
+TODO: examine professional SDEF armtwist examples (miku, bb, tamo, check SPS?, ab8/10, pojio, emu kawahara,) and create a graph that profiles the weight balance with respect to the length along the segment
+
+TODO: simple flag in core that indicates 'running from gui' or not, wouldn't help with imports but might be useful
+    in other contexts?
+
+TODO: func 'normalize_texture_paths' in 'file_sort_textures' is pretty good, probably wanna add that to 'model_overall_cleanup'
+
+TODO: can i create one base class that is the parent of both VMD and PMX? they have almost identical features
+    i'm worried that it would be confusing if i did that tho? hm...
+
+TODO: remove the pmx.faces member and instead break the faces into one sublist for each material object? is this easier
+    or harder to understand? it lets me hide the "number of faces per material" field, which makes things simpler... and
+    it makes it much easier to duplicate or delete materials... hm...
+
+TODO: modify "create arm IK" script to use better structure/parameters
+
+
+=======================================================================
+IDEA: "motion de-interpolater" script
+	i'm sick and tired of motions that are riddiculously "over-keyed"
+	it makes the files way bigger than they need to be, and it makes them very difficult to adjust for other models
+	assumption: all "mo-cap" dances truly are that complex, and probably cannot be reduced
+	assumption: all "traced" dances have some reasonably simple underlying keyframe data, something that a person could make by hand, that has been deliberately over-keyed. if this assumption is true, then those over-key points should exactly fall along the interpolated line between some other two frames "nearby"
+each bone/facial/camera should be analyzed independently, and use different logic for each category
+facials are 1-dimensional, no interpolation curves, should be very easy
+for bone/camera... 
+	start/end pair is valid only if all channels of all intermediate frames can be mapped onto an interpolation curve between the startpoint/endpoint
+	how can i reconstruct the bezier interpolation curve if given the points I want it to pass near or through? there must be math for this
+	https://rdrr.io/cran/bezier/man/bezierCurveFit.html
+	https://github.com/volkerp/fitCurves/blob/master/fitCurves.py
+	https://stackoverflow.com/questions/12643079/b%C3%A9zier-curve-fitting-with-scipy
+	https://stackoverflow.com/questions/6299019/how-can-i-fit-a-b%c3%a9zier-curve-to-a-set-of-data
+	also, I want to check the exact amount of error in this curve-fit... some small degree of error is acceptable, i think. but the fundamental question is, "is there a constrained bezier curve that can run thru these points"?
+
+
+IDEA: "pose deducer" script, if given a natural T/A-pose version of a model + that same model that has been baked into a different pose,
+    i should be able to calculate exactly what pose was applied before it was baked! probably. it requires somehow being able to build
+    correspondance between vertices across the two models... vertex order, face order, UV coordinates? probably no one-size-fits-all
+    approach... i should also be able to do the same when all the bones have been deleted, yes? if I can build vertex correspondance
+    then I can copy the weights over, and by deducing the rotate-around locations I can figure out the baked locations of the bones!
+problems:
+    no one-size-fits-all approach
+    not always guaranteed to succeed
+    requires learning the exact math behind BDEF1/2/4, SDEF weight schemes... BDEF seems standard but i can't find any references to SDEF on a quick google, might be a mmd-specific concept
+    extremely difficult math to figure out, only 2 models I know of where this would be applicable, extracting the pose is a very small reward
+conclusion: not worth it
+
+
+IDEA2: "weight smoother" script, blend/blur the weights of a specified region!
+    fully blend weights for all vertices that are exactly on the same point
+    partially blend weights for each vertex with the weights of its neighbors (connected thru faces)
+    I tried to do this once before... why did I give up? I think I didn't know how to deal with the "exactly colocating points"?
+problem:
+    how to let the user specify only one sub-region of a model? CSV mode is clunky but it works... how hard would it be to write my own plugin?
+
+
+
+
+=======================================================================
+OTHER TOOLS
+
+https://bowlroll.net/file/197410
+"VMD sizing tool"
+has a bunch of features I don't understand
+has github, I can steal ideas from him! :D
+seems entirely JP tho, i bet the comments are JP as well :(
+
+
+https://bowlroll.net/file/66955
+"VMD twist-motion separator"
+sounds exactly the same as my twist-decomposition script, right?
+	but for some reason he says to use this to fix problems with the "shoulders"
+	is that just a translation thing, or what?
+	
+
+https://learnmmd.com/http:/learnmmd.com/mmd-animationsmoother-tool/
+https://www.deviantart.com/haztract/art/MMD-Program-English-Animation-Smoother-Ver-0-94-786539567
+"vmd animation smoothing tool"
+tries to solve the same problem as my WIP vmd smoothing script, but uses a different approach
+mine tries to leave keyframes where they are but build the bezier curves to be smooth
+theirs uses massive overkeying and also changes the times/positions from the input
+pros and cons
+I wonder if i can find the source code anywhere?
+
+
+
+https://bowlroll.net/file/257683
+pmxe plugin for headhacks
+extend the neck stump up, close the head hole
+seems pretty handy
+
+
+http://tstorage.info/users/unknown/4/MMD
+lots of PMXE plugins
+semistandard bones
+weight transfer
+weight target replacer (dont have that one, i should get it!)
+skirt plugin
+
+
+https://bowlroll.net/file/224733
+PMX compare program??
+
+
+
+http://tstorage.info/users/pajoc62384/742/preview_gen
+quick n dirty pmx preview image generator
+piggypacks on PMXE
+

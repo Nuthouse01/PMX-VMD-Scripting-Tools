@@ -1,5 +1,8 @@
-__pycache__
-build
-*.spec
-handy_tools_DONOTSHARE
-/.idea
+.idea/
+__pycache__/
+build/
+dist/
+handy_tools_DONOTSHARE/
+mmd_scripting.egg-info/
+
+graphic_user_interface.spec
